@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 15%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 221 83% 63%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 343 91% 69%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 222 47% 18%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 196 84% 73%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 222 47% 20%;
+  --input: 222 47% 20%;
+  --ring: 221 83% 63%;
+  --radius: 12px;
+
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.dark {
+  --background: 0 0% 0%; /* Noir */
+  --foreground: 210 40% 98%; /* Texte blanc */
+  --card: 0 0% 8%; /* Carte un peu plus claire */
+  --card-foreground: 210 40% 98%;
+  --popover: 0 0% 0%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 221 83% 63%; /* Garder le primaire pour le contraste */
+  --primary-foreground: 222 47% 11%;
+  --secondary: 343 91% 69%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 0 0% 12%; /* Muted plus clair */
+  --muted-foreground: 215 20% 75%; /* Texte muted plus lisible */
+  --accent: 196 84% 73%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 0 0% 15%; /* Bordure subtile */
+  --input: 0 0% 15%;
+  --ring: 221 83% 63%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.2;
+    color: hsl(var(--foreground));
+  }
+  p {
+    color: hsl(var(--muted-foreground));
+  }
+  a {
+    @apply text-primary transition-colors;
+  }
+  a:hover {
+    color: hsl(var(--primary) / 0.8);
+  }
+}
+
+.pb-\[var\(--nav-height\)\] {
+  padding-bottom: var(--nav-height, 4rem);
+}

@@ -1,0 +1,117 @@
+/* General Page Styles */
+.legal-mentions-page {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Hero Section */
+.legal-hero {
+  padding: 5rem 0;
+  background: linear-gradient(135deg, hsla(var(--primary) / 0.1), hsla(var(--background) / 0.1));
+  text-align: center;
+}
+
+.legal-hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.legal-hero p {
+  font-size: 1.125rem;
+  color: hsl(var(--muted-foreground));
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.last-update {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Content Section */
+.legal-content {
+  padding: 4rem 0;
+}
+
+.legal-content .container {
+  max-width: 800px;
+}
+
+.legal-section {
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background-color: hsl(var(--card));
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--border));
+}
+
+.legal-section h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: hsl(var(--primary));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legal-section h2 svg {
+  width: 24px;
+  height: 24px;
+}
+
+.legal-section p,
+.legal-section ul {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1rem;
+}
+
+.legal-section ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.legal-section li {
+  margin-bottom: 0.5rem;
+}
+
+.legal-details {
+  margin-top: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid hsl(var(--primary));
+}
+
+.legal-details p {
+  margin-bottom: 0.25rem;
+}
+
+.legal-section a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.legal-section a:hover {
+  color: hsl(var(--primary) / 0.8);
+}
+
+.legal-section strong {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
