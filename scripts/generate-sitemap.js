@@ -34,9 +34,19 @@ const africanCountries = [
 ];
 const languages = ['fr', 'en'];
 const staticPages = [
-    '/', '/discover', '/events', '/promotions', '/news', '/sponsors',
-    '/about', '/how-it-works', '/pricing', '/help-center',
-    '/terms', '/privacy-policy', '/legal-mentions'
+    '/', 
+    '/decouvrir',           // au lieu de '/discover'
+    '/evenements',          // au lieu de '/events'
+    '/promotions', 
+    '/actualites',          // au lieu de '/news'
+    '/partenaires',         // au lieu de '/sponsors'
+    '/a-propos',            // au lieu de '/about'
+    '/comment-ca-marche',   // au lieu de '/how-it-works'
+    '/tarifs',              // au lieu de '/pricing'
+    '/aide',                // au lieu de '/help-center'
+    '/conditions-utilisation', // au lieu de '/terms'
+    '/politique-confidentialite', // au lieu de '/privacy-policy'
+    '/mentions-legales'     // au lieu de '/legal-mentions'
 ];
 
 async function fetchDynamicRoutes() {
