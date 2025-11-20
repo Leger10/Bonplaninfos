@@ -1,0 +1,103 @@
+import React from 'react';
+import { Calendar, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useData } from '@/contexts/DataContext';
+import { toast } from '@/components/ui/use-toast';
+import { useTranslation } from 'react-i18next';
+
+const SecretaryEventManagementTab = ({ events, onRefresh }) => {
+  const { userProfile } = useData();
+  const { t } = useTranslation();
+
+  const logAction = async (action_type, target_id, details = {}) => {
+    await supabase.from('admin_logs').insert({
+      actor_id: userProfile.id,
+      action_type,
+      target_id,
+      details,
+    });
+  };
+
+  const handleDelete = async (eventId) => {
+    try {
+        const { error } = await supabase.rpc('delete_event_completely', { p_event_id: eventId });
+        if (error) throw error;
+        toast({ title: 'Événement supprimé' });
+        await logAction('event_deleted', eventId);
+        onRefresh();
+    } catch(error) {
+        toast({ title: 'Erreur', description: "Impossible de supprimer l'événement.", variant: 'destructive' });
+    }
+  };
+
+  const handleToggleStatus = async (event) => {
+    const newStatus = event.status === 'active' ? 'inactive' : 'active';
+    try {
+      const { error } = await supabase.from('events').update({ status: newStatus }).eq('id', event.id);
+      if (error) throw error;
+      toast({ title: 'Statut mis à jour' });
+      await logAction('event_status_toggled', event.id, { new_status: newStatus });
+      onRefresh();
+    } catch (error) {
+      toast({ title: 'Erreur', description: 'Impossible de mettre à jour le statut.', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <Card className="glass-effect border-purple-500/20">
+      <CardHeader>
+        <CardTitle className="text-white">Liste des événements</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {events.map((event) => (
+            <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-background/50 rounded-lg gap-4">
+              <div className="flex items-center space-x-4 flex-grow">
+                <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">{event.title}</p>
+                  <p className="text-sm text-gray-400">
+                    Par {event.organizer?.full_name || 'N/A'}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className="bg-primary/80 text-white text-xs">
+                      {event.city}, {event.country}
+                    </Badge>
+                     <Badge variant={event.status === 'active' ? 'success' : 'destructive'} className="text-xs">
+                      {event.status === 'active' ? 'Actif' : 'Inactif'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleToggleStatus(event)}
+                  className="hover:text-yellow-400"
+                >
+                  {event.status === 'active' ? <ToggleLeft className="w-5 h-5" /> : <ToggleRight className="w-5 h-5" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleDelete(event.id)}
+                  className="hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default SecretaryEventManagementTab;

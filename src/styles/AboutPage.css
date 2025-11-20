@@ -1,0 +1,74 @@
+.mission-image-container {
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(var(--primary-rgb), 0.25);
+  transform: rotate(2deg);
+  transition: transform 0.3s ease-in-out;
+}
+.mission-image-container:hover {
+    transform: rotate(0deg) scale(1.03);
+}
+
+.main-about-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-member-card {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.team-member-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 25px rgba(var(--primary-rgb), 0.15);
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: hsl(var(--muted));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin: 0 auto;
+  border: 3px solid hsl(var(--primary));
+}
+
+.value-card {
+  background-color: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.value-card:hover {
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--primary));
+}
+
+.value-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: hsla(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.value-icon svg {
+  width: 28px;
+  height: 28px;
+}

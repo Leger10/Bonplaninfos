@@ -1,0 +1,197 @@
+.cookie-banner {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%);
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border) / 0.3);
+    border-radius: 1.5rem;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px hsl(var(--border) / 0.1),
+        inset 0 1px 0 hsl(var(--background) / 0.8);
+    backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    max-width: 480px;
+    width: 90%;
+    margin: 0 auto;
+}
+
+.cookie-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.cookie-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100%;
+}
+
+.cookie-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+}
+
+.cookie-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: white;
+}
+
+.cookie-text-content {
+    flex-grow: 1;
+}
+
+.cookie-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: hsl(var(--card-foreground));
+    margin-bottom: 0.5rem;
+}
+
+.cookie-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: hsl(var(--muted-foreground));
+    margin: 0;
+}
+
+.cookie-link {
+    color: hsl(var(--primary));
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.25rem;
+}
+
+.cookie-link:hover {
+    color: hsl(var(--primary) / 0.8);
+    border-bottom-color: hsl(var(--primary) / 0.5);
+}
+
+.cookie-link::after {
+    content: "→";
+    font-size: 0.875rem;
+    transition: transform 0.2s ease;
+}
+
+.cookie-link:hover::after {
+    transform: translateX(2px);
+}
+
+.cookie-buttons {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.cookie-button {
+    padding: 0.625rem 1.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cookie-button--secondary {
+    background: transparent;
+    color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border));
+}
+
+.cookie-button--secondary:hover {
+    background: hsl(var(--muted) / 0.3);
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border) / 0.6);
+    transform: translateY(-1px);
+}
+
+.cookie-button--primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.9) 100%);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+}
+
+.cookie-button--primary:hover {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.8) 100%);
+    box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
+    transform: translateY(-1px);
+}
+
+.cookie-button--primary:active {
+    transform: translateY(0);
+}
+
+/* Version mobile */
+@media (max-width: 640px) {
+    .cookie-banner {
+        bottom: 1rem;
+        width: calc(100% - 2rem);
+        padding: 1.25rem;
+        border-radius: 1rem;
+    }
+
+    .cookie-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+
+    .cookie-icon {
+        align-self: center;
+    }
+
+    .cookie-buttons {
+        flex-direction: column;
+    }
+
+    .cookie-button {
+        justify-content: center;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .cookie-banner {
+        background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.98) 100%);
+        border: 1px solid hsl(var(--border) / 0.2);
+        box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.3),
+            0 0 0 1px hsl(var(--border) / 0.1);
+    }
+}
+
+/* Accessibilité */
+@media (prefers-reduced-motion: reduce) {
+    .cookie-banner {
+        animation: none;
+    }
+
+    .cookie-button {
+        transition: none;
+    }
+}
