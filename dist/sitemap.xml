@@ -3,7 +3,7 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://bonplaninfos.net</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci"/>
@@ -46,7 +46,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/decouvrir</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/decouvrir"/>
@@ -89,7 +89,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/evenements</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/evenements"/>
@@ -132,7 +132,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/promotions</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotions"/>
@@ -175,7 +175,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/actualites</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/actualites"/>
@@ -218,7 +218,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/partenaires</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/partenaires"/>
@@ -261,7 +261,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/a-propos</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/a-propos"/>
@@ -304,7 +304,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/comment-ca-marche</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/comment-ca-marche"/>
@@ -347,7 +347,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/tarifs</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/tarifs"/>
@@ -390,7 +390,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/aide</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/aide"/>
@@ -433,7 +433,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/conditions-utilisation</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/conditions-utilisation"/>
@@ -476,7 +476,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/politique-confidentialite</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/politique-confidentialite"/>
@@ -519,7 +519,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/mentions-legales</loc>
-    <lastmod>2025-11-20</lastmod>
+    <lastmod>2025-11-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/mentions-legales"/>
@@ -1677,49 +1677,6 @@
     <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/2749bd2b-ad4d-4034-99ee-0de04166da62"/>
     <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/2749bd2b-ad4d-4034-99ee-0de04166da62"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/2749bd2b-ad4d-4034-99ee-0de04166da62"/>
-  </url>
-  <url>
-    <loc>https://bonplaninfos.net/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9</loc>
-    <lastmod>2025-11-17T06:19:50.786477+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/90f192c4-4db6-4c90-a2dd-de1f8284edb9"/>
   </url>
   <url>
     <loc>https://bonplaninfos.net/event/623dfd3e-6f11-4388-be31-6d76de5f4e45</loc>

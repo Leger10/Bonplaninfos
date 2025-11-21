@@ -17,7 +17,25 @@ const resources = {
         logout: "Déconnexion",
         notifications: "Notifications",
       },
+en: {
+    translation: {
+      // ===== NAVIGATION =====
+      nav: {
+        home: "Home",
+        discover: "Discover",
+        events: "Events",
+        partnership: "Partnership",
+        profile: "Profile",
+        wallet: "Wallet",
+        create_event: "Create Event",
+        logout: "Logout",
+        notifications: "Notifications",
+          }
+            }
+      },
 
+      Theme: "Theme",            // AJOUT
+      Language: "Language" , 
       // ===== AUTHENTIFICATION =====
       auth: {
         fetch_error: {
@@ -422,6 +440,105 @@ const resources = {
         legal_mentions: "Mentions légales",
       },
 
+
+
+
+
+      
+data_protection: {
+  meta_title: "Protection des Données Personnelles",
+  meta_description: "Politique de protection des données personnelles de BonPlanInfos. Conforme aux réglementations africaines sur la protection des données.",
+  title: "Protection des Données Personnelles",
+  subtitle: "Notre engagement pour la protection de vos données en Afrique",
+africa_compliance: "Nos pratiques de protection des données respectent les réglementations nationales dans tous les pays d'opération en Afrique de l'Ouest (Côte d'Ivoire, Burkina Faso, Sénégal, Mali, Bénin, Ghana, Nigeria), Afrique Centrale (Cameroun, Gabon), Afrique du Nord (Tunisie, Maroc) et Afrique Australe (Afrique du Sud), en suivant à la fois les lois locales et les standards de l'Union Africaine.",
+  contact_title: "Contact Délégué à la Protection des Données",
+  
+  commitment: {
+    title: "Notre Engagement",
+    content: "BonPlanInfos s'engage à protéger vos données personnelles conformément aux lois africaines sur la protection des données. Nous mettons en œuvre des mesures techniques et organisationnelles robustes pour assurer la sécurité et la confidentialité de vos informations."
+  },
+  
+  dpo: {
+    title: "Délégué à la Protection des Données",
+    content: "Notre Délégué à la Protection des Données (DPD) veille au respect des obligations légales et réglementaires concernant la protection des données personnelles dans tous les pays africains où nous opérons."
+  },
+  
+  data_collected: {
+    title: "Données Collectées",
+    content: "Nous collectons uniquement les données nécessaires au bon fonctionnement de nos services événementiels :",
+    list: [
+      "Informations de profil : nom, prénom, email, téléphone",
+      "Données de transaction : historiques d'achats de billets",
+      "Données d'utilisation : préférences événementielles, interactions avec la plateforme",
+      "Données techniques : adresse IP, type d'appareil, cookies essentiels",
+      "Données de localisation : pays et ville pour personnaliser les événements"
+    ]
+  },
+  
+  usage: {
+    title: "Utilisation des Données",
+    content: "Vos données sont utilisées dans le strict respect des finalités suivantes :",
+    list: [
+      "Gestion des inscriptions et participations aux événements",
+      "Traitement sécurisé des paiements de billets",
+      "Envoi de confirmations et informations événementielles",
+      "Amélioration de l'expérience utilisateur sur notre plateforme",
+      "Conformité avec les obligations légales africaines",
+      "Personnalisation des recommandations d'événements par pays"
+    ]
+  },
+  
+  sharing: {
+    title: "Partage des Données",
+    content: "Nous ne partageons vos données qu'avec :",
+    list: [
+      "Prestataires de paiement certifiés (MoneyFusion, PayPal, Mobile Money, Orange Money, MTN Mobile Money, Moov Money, Wave, etc.)",
+      "Organisateurs d'événements (uniquement les données nécessaires à la gestion de leur événement)",
+      "Autorités légales (sur demande formelle conforme aux lois locales)",
+      "Partenaires techniques sous contrat de confidentialité strict"
+    ]
+  },
+  
+  security: {
+    title: "Sécurité des Données",
+    content: "Nous mettons en œuvre des mesures de sécurité avancées conformes aux standards africains :",
+    list: [
+      "Chiffrement SSL/TLS pour toutes les transmissions de données",
+      "Stockage sécurisé avec préférence pour les serveurs localisés en Afrique",
+      "Contrôles d'accès stricts et authentification multi-facteurs",
+      "Audits réguliers de sécurité conformes aux lois locales",
+      "Sauvegardes cryptées et plans de reprise d'activité"
+    ]
+  },
+  
+  retention: {
+    title: "Conservation des Données",
+    content: "Vos données sont conservées pour des durées limitées conformément aux lois de chaque pays :",
+    list: [
+      "Données de compte : 3 ans après dernière activité",
+      "Données transactionnelles : 5 à 10 ans selon les obligations légales locales",
+      "Données de navigation : 13 mois maximum",
+      "Données des événements : 2 ans après la fin de l'événement",
+      "Données marketing : 3 ans après dernier contact"
+    ]
+  },
+  
+  hosting: {
+    title: "Hébergement des Données",
+    content: "Vos données sont principalement hébergées sur des serveurs sécurisés. Nous privilégions les solutions d'hébergement en Afrique lorsque cela est possible, tout en garantissant la même qualité de service et de sécurité. Nos infrastructures respectent les exigences de souveraineté numérique des pays où nous opérons."
+  },
+  
+  deletion: {
+    title: "Droit à l'Effacement",
+    content: "Conformément aux lois africaines sur la protection des données, vous avez le droit de demander la suppression de vos données personnelles. Contactez notre DPD à support@bonplaninfos.net pour toute demande d'effacement. Nous nous engageons à répondre dans les délais légaux de chaque pays."
+  },
+  
+  last_updated: "Dernière mise à jour : Novembre 2025"
+},
+
+
+
+
       // ===== MARKETING =====
       marketing: {
         badge: "Pour les Organisateurs & Créateurs",
@@ -483,49 +600,75 @@ const resources = {
             "Rejoignez des milliers d'organisateurs qui nous font confiance.",
           cta_button: "Lancer mon premier événement",
         },
-        testimonials: {
-          title: "Ils nous font confiance",
-          dj_kerozen_quote:
-            "Avec BonPlanInfos, j'ai rempli ma salle de concert en un temps record. La viralité de la plateforme est juste incroyable !",
-          fatou_sylla_quote:
-            "J'organise tous les événements de mes clients via l'application. Ça me simplifie la vie et mes clients adorent.",
-          eric_b_quote:
-            "On a financé tout notre week-end d'intégration grâce à la monétisation de notre soirée. Un must-have !",
-          bintou_diallo_name: "Bintou Diallo",
-          bintou_diallo_role: "Promotrice de Spectacles",
-          kwesi_mensah_name: "Kwesi Mensah",
-          kwesi_mensah_role: "Wedding Planner",
-          aisha_traore_name: "Aïsha Traoré",
-          aisha_traore_role: "Étudiante & Présidente BDE",
-          amadou_ba_name: "Amadou Ba",
-          amadou_ba_role: "Coach en développement personnel",
-          amadou_ba_quote:
-            "La gestion des inscriptions pour mes séminaires est devenue un jeu d'enfant. Je gagne un temps fou !",
-          chimamanda_ngozi_name: "Chimamanda Ngozi",
-          chimamanda_ngozi_role: "Organisatrice de festival littéraire",
-          chimamanda_ngozi_quote:
-            "La fonctionnalité de vote en direct a ajouté une dimension interactive et passionnante à notre prix littéraire.",
-          didier_kouame_name: "Didier Kouamé",
-          didier_kouame_role: "Gérant de club sportif",
-          didier_kouame_quote:
-            "La tombola en ligne a généré des revenus inattendus pour notre club. C'est simple et terriblement efficace.",
-          mariam_kone_name: "Mariam Koné",
-          mariam_kone_role: "Créatrice de mode",
-          mariam_kone_quote:
-            "Mon défilé a eu une portée nationale grâce à la promotion sur BonPlanInfos. Les retombées ont été immédiates.",
-          femi_adebayo_name: "Femi Adebayo",
-          femi_adebayo_role: "Propriétaire de food truck",
-          femi_adebayo_quote:
-            "Louer un stand sur les plus gros événements de la ville n'a jamais été aussi simple. Mon business a explosé !",
-          abena_asante_name: "Abena Asante",
-          abena_asante_role: "Artiste peintre",
-          abena_asante_quote:
-            "J'ai vendu plus de toiles lors de mon vernissage en ligne que je n'aurais jamais imaginé. La visibilité est top.",
-          yannick_zongo_name: "Yannick Zongo",
-          yannick_zongo_role: "Organisateur de tournois e-sport",
-          yannick_zongo_quote:
-            "La billetterie intégrée et le système de check-in par QR code sont parfaits pour gérer un grand nombre de participants.",
-        },
+       testimonials: {
+  title: "Ils nous font confiance",
+  subtitle: "Découvrez les retours d'expérience de nos utilisateurs satisfaits",
+  play: "Lecture",
+  pause: "Pause",
+  previous: "Précédent",
+  next: "Suivant",
+  counter: "{{current}} / {{total}}",
+  testimonial1: {
+    role: "Organisatrice de concerts",
+    content: "Avec BonPlanInfos, mes événements protégés génèrent un revenu passif impressionnant. 1000 vues = 10,000F !"
+  },
+  testimonial2: {
+    role: "Manager d'artistes",
+    content: "La billetterie est révolutionnaire. 95% des revenus me reviennent directement, sans intermédiaire."
+  },
+  testimonial3: {
+    role: "Partenaire officielle",
+    content: "Devenir partenaire m'a permis de générer un revenu mensuel stable tout en développant mon réseau."
+  },
+  testimonial4: {
+    role: "Promoteur événementiel",
+    content: "Le système de concours a boosté l'engagement de ma communauté. Les revenus ont augmenté de 300% !"
+  },
+  testimonial5: {
+    role: "Artiste musicienne",
+    content: "En tant qu'artiste, BonPlanInfos m'a donné une autonomie financière grâce aux événements protégés."
+  },
+  testimonial6: {
+    role: "Organisateur de festivals",
+    content: "La location de stands via la plateforme a simplifié toute la logistique de mon festival."
+  },
+  testimonial7: {
+    role: "Influenceuse lifestyle",
+    content: "Mes tirages au sort génèrent un engagement incroyable. Ma communauté adore participer !"
+  },
+  testimonial8: {
+    role: "Entrepreneur événementiel",
+    content: "Le programme partenaire m'a ouvert des opportunités que je n'aurais jamais imaginées."
+  },
+  testimonial9: {
+    role: "Photographe événements",
+    content: "Je monétise maintenant mes reportages photos grâce aux événements protégés. Génial !"
+  },
+  testimonial10: {
+    role: "DJ & Producteur",
+    content: "Mes lives protégés me rapportent plus que mes anciennes plateformes. Je recommande à 100% !"
+  },
+  testimonial11: {
+    role: "Organisatrice mariages",
+    content: "BonPlanInfos a révolutionné ma façon de travailler. Les clients adorent le système de billetterie."
+  },
+  testimonial12: {
+    role: "Community Manager",
+    content: "Je gère plusieurs artistes sur la plateforme. L'interface est intuitive et les revenus transparents."
+  },
+  testimonial13: {
+    role: "Créatrice de contenu",
+    content: "Mes ateliers en ligne sont maintenant protégés et génèrent des revenus stables chaque mois."
+  },
+  testimonial14: {
+    role: "Organisateur sportif",
+    content: "Pour nos tournois, le système de votes et concours a multiplié par 5 notre audience."
+  },
+  testimonial15: {
+    role: "Agence événementielle",
+    content: "Nous utilisons BonPlanInfos pour tous nos clients. La satisfaction est toujours au rendez-vous !"
+  }
+},
         cta: {
           title:
             "Vous êtes prêt à faire passer vos événements au niveau supérieur ?",
@@ -623,6 +766,293 @@ const resources = {
         feature_not_implemented:
           "🚧 Cette fonctionnalité n'est pas encore implémentée—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochain prompt ! 🚀",
       },
+
+partner_signup: {
+  meta_title: "Devenir Partenaire - BonPlanInfos",
+  meta_description: "Devenez partenaire officiel BonPlanInfos et générez des revenus mensuels stables. Programme de partenariat avec licences avantageuses.",
+  
+  unauthorized_title: "Accès non autorisé",
+  unauthorized_desc: "Vous devez être connecté pour accéder à la page partenaire.",
+  unauthorized_cta: "Se connecter",
+  
+  loading_licenses: "Chargement des licences...",
+  error_loading_licenses: "Erreur lors du chargement des licences",
+  
+  your_licenses_title: "Vos Licences Actives",
+  available_licenses_title: "Licences Disponibles",
+  available_licenses_subtitle: "Choisissez la licence qui correspond à vos ambitions et commencez à générer des revenus",
+  
+  license_card: {
+    active: "Active",
+    expired: "Expirée",
+    revenue_share: "Part de revenus : {{percent}}%",
+    purchased_on: "Achetée le",
+    expires_on: "Expire le",
+    days_remaining: "{{count}} jour(s) restant(s)"
+  },
+  
+  per_month: "/mois",
+  revenue_label: "Part des revenus",
+  duration_label: "{{months}} mois ({{days}} jours)",
+  
+  purchase_cta: "Acheter maintenant",
+  
+  error_toast: {
+    title: "Erreur",
+    login_required: "Vous devez être connecté pour acheter une licence",
+    purchase_failed: "Erreur lors de l'achat de la licence"
+  }
+},
+license_features: {
+  // Pour la licence Premium/Pro
+  feature1: "Zone maximale",
+  feature2: "Dashboard avancé", 
+  feature3: "Support 24/7",
+  feature4: "Formation avancée",
+  feature5: "Accès early",
+  
+  // Pour la licence Standard
+  feature6: "Gestion de zone",
+  feature7: "Rapports mensuels", 
+  feature8: "Support basic",
+  
+  // Pour la licence Basique
+  feature9: "Zone étendue",
+  feature10: "Analyses détaillées",
+  feature11: "Support prioritaire",
+  feature12: "Formation",
+  
+  // Descriptions des revenus
+  revenue_description_40: "40% de gain sur chiffre d'affaires de sa zone",
+  revenue_description_20: "20% de gain sur chiffre d'affaires de sa zone"
+},
+      // ===== CREATE EVENT PAGE =====
+create_event_page: {
+  meta: {
+    title: "Créer un Événement - Choisir le Type",
+    description: "Choisissez le type d'événement que vous souhaitez créer sur BonPlanInfos"
+  },
+  title: "Créer un Événement",
+  subtitle: "Choisissez le type d'événement que vous souhaitez créer",
+  types: {
+    simple: {
+      title: "Événement Simple",
+      desc: "Événement basique avec informations générales"
+    },
+    ticketing: {
+      title: "Billetterie",
+      desc: "Vendez des billets pour votre événement"
+    },
+    voting: {
+      title: "Vote & Concours",
+      desc: "Créez un concours avec système de vote"
+    },
+    raffle: {
+      title: "Tirage au Sort",
+      desc: "Organisez un tirage au sort avec lots"
+    },
+    stand: {
+      title: "Location de Stands",
+      desc: "Louez des stands pour un salon ou foire"
+    }
+  },
+  help: {
+    title: "Besoin d'aide ?",
+    description: "Consultez notre guide pour apprendre à créer et gérer vos événements efficacement",
+    button: "Voir le Guide d'Utilisation"
+  }
+},
+
+// ===== USER GUIDE PAGE =====
+user_guide_page: {
+    meta: {
+      title: "BonPlanInfos - Plateforme Événementielle 100% Africaine",
+      description: "Créez, gérez et monétisez vos événements avec BonPlanInfos. La plateforme ivoirienne qui vous reverse 95% de vos revenus."
+    },
+    hero: {
+      title: "BonPlanInfos",
+      subtitle: "Votre Succès Événementiel",
+      description: "La plateforme ivoirienne qui vous reverse <strong>95% de vos revenus</strong>",
+      coin_info: "1 pièce = 10F • 1 interaction = 1 pièce",
+      create_event: "Créer un Événement",
+      become_partner: "Devenir Partenaire",
+      features: {
+        revenue: "95% des revenus reversés",
+        coin: "1 pièce = 10F CFA",
+        support: "Support 24/7"
+      }
+    },
+    features: {
+      title: "Nos Solutions Événementielles",
+      subtitle: "Des outils puissants pour maximiser vos revenus et votre visibilité",
+      ticketing: {
+        title: "Billetterie Intelligente",
+        description: "Vendez des billets pour vos concerts et événements. Fixez vos prix et recevez 95% des revenus directement",
+        stats: "95% de revenus reversés"
+      },
+      voting: {
+        title: "Concours & Votes",
+        description: "Organisez des concours interactifs avec système de vote. Monétisez chaque participation",
+        stats: "95% sur chaque participation"
+      },
+      raffle: {
+        title: "Tirage au Sort",
+        description: "Créez des tirages au sort avec lots attractifs. Participation payante ou gratuite selon votre choix",
+        stats: "Gestion automatique avec 95% sur chaque participation"
+      },
+      stand_rental: {
+        title: "Location de Stands",
+        description: "Louez des stands pour salons et foires. Gérez les réservations et paiements en ligne",
+        stats: "95% du prix de location vous êtes reversés"
+      },
+      protected_events: {
+        title: "Événements Protégés",
+        description: "Contenu exclusif monétisé. Gagnez 1 pièce par interaction (vue, like, commentaire, partage)",
+        stats: "+1 pièce par interaction"
+      },
+      boost: {
+        title: "Boost Instantané",
+        description: "Augmentez la visibilité de vos événements. Atteignez plus de participants en temps réel en boostant vos évènements sur bonplaninfos.",
+        stats: "Portée multipliée"
+      }
+    },
+    simulation: {
+      title: "Simulation Événement Protégé",
+      subtitle: "Découvrez comment monétiser chaque interaction sur vos événements",
+      main_title: "💰 1 Interaction = 1 Pièce = 10F CFA",
+      description: "Chaque vue, like, commentaire ou partage vous rapporte de l'argent",
+      views: "Vues",
+      likes: "Likes",
+      comments: "Commentaires",
+      shares: "Partages",
+      total: "Total: {{amount}} F CFA",
+      revenue_description: "Revenus générés par un événement avec {{count}} interactions"
+    },
+    stats: {
+      revenue: "Revenus reversés aux organisateurs",
+      coin_cost: "Coût d'1 pièce",
+      coin_earned: "Pièce gagnée par interaction",
+      no_fees: "Frais d'inscription"
+    },
+    partner_program: {
+      title: "Programme Partenaire",
+      subtitle: "Représentez BonPlanInfos dans votre région et générez des revenus mensuels",
+      advantages: "Avantages Partenaire",
+      benefits: {
+        revenue: "Revenus mensuels garantis",
+        training: "Formation complète offerte",
+        support: "Support prioritaire 24/7",
+        network: "Réseau de partenaires exclusif"
+      },
+      become_partner: "Devenez Partenaire",
+      partner_description: "Représentez BonPlanInfos dans votre ville",
+      apply_now: "Postuler Maintenant"
+    },
+   testimonials: {
+  title: "Ils nous font confiance",
+  subtitle: "Découvrez les retours d'expérience de nos utilisateurs satisfaits",
+  play: "Lecture",
+  pause: "Pause",
+  previous: "Précédent",
+  next: "Suivant",
+  counter: "{{current}} / {{total}}",
+  testimonial1: {
+    name: "Marie K.",
+    role: "Organisatrice de concerts",
+    content: "Avec BonPlanInfos, mes événements protégés génèrent un revenu passif impressionnant. 1000 vues = 10,000F !"
+  },
+  testimonial2: {
+    name: "Jean A.",
+    role: "Manager d'artistes",
+    content: "La billetterie est révolutionnaire. 95% des revenus me reviennent directement, sans intermédiaire."
+  },
+  testimonial3: {
+    name: "Sophie T.",
+    role: "Partenaire officielle",
+    content: "Devenir partenaire m'a permis de générer un revenu mensuel stable tout en développant mon réseau."
+  },
+  testimonial4: {
+    name: "Paul D.",
+    role: "Promoteur événementiel",
+    content: "Le système de concours a boosté l'engagement de ma communauté. Les revenus ont augmenté de 300% !"
+  },
+  testimonial5: {
+    name: "Fatou M.",
+    role: "Artiste musicienne",
+    content: "En tant qu'artiste, BonPlanInfos m'a donné une autonomie financière grâce aux événements protégés."
+  },
+  testimonial6: {
+    name: "Kevin L.",
+    role: "Organisateur de festivals",
+    content: "La location de stands via la plateforme a simplifié toute la logistique de mon festival."
+  },
+  testimonial7: {
+    name: "Aïcha B.",
+    role: "Influenceuse lifestyle",
+    content: "Mes tirages au sort génèrent un engagement incroyable. Ma communauté adore participer !"
+  },
+  testimonial8: {
+    name: "Marc T.",
+    role: "Entrepreneur événementiel",
+    content: "Le programme partenaire m'a ouvert des opportunités que je n'aurais jamais imaginées."
+  },
+  testimonial9: {
+    name: "Julie N.",
+    role: "Photographe événements",
+    content: "Je monétise maintenant mes reportages photos grâce aux événements protégés. Génial !"
+  },
+  testimonial10: {
+    name: "David K.",
+    role: "DJ & Producteur",
+    content: "Mes lives protégés me rapportent plus que mes anciennes plateformes. Je recommande à 100% !"
+  },
+  testimonial11: {
+    name: "Sarah J.",
+    role: "Organisatrice mariages",
+    content: "BonPlanInfos a révolutionné ma façon de travailler. Les clients adorent le système de billetterie."
+  },
+  testimonial12: {
+    name: "Mohamed C.",
+    role: "Community Manager",
+    content: "Je gère plusieurs artistes sur la plateforme. L'interface est intuitive et les revenus transparents."
+  },
+  testimonial13: {
+    name: "Laura P.",
+    role: "Créatrice de contenu",
+    content: "Mes ateliers en ligne sont maintenant protégés et génèrent des revenus stables chaque mois."
+  },
+  testimonial14: {
+    name: "Pierre G.",
+    role: "Organisateur sportif",
+    content: "Pour nos tournois, le système de votes et concours a multiplié par 5 notre audience."
+  },
+  testimonial15: {
+    name: "Nadia S.",
+    role: "Agence événementielle",
+    content: "Nous utilisons BonPlanInfos pour tous nos clients. La satisfaction est toujours au rendez-vous !"
+  }
+},
+    cta: {
+      title: "Prêt à révolutionner vos événements ?",
+      description: "Rejoignez la communauté BonPlanInfos et commencez à générer des revenus dès aujourd'hui",
+      create_event: "Créer mon premier événement",
+      become_partner: "Devenir Partenaire"
+    },
+    footer: {
+      description: "La plateforme événementielle ivoirienne qui vous reverse 95% de vos revenus.",
+      navigation: "Navigation",
+      home: "Accueil",
+      events: "Événements",
+      create_event: "Créer un événement",
+      become_partner: "Devenir partenaire",
+      contact: "Contact",
+      information: "Informations",
+      copyright: "© 2024 BonPlanInfos. Tous droits réservés."
+    }
+  },
+
+
+
 
       // ===== ADMIN =====
       admin: {
@@ -922,6 +1352,15 @@ const resources = {
     },
   },
 
+
+
+
+
+
+
+
+
+
   // ==================== ENGLISH VERSION ====================
   en: {
     translation: {
@@ -1077,6 +1516,99 @@ const resources = {
           "We couldn't load all your profile data. Some information may be missing.",
       },
 
+
+
+
+      data_protection: {
+  meta_title: "Personal Data Protection",
+  meta_description: "BonPlanInfos personal data protection policy. Compliant with African data protection regulations.",
+  title: "Personal Data Protection",
+  subtitle: "Our commitment to protecting your data in Africa",
+  africa_compliance: "Our data protection practices comply with national regulations in all operating countries across West Africa (Côte d'Ivoire, Burkina Faso, Senegal, Mali, Benin, Ghana, Nigeria), Central Africa (Cameroon, Gabon), North Africa (Tunisia, Morocco), and Southern Africa (South Africa), following both local laws and African Union standards.",
+  contact_title: "Contact Data Protection Officer",
+  
+  commitment: {
+    title: "Our Commitment",
+    content: "BonPlanInfos is committed to protecting your personal data in accordance with African data protection laws. We implement robust technical and organizational measures to ensure the security and confidentiality of your information."
+  },
+  
+  dpo: {
+    title: "Data Protection Officer",
+    content: "Our Data Protection Officer (DPO) ensures compliance with legal and regulatory obligations regarding personal data protection in all African countries where we operate."
+  },
+  
+  data_collected: {
+    title: "Collected Data",
+    content: "We only collect data necessary for the proper functioning of our event services:",
+    list: [
+      "Profile information: name, surname, email, phone number",
+      "Transaction data: ticket purchase history",
+      "Usage data: event preferences, platform interactions",
+      "Technical data: IP address, device type, essential cookies",
+      "Location data: country and city to personalize events"
+    ]
+  },
+  
+  usage: {
+    title: "Data Usage",
+    content: "Your data is used strictly for the following purposes:",
+    list: [
+      "Management of event registrations and participations",
+      "Secure processing of ticket payments",
+      "Sending event confirmations and information",
+      "Improving user experience on our platform",
+      "Compliance with African legal obligations",
+      "Personalization of event recommendations by country"
+    ]
+  },
+  
+  sharing: {
+    title: "Data Sharing",
+    content: "We only share your data with:",
+    list: [
+      "Certified payment providers (MoneyFusion, PayPal, Mobile Money, Orange Money, MTN Mobile Money, Moov Money, Wave, etc.)",
+      "Event organizers (only data necessary for their event management)",
+      "Legal authorities (upon formal request compliant with local laws)",
+      "Technical partners under strict confidentiality agreements"
+    ]
+  },
+  
+  security: {
+    title: "Data Security",
+    content: "We implement advanced security measures compliant with African standards:",
+    list: [
+      "SSL/TLS encryption for all data transmissions",
+      "Secure storage with preference for servers located in Africa",
+      "Strict access controls and multi-factor authentication",
+      "Regular security audits compliant with local laws",
+      "Encrypted backups and business continuity plans"
+    ]
+  },
+  
+  retention: {
+    title: "Data Retention",
+    content: "Your data is retained for limited periods according to each country's laws:",
+    list: [
+      "Account data: 3 years after last activity",
+      "Transaction data: 5 to 10 years depending on local legal obligations",
+      "Browsing data: maximum 13 months",
+      "Event data: 2 years after event end",
+      "Marketing data: 3 years after last contact"
+    ]
+  },
+  
+  hosting: {
+    title: "Data Hosting",
+    content: "Your data is primarily hosted on secure servers. We prioritize hosting solutions in Africa when possible, while guaranteeing the same quality of service and security. Our infrastructures respect the digital sovereignty requirements of the countries where we operate."
+  },
+  
+  deletion: {
+    title: "Right to Erasure",
+    content: "In accordance with African data protection laws, you have the right to request the deletion of your personal data. Contact our DPO at support@bonplaninfos.net for any erasure request. We commit to responding within the legal deadlines of each country."
+  },
+  
+  last_updated: "Last updated: December 2024"
+},
       // ===== WALLET PAGE =====
       wallet_page: {
         title: "My Wallet",
@@ -1097,6 +1629,307 @@ const resources = {
         withdrawal_minimum: "Minimum for withdrawal: {{amount}} coins.",
       },
 
+
+
+
+
+// ===== CREATE EVENT PAGE =====
+create_event_page: {
+  meta: {
+    title: "Create Event - Choose Type",
+    description: "Choose the type of event you want to create on BonPlanInfos"
+  },
+  title: "Create Event",
+  subtitle: "Choose the type of event you want to create",
+  types: {
+    simple: {
+      title: "Simple Event",
+      desc: "Basic event with general information"
+    },
+    ticketing: {
+      title: "Ticketing",
+      desc: "Sell tickets for your event"
+    },
+    voting: {
+      title: "Voting & Contest",
+      desc: "Create a contest with voting system"
+    },
+    raffle: {
+      title: "Raffle",
+      desc: "Organize a raffle with prizes"
+    },
+    stand: {
+      title: "Stand Rental",
+      desc: "Rent stands for a fair or exhibition"
+    }
+  },
+  help: {
+    title: "Need help?",
+    description: "Check our guide to learn how to create and manage your events effectively",
+    button: "View User Guide"
+  }
+},
+
+
+testimonials: {
+  title: "They Trust Us",
+  subtitle: "Discover feedback from our satisfied users",
+  play: "Play",
+  pause: "Pause",
+  previous: "Previous",
+  next: "Next",
+  counter: "{{current}} / {{total}}",
+  testimonial1: {
+    name: "Marie K.",
+    role: "Concert Organizer",
+    content: "With BonPlanInfos, my protected events generate impressive passive income. 1000 views = 10,000F!"
+  },
+  testimonial2: {
+    name: "Jean A.",
+    role: "Artist Manager",
+    content: "The ticketing system is revolutionary. 95% of revenue comes directly to me, without intermediaries."
+  },
+  testimonial3: {
+    name: "Sophie T.",
+    role: "Official Partner",
+    content: "Becoming a partner allowed me to generate stable monthly income while developing my network."
+  },
+  testimonial4: {
+    name: "Paul D.",
+    role: "Event Promoter",
+    content: "The contest system boosted my community engagement. Revenues increased by 300%!"
+  },
+  testimonial5: {
+    name: "Fatou M.",
+    role: "Musician Artist",
+    content: "As an artist, BonPlanInfos gave me financial autonomy through protected events."
+  },
+  testimonial6: {
+    name: "Kevin L.",
+    role: "Festival Organizer",
+    content: "Stand rental through the platform simplified all my festival logistics."
+  },
+  testimonial7: {
+    name: "Aïcha B.",
+    role: "Lifestyle Influencer",
+    content: "My raffles generate incredible engagement. My community loves to participate!"
+  },
+  testimonial8: {
+    name: "Marc T.",
+    role: "Event Entrepreneur",
+    content: "The partner program opened opportunities I never would have imagined."
+  },
+  testimonial9: {
+    name: "Julie N.",
+    role: "Event Photographer",
+    content: "I now monetize my photo reports through protected events. Amazing!"
+  },
+  testimonial10: {
+    name: "David K.",
+    role: "DJ & Producer",
+    content: "My protected live streams earn me more than my previous platforms. I recommend 100%!"
+  },
+  testimonial11: {
+    name: "Sarah J.",
+    role: "Wedding Planner",
+    content: "BonPlanInfos revolutionized my way of working. Clients love the ticketing system."
+  },
+  testimonial12: {
+    name: "Mohamed C.",
+    role: "Community Manager",
+    content: "I manage several artists on the platform. The interface is intuitive and revenues transparent."
+  },
+  testimonial13: {
+    name: "Laura P.",
+    role: "Content Creator",
+    content: "My online workshops are now protected and generate stable income every month."
+  },
+  testimonial14: {
+    name: "Pierre G.",
+    role: "Sports Organizer",
+    content: "For our tournaments, the voting and contest system multiplied our audience by 5."
+  },
+  testimonial15: {
+    name: "Nadia S.",
+    role: "Event Agency",
+    content: "We use BonPlanInfos for all our clients. Satisfaction is always guaranteed!"
+  }
+},
+// ===== USER GUIDE PAGE =====
+ user_guide_page: {
+    meta: {
+      title: "BonPlanInfos - 100% African Event Platform",
+      description: "Create, manage and monetize your events with BonPlanInfos. The Ivorian platform that gives you back 95% of your revenue."
+    },
+    hero: {
+      title: "BonPlanInfos",
+      subtitle: "Your Event Success",
+      description: "The Ivorian platform that gives you back <strong>95% of your revenue</strong>",
+      coin_info: "1 coin = 10F • 1 interaction = 1 coin",
+      create_event: "Create an Event",
+      become_partner: "Become a Partner",
+      features: {
+        revenue: "95% revenue shared",
+        coin: "1 coin = 10F CFA",
+        support: "24/7 Support"
+      }
+    },
+    features: {
+      title: "Our Event Solutions",
+      subtitle: "Powerful tools to maximize your revenue and visibility",
+      ticketing: {
+        title: "Smart Ticketing",
+        description: "Sell tickets for your concerts and events. Set your prices and receive 95% of revenue directly",
+        stats: "95% revenue shared"
+      },
+      voting: {
+        title: "Contests & Voting",
+        description: "Organize interactive contests with voting system. Monetize every participation",
+        stats: "95% on each participation"
+      },
+      raffle: {
+        title: "Raffle & Draws",
+        description: "Create raffles with attractive prizes. Paid or free participation according to your choice",
+        stats: "Automatic management with 95% on each participation"
+      },
+      stand_rental: {
+        title: "Stand Rental",
+        description: "Rent stands for trade shows and fairs. Manage reservations and payments online",
+        stats: "95% of rental price goes to you"
+      },
+      protected_events: {
+        title: "Protected Events",
+        description: "Monetized exclusive content. Earn 1 coin per interaction (view, like, comment, share)",
+        stats: "+1 coin per interaction"
+      },
+      boost: {
+        title: "Instant Boost",
+        description: "Increase your events visibility. Reach more participants in real time by boosting your events on bonplaninfos.",
+        stats: "Reach multiplied"
+      }
+    },
+    simulation: {
+      title: "Protected Event Simulation",
+      subtitle: "Discover how to monetize every interaction on your events",
+      main_title: "💰 1 Interaction = 1 Coin = 10F CFA",
+      description: "Every view, like, comment or share earns you money",
+      views: "Views",
+      likes: "Likes",
+      comments: "Comments",
+      shares: "Shares",
+      total: "Total: {{amount}} F CFA",
+      revenue_description: "Revenue generated by an event with {{count}} interactions"
+    },
+    stats: {
+      revenue: "Revenue shared to organizers",
+      coin_cost: "Cost of 1 coin",
+      coin_earned: "Coin earned per interaction",
+      no_fees: "Registration fees"
+    },
+    partner_program: {
+      title: "Partner Program",
+      subtitle: "Represent BonPlanInfos in your region and generate monthly income",
+      advantages: "Partner Advantages",
+      benefits: {
+        revenue: "Guaranteed monthly income",
+        training: "Complete training offered",
+        support: "Priority 24/7 support",
+        network: "Exclusive partner network"
+      },
+      become_partner: "Become a Partner",
+      partner_description: "Represent BonPlanInfos in your city",
+      apply_now: "Apply Now"
+    },
+    testimonials: {
+      title: "They Trust Us",
+      subtitle: "Discover feedback from our satisfied users",
+      play: "Play",
+      pause: "Pause",
+      previous: "Previous",
+      next: "Next",
+      counter: "{{current}} / {{total}}"
+    },
+    cta: {
+      title: "Ready to revolutionize your events?",
+      description: "Join the BonPlanInfos community and start generating revenue today",
+      create_event: "Create my first event",
+      become_partner: "Become a Partner"
+    },
+    footer: {
+      description: "The Ivorian event platform that gives you back 95% of your revenue.",
+      navigation: "Navigation",
+      home: "Home",
+      events: "Events",
+      create_event: "Create an event",
+      become_partner: "Become a partner",
+      contact: "Contact",
+      information: "Information",
+      copyright: "© 2024 BonPlanInfos. All rights reserved."
+    }
+  },
+partner_signup: {
+  meta_title: "Become a Partner - BonPlanInfos",
+  meta_description: "Become an official BonPlanInfos partner and generate stable monthly income. Partnership program with advantageous licenses.",
+  
+  unauthorized_title: "Unauthorized Access",
+  unauthorized_desc: "You must be logged in to access the partner page.",
+  unauthorized_cta: "Login",
+  
+  loading_licenses: "Loading licenses...",
+  error_loading_licenses: "Error loading licenses",
+  
+  your_licenses_title: "Your Active Licenses",
+  available_licenses_title: "Available Licenses",
+  available_licenses_subtitle: "Choose the license that matches your ambitions and start generating income",
+
+  license_features: {
+    // Premium license features
+    premium: {
+      feature1: "Maximum zone",
+      feature2: "Advanced dashboard", 
+      feature3: "24/7 support",
+      feature4: "Advanced training",
+      feature5: "Early access"
+    },
+    standard: {
+      feature1: "Extended zone",
+      feature2: "Detailed analytics",
+      feature3: "Priority support", 
+      feature4: "Training"
+    },
+    basic: {
+      feature1: "Zone management",
+      feature2: "Monthly reports",
+      feature3: "Basic support"
+    },
+    
+    // Revenue descriptions
+    revenue_description_40: "40% revenue share from your zone's turnover",
+    revenue_description_30: "30% revenue share from your zone's turnover",
+    revenue_description_20: "20% revenue share from your zone's turnover"
+  },
+  
+  license_card: {
+    active: "Active",
+    expired: "Expired",
+    revenue_share: "Revenue share: {{percent}}%",
+    purchased_on: "Purchased on",
+    expires_on: "Expires on",
+    days_remaining: "{{count}} day(s) remaining"
+  },
+  
+  per_month: "/month",
+  revenue_label: "Revenue share",
+  duration_label: "{{months}} months ({{days}} days)",
+  
+  purchase_cta: "Buy Now",
+  
+  error_toast: {
+    title: "Error",
+    login_required: "You must be logged in to purchase a license",
+    purchase_failed: "Error purchasing license"
+  }
+},
       // ===== DASHBOARDS =====
       admin_dashboard: "Admin Dashboard",
       secretary_dashboard: "Secretary Dashboard",
@@ -1334,6 +2167,19 @@ const resources = {
 
       // ===== MARKETING =====
       marketing: {
+ simulation: {
+    title: "Revenue Simulator",
+    subtitle: "Calculate your potential earnings with our platform",
+    event_type: "Event Type",
+    ticket_price: "Price per unit",
+    number_of_tickets: "Number of participants",
+    potential_revenue: "Potential Revenue",
+    platform_fee: "Platform fee (5%)",
+    your_net_earning: "Your net earnings",
+    cta: "Start Earning Now",
+    note: "Simulation based on standard 5% platform fee. Actual results may vary."
+  },
+
         badge: "For Organizers & Creators",
         title: "Take Your Events to the Next Level",
         subtitle:

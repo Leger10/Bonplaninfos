@@ -18,8 +18,9 @@ const CreateEventPage = () => {
             description: t('create_event_page.types.simple.desc'),
             icon: FileText,
             path: '/create-simple-event',
-            color: 'text-gray-500',
-            bgColor: 'bg-gray-500/10',
+            bgColor: 'bg-gradient-to-br from-blue-500 to-blue-600',
+            textColor: 'text-white',
+            iconColor: 'text-white',
         },
         {
             type: 'ticketing',
@@ -27,8 +28,9 @@ const CreateEventPage = () => {
             description: t('create_event_page.types.ticketing.desc'),
             icon: Ticket,
             path: '/create-ticketing-event',
-            color: 'text-blue-500',
-            bgColor: 'bg-blue-500/10',
+            bgColor: 'bg-gradient-to-br from-red-500 to-red-600',
+            textColor: 'text-white',
+            iconColor: 'text-white',
         },
         {
             type: 'voting',
@@ -36,8 +38,9 @@ const CreateEventPage = () => {
             description: t('create_event_page.types.voting.desc'),
             icon: Vote,
             path: '/create-voting-event',
-            color: 'text-purple-500',
-            bgColor: 'bg-purple-500/10',
+            bgColor: 'bg-gradient-to-br from-green-500 to-green-600',
+            textColor: 'text-white',
+            iconColor: 'text-white',
         },
         {
             type: 'raffle',
@@ -45,8 +48,9 @@ const CreateEventPage = () => {
             description: t('create_event_page.types.raffle.desc'),
             icon: Gift,
             path: '/create-raffle-event',
-            color: 'text-amber-500',
-            bgColor: 'bg-amber-500/10',
+            bgColor: 'bg-gradient-to-br from-purple-500 to-purple-600',
+            textColor: 'text-white',
+            iconColor: 'text-white',
         },
         {
             type: 'stand_rental',
@@ -54,8 +58,9 @@ const CreateEventPage = () => {
             description: t('create_event_page.types.stand.desc'),
             icon: Store,
             path: '/create-stand-event',
-            color: 'text-teal-500',
-            bgColor: 'bg-teal-500/10',
+            bgColor: 'bg-gradient-to-br from-teal-500 to-teal-600',
+            textColor: 'text-white',
+            iconColor: 'text-white',
         },
     ];
 
@@ -117,16 +122,20 @@ const CreateEventPage = () => {
                     {eventTypes.map((event) => (
                         <motion.div key={event.type} variants={cardVariants}>
                             <Card
-                                className="cursor-pointer h-full transition-all duration-300 hover:shadow-primary/20 hover:border-primary/50"
+                                className={`cursor-pointer h-full transition-all duration-300 hover:shadow-2xl hover:scale-105 border-0 shadow-lg ${event.bgColor}`}
                                 onClick={() => navigate(event.path)}
                             >
                                 <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center gap-3">
-                                    <div className={`p-3 rounded-full ${event.bgColor}`}>
-                                        <event.icon className={`w-7 h-7 sm:w-8 sm:h-8 ${event.color}`} />
+                                    <div className="p-3 rounded-full bg-white/20">
+                                        <event.icon className={`w-7 h-7 sm:w-8 sm:h-8 ${event.iconColor}`} />
                                     </div>
                                     <div className="flex-grow">
-                                        <h3 className="font-semibold text-base sm:text-lg">{event.title}</h3>
-                                        <p className="text-muted-foreground text-xs sm:text-sm mt-1">{event.description}</p>
+                                        <h3 className={`font-semibold text-base sm:text-lg ${event.textColor}`}>
+                                            {event.title}
+                                        </h3>
+                                        <p className={`text-white/90 text-xs sm:text-sm mt-1`}>
+                                            {event.description}
+                                        </p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -138,7 +147,7 @@ const CreateEventPage = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
-                    className="text-center mt-12 p-6 bg-muted/50 rounded-lg"
+                    className="text-center mt-12 p-6 bg-muted/50 rounded-lg border"
                 >
                     <div className="flex items-center justify-center gap-2 mb-2">
                         <Users className="w-5 h-5 text-muted-foreground" />

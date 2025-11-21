@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Home, Compass, Calendar, User, LogOut, Wallet, Shield, Gem, Menu, X, Bell, PlusCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useTranslation } from 'react-i18next'; // Import ajouté
+
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageSwitcher from '@/components/LanguageSwitcher'; // Import ajouté
 
 const Navbar = () => {
     const { user, signOut } = useAuth();
@@ -18,7 +19,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { t } = useTranslation();
+    const { t } = useTranslation(); // Hook utilisé correctement
 
     const getInitial = (name) => name ? name.charAt(0).toUpperCase() : '?';
 
@@ -150,16 +151,37 @@ const Navbar = () => {
                         <div className="border-t border-border/40 my-2"></div>
                         {user ? (
                             <>
-                                <NavLink to="/profile" className={navLinkClass} onClick={() => setIsMenuOpen(false)}><User className="h-5 w-5" /><span>{t('nav.profile')}</span></NavLink>
-                                <NavLink to="/wallet" className={navLinkClass} onClick={() => setIsMenuOpen(false)}><Wallet className="h-5 w-5" /><span>{t('nav.wallet')}</span></NavLink>
-                                <NavLink to="/notifications" className={navLinkClass} onClick={() => setIsMenuOpen(false)}><Bell className="h-5 w-5" /><span>{t('nav.notifications')}</span></NavLink>
-                                {userProfile?.user_type?.includes('admin') && (<NavLink to="/admin" className={navLinkClass} onClick={() => setIsMenuOpen(false)}><Shield className="h-5 w-5" /><span>Admin</span></NavLink>)}
-                                <Button variant="ghost" onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className="justify-start px-3 py-2 text-muted-foreground"><LogOut className="h-5 w-5 mr-2" /><span>{t('nav.logout')}</span></Button>
+                                <NavLink to="/profile" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
+                                    <User className="h-5 w-5" />
+                                    <span>{t('nav.profile')}</span>
+                                </NavLink>
+                                <NavLink to="/wallet" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
+                                    <Wallet className="h-5 w-5" />
+                                    <span>{t('nav.wallet')}</span>
+                                </NavLink>
+                                <NavLink to="/notifications" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
+                                    <Bell className="h-5 w-5" />
+                                    <span>{t('nav.notifications')}</span>
+                                </NavLink>
+                                {userProfile?.user_type?.includes('admin') && (
+                                    <NavLink to="/admin" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
+                                        <Shield className="h-5 w-5" />
+                                        <span>Admin</span>
+                                    </NavLink>
+                                )}
+                                <Button variant="ghost" onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className="justify-start px-3 py-2 text-muted-foreground">
+                                    <LogOut className="h-5 w-5 mr-2" />
+                                    <span>{t('nav.logout')}</span>
+                                </Button>
                             </>
                         ) : (
                             <>
-                                <NavLink to="/auth" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>{t('auth.login.title')}</NavLink>
-                                <Button onClick={() => { navigate('/auth', { state: { from: location, isSignUp: true } }); setIsMenuOpen(false); }} className="w-full mt-2 h-11">{t('auth.register.title')}</Button>
+                                <NavLink to="/auth" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
+                                    {t('auth.login.title')}
+                                </NavLink>
+                                <Button onClick={() => { navigate('/auth', { state: { from: location, isSignUp: true } }); setIsMenuOpen(false); }} className="w-full mt-2 h-11">
+                                    {t('auth.register.title')}
+                                </Button>
                             </>
                         )}
                         <div className="border-t border-border/40 my-2"></div>

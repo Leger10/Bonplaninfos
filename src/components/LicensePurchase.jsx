@@ -136,14 +136,16 @@ const LicensePurchase = ({ user, userLicenses, onLicenseUpdate }) => {
                 <span role="img" aria-label="timer">⏱️</span> {license.duration_months} mois ({license.duration_days} jours)
               </div>
               
-              <div className="license-features">
-                <h4>Fonctionnalités incluses:</h4>
-                <ul>
-                  {license.features.map((feature, idx) => (
-                    <li key={idx}><span role="img" aria-label="check">✅</span> {feature}</li>
-                  ))}
-                </ul>
-              </div>
+ 
+<div className="license-features">
+  <ul>
+    {getLicenseFeatures(license.type).map((feature, idx) => (
+      <li key={idx}>
+        <span role="img" aria-label="check">✅</span> {feature}
+      </li>
+    ))}
+  </ul>
+</div>
               
               <div className="license-description">
                 {license.description}

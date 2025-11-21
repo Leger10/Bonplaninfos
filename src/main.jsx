@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '@/App.jsx';
-import './i18n.js'; // Ensure i18n is initialized before the app renders
+import './i18n.jsx'; // Ensure i18n is initialized before the app renders
 import '@/index.css';
 
 // Register the service worker
