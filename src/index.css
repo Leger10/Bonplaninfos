@@ -4,7 +4,8 @@
 
 @layer base {
   /* Dark Elegant Theme (Violet Premium) - Default */
-  :root, .dark-elegant {
+  :root,
+  .dark-elegant {
     --background: 240 10% 3.9%; /* Very dark violet */
     --foreground: 240 5% 95%; /* Light gray-violet */
 
@@ -68,7 +69,8 @@
   }
 
   /* Deprecated themes now map to Deep Night for compatibility */
-  .light, .dark {
+  .light,
+  .dark {
     --background: 222 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222 70% 8%;
@@ -90,7 +92,7 @@
     --ring: 217 91% 60%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
@@ -101,22 +103,22 @@
 }
 
 .font-heading {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 /* Custom gradients for the app */
 .gradient-gold {
-  background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%);
+  background: linear-gradient(90deg, #ffd700 0%, #ffa500 100%);
   color: #1a202c; /* Dark text for contrast */
 }
 
 .gradient-red {
-  background: linear-gradient(90deg, #FF4500 0%, #FF6347 100%);
+  background: linear-gradient(90deg, #ff4500 0%, #ff6347 100%);
   color: hsl(var(--foreground));
 }
 
 .gradient-blue {
-  background: linear-gradient(90deg, #4A00E0 0%, #8E2DE2 100%);
+  background: linear-gradient(90deg, #4a00e0 0%, #8e2de2 100%);
   color: hsl(var(--foreground));
 }
 
@@ -128,7 +130,8 @@
 }
 
 .transition-colors-background {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-property: background-color, border-color, color, fill, stroke,
+    opacity, box-shadow, transform, filter, backdrop-filter;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
@@ -172,12 +175,12 @@
     transform-origin: center;
     pointer-events: none;
     z-index: 99999;
-    
+
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
     justify-items: center;
-    
+
     /* Hide the text visually but keep it for screen readers/screenshots */
     opacity: 0.0001;
     -webkit-user-select: none;
@@ -192,5 +195,66 @@
       /* Display the overlay when a high-resolution snapshot (like a screenshot) is taken */
       display: grid;
     }
+  }
+}
+
+/* Dans votre fichier CSS global (index.css ou globals.css) */
+.promoted-glow {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.promoted-glow:hover {
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.5), 0 0 60px rgba(245, 158, 11, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24, #f59e0b);
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+}
+/* Dans votre fichier CSS global ou Tailwind config */
+@layer utilities {
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+/* Assurer une bonne lisibilité sur tous les mobiles */
+@media (max-width: 640px) {
+  .promo-banner-mobile {
+    font-size: 13px;
+    line-height: 1.3;
   }
 }

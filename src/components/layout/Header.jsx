@@ -12,13 +12,17 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/NotificationBell';
-
-const AppLogo = () => (
-  <NavLink to="/" className="flex items-center gap-2">
-    <img src="/logo.png" alt="BonPlanInfos Logo" className="h-8 w-auto" />
-    <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
-  </NavLink>
-);
+import logo from '@/assets/logo.png';
+const AppLogo = () => {
+  console.log('Logo path:', logo); // Vérifiez ce qui s'affiche dans la console
+  
+  return (
+    <NavLink to="/" className="flex items-center gap-2">
+      <img src={logo} alt="BonPlanInfos Logo" className="h-8 w-auto" />
+      <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
+    </NavLink>
+  );
+};
 
 const UserMenu = ({ user, userProfile, handleLogout }) => {
   const { t } = useTranslation();

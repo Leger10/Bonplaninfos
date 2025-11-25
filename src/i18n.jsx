@@ -419,6 +419,10 @@ en: {
         cta_button: "Inscrivez-vous Gratuitement",
       },
 
+
+
+
+      
       // ===== FOOTER =====
       footer: {
         home: "Accueil",
@@ -533,153 +537,105 @@ africa_compliance: "Nos pratiques de protection des données respectent les rég
     content: "Conformément aux lois africaines sur la protection des données, vous avez le droit de demander la suppression de vos données personnelles. Contactez notre DPD à support@bonplaninfos.net pour toute demande d'effacement. Nous nous engageons à répondre dans les délais légaux de chaque pays."
   },
   
-  last_updated: "Dernière mise à jour : Novembre 2025"
+  last_updated: "Dernière mise à jour : Novembre 2024"
 },
 
+  "marketing": {
+    "meta_title": "Monétisez Vos Événements - Générez des Revenus à Chaque Interaction",
+    "meta_description": "Créez des événements et gagnez de l'argent avec chaque vue, like et partage. Rejoignez les milliers d'organisateurs qui génèrent déjà des revenus sur notre plateforme.",
+    
+    "badge": "NOUVEAU",
+    "title": "Transformez Vos Événements en Sources de Revenus",
+    "subtitle": "Chaque interaction sur vos événements génère des revenus. Créez, partagez et gagnez de l'argent avec notre plateforme de monétisation innovante.",
+    "createEventCta": "Créer Mon Événement",
+    "becomePartnerCta": "Devenir Partenaire",
+    "trust": "Fiable pour des milliers d'organisateurs à travers l'Afrique",
+    
+    "why": {
+      "title": "Pourquoi Choisir Notre Plateforme ?",
+      "subtitle": "Découvrez les avantages uniques qui font de nous le choix préféré des organisateurs d'événements",
+      "feature1": "Revenus Maximaux",
+      "feature1_desc": "Gardez 95% de vos revenus avec seulement 5% de frais de plateforme",
+      "feature2": "Monétisation Instantanée",
+      "feature2_desc": "Commencez à gagner dès la première vue, like et partage sur vos événements",
+      "feature3": "Outils de Croissance",
+      "feature3_desc": "Des outils avancés de boost et de promotion pour maximiser votre audience",
+      "feature4": "Analyses en Temps Réel",
+      "feature4_desc": "Suivez vos revenus et l'engagement de votre audience en temps réel",
+      "feature5": "Paiements Sécurisés",
+      "feature5_desc": "Sécurité bancaire pour toutes vos transactions et revenus",
+      "feature6": "Support 24/7",
+      "feature6_desc": "Équipe de support dédiée pour vous aider à réussir"
+    },
+    
+    "simulation": {
+      "title": "Calculez Votre Revenu Potentiel",
+      "subtitle": "Simulez combien vous pouvez gagner avec vos événements",
+      "event_type": "Type d'Événement",
+      "ticket_price": "Prix du Billet",
+      "number_of_tickets": "Nombre de Billets",
+      "potential_revenue": "Revenu Potentiel",
+      "platform_fee": "Frais Plateforme (5%)",
+      "your_net_earning": "Votre Gain Net",
+      "cta": "Commencez à Gagner Maintenant",
+      "note": "Simulation basée sur les taux actuels. Les résultats réels peuvent varier.",
+       "number_of_interactions": "Nombre d'Interactions",
+      "interaction_revenue": "Revenu des Interactions", 
+      "minimum_withdrawal": "Minimum 50 interactions requis pour le retrait (500 FCFA)"
+    },
+    
+    "testimonials": {
+      "title": "Témoignages de Réussite",
+      "bintou_diallo_name": "Bintou Diallo",
+      "bintou_diallo_role": "Organisatrice d'Événements, Mali",
+      "dj_kerozen_quote": "En seulement 3 mois, j'ai gagné plus de 500 000 FCFA avec mes événements. La plateforme transforme vraiment les passions en revenus !",
+      
+      "kwesi_mensah_name": "Kwesi Mensah",
+      "kwesi_mensah_role": "Entrepreneur Culturel, Ghana",
+      "fatou_sylla_quote": "La simulation de revenus m'a aidé à comprendre mon potentiel. Je gagne maintenant un revenu mensuel stable grâce à mes événements culturels.",
+      
+      "aisha_traore_name": "Aisha Traoré",
+      "aisha_traore_role": "Organisatrice de Festival Musical, Côte d'Ivoire",
+      "eric_b_quote": "95% de rétention de revenus est incroyable ! Mon dernier festival a généré 2,5 millions de FCFA en gains nets.",
+      
+      "amadou_ba_name": "Amadou Ba",
+      "amadou_ba_role": "Fondateur de Startup, Sénégal",
+      "amadou_ba_quote": "En tant que partenaire, j'ai construit une entreprise durable représentant la plateforme dans ma région. Une opportunité qui change la vie !",
+      
+      "chimamanda_ngozi_name": "Chimamanda Ngozi",
+      "chimamanda_ngozi_role": "Commissaire d'Exposition d'Art, Nigeria",
+      "chimamanda_ngozi_quote": "La monétisation basée sur l'engagement est révolutionnaire. Même les petits événements génèrent des revenus significatifs.",
+      
+      "didier_kouame_name": "Didier Kouamé",
+      "didier_kouame_role": "Gestionnaire d'Événements Sportifs, Cameroun",
+      "didier_kouame_quote": "Des tournois locaux aux compétitions majeures, la plateforme s'adapte à vos ambitions. Hautement recommandé !",
+      
+      "mariam_kone_name": "Mariam Koné",
+      "mariam_kone_role": "Community Manager, Burkina Faso",
+      "mariam_kone_quote": "Les analyses m'ont aidé à comprendre quel contenu fonctionne le mieux. Mes revenus ont augmenté de 300% en 6 mois.",
+      
+      "femi_adebayo_name": "Femi Adebayo",
+      "femi_adebayo_role": "Promoteur de Spectacles, Nigeria",
+      "femi_adebayo_quote": "Multiples sources de revenus : ventes de billets, interactions et partenariats. Cette plateforme a tout !",
+      
+      "abena_asante_name": "Abena Asante",
+      "abena_asante_role": "Hôte d'Ateliers Éducatifs, Ghana",
+      "abena_asante_quote": "Mes ateliers atteignent maintenant des audiences dans toute l'Afrique de l'Ouest. La portée de la plateforme est phénoménale.",
+      
+      "yannick_zongo_name": "Yannick Zongo",
+      "yannick_zongo_role": "Consultant en Affaires, RDC",
+      "yannick_zongo_quote": "Le programme partenaire m'a permis de construire un empire régional. La meilleure décision commerciale que j'ai jamais prise."
+    },
+    
+    "cta": {
+      "title": "Prêt à Transformer Vos Événements en Revenus ?",
+      "subtitle": "Rejoignez les milliers d'organisateurs qui réussissent et commencez à monétiser votre passion dès aujourd'hui",
+      "cta": "Devenir Partenaire Maintenant"
+    }
+  },
 
 
-
-      // ===== MARKETING =====
-      marketing: {
-        badge: "Pour les Organisateurs & Créateurs",
-        title: "Donnez une Nouvelle Dimension à Vos Événements",
-        subtitle:
-          "Atteignez une audience plus large, interagissez avec votre communauté et monétisez votre contenu comme jamais auparavant. BonPlanInfos est la plateforme tout-en-un pour des événements réussis.",
-        createEventCta: "Créer mon événement maintenant",
-        becomePartnerCta: "Devenir Partenaire",
-        trust: "Reconnu par des centaines d'organisateurs en Afrique.",
-        why: {
-          title: "Pourquoi choisir BonPlanInfos ?",
-          subtitle:
-            "Nous vous donnons les outils pour faire de chaque événement un succès retentissant.",
-          feature1: "Visibilité Maximale",
-          feature1_desc:
-            "Profitez de notre large audience pour promouvoir vos événements et atteindre des milliers de participants potentiels.",
-          feature2: "Monétisation Facile",
-          feature2_desc:
-            "Vente de billets, votes payants, tombolas, stands... Diversifiez vos sources de revenus en quelques clics.",
-          feature3: "Interaction & Engagement",
-          feature3_desc:
-            "Créez un lien fort avec votre communauté grâce à nos outils d'interaction : commentaires, partages, et réactions.",
-          feature4: "Statistiques en Temps Réel",
-          feature4_desc:
-            "Suivez la performance de vos événements avec des données précises pour optimiser vos stratégies.",
-          feature5: "Sécurité & Fiabilité",
-          feature5_desc:
-            "Une plateforme robuste et sécurisée pour gérer vos transactions et les données de vos participants.",
-          feature6: "Support Dédié",
-          feature6_desc:
-            "Notre équipe est à votre écoute pour vous accompagner à chaque étape de votre organisation.",
-        },
-        revenue_simulation: {
-          title: "Imaginez Vos Revenus Mensuels Potentiels...",
-          subtitle:
-            "Chaque interaction sur votre contenu génère des pièces, convertibles en argent réel. Voici une simulation simple basée sur des événements populaires.",
-          summary_title: "Résumé Mensuel (Simulation)",
-          total_interactions: "Interactions Totales",
-          revenue_coins: "Revenus en Pièces",
-          revenue_fcfa: "Revenus en FCFA",
-          miss_ci: "Concours Miss Côte d'Ivoire",
-          music_festival: "Festival de Musique Urbaine",
-          football_tournament: "Tournoi de Foot Inter-quartiers",
-          entrepreneur_conf: "Conférence sur l'Entrepreneuriat",
-          shares: "Partages",
-          downloads: "Téléchargements",
-          views: "Vues",
-          comments: "Commentaires",
-          reactions: "Réactions",
-          total_revenue: "Revenu Total",
-          interactions: "Interactions",
-          how_it_works_title: "Comment ça marche ?",
-          organizer: "Organisateur",
-          user: "Utilisateur",
-          easy_withdrawal: "Retrait facile",
-          from_50_pi: "Dès 50π",
-          ready_cta_title: "Prêt à transformer vos idées en succès ?",
-          ready_cta_subtitle:
-            "Rejoignez des milliers d'organisateurs qui nous font confiance.",
-          cta_button: "Lancer mon premier événement",
-        },
-       testimonials: {
-  title: "Ils nous font confiance",
-  subtitle: "Découvrez les retours d'expérience de nos utilisateurs satisfaits",
-  play: "Lecture",
-  pause: "Pause",
-  previous: "Précédent",
-  next: "Suivant",
-  counter: "{{current}} / {{total}}",
-  testimonial1: {
-    role: "Organisatrice de concerts",
-    content: "Avec BonPlanInfos, mes événements protégés génèrent un revenu passif impressionnant. 1000 vues = 10,000F !"
-  },
-  testimonial2: {
-    role: "Manager d'artistes",
-    content: "La billetterie est révolutionnaire. 95% des revenus me reviennent directement, sans intermédiaire."
-  },
-  testimonial3: {
-    role: "Partenaire officielle",
-    content: "Devenir partenaire m'a permis de générer un revenu mensuel stable tout en développant mon réseau."
-  },
-  testimonial4: {
-    role: "Promoteur événementiel",
-    content: "Le système de concours a boosté l'engagement de ma communauté. Les revenus ont augmenté de 300% !"
-  },
-  testimonial5: {
-    role: "Artiste musicienne",
-    content: "En tant qu'artiste, BonPlanInfos m'a donné une autonomie financière grâce aux événements protégés."
-  },
-  testimonial6: {
-    role: "Organisateur de festivals",
-    content: "La location de stands via la plateforme a simplifié toute la logistique de mon festival."
-  },
-  testimonial7: {
-    role: "Influenceuse lifestyle",
-    content: "Mes tirages au sort génèrent un engagement incroyable. Ma communauté adore participer !"
-  },
-  testimonial8: {
-    role: "Entrepreneur événementiel",
-    content: "Le programme partenaire m'a ouvert des opportunités que je n'aurais jamais imaginées."
-  },
-  testimonial9: {
-    role: "Photographe événements",
-    content: "Je monétise maintenant mes reportages photos grâce aux événements protégés. Génial !"
-  },
-  testimonial10: {
-    role: "DJ & Producteur",
-    content: "Mes lives protégés me rapportent plus que mes anciennes plateformes. Je recommande à 100% !"
-  },
-  testimonial11: {
-    role: "Organisatrice mariages",
-    content: "BonPlanInfos a révolutionné ma façon de travailler. Les clients adorent le système de billetterie."
-  },
-  testimonial12: {
-    role: "Community Manager",
-    content: "Je gère plusieurs artistes sur la plateforme. L'interface est intuitive et les revenus transparents."
-  },
-  testimonial13: {
-    role: "Créatrice de contenu",
-    content: "Mes ateliers en ligne sont maintenant protégés et génèrent des revenus stables chaque mois."
-  },
-  testimonial14: {
-    role: "Organisateur sportif",
-    content: "Pour nos tournois, le système de votes et concours a multiplié par 5 notre audience."
-  },
-  testimonial15: {
-    role: "Agence événementielle",
-    content: "Nous utilisons BonPlanInfos pour tous nos clients. La satisfaction est toujours au rendez-vous !"
-  }
-},
-        cta: {
-          title:
-            "Vous êtes prêt à faire passer vos événements au niveau supérieur ?",
-          subtitle:
-            "Ne laissez pas la complexité vous freiner. Avec BonPlanInfos, l'organisation d'événements devient simple, rentable et amusante.",
-          cta: "Devenir Partenaire Officiel",
-        },
-        meta_title: "Partenariat & Marketing - BonPlanInfos",
-        meta_description:
-          "Rejoignez BonPlanInfos en tant que partenaire ou organisateur. Maximisez la visibilité de vos événements, engagez votre communauté et augmentez vos revenus.",
-      },
+     
 
       // ===== WALLET & COINS =====
       wallet_info_modal: {
@@ -2177,7 +2133,10 @@ partner_signup: {
     platform_fee: "Platform fee (5%)",
     your_net_earning: "Your net earnings",
     cta: "Start Earning Now",
-    note: "Simulation based on standard 5% platform fee. Actual results may vary."
+    note: "Simulation based on standard 5% platform fee. Actual results may vary.",
+    number_of_interactions: "Number of Interactions",
+    interaction_revenue: "Interaction Revenue",
+    minimum_withdrawal: "Minimum 50 interactions required for withdrawal (500 FCFA)",
   },
 
         badge: "For Organizers & Creators",

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -87,7 +86,12 @@ const SecretaryDashboard = () => {
                     <SecretaryUserManagementTab users={allUsers} onRefresh={fetchData} />
                 </TabsContent>
                 <TabsContent value="credits" className="mt-4">
-                    <CreditManagement onRefresh={fetchData} />
+                    {/* PASSER les utilisateurs ET le userProfile au CreditManagement */}
+                    <CreditManagement 
+                        users={allUsers} 
+                        onRefresh={fetchData} 
+                        userProfile={userProfile}
+                    />
                 </TabsContent>
                 <TabsContent value="reversed_credits" className="mt-4">
                     <ReversedCreditsTab isSuperAdmin={false} country={userProfile.country} actorId={user.id} />

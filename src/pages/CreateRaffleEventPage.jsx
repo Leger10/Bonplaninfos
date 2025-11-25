@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// Pages/CreateRaffleEventPage.jsx
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
+import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
@@ -10,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Ticket, Gift, Plus, Trash, Coins, MapPin, Calendar, DollarSign, Euro, Landmark, Info, Sparkles, Crown, Target } from 'lucide-react';
+import { Loader2, Ticket, Gift, Plus, Trash, Coins, MapPin, Calendar, DollarSign, Euro, Landmark, Info, Sparkles, Crown, Target, Users, Upload, Image, X, ArrowLeft, Shield } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -18,31 +20,34 @@ import { v4 as uuidv4 } from 'uuid';
 
 const CreateRaffleEventPage = () => {
     const { user } = useAuth();
-    const { adminConfig } = useData();
+    const { adminConfig, userProfile } = useData();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [categories, setCategories] = useState([]);
     const [step, setStep] = useState(1);
 
-    // Taux de conversion (exemple - à remplacer par vos taux réels)
+    // Taux de conversion
     const exchangeRates = {
-        XOF: 1,      // Franc CFA (base)
-        EUR: 655.957, // 1 EUR = 655.957 XOF
-        USD: 555,     // 1 USD = 600 XOF (approximatif)
-        PI: adminConfig?.pi_conversion_rate || 10 // 1π = 100 XOF par défaut
+        XOF: 1,
+        EUR: 655.957,
+        USD: 600,
+        PI: adminConfig?.pi_conversion_rate || 10
     };
 
-    // États du formulaire
+    // États du formulaire avec image de couverture
     const [formData, setFormData] = useState({
         // Étape 1: Informations de base
         title: '',
         description: '',
         categoryId: '',
         drawDate: '',
+        coverImage: null,
+        coverImageUrl: '',
         
         // Étape 2: Localisation
-        country: 'Côte d\'Ivoire',
-        city: '',
+        country: userProfile?.country || 'Côte d\'Ivoire',
+        city: userProfile?.city || '',
         address: '',
         isOnline: false,
         
@@ -51,6 +56,7 @@ const CreateRaffleEventPage = () => {
         ticketCurrency: 'XOF',
         totalTickets: 100,
         maxTicketsPerUser: 10,
+        minTicketsRequired: 50,
         showRemainingTickets: true,
         
         // Étape 4: Lots
@@ -79,11 +85,20 @@ const CreateRaffleEventPage = () => {
 
     useEffect(() => {
         const fetchCategories = async () => {
-            const { data, error } = await supabase.from('event_categories').select('*');
+            const { data, error } = await supabase.from('event_categories').select('*').eq('is_active', true).order('name');
             if (error) console.error('Error fetching categories:', error);
             else setCategories(data);
         };
         fetchCategories();
+    }, []);
+
+    // Nettoyer les URLs de prévisualisation
+    useEffect(() => {
+        return () => {
+            if (formData.coverImageUrl) {
+                URL.revokeObjectURL(formData.coverImageUrl);
+            }
+        };
     }, []);
 
     const handleInputChange = (field, value) => {
@@ -121,13 +136,84 @@ const CreateRaffleEventPage = () => {
         }));
     };
 
-    const CurrencyIcon = ({ currency }) => {
-        switch (currency) {
-            case 'EUR': return <Euro className="w-4 h-4" />;
-            case 'USD': return <DollarSign className="w-4 h-4" />;
-            case 'XOF': return <Landmark className="w-4 h-4" />;
-            default: return <DollarSign className="w-4 h-4" />;
+    // Fonction pour gérer l'upload d'image
+    const handleImageUpload = async (file) => {
+        if (!file) return null;
+        
+        setUploading(true);
+        try {
+            // Vérifier la taille du fichier (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                toast({
+                    title: 'Fichier trop volumineux',
+                    description: 'L\'image ne doit pas dépasser 2MB.',
+                    variant: 'destructive'
+                });
+                return null;
+            }
+
+            // Vérifier le type de fichier
+            if (!file.type.startsWith('image/')) {
+                toast({
+                    title: 'Type de fichier invalide',
+                    description: 'Veuillez sélectionner une image',
+                    variant: 'destructive'
+                });
+                return null;
+            }
+
+            // Générer un nom de fichier unique
+            const cleanFileName = file.name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
+            const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
+
+            // Upload vers Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from('media')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // Récupérer l'URL publique
+            const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+            return { publicUrl: urlData.publicUrl, filePath };
+            
+        } catch (error) {
+            console.error('Erreur upload image:', error);
+            toast({
+                title: 'Erreur d\'upload',
+                description: 'Impossible de télécharger l\'image',
+                variant: 'destructive'
+            });
+            return null;
+        } finally {
+            setUploading(false);
         }
+    };
+
+    // Gérer la sélection de fichier
+    const handleFileSelect = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Créer une URL de prévisualisation
+        const previewUrl = URL.createObjectURL(file);
+        setFormData(prev => ({
+            ...prev,
+            coverImage: file,
+            coverImageUrl: previewUrl
+        }));
+    };
+
+    // Supprimer l'image sélectionnée
+    const handleRemoveImage = () => {
+        if (formData.coverImageUrl) {
+            URL.revokeObjectURL(formData.coverImageUrl);
+        }
+        setFormData(prev => ({
+            ...prev,
+            coverImage: null,
+            coverImageUrl: ''
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -145,7 +231,19 @@ const CreateRaffleEventPage = () => {
         setLoading(true);
 
         try {
-            // 1. Create Event
+            let coverImageUrl = '';
+            let coverImagePath = '';
+
+            // Upload l'image si elle existe
+            if (formData.coverImage) {
+                const imageData = await handleImageUpload(formData.coverImage);
+                if (imageData) {
+                    coverImageUrl = imageData.publicUrl;
+                    coverImagePath = imageData.filePath;
+                }
+            }
+
+            // 1. Create Event avec image de couverture - CORRECTION: utilisation de is_online au lieu de isOnline
             const { data: eventData, error: eventError } = await supabase
                 .from('events')
                 .insert({
@@ -159,12 +257,16 @@ const CreateRaffleEventPage = () => {
                     event_type: 'raffle',
                     category_id: formData.categoryId,
                     status: 'active',
-                    is_online: formData.isOnline
+                    is_online: formData.isOnline, // CORRECTION: nom de colonne correct
+                    cover_image: coverImageUrl
                 })
                 .select()
                 .single();
 
-            if (eventError) throw eventError;
+            if (eventError) {
+                console.error('Erreur création event:', eventError);
+                throw eventError;
+            }
             const newEventId = eventData.id;
 
             // 2. Create Raffle Event
@@ -178,11 +280,16 @@ const CreateRaffleEventPage = () => {
                     calculated_price_pi: calculatedPricePi,
                     total_tickets: formData.totalTickets,
                     max_tickets_per_user: formData.maxTicketsPerUser,
+                    min_tickets_required: formData.minTicketsRequired,
                     auto_draw: formData.autoDraw
                 })
                 .select()
                 .single();
-            if (raffleError) throw raffleError;
+            
+            if (raffleError) {
+                console.error('Erreur création raffle:', raffleError);
+                throw raffleError;
+            }
             
             // 3. Insert event_settings
             const { error: settingsError } = await supabase
@@ -195,7 +302,11 @@ const CreateRaffleEventPage = () => {
                     show_participants: formData.showParticipants,
                     notify_participants: formData.notifyParticipants
                 });
-            if (settingsError) throw settingsError;
+            
+            if (settingsError) {
+                console.error('Erreur settings:', settingsError);
+                throw settingsError;
+            }
 
             // 4. Create Prizes
             const prizesToInsert = formData.prizes.map(p => ({
@@ -205,74 +316,48 @@ const CreateRaffleEventPage = () => {
                 description: p.description,
                 value_fcfa: p.value_fcfa
             }));
+            
             const { error: prizesError } = await supabase.from('raffle_prizes').insert(prizesToInsert);
-            if (prizesError) throw prizesError;
+            if (prizesError) {
+                console.error('Erreur prizes:', prizesError);
+                throw prizesError;
+            }
             
             toast({ 
                 title: '🎉 Tombola créée !', 
                 description: 'Votre tombola a été créée avec succès.',
-                className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
             });
             navigate(`/event/${newEventId}`);
 
         } catch (error) {
             console.error('Error creating raffle event:', error);
-            toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+            toast({ 
+                title: 'Erreur de création', 
+                description: error.message || 'Une erreur est survenue lors de la création', 
+                variant: 'destructive' 
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    // Étape 1: Informations de base
+    // Étape 1: Informations de base AVEC UPLOAD D'IMAGE
     const Step1 = () => (
         <div className="space-y-6">
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
-                    <Sparkles className="w-6 h-6 text-yellow-500" />
-                    Informations de Base
-                    <Sparkles className="w-6 h-6 text-yellow-500" />
-                </h3>
-                <p className="text-muted-foreground">Définissez les informations principales de votre tombola</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <Label htmlFor="title" className="flex items-center gap-2 font-semibold">
-                        <Target className="w-4 h-4 text-primary" />
-                        Titre de la tombola *
-                    </Label>
-                    <Input 
-                        id="title" 
-                        value={formData.title} 
-                        onChange={(e) => handleInputChange('title', e.target.value)} 
-                        placeholder="Ex: Grande Tombola de Noël"
-                        required 
-                    />
-                </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="category" className="flex items-center gap-2 font-semibold">
-                        <Crown className="w-4 h-4 text-yellow-500" />
-                        Catégorie *
-                    </Label>
-                    <Select onValueChange={(value) => handleInputChange('categoryId', value)} value={formData.categoryId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez une catégorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(cat => (
-                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <div className="space-y-2">
+                <Label htmlFor="title">Titre de la tombola *</Label>
+                <Input 
+                    id="title" 
+                    value={formData.title} 
+                    onChange={(e) => handleInputChange('title', e.target.value)} 
+                    placeholder="Ex: Grande Tombola de Noël"
+                    required 
+                    className="text-lg font-bold p-4 bg-transparent border-0 border-b-2 border-input focus:ring-0 focus:border-primary transition-all duration-300 ease-in-out placeholder-muted-foreground/50 bg-gradient-to-r from-primary/5 to-accent/5"
+                />
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="description" className="flex items-center gap-2 font-semibold">
-                    <Info className="w-4 h-4 text-blue-500" />
-                    Description
-                </Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea 
                     id="description" 
                     value={formData.description} 
@@ -282,22 +367,89 @@ const CreateRaffleEventPage = () => {
                 />
             </div>
 
+            {/* UPLOAD D'IMAGE DE COUVERTURE */}
             <div className="space-y-2">
-                <Label htmlFor="drawDate" className="flex items-center gap-2 font-semibold">
-                    <Calendar className="w-4 h-4 text-green-500" />
-                    Date du tirage *
-                </Label>
-                <Input 
-                    id="drawDate" 
-                    type="datetime-local" 
-                    value={formData.drawDate} 
-                    onChange={(e) => handleInputChange('drawDate', e.target.value)} 
-                    required 
-                />
+                <Label>Image de couverture</Label>
+                {formData.coverImageUrl ? (
+                    <div className="relative">
+                        <div className="border-2 border-primary/20 rounded-lg overflow-hidden">
+                            <img 
+                                src={formData.coverImageUrl} 
+                                alt="Aperçu de l'affiche"
+                                className="w-full h-64 object-cover"
+                            />
+                        </div>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600"
+                            onClick={handleRemoveImage}
+                        >
+                            <X className="w-4 h-4" />
+                        </Button>
+                        {uploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <Loader2 className="w-8 h-8 text-white animate-spin" />
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
+                        <input
+                            type="file"
+                            id="coverImage"
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+                        <label htmlFor="coverImage" className="cursor-pointer">
+                            <div className="flex flex-col items-center justify-center space-y-3">
+                                <Upload className="w-8 h-8 text-muted-foreground" />
+                                <div>
+                                    <p className="font-semibold">Ajouter une affiche</p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Cliquez pour sélectionner une image
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        PNG, JPG - Max 2MB
+                                    </p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="category">Catégorie *</Label>
+                    <Select onValueChange={(value) => handleInputChange('categoryId', value)} value={formData.categoryId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Choisir une catégorie..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map(cat => (
+                                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                
+                <div className="space-y-2">
+                    <Label htmlFor="drawDate">Date du tirage *</Label>
+                    <Input 
+                        id="drawDate" 
+                        type="datetime-local" 
+                        value={formData.drawDate} 
+                        onChange={(e) => handleInputChange('drawDate', e.target.value)} 
+                        required 
+                    />
+                </div>
             </div>
 
             <div className="flex justify-end mt-6">
-                <Button onClick={() => setStep(2)} className="bg-gradient-to-r from-blue-500 to-purple-600">
+                <Button onClick={() => setStep(2)} className="bg-primary hover:bg-primary/90">
                     Suivant
                 </Button>
             </div>
@@ -307,16 +459,7 @@ const CreateRaffleEventPage = () => {
     // Étape 2: Localisation
     const Step2 = () => (
         <div className="space-y-6">
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
-                    <MapPin className="w-6 h-6 text-red-500" />
-                    Localisation
-                    <MapPin className="w-6 h-6 text-red-500" />
-                </h3>
-                <p className="text-muted-foreground">Où se déroulera votre événement ?</p>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                     <Label htmlFor="isOnline" className="font-semibold">Événement en ligne</Label>
                     <p className="text-sm text-muted-foreground">Cochez si votre tombola est 100% digitale</p>
@@ -328,42 +471,45 @@ const CreateRaffleEventPage = () => {
             </div>
 
             {!formData.isOnline && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <>
                     <div className="space-y-2">
-                        <Label htmlFor="country" className="font-semibold">Pays *</Label>
-                        <Input 
-                            id="country" 
-                            value={formData.country} 
-                            onChange={(e) => handleInputChange('country', e.target.value)} 
-                            required 
-                        />
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor="city" className="font-semibold">Ville *</Label>
-                        <Input 
-                            id="city" 
-                            value={formData.city} 
-                            onChange={(e) => handleInputChange('city', e.target.value)} 
-                            required 
-                        />
-                    </div>
-                    
-                    <div className="md:col-span-2 space-y-2">
-                        <Label htmlFor="address" className="font-semibold">Adresse complète</Label>
+                        <Label htmlFor="address">Lieu (Adresse) *</Label>
                         <Input 
                             id="address" 
                             value={formData.address} 
                             onChange={(e) => handleInputChange('address', e.target.value)}
                             placeholder="Nom du lieu, rue, numéro..."
+                            required
                         />
                     </div>
-                </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="city">Ville *</Label>
+                            <Input 
+                                id="city" 
+                                value={formData.city} 
+                                onChange={(e) => handleInputChange('city', e.target.value)} 
+                                required 
+                            />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="country">Pays *</Label>
+                            <Input 
+                                id="country" 
+                                value={formData.country} 
+                                onChange={(e) => handleInputChange('country', e.target.value)} 
+                                required 
+                            />
+                        </div>
+                    </div>
+                </>
             )}
 
             <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>Précédent</Button>
-                <Button onClick={() => setStep(3)} className="bg-gradient-to-r from-blue-500 to-purple-600">
+                <Button onClick={() => setStep(3)} className="bg-primary hover:bg-primary/90">
                     Suivant
                 </Button>
             </div>
@@ -373,18 +519,9 @@ const CreateRaffleEventPage = () => {
     // Étape 3: Configuration des tickets
     const Step3 = () => (
         <div className="space-y-6">
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
-                    <Ticket className="w-6 h-6 text-green-500" />
-                    Configuration des Tickets
-                    <Ticket className="w-6 h-6 text-green-500" />
-                </h3>
-                <p className="text-muted-foreground">Définissez le prix et la quantité des tickets</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="ticketPrice" className="font-semibold">Prix du ticket</Label>
+                    <Label htmlFor="ticketPrice">Prix du ticket</Label>
                     <div className="flex gap-2">
                         <Input 
                             id="ticketPrice" 
@@ -401,31 +538,16 @@ const CreateRaffleEventPage = () => {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="XOF">
-                                    <div className="flex items-center gap-2">
-                                        <Landmark className="w-4 h-4" />
-                                        XOF
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="EUR">
-                                    <div className="flex items-center gap-2">
-                                        <Euro className="w-4 h-4" />
-                                        EUR
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="USD">
-                                    <div className="flex items-center gap-2">
-                                        <DollarSign className="w-4 h-4" />
-                                        USD
-                                    </div>
-                                </SelectItem>
+                                <SelectItem value="XOF">XOF</SelectItem>
+                                <SelectItem value="EUR">EUR</SelectItem>
+                                <SelectItem value="USD">USD</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="totalTickets" className="font-semibold">Nombre total de tickets *</Label>
+                    <Label htmlFor="totalTickets">Nombre total de tickets *</Label>
                     <Input 
                         id="totalTickets" 
                         type="number" 
@@ -436,7 +558,7 @@ const CreateRaffleEventPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="maxTicketsPerUser" className="font-semibold">Max tickets par personne</Label>
+                    <Label htmlFor="maxTicketsPerUser">Max tickets par personne</Label>
                     <Input 
                         id="maxTicketsPerUser" 
                         type="number" 
@@ -446,22 +568,39 @@ const CreateRaffleEventPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <Label className="font-semibold">Prix en π (Pi)</Label>
-                    <div className="p-3 bg-primary/10 rounded-lg text-center">
-                        <p className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
-                            {calculatedPricePi} <Coins className="w-6 h-6" />
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            {formData.ticketPrice} {formData.ticketCurrency} = {calculatedPricePi}π
-                        </p>
-                    </div>
+                    <Label htmlFor="minTicketsRequired">Objectif minimum *</Label>
+                    <Input 
+                        id="minTicketsRequired" 
+                        type="number" 
+                        value={formData.minTicketsRequired} 
+                        onChange={(e) => handleInputChange('minTicketsRequired', e.target.value)} 
+                        min="1"
+                        max={formData.totalTickets}
+                        required 
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Le tirage nécessite cet objectif minimum de tickets vendus
+                    </p>
+                </div>
+            </div>
+
+            {/* Affichage prix en π */}
+            <div className="p-4 border rounded-lg space-y-2">
+                <Label>Prix en π (Pi)</Label>
+                <div className="text-center">
+                    <p className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
+                        {calculatedPricePi} <Coins className="w-6 h-6" />
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        {formData.ticketPrice} {formData.ticketCurrency} = {calculatedPricePi}π
+                    </p>
                 </div>
             </div>
 
             {/* Résumé financier */}
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20">
                 <CardContent className="p-4">
-                    <h4 className="font-bold text-lg mb-3 text-center">📊 Résumé Financier</h4>
+                    <h4 className="font-bold text-lg mb-3 text-center">Résumé Financier</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="text-center">
                             <p className="font-semibold">Revenu total estimé</p>
@@ -474,10 +613,16 @@ const CreateRaffleEventPage = () => {
                             </p>
                         </div>
                     </div>
+                    <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-sm text-orange-700 text-center">
+                            <Target className="w-4 h-4 inline mr-1" />
+                            <strong>Objectif minimum : {formData.minTicketsRequired} tickets</strong>
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
 
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                     <Label className="font-semibold">Afficher les tickets restants</Label>
                     <p className="text-sm text-muted-foreground">Montrer le nombre de tickets disponibles</p>
@@ -490,7 +635,7 @@ const CreateRaffleEventPage = () => {
 
             <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(2)}>Précédent</Button>
-                <Button onClick={() => setStep(4)} className="bg-gradient-to-r from-blue-500 to-purple-600">
+                <Button onClick={() => setStep(4)} className="bg-primary hover:bg-primary/90">
                     Suivant
                 </Button>
             </div>
@@ -500,22 +645,13 @@ const CreateRaffleEventPage = () => {
     // Étape 4: Lots
     const Step4 = () => (
         <div className="space-y-6">
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
-                    <Gift className="w-6 h-6 text-yellow-500" />
-                    Lots à Gagner
-                    <Gift className="w-6 h-6 text-yellow-500" />
-                </h3>
-                <p className="text-muted-foreground">Définissez les lots qui seront gagnés</p>
-            </div>
-
             <div className="space-y-4">
                 {formData.prizes.map((prize) => (
-                    <Card key={prize.id} className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+                    <Card key={prize.id} className="border-2">
                         <CardContent className="p-6 space-y-4">
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-3">
-                                    <Badge className="text-lg px-3 py-1 bg-yellow-500 text-white">
+                                    <Badge className="text-lg px-3 py-1 bg-primary text-white">
                                         {prize.rank === 1 ? '🥇 GRAND LOT' : 
                                          prize.rank === 2 ? '🥈 SECOND LOT' : 
                                          prize.rank === 3 ? '🥉 TROISIÈME LOT' : 
@@ -569,11 +705,10 @@ const CreateRaffleEventPage = () => {
                 </Button>
             </div>
 
-            {/* Résumé des lots */}
             {totalPrizeValue > 0 && (
                 <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
                     <CardContent className="p-4">
-                        <h4 className="font-bold text-lg mb-2 text-center">💰 Valeur Totale des Lots</h4>
+                        <h4 className="font-bold text-lg mb-2 text-center">Valeur Totale des Lots</h4>
                         <div className="grid grid-cols-2 gap-4 text-center">
                             <div>
                                 <p className="text-2xl font-bold text-green-600">{totalPrizeValue.toLocaleString()} FCFA</p>
@@ -590,7 +725,7 @@ const CreateRaffleEventPage = () => {
 
             <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(3)}>Précédent</Button>
-                <Button onClick={() => setStep(5)} className="bg-gradient-to-r from-blue-500 to-purple-600">
+                <Button onClick={() => setStep(5)} className="bg-primary hover:bg-primary/90">
                     Suivant
                 </Button>
             </div>
@@ -600,17 +735,8 @@ const CreateRaffleEventPage = () => {
     // Étape 5: Paramètres avancés
     const Step5 = () => (
         <div className="space-y-6">
-            <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold flex items-center justify-center gap-2">
-                    <Sparkles className="w-6 h-6 text-purple-500" />
-                    Paramètres Avancés
-                    <Sparkles className="w-6 h-6 text-purple-500" />
-                </h3>
-                <p className="text-muted-foreground">Personnalisez le comportement de votre tombola</p>
-            </div>
-
             <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                         <Label className="font-semibold">Tirage automatique</Label>
                         <p className="text-sm text-muted-foreground">Le gagnant est tiré automatiquement à la date prévue</p>
@@ -621,7 +747,7 @@ const CreateRaffleEventPage = () => {
                     />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                         <Label className="font-semibold">Notifier les participants</Label>
                         <p className="text-sm text-muted-foreground">Envoyer des notifications aux participants</p>
@@ -632,7 +758,7 @@ const CreateRaffleEventPage = () => {
                     />
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                         <Label className="font-semibold">Afficher les participants</Label>
                         <p className="text-sm text-muted-foreground">Montrer la liste des participants</p>
@@ -643,7 +769,7 @@ const CreateRaffleEventPage = () => {
                     />
                 </div>
 
-                <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-start gap-3 p-4 border rounded-lg">
                     <Input 
                         type="checkbox" 
                         checked={formData.termsAccepted}
@@ -662,10 +788,14 @@ const CreateRaffleEventPage = () => {
             </div>
 
             {/* Résumé final */}
-            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+            <Card className="border-2 border-primary/20">
                 <CardContent className="p-6">
-                    <h4 className="font-bold text-xl mb-4 text-center">🎯 Récapitulatif</h4>
+                    <h4 className="font-bold text-xl mb-4 text-center">Récapitulatif</h4>
                     <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                            <span>Titre:</span>
+                            <span className="font-bold">{formData.title || 'Non défini'}</span>
+                        </div>
                         <div className="flex justify-between">
                             <span>Prix du ticket:</span>
                             <span className="font-bold">{calculatedPricePi}π ({formData.ticketPrice} {formData.ticketCurrency})</span>
@@ -673,6 +803,10 @@ const CreateRaffleEventPage = () => {
                         <div className="flex justify-between">
                             <span>Total tickets:</span>
                             <span className="font-bold">{formData.totalTickets}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Objectif minimum:</span>
+                            <span className="font-bold text-orange-600">{formData.minTicketsRequired} tickets</span>
                         </div>
                         <div className="flex justify-between">
                             <span>Revenu total estimé:</span>
@@ -684,8 +818,14 @@ const CreateRaffleEventPage = () => {
                         </div>
                         <div className="flex justify-between">
                             <span>Date du tirage:</span>
-                            <span className="font-bold">{new Date(formData.drawDate).toLocaleDateString('fr-FR')}</span>
+                            <span className="font-bold">{formData.drawDate ? new Date(formData.drawDate).toLocaleDateString('fr-FR') : 'Non définie'}</span>
                         </div>
+                        {formData.coverImage && (
+                            <div className="flex justify-between">
+                                <span>Image de couverture:</span>
+                                <span className="font-bold text-green-600">✓ Ajoutée</span>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -695,7 +835,7 @@ const CreateRaffleEventPage = () => {
                 <Button 
                     onClick={handleSubmit} 
                     disabled={loading || !formData.termsAccepted}
-                    className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                    className="bg-primary hover:bg-primary/90"
                 >
                     {loading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -711,67 +851,65 @@ const CreateRaffleEventPage = () => {
     const steps = [Step1, Step2, Step3, Step4, Step5];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 text-foreground">
+        <div className="min-h-screen bg-background">
             <Helmet>
                 <title>Créer une Tombola - BonPlanInfos</title>
             </Helmet>
             
-            <main className="container mx-auto max-w-4xl px-4 py-8">
-                <Card className="glass-effect border-2 border-primary/20 shadow-2xl">
-                    <CardHeader className="text-center pb-8">
-                        <CardTitle className="text-3xl font-bold font-heading flex items-center justify-center gap-3">
-                            <Ticket className="w-8 h-8 text-primary" />
-                            Créer une Tombola
-                            <Ticket className="w-8 h-8 text-primary" />
-                        </CardTitle>
-                        <CardDescription className="text-lg">
-                            Créez votre tombola en quelques étapes simples et commencez à vendre des tickets !
-                        </CardDescription>
-                    </CardHeader>
-                    
-                    <CardContent>
-                        {/* Barre de progression */}
-                        <div className="flex items-center justify-between mb-8 relative">
-                            <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted -translate-y-1/2 -z-10"></div>
-                            {[1, 2, 3, 4, 5].map((stepNumber) => (
-                                <div key={stepNumber} className="flex flex-col items-center relative z-10">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                                        step === stepNumber 
-                                            ? 'bg-primary text-primary-foreground scale-110 shadow-lg' 
-                                            : step > stepNumber 
-                                            ? 'bg-green-500 text-white' 
-                                            : 'bg-muted text-muted-foreground'
-                                    }`}>
-                                        {step > stepNumber ? '✓' : stepNumber}
-                                    </div>
-                                    <span className={`text-xs mt-2 font-medium ${
-                                        step === stepNumber ? 'text-primary' : 'text-muted-foreground'
-                                    }`}>
-                                        {['Infos', 'Lieu', 'Tickets', 'Lots', 'Final'][stepNumber - 1]}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+            <main className="container mx-auto max-w-2xl px-4 py-8">
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }} 
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                >
+                    <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+                    </Button>
 
-                        <form className="space-y-6">
-                            {steps[step - 1]()}
-                        </form>
-                    </CardContent>
-                </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Ticket className="w-6 h-6 text-primary" />
+                                Créer une Tombola
+                            </CardTitle>
+                            <CardDescription>
+                                Créez votre tombola en quelques étapes simples et commencez à vendre des tickets !
+                            </CardDescription>
+                        </CardHeader>
+                        
+                        <CardContent>
+                            {/* Barre de progression */}
+                            <div className="flex items-center justify-between mb-8 relative">
+                                <div className="absolute top-1/2 left-0 right-0 h-1 bg-muted -translate-y-1/2 -z-10"></div>
+                                {[1, 2, 3, 4, 5].map((stepNumber) => (
+                                    <div key={stepNumber} className="flex flex-col items-center relative z-10">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
+                                            step === stepNumber 
+                                                ? 'bg-primary text-primary-foreground scale-110' 
+                                                : step > stepNumber 
+                                                ? 'bg-green-500 text-white' 
+                                                : 'bg-muted text-muted-foreground'
+                                        }`}>
+                                            {step > stepNumber ? '✓' : stepNumber}
+                                        </div>
+                                        <span className={`text-xs mt-2 font-medium ${
+                                            step === stepNumber ? 'text-primary' : 'text-muted-foreground'
+                                        }`}>
+                                            {['Infos', 'Lieu', 'Tickets', 'Lots', 'Final'][stepNumber - 1]}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <form className="space-y-6">
+                                {steps[step - 1]()}
+                            </form>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             </main>
         </div>
     );
-};
-
-// Hook useMemo manquant
-const useMemo = (callback, dependencies) => {
-    const [value, setValue] = React.useState(callback());
-    
-    React.useEffect(() => {
-        setValue(callback());
-    }, dependencies);
-    
-    return value;
 };
 
 export default CreateRaffleEventPage;

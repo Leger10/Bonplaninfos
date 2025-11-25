@@ -1,10 +1,11 @@
+// Components/RaffleInterface.jsx
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Sparkles, Info, Crown, Zap, Target, Users, TrendingUp, Star, Gift } from 'lucide-react';
+import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Sparkles, Crown, Target, Users, TrendingUp, AlertTriangle, Calendar } from 'lucide-react';
 import WalletInfoModal from '@/components/WalletInfoModal';
 import {
     AlertDialog,
@@ -20,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 
+// Composant ParticipantView
 const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
     const { user } = useAuth();
     const [quantity, setQuantity] = useState(1);
@@ -80,6 +82,7 @@ const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
 
     const ticketsLeft = raffleData.total_tickets - raffleData.tickets_sold;
     const progress = (raffleData.tickets_sold / raffleData.total_tickets) * 100;
+    const objectiveProgress = (raffleData.tickets_sold / raffleData.min_tickets_required) * 100;
 
     return (
         <>
@@ -101,9 +104,30 @@ const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    {/* Objectif minimum */}
+                    <div className="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl">
+                        <div className="flex items-center gap-3 mb-3">
+                            <Target className="w-6 h-6 text-orange-500" />
+                            <span className="font-bold text-lg">Objectif Minimum</span>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                                <span className="text-orange-600">
+                                    {raffleData.tickets_sold}/{raffleData.min_tickets_required} tickets
+                                </span>
+                                <span className="text-orange-600 font-bold">{Math.round(objectiveProgress)}%</span>
+                            </div>
+                            <Progress value={objectiveProgress} className="w-full h-2 bg-orange-200" />
+                            <p className="text-xs text-orange-600 text-center">
+                                {objectiveProgress >= 100 ? '🎯 Objectif atteint !' : 'Le tirage nécessite cet objectif'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Progression générale */}
                     <div className="space-y-3">
                         <div className="flex justify-between text-sm font-medium">
-                            <span className="text-green-600">🚀 {raffleData.tickets_sold} tickets déjà vendus</span>
+                            <span className="text-green-600">🚀 {raffleData.tickets_sold} tickets vendus</span>
                             <span className="text-primary font-bold">{Math.round(progress)}% complet</span>
                         </div>
                         <Progress value={progress} className="w-full h-3" />
@@ -113,6 +137,7 @@ const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
                         </div>
                     </div>
 
+                    {/* Prix du ticket */}
                     <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-2 border-blue-500/30 rounded-xl">
                         <div className="flex items-center justify-between">
                             <div>
@@ -153,6 +178,7 @@ const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
                         </div>
                     </div>
 
+                    {/* Panier */}
                     <div className="pt-6 border-t border-primary/20 space-y-4">
                         <div className="text-center p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
                             <p className="font-bold text-lg flex items-center justify-center gap-2">
@@ -241,129 +267,269 @@ const ParticipantView = ({ raffleData, eventId, onPurchaseSuccess }) => {
     );
 };
 
-const OwnerView = ({ raffleData, eventId }) => {
-    const { data: participants, error, loading } = useSWR(eventId, async (eventId) => {
-        const { data, error } = await supabase
-            .from('raffle_participants')
-            .select('*, user:user_id(full_name, email)')
-            .eq('event_id', eventId)
-            .order('participated_at', { ascending: false });
-        if (error) throw error;
-        return data;
-    });
+// Composant OwnerView avec tableau de bord amélioré
+const OwnerView = ({ raffleData, eventId, onRefresh }) => {
+    const [loading, setLoading] = useState(false);
+    const [participants, setParticipants] = useState([]);
+    const [participantsLoading, setParticipantsLoading] = useState(true);
+
+    // Fonction pour lancer le tirage manuel
+    const handleManualDraw = async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('conduct_raffle_draw', {
+                p_raffle_event_id: raffleData.id
+            });
+
+            if (error) throw error;
+
+            if (data.success) {
+                toast({
+                    title: "🎉 Tirage effectué !",
+                    description: data.message,
+                    className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                });
+            } else {
+                if (data.action === 'reported') {
+                    toast({
+                        title: "⏳ Tirage reporté",
+                        description: data.message,
+                        className: "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
+                    });
+                } else {
+                    toast({
+                        title: "Information",
+                        description: data.message,
+                        variant: "default"
+                    });
+                }
+            }
+            onRefresh();
+        } catch (error) {
+            toast({
+                title: "Erreur",
+                description: error.message,
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Charger les participants
+    useEffect(() => {
+        const fetchParticipants = async () => {
+            const { data, error } = await supabase
+                .from('raffle_participants')
+                .select('*, user:user_id(full_name, email)')
+                .eq('event_id', eventId)
+                .order('participated_at', { ascending: false });
+
+            if (!error) setParticipants(data || []);
+            setParticipantsLoading(false);
+        };
+        fetchParticipants();
+    }, [eventId]);
 
     const totalRevenuePi = useMemo(() => {
         return (raffleData?.tickets_sold || 0) * (raffleData?.calculated_price_pi || 0);
     }, [raffleData]);
 
     const progress = (raffleData.tickets_sold / raffleData.total_tickets) * 100;
+    const objectiveProgress = (raffleData.tickets_sold / raffleData.min_tickets_required) * 100;
+
+    const canDraw = new Date(raffleData.draw_date) <= new Date() && 
+                   !raffleData.is_draw_conducted && 
+                   !raffleData.is_postponed;
+
+    const isObjectiveMet = raffleData.tickets_sold >= raffleData.min_tickets_required;
 
     return (
-        <Card className="glass-effect border-2 border-primary/30 shadow-xl">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                    <Crown className="w-7 h-7 text-yellow-500" />
-                    Tableau de Bord Tombola
-                    <Crown className="w-7 h-7 text-yellow-500" />
-                </CardTitle>
-                <CardDescription className="text-base">
-                    Supervisez les ventes de votre tombola
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl text-center border border-green-500/20">
-                        <p className="text-2xl font-bold text-green-600">{raffleData.tickets_sold}</p>
-                        <p className="text-sm text-muted-foreground font-medium">🎟️ Tickets Vendus</p>
+        <div className="space-y-6">
+            <Card className="glass-effect border-2 border-primary/30 shadow-xl">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-2xl">
+                        <Crown className="w-7 h-7 text-yellow-500" />
+                        Tableau de Bord Tombola
+                        <Crown className="w-7 h-7 text-yellow-500" />
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                        Supervisez les ventes et gérez le tirage de votre tombola
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Statistiques principales */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl text-center border border-green-500/20">
+                            <p className="text-2xl font-bold text-green-600">{raffleData.tickets_sold}</p>
+                            <p className="text-sm text-muted-foreground font-medium">🎟️ Tickets Vendus</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl text-center border border-yellow-500/20">
+                            <p className="text-2xl font-bold text-yellow-600 flex items-center justify-center gap-1">
+                                {totalRevenuePi} <Coins className="w-5 h-5" />
+                            </p>
+                            <p className="text-sm text-muted-foreground font-medium">💰 Revenu Total</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl text-center border border-blue-500/20">
+                            <p className="text-2xl font-bold text-blue-600">
+                                {raffleData.min_tickets_required}
+                            </p>
+                            <p className="text-sm text-muted-foreground font-medium">🎯 Objectif Minimum</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl text-center border border-purple-500/20">
+                            <p className="text-2xl font-bold text-purple-600">
+                                {participants.length}
+                            </p>
+                            <p className="text-sm text-muted-foreground font-medium">👥 Participants</p>
+                        </div>
                     </div>
-                    <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl text-center border border-yellow-500/20">
-                        <p className="text-2xl font-bold text-yellow-600 flex items-center justify-center gap-1">
-                            {totalRevenuePi} <Coins className="w-5 h-5" />
-                        </p>
-                        <p className="text-sm text-muted-foreground font-medium">💰 Revenu Total</p>
-                    </div>
-                </div>
 
-                <div className="space-y-3">
-                    <div className="flex justify-between text-sm font-medium">
-                        <span className="text-green-600">Progression des ventes</span>
-                        <span className="text-primary font-bold">{Math.round(progress)}%</span>
+                    {/* Objectif minimum */}
+                    <div className="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl">
+                        <div className="flex items-center gap-3 mb-3">
+                            <Target className="w-6 h-6 text-orange-500" />
+                            <span className="font-bold text-lg">Progression vers l'objectif minimum</span>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                                <span className="text-orange-600">
+                                    {raffleData.tickets_sold}/{raffleData.min_tickets_required} tickets
+                                </span>
+                                <span className={`font-bold ${isObjectiveMet ? 'text-green-600' : 'text-orange-600'}`}>
+                                    {Math.round(objectiveProgress)}%
+                                </span>
+                            </div>
+                            <Progress value={objectiveProgress} className="w-full h-3 bg-orange-200" />
+                            <p className={`text-sm text-center font-medium ${isObjectiveMet ? 'text-green-600' : 'text-orange-600'}`}>
+                                {isObjectiveMet ? '🎯 Objectif atteint - Tirage possible !' : '⚠️ Objectif non atteint - Tirage conditionnel'}
+                            </p>
+                        </div>
                     </div>
-                    <Progress value={progress} className="w-full h-3" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{raffleData.tickets_sold}/{raffleData.total_tickets} vendus</span>
-                        <span>{raffleData.total_tickets - raffleData.tickets_sold} restants</span>
-                    </div>
-                </div>
 
-                <div>
-                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-lg">
-                        <TrendingUp className="w-5 h-5 text-blue-500" />
-                        Derniers Participants ({participants?.length || 0})
-                    </h4>
-                    {loading ? (
-                        <div className="flex justify-center py-8">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    {/* Progression générale */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-sm font-medium">
+                            <span className="text-green-600">Progression des ventes</span>
+                            <span className="text-primary font-bold">{Math.round(progress)}%</span>
                         </div>
-                    ) : (
-                        <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
-                            {(participants || []).map(p => (
-                                <div key={p.id} className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 rounded-lg border border-blue-500/10 hover:border-blue-500/20 transition-colors">
-                                    <div>
-                                        <p className="font-medium">{p.user?.full_name || 'Anonyme'}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(p.participated_at).toLocaleString('fr-FR')}
-                                        </p>
+                        <Progress value={progress} className="w-full h-3" />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{raffleData.tickets_sold}/{raffleData.total_tickets} vendus</span>
+                            <span>{raffleData.total_tickets - raffleData.tickets_sold} restants</span>
+                        </div>
+                    </div>
+
+                    {/* Bouton de tirage */}
+                    {canDraw && (
+                        <div className="text-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                            <Button
+                                onClick={handleManualDraw}
+                                disabled={loading}
+                                size="lg"
+                                className={`w-full py-6 text-lg font-bold ${
+                                    isObjectiveMet
+                                        ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'
+                                        : 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600'
+                                }`}
+                            >
+                                {loading ? (
+                                    <Loader2 className="animate-spin w-6 h-6" />
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <Crown className="w-6 h-6" />
+                                        {isObjectiveMet ? 'LANCER LE TIRAGE' : 'TENTER LE TIRAGE'}
+                                        <Crown className="w-6 h-6" />
                                     </div>
-                                    <div className="text-right">
-                                        <span className="font-bold text-primary">Ticket #{p.ticket_number}</span>
+                                )}
+                            </Button>
+                            {!isObjectiveMet && (
+                                <p className="text-sm text-yellow-600 mt-2">
+                                    ⚠️ L'objectif n'est pas atteint. Le tirage sera probablement reporté.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Statut du tirage */}
+                    {raffleData.is_postponed && (
+                        <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                                <span className="font-semibold">Tirage reporté</span>
+                            </div>
+                            <p className="text-sm text-orange-700">
+                                {raffleData.postponed_reason}
+                            </p>
+                            <p className="text-sm text-orange-600 mt-1">
+                                <Calendar className="w-4 h-4 inline mr-1" />
+                                Nouvelle date: {new Date(raffleData.postponed_to).toLocaleDateString('fr-FR')}
+                            </p>
+                        </div>
+                    )}
+
+                    {raffleData.is_draw_conducted && raffleData.winner_user_id && (
+                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Crown className="w-5 h-5 text-green-500" />
+                                <span className="font-semibold">Gagnant désigné !</span>
+                            </div>
+                            <p className="text-sm text-green-700">
+                                Ticket gagnant: <strong>#{raffleData.winning_ticket_number}</strong>
+                            </p>
+                            <p className="text-sm text-green-600">
+                                Tirage effectué le: {new Date(raffleData.draw_conducted_at).toLocaleDateString('fr-FR')}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Participants */}
+                    <div>
+                        <h4 className="font-semibold mb-3 flex items-center gap-2 text-lg">
+                            <TrendingUp className="w-5 h-5 text-blue-500" />
+                            Derniers Participants ({participants.length})
+                        </h4>
+                        {participantsLoading ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
+                                {participants.map(p => (
+                                    <div key={p.id} className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 rounded-lg border border-blue-500/10 hover:border-blue-500/20 transition-colors">
+                                        <div>
+                                            <p className="font-medium">{p.user?.full_name || 'Anonyme'}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(p.participated_at).toLocaleString('fr-FR')}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <Badge variant="secondary">Ticket #{p.ticket_number}</Badge>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                            <p className="text-destructive text-sm text-center">Erreur de chargement des participants</p>
-                        </div>
-                    )}
-                    {!loading && (!participants || participants.length === 0) && (
-                        <div className="text-center py-8">
-                            <Ticket className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <p className="text-lg font-medium text-muted-foreground">Aucun participant pour le moment</p>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                                ))}
+                            </div>
+                        )}
+                        {!participantsLoading && participants.length === 0 && (
+                            <div className="text-center py-8">
+                                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                <p className="text-lg font-medium text-muted-foreground">Aucun participant pour le moment</p>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 
-const useSWR = (key, fetcher) => {
-    const [data, setData] = useState(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    React.useEffect(() => {
-        if (key) {
-            setLoading(true);
-            fetcher(key)
-                .then(res => setData(res))
-                .catch(err => setError(err))
-                .finally(() => setLoading(false));
-        }
-    }, [key, fetcher]);
-
-    return { data, error, loading };
-}
-
+// Composant principal
 const RaffleInterface = ({ raffleData, eventId, isUnlocked, isOwner, onRefresh }) => {
     if (!isUnlocked || !raffleData) return null;
 
     return (
         <div className="mt-8 space-y-8">
             {isOwner ? (
-                <OwnerView raffleData={raffleData} eventId={eventId} />
+                <OwnerView raffleData={raffleData} eventId={eventId} onRefresh={onRefresh} />
             ) : (
                 <ParticipantView raffleData={raffleData} eventId={eventId} onPurchaseSuccess={onRefresh} />
             )}

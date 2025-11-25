@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet';
 import { Plus, ArrowRight, Loader2, Coins, Info, Zap, AlertTriangle } from 'lucide-react';
@@ -26,9 +26,12 @@ import AnimatedBadgesBanner from '@/components/AnimatedBadgesBanner';
 import EventTypeFilters from '@/components/homepage/EventTypeFilters';
 import EventCard from '@/components/EventCard';
 import NearbyEvents from '@/components/NearbyEvents';
+import PromotionalBanner from '@/components/PromotionalBanner';
+import { promotionalRoutes } from '@/config/promotionalMessages';
 
 const HomePage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { t } = useTranslation();
     const { userProfile, adminConfig, forceRefreshUserProfile, hasFetchError } = useData();
     const { user } = useAuth();
@@ -37,6 +40,7 @@ const HomePage = () => {
     const [unlockedEvents, setUnlockedEvents] = useState(new Set());
     const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
     const [confirmation, setConfirmation] = useState({ isOpen: false, event: null, cost: 0, costFcfa: 0, onConfirm: null });
+    const [showPromoBanner, setShowPromoBanner] = useState(false);
 
     const fetchInitialData = useCallback(async () => {
         if (hasFetchError) {
@@ -47,23 +51,36 @@ const HomePage = () => {
         setLoading(true);
 
         try {
-            const { data: eventsRes, error: eventsError } = await supabase
-                .from('events')
-                .select('*, organizer:organizer_id(full_name), category:category_id(name, slug)')
+            const { data: promotionsRes, error: promotionsError } = await supabase
+                .from('event_promotions')
+                .select(`
+                    *,
+                    event:event_id (
+                        *,
+                        organizer:organizer_id(full_name),
+                        category:category_id(name, slug)
+                    ),
+                    promotion_pack:promotion_pack_id(name)
+                `)
                 .eq('status', 'active')
-                .eq('is_promoted', true)
-                .gt('promotion_end', new Date().toISOString())
+                .gt('end_date', new Date().toISOString())
                 .order('created_at', { ascending: false })
                 .limit(8);
 
-            if (eventsError) throw eventsError;
+            if (promotionsError) throw promotionsError;
             
-            const formattedEvents = eventsRes.map(e => ({
-                ...e,
-                category_name: e.category?.name,
-                category_slug: e.category?.slug,
-                organizer_name: e.organizer?.full_name,
-            }));
+            const formattedEvents = promotionsRes
+                .filter(promo => promo.event)
+                .map(promo => ({
+                    ...promo.event,
+                    promotion_id: promo.id,
+                    is_promoted: true,
+                    promotion_end: promo.end_date,
+                    pack_name: promo.promotion_pack?.name || 'Pack Promotion',
+                    category_name: promo.event.category?.name,
+                    category_slug: promo.event.category?.slug,
+                    organizer_name: promo.event.organizer?.full_name,
+                }));
 
             setPromotedEvents(formattedEvents || []);
 
@@ -82,11 +99,50 @@ const HomePage = () => {
             }
 
         } catch (error) {
-            toast({ title: t('common.error_title'), description: t('home_page.loading_error.description'), variant: 'destructive' });
+            console.error('Error fetching promoted events:', error);
+            toast({ 
+                title: t('common.error_title'), 
+                description: t('home_page.loading_error.description'), 
+                variant: 'destructive' 
+            });
         } finally {
             setLoading(false);
         }
     }, [hasFetchError, user, t]);
+
+    // Gestion de l'apparition aléatoire de la bannière promo
+    useEffect(() => {
+        const shouldShowBanner = () => {
+            // Vérifier si la route actuelle est dans les routes promotionnelles
+            const isPromotionalRoute = promotionalRoutes.includes(location.pathname);
+            if (!isPromotionalRoute) return false;
+
+            // Ne pas montrer si l'utilisateur a récemment fermé la bannière pour cette route
+            const lastClosed = localStorage.getItem(`promoBannerLastClosed_${location.pathname}`);
+            if (lastClosed) {
+                const timeSinceLastClose = Date.now() - parseInt(lastClosed);
+                // Réapparaît après 45 minutes pour cette route spécifique
+                if (timeSinceLastClose < 45 * 60 * 1000) return false;
+            }
+
+            // 60% de chance d'apparaître sur la page d'accueil, 40% pour les autres routes
+            const chance = location.pathname === '/' ? 0.6 : 0.4;
+            return Math.random() < chance;
+        };
+
+        const timer = setTimeout(() => {
+            if (shouldShowBanner()) {
+                setShowPromoBanner(true);
+            }
+        }, 3000); // Apparaît après 3 secondes
+
+        return () => clearTimeout(timer);
+    }, [location.pathname]);
+
+    const handlePromoBannerClose = () => {
+        setShowPromoBanner(false);
+        localStorage.setItem(`promoBannerLastClosed_${location.pathname}`, Date.now().toString());
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -161,6 +217,14 @@ const HomePage = () => {
                 <title>{t('nav.home')} - BonPlanInfos</title>
                 <meta name="description" content={t('footer.tagline')} />
             </Helmet>
+
+            {/* Bannière promotionnelle contextuelle */}
+            {showPromoBanner && (
+                <PromotionalBanner 
+                    userProfile={userProfile} 
+                    onClose={handlePromoBannerClose}
+                />
+            )}
 
             {!hasFetchError && <WelcomePopup />}
             {!hasFetchError && <AnimatedBadgesBanner />}

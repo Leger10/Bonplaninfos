@@ -1,169 +1,245 @@
-import React, { useState, useMemo } from 'react';
+// components/marketing/RevenueSimulation.jsx
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Slider } from '@/components/ui/slider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Ticket, Gift, Vote, Store } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-const eventTypes = [
-  { id: 'ticketing', name: 'Billetterie', icon: Ticket, defaultPrice: 5000, defaultCount: 200 },
-  { id: 'raffle', name: 'Tombola', icon: Gift, defaultPrice: 1000, defaultCount: 500 },
-  { id: 'voting', name: 'Vote', icon: Vote, defaultPrice: 500, defaultCount: 1000 },
-  { id: 'stand_rental', name: 'Stands', icon: Store, defaultPrice: 50000, defaultCount: 20 },
-];
 
 const RevenueSimulation = ({ onCtaClick }) => {
   const { t } = useTranslation();
-  const [eventType, setEventType] = useState(eventTypes[0].id);
-  const [price, setPrice] = useState(eventTypes[0].defaultPrice);
-  const [count, setCount] = useState(eventTypes[0].defaultCount);
+  
+  const [eventType, setEventType] = useState('concert');
+  const [ticketPrice, setTicketPrice] = useState(5000);
+  const [numberOfTickets, setNumberOfTickets] = useState(200);
+  const [numberOfInteractions, setNumberOfInteractions] = useState(0);
+  const [calculations, setCalculations] = useState({
+    potentialRevenue: 0,
+    platformFee: 0,
+    netEarning: 0
+  });
 
-  const selectedEvent = useMemo(() => eventTypes.find(e => e.id === eventType), [eventType]);
-
-  const handleEventTypeChange = (newEventTypeId) => {
-    const newEvent = eventTypes.find(e => e.id === newEventTypeId);
-    if (newEvent) {
-      setEventType(newEventTypeId);
-      setPrice(newEvent.defaultPrice);
-      setCount(newEvent.defaultCount);
+  // Types d'événements avec leurs spécificités
+  const eventTypes = {
+    concert: {
+      name: 'Concert',
+      description: '95% pour organisateur et 5% pour la plateforme comme frais sur les participations',
+      hasTickets: true,
+      hasInteractions: false
+    },
+    stands: {
+      name: 'Vente de stands',
+      description: '95% pour organisateur et 5% pour la plateforme comme frais sur les participations',
+      hasTickets: true,
+      hasInteractions: false
+    },
+    election: {
+      name: 'Élection vote',
+      description: '95% pour organisateur et 5% pour la plateforme comme frais sur les participations',
+      hasTickets: true,
+      hasInteractions: false
+    },
+    lottery: {
+      name: 'Tirage au sort (Lotterie)',
+      description: '95% pour organisateur et 5% pour la plateforme comme frais sur les participations',
+      hasTickets: true,
+      hasInteractions: false
+    },
+    protected: {
+      name: 'Événement Protégé Monétisé',
+      description: '1 pièce à chaque interaction soit 10 FCFA pour l\'organisateur. Minimum pour retrait: 50 pièces',
+      hasTickets: false,
+      hasInteractions: true
     }
   };
 
-  const grossRevenue = price * count;
-  const platformFee = grossRevenue * 0.05;
-  const netEarning = grossRevenue - platformFee;
+  // Calcul des revenus en temps réel
+  useEffect(() => {
+    let potentialRevenue = 0;
+    let platformFee = 0;
+    let netEarning = 0;
 
-  const maxPrice = selectedEvent.id === 'stand_rental' ? 200000 : 50000;
-  const maxCount = {
-    ticketing: 5000,
-    raffle: 10000,
-    voting: 20000,
-    stand_rental: 100
-  }[selectedEvent.id];
-  
-  const priceStep = selectedEvent.id === 'stand_rental' ? 10000 : 500;
-  const countStep = {
-    ticketing: 50,
-    raffle: 100,
-    voting: 200,
-    stand_rental: 1
-  }[selectedEvent.id];
+    const currentEvent = eventTypes[eventType];
+
+    if (currentEvent.hasTickets) {
+      // Calcul pour les événements avec billets
+      potentialRevenue = ticketPrice * numberOfTickets;
+      platformFee = potentialRevenue * 0.05; // 5% de frais
+      netEarning = potentialRevenue - platformFee;
+    } else if (currentEvent.hasInteractions) {
+      // Calcul pour les événements avec interactions
+      const revenuePerInteraction = 10; // 10 FCFA par interaction
+      potentialRevenue = numberOfInteractions * revenuePerInteraction;
+      // Pas de frais de plateforme pour les interactions
+      platformFee = 0;
+      netEarning = potentialRevenue;
+      
+      // Afficher un message si le minimum de retrait n'est pas atteint
+      if (numberOfInteractions < 50) {
+        // Vous pouvez ajouter un état pour afficher un warning si nécessaire
+      }
+    }
+
+    setCalculations({
+      potentialRevenue: Math.round(potentialRevenue),
+      platformFee: Math.round(platformFee),
+      netEarning: Math.round(netEarning)
+    });
+  }, [eventType, ticketPrice, numberOfTickets, numberOfInteractions]);
+
+  // Formatage des nombres avec espace pour les milliers
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat('fr-FR').format(number);
+  };
+
+  const currentEvent = eventTypes[eventType];
 
   return (
-    <section className="py-16 md:py-24 bg-background">
+    <section className="py-16 md:py-24">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-            {t('marketing.simulation.title')}
-          </h2>
+          <h2 className="text-3xl md:text-4xl font-bold">{t('marketing.simulation.title')}</h2>
           <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
             {t('marketing.simulation.subtitle')}
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          {/* Controls */}
-          <motion.div 
-            className="lg:col-span-1 space-y-8"
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="glass-effect">
-              <CardHeader>
-                <CardTitle>{t('marketing.simulation.event_type')}</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
-                {eventTypes.map(et => (
-                  <Button 
-                    key={et.id} 
-                    variant={eventType === et.id ? 'default' : 'outline'}
-                    onClick={() => handleEventTypeChange(et.id)}
-                    className="flex flex-col h-20"
-                  >
-                    <et.icon className="w-6 h-6 mb-1" />
-                    <span>{et.name}</span>
-                  </Button>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect">
-              <CardHeader>
-                <CardTitle>{t('marketing.simulation.ticket_price')}</CardTitle>
-                <div className="text-2xl font-bold text-primary">{price.toLocaleString('fr-FR')} FCFA</div>
-              </CardHeader>
-              <CardContent>
-                <Slider
-                  value={[price]}
-                  onValueChange={(value) => setPrice(value[0])}
-                  max={maxPrice}
-                  step={priceStep}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="glass-effect">
-              <CardHeader>
-                <CardTitle>{t('marketing.simulation.number_of_tickets')}</CardTitle>
-                <div className="text-2xl font-bold text-primary">{count.toLocaleString('fr-FR')}</div>
-              </CardHeader>
-              <CardContent>
-                <Slider
-                  value={[count]}
-                  onValueChange={(value) => setCount(value[0])}
-                  max={maxCount}
-                  step={countStep}
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Results */}
-          <motion.div 
-            className="lg:col-span-2 lg:sticky lg:top-24"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <Card className="bg-gradient-to-br from-primary/80 to-secondary/80 text-primary-foreground shadow-2xl">
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl md:text-3xl">{t('marketing.simulation.potential_revenue')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 text-center">
-                <motion.div
-                  key={grossRevenue}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-5xl md:text-7xl font-extrabold tracking-tighter"
-                >
-                  {grossRevenue.toLocaleString('fr-FR')} <span className="text-4xl font-medium">FCFA</span>
-                </motion.div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left p-6 bg-black/20 rounded-lg">
+        <div className="max-w-4xl mx-auto">
+          <Card className="glass-effect shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-center text-2xl">{t('marketing.simulation.title')}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {/* Colonne de gauche : Formulaire de simulation */}
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm opacity-80">{t('marketing.simulation.platform_fee')}</p>
-                    <p className="text-2xl font-bold">- {platformFee.toLocaleString('fr-FR')} FCFA</p>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      {t('marketing.simulation.event_type')}
+                    </label>
+                    <select 
+                      className="w-full p-3 border border-border rounded-lg bg-background text-foreground text-sm md:text-base"
+                      value={eventType}
+                      onChange={(e) => setEventType(e.target.value)}
+                    >
+                      <option value="concert">Concert</option>
+                      <option value="stands">Vente de stands</option>
+                      <option value="election">Élection vote</option>
+                      <option value="lottery">Tirage au sort (Lotterie)</option>
+                      <option value="protected">Événement Protégé Monétisé</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {currentEvent.description}
+                    </p>
                   </div>
-                  <div className="sm:text-right">
-                    <p className="text-sm opacity-80">{t('marketing.simulation.your_net_earning')}</p>
-                    <p className="text-3xl font-bold text-green-300">{netEarning.toLocaleString('fr-FR')} FCFA</p>
-                  </div>
+
+                  {currentEvent.hasTickets && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          {t('marketing.simulation.ticket_price')}
+                        </label>
+                        <div className="flex items-center border border-border rounded-lg bg-background px-3">
+                          <input 
+                            type="number" 
+                            className="w-full p-3 bg-transparent text-foreground text-sm md:text-base border-none outline-none" 
+                            value={ticketPrice}
+                            onChange={(e) => setTicketPrice(Number(e.target.value))}
+                            min="0"
+                            step="100"
+                          />
+                          <span className="text-muted-foreground whitespace-nowrap text-sm">FCFA</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          {t('marketing.simulation.number_of_tickets')}
+                        </label>
+                        <input 
+                          type="number" 
+                          className="w-full p-3 border border-border rounded-lg bg-background text-foreground text-sm md:text-base" 
+                          value={numberOfTickets}
+                          onChange={(e) => setNumberOfTickets(Number(e.target.value))}
+                          min="0"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {currentEvent.hasInteractions && (
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Nombre d'interactions estimées
+                      </label>
+                      <input 
+                        type="number" 
+                        className="w-full p-3 border border-border rounded-lg bg-background text-foreground text-sm md:text-base" 
+                        value={numberOfInteractions}
+                        onChange={(e) => setNumberOfInteractions(Number(e.target.value))}
+                        min="0"
+                        placeholder="50 interactions minimum pour retrait"
+                      />
+                      {numberOfInteractions < 50 && (
+                        <p className="text-xs text-amber-600 mt-2">
+                          ⚠️ Minimum 50 interactions requis pour le retrait (500 FCFA)
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="pt-6">
-                  <Button size="lg" variant="secondary" className="w-full max-w-xs mx-auto text-lg bg-white text-primary hover:bg-gray-100" onClick={onCtaClick}>
-                    <TrendingUp className="mr-2 h-5 w-5"/>
-                    {t('marketing.simulation.cta')}
-                  </Button>
-                  <p className="text-xs opacity-70 mt-4">{t('marketing.simulation.note')}</p>
+                {/* Colonne de droite : Résultats de la simulation */}
+                <div className="space-y-4 bg-muted/30 rounded-lg p-4 md:p-6">
+                  <div className="flex justify-between items-center border-b border-border pb-3">
+                    <span className="text-foreground font-medium text-sm md:text-base">
+                      {currentEvent.hasInteractions ? 'Revenu des interactions' : t('marketing.simulation.potential_revenue')}
+                    </span>
+                    <span className="font-semibold text-green-600 text-sm md:text-base">
+                      {formatNumber(calculations.potentialRevenue)} FCFA
+                    </span>
+                  </div>
+                  
+                  {currentEvent.hasTickets && (
+                    <div className="flex justify-between items-center border-b border-border pb-3">
+                      <span className="text-foreground font-medium text-sm md:text-base">
+                        {t('marketing.simulation.platform_fee')}
+                      </span>
+                      <span className="font-semibold text-red-500 text-sm md:text-base">
+                        - {formatNumber(calculations.platformFee)} FCFA
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-foreground font-bold text-sm md:text-base">
+                      {t('marketing.simulation.your_net_earning')}
+                    </span>
+                    <span className="font-bold text-green-600 text-lg md:text-xl">
+                      {formatNumber(calculations.netEarning)} FCFA
+                    </span>
+                  </div>
+
+                  {/* Informations supplémentaires */}
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      💡 <strong>Simulation en temps réel</strong> - Modifiez les valeurs pour voir l'impact sur vos revenus
+                    </p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+
+              <div className="mt-6 md:mt-8 text-center">
+                <Button 
+                  size="lg" 
+                  className="gradient-red text-primary-foreground shadow-lg w-full md:w-auto text-sm md:text-base hover:scale-105 transition-transform"
+                  onClick={onCtaClick}
+                >
+                  {t('marketing.simulation.cta')}
+                </Button>
+                <p className="text-xs md:text-sm text-muted-foreground mt-3 md:mt-4">
+                  {t('marketing.simulation.note')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </section>
