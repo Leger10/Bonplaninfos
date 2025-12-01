@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/customSupabaseClient';
 
-const VAPID_PUBLIC_KEY = 'BNozW3XwT0gB_G_g8Y2iV5GZ3G-sA8f_gZ5eYjJ3Xw8U_cZ6E_bX9V9hYjZkXw8U_cZ6E_bX9V9hYjZkXw8U'; // This should be stored in env variables
+const VAPID_PUBLIC_KEY = 'BH_96HQD9GYuB08avOEWE4FT3_k_aiONkw0Yj8zIyyYZOHXkEc1Ya6u9HvlWVYcX0KV-QbF_eFw25FXO8DLwzrk'; // This should be stored in env variables
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);

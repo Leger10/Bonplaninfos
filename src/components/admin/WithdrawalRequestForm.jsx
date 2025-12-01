@@ -86,6 +86,7 @@ const WithdrawalRequestForm = ({ availableSalary, onClose, onSuccess }) => {
                             <SelectContent>
                                 <SelectItem value="bank">Virement Bancaire</SelectItem>
                                 <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                                <SelectItem value="paypal">PayPal</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -55,6 +55,7 @@
     "react-i18next": "^14.1.0",
     "react-router-dom": "^6.16.0",
     "recharts": "^2.12.7",
+    "resend": "^6.5.2",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",

@@ -276,6 +276,49 @@ export const DataProvider = ({ children }) => {
     return data || [];
   }, []);
 
+
+// Dans votre DataContext, ajoutez cette fonction :
+const refreshUserProfile = useCallback(async () => {
+  if (!user) return;
+  
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error) throw error;
+    
+    setUserProfile(data);
+    return data;
+  } catch (error) {
+    console.error('Erreur rafraîchissement profil:', error);
+    throw error;
+  }
+}, [user]);
+
+  // Dans DataContext.jsx - AJOUTER CETTE FONCTION
+const refreshCoinBalance = useCallback(async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('coin_balance')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    if (data) {
+      setUserProfile(prev => ({
+        ...prev,
+        coin_balance: data.coin_balance
+      }));
+    }
+  } catch (error) {
+    console.error('Erreur rafraîchissement solde coin_balance:', error);
+  }
+}, []);
   const getAnalyticsData = useCallback(async (range) => {
     const getStartDate = (range) => {
       const date = new Date();
@@ -330,6 +373,8 @@ export const DataProvider = ({ children }) => {
     getEvents,
     getPromotions,
     getUserTransactions,
+    refreshUserProfile,
+    refreshCoinBalance,
     getAnalyticsData,
     visualEffects,
     triggerVisualEffect,

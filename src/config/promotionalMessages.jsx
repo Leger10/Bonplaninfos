@@ -37,7 +37,7 @@ export const promotionalMessages = {
   // Page d'accueil - Messages généraux
   '/': [
     {
-      icon: <Rocket className="w-6 h-6" />,
+      icon: <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🚀 Créez & Gagnez !",
       description: "5 000 vues = 50 000 F CFA. Vos événements vous rapportent de l'argent !",
       button: "Commencer",
@@ -46,7 +46,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <TrendingUp className="w-6 h-6" />,
+      icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "📈 Viralisez = Argent !",
       description: "1 partage = 10 F CFA. Multipliez vos revenus automatiquement !",
       button: "Booster",
@@ -55,7 +55,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Coins className="w-6 h-6" />,
+      icon: <Coins className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💰 Tout est monétisé !",
       description: "Vues, likes, partages = Argent. 10K interactions = 100K FCFA !",
       button: "Gagner",
@@ -64,7 +64,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <Calculator className="w-6 h-6" />,
+      icon: <Calculator className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🧮 Gains garantis !",
       description: "500 vues + 200 likes = 7 500 F CFA. Plus c'est populaire, plus vous gagnez !",
       button: "Calculer",
@@ -73,7 +73,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <BarChart3 className="w-6 h-6" />,
+      icon: <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "📊 Audience = Revenus",
       description: "1 000 followers = 10K-50K F CFA/événement. Développez votre communauté !",
       button: "Développer",
@@ -82,7 +82,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Star className="w-6 h-6" />,
+      icon: <Star className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "⭐ Devenez une star !",
       description: "Vos événements vus par toute la ville. Montrez votre talent !",
       button: "Briller",
@@ -91,7 +91,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <Users className="w-6 h-6" />,
+      icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "👥 Communauté = Pouvoir",
       description: "Rassemblez vos fans et créez des événements inoubliables !",
       button: "Rassembler",
@@ -100,7 +100,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🌍 Partenaire officiel",
       description: "Représentez BonPlanInfos. Revenus mensuels garantis !",
       button: "Devenir partenaire",
@@ -113,7 +113,7 @@ export const promotionalMessages = {
   // Page de découverte
   '/discover': [
     {
-      icon: <MapPin className="w-6 h-6" />,
+      icon: <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🗺️ Découvrez l'inattendu",
       description: "Événements uniques près de chez vous. Soyez surpris !",
       button: "Explorer",
@@ -122,7 +122,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Heart className="w-6 h-6" />,
+      icon: <Heart className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "❤️ Votre passion vous attend",
       description: "Des événements qui correspondent à vos passions. Trouvez-les !",
       button: "Découvrir",
@@ -135,7 +135,7 @@ export const promotionalMessages = {
   // Page des événements
   '/events': [
     {
-      icon: <Calendar className="w-6 h-6" />,
+      icon: <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "📅 Ne manquez rien !",
       description: "Des centaines d'événements vous attendent. Inscrivez-vous !",
       button: "Voir tout",
@@ -144,7 +144,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Trophy className="w-6 h-6" />,
+      icon: <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏆 Les plus populaires",
       description: "Découvrez les événements les plus appréciés. Inspirez-vous !",
       button: "Voir les tops",
@@ -157,7 +157,7 @@ export const promotionalMessages = {
   // Page de création d'événement
   '/create-event': [
     {
-      icon: <Zap className="w-6 h-6" />,
+      icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "⚡ Boostez votre événement !",
       description: "Donnez un coup de projecteur dès le départ. 10x plus de visibilité !",
       button: "Booster",
@@ -166,7 +166,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Crown className="w-6 h-6" />,
+      icon: <Crown className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "👑 Devenez un pro",
       description: "Nos outils vous aident à créer des événements mémorables !",
       button: "Apprendre",
@@ -179,7 +179,7 @@ export const promotionalMessages = {
   // Page de boosting
   '/boost': [
     {
-      icon: <TrendingUp className="w-6 h-6" />,
+      icon: <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "📈 5x plus de participants !",
       description: "Les événements boostés attirent 5x plus de monde. Statistiques réelles !",
       button: "Voir stats",
@@ -188,7 +188,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Coins className="w-6 h-6" />,
+      icon: <Coins className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💰 3x retour sur investissement",
       description: "Chaque pièce investie rapporte 3x en visibilité. Calculer votre ROI !",
       button: "Calculer ROI",
@@ -197,7 +197,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🌍 Boostez votre carrière !",
       description: "Devenez partenaire. Revenus illimités avec notre licence !",
       button: "Devenir partenaire",
@@ -210,7 +210,7 @@ export const promotionalMessages = {
   // Page du portefeuille
   '/wallet': [
     {
-      icon: <Gift className="w-6 h-6" />,
+      icon: <Gift className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎁 Pièces gratuites !",
       description: "Gagnez des pièces en regardant des vidéos. Actions simples !",
       button: "Gagner",
@@ -219,7 +219,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Star className="w-6 h-6" />,
+      icon: <Star className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "⭐ Devenez premium",
       description: "Avantages exclusifs. Boostez gratuitement vos événements !",
       button: "Découvrir",
@@ -228,7 +228,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Banknote className="w-6 h-6" />,
+      icon: <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💵 200K FCFA/mois moyen",
       description: "Nos partenaires gagnent bien. Rejoignez le programme licence !",
       button: "Devenir partenaire",
@@ -241,7 +241,7 @@ export const promotionalMessages = {
   // Page de profil
   '/profile': [
     {
-      icon: <Rocket className="w-6 h-6" />,
+      icon: <Rocket className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🚀 Optimisez votre profil",
       description: "Profil complet = Plus de participants. Attirez votre audience !",
       button: "Optimiser",
@@ -250,7 +250,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <Users className="w-6 h-6" />,
+      icon: <Users className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "👥 Développez votre réseau",
       description: "Connectez-vous avec d'autres passionnés. Créez ensemble !",
       button: "Réseauter",
@@ -259,7 +259,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
     },
     {
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🌍 Partenaire certifié",
       description: "Votre profil a du potentiel ! Représentez BonPlanInfos.",
       button: "Postuler",
@@ -272,7 +272,7 @@ export const promotionalMessages = {
   // Page Marketing
   '/marketing': [
     {
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🌍 Partenaire officiel",
       description: "Licence exclusive. Représentez-nous dans votre région !",
       button: "Postuler",
@@ -281,7 +281,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Flag className="w-6 h-6" />,
+      icon: <Flag className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🚩 Monopole territorial",
       description: "Soyez le seul représentant officiel. Zone exclusive !",
       button: "Voir zones",
@@ -290,7 +290,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Banknote className="w-6 h-6" />,
+      icon: <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💵 Revenus passifs",
       description: "Commissions sur événements + packs + boosting. Multiple revenus !",
       button: "Voir gains",
@@ -299,7 +299,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Building className="w-6 h-6" />,
+      icon: <Building className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏢 Votre entreprise",
       description: "Construisez votre business sous marque reconnue. Formation incluse !",
       button: "Démarrer",
@@ -308,7 +308,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Award className="w-6 h-6" />,
+      icon: <Award className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏆 30% commissions",
       description: "Niveau Diamond = 30% de commissions. Plus vous développez, plus vous gagnez !",
       button: "Voir niveaux",
@@ -317,7 +317,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Target className="w-6 h-6" />,
+      icon: <Target className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎯 Marché africain",
       description: "1,3 milliard de personnes. Événementiel digital en explosion !",
       button: "Cibler",
@@ -326,7 +326,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <BadgeCheck className="w-6 h-6" />,
+      icon: <BadgeCheck className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "✅ Certifié officiel",
       description: "Statut partenaire certifié. Crédibilité et notoriété !",
       button: "Certifier",
@@ -339,7 +339,7 @@ export const promotionalMessages = {
   // Page d'inscription partenaire
   '/partner-signup': [
     {
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🌍 Licence internationale",
       description: "Ambassadeur officiel. Droits territoriaux protégés !",
       button: "Demander licence",
@@ -348,7 +348,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Banknote className="w-6 h-6" />,
+      icon: <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💰 1M FCFA/mois possible",
       description: "Preuves de revenus disponibles. Modèle économique éprouvé !",
       button: "Voir preuves",
@@ -357,7 +357,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Award className="w-6 h-6" />,
+      icon: <Award className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏆 Top partenaires >500K/mois",
       description: "Rejoignez le classement. Devenez la prochaine success story !",
       button: "Voir classement",
@@ -366,7 +366,7 @@ export const promotionalMessages = {
       targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     },
     {
-      icon: <Building className="w-6 h-6" />,
+      icon: <Building className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏢 Franchise accessible",
       description: "Agence événementielle sous licence. Investissement raisonnable !",
       button: "Découvrir",
@@ -379,7 +379,7 @@ export const promotionalMessages = {
   // Guide d'utilisation
   '/guide-utilisation': [
     {
-      icon: <BookOpen className="w-6 h-6" />,
+      icon: <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "📚 Devenez expert",
       description: "Maîtrisez toutes les fonctionnalités. Optimisez vos résultats !",
       button: "Apprendre",
@@ -388,7 +388,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Star className="w-6 h-6" />,
+      icon: <Star className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "⭐ Astuces de pro",
       description: "Secrets pour événements à succès. Augmentez vos chances !",
       button: "Découvrir",
@@ -401,7 +401,7 @@ export const promotionalMessages = {
   // Packs de pièces
   '/packs': [
     {
-      icon: <ShoppingCart className="w-6 h-6" />,
+      icon: <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🛒 -30% offre limitée !",
       description: "Économisez 30% sur les packs. Dernière chance !",
       button: "Profiter",
@@ -410,7 +410,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Gift className="w-6 h-6" />,
+      icon: <Gift className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎁 Pièces bonus offertes",
       description: "Achetez maintenant = Pièces bonus gratuites !",
       button: "Voir offres",
@@ -419,7 +419,7 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Coins className="w-6 h-6" />,
+      icon: <Coins className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "💰 Investissez = Succès",
       description: "Plus de pièces = Plus de visibilité. Multipliez votre audience !",
       button: "Acheter",
@@ -432,7 +432,7 @@ export const promotionalMessages = {
   // Création d'événements spécifiques
   '/create-simple-event': [
     {
-      icon: <Zap className="w-6 h-6" />,
+      icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "⚡ Simple & efficace",
       description: "Créez en 2 min. Formulaire simplifié pour débutants !",
       button: "Créer",
@@ -444,7 +444,7 @@ export const promotionalMessages = {
 
   '/create-raffle-event': [
     {
-      icon: <Ticket className="w-6 h-6" />,
+      icon: <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎫 Tombola = Excitant !",
       description: "Générez un engouement fou. Lots attractifs !",
       button: "Lancer",
@@ -456,7 +456,7 @@ export const promotionalMessages = {
 
   '/create-voting-event': [
     {
-      icon: <Vote className="w-6 h-6" />,
+      icon: <Vote className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🗳️ Faites participer",
       description: "Interaction forte avec communauté. Engagement garanti !",
       button: "Créer vote",
@@ -468,7 +468,7 @@ export const promotionalMessages = {
 
   '/create-stand-event': [
     {
-      icon: <Store className="w-6 h-6" />,
+      icon: <Store className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏪 Stands = Revenus",
       description: "95% pour vous, 5% pour nous. Générez des revenus en ligne !",
       button: "Louer",
@@ -480,7 +480,7 @@ export const promotionalMessages = {
 
   '/create-ticketing-event': [
     {
-      icon: <Ticket className="w-6 h-6" />,
+      icon: <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎫 Billetterie = Ventes",
       description: "95% pour vous. Vendez en ligne facilement. Sécurisé !",
       button: "Vendre",

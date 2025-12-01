@@ -3,8 +3,10 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Coins, Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Coins, Search, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const WithdrawalHistoryTab = ({ actorId }) => {
   const [logs, setLogs] = useState([]);
@@ -14,30 +16,58 @@ const WithdrawalHistoryTab = ({ actorId }) => {
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
+      // Utiliser directement la table organizer_withdrawal_requests pour l'historique
       let query = supabase
-        .from('admin_logs')
+        .from('organizer_withdrawal_requests')
         .select(`
-          id, created_at, details,
-          actor:actor_id (full_name),
-          target_user:target_id (full_name, email)
+          id,
+          amount_pi,
+          amount_fcfa,
+          status,
+          admin_notes,
+          requested_at,
+          reviewed_at,
+          paid_at,
+          organizer:organizer_id (full_name, email),
+          reviewer:reviewed_by_admin (full_name)
         `)
-        .in('action_type', ['withdrawal_approved', 'withdrawal_rejected', 'withdrawal_paid'])
-        .order('created_at', { ascending: false });
+        .neq('status', 'pending') // Exclure les demandes en attente
+        .order('requested_at', { ascending: false });
 
       if (actorId) {
-        query = query.eq('actor_id', actorId);
+        query = query.eq('reviewed_by_admin', actorId);
       }
       
       if (searchTerm) {
-        query = query.or(`target_user.full_name.ilike.%${searchTerm}%,target_user.email.ilike.%${searchTerm}%`);
+        query = query.or(`organizer.full_name.ilike.%${searchTerm}%,organizer.email.ilike.%${searchTerm}%`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      setLogs(data || []);
+      
+      // Transformer les données pour correspondre à l'interface attendue
+      const transformedLogs = data.map(request => ({
+        id: request.id,
+        created_at: request.reviewed_at || request.requested_at,
+        action_type: `withdrawal_${request.status}`,
+        details: {
+          amount_pi: request.amount_pi,
+          amount_fcfa: request.amount_fcfa,
+          notes: request.admin_notes,
+          status: request.status
+        },
+        target_user: request.organizer,
+        actor: request.reviewer
+      }));
+      
+      setLogs(transformedLogs);
     } catch (error) {
-      toast({ title: 'Erreur', description: "Impossible de charger l'historique des retraits.", variant: 'destructive' });
-      console.error(error);
+      console.error('Erreur chargement historique:', error);
+      toast({ 
+        title: 'Erreur', 
+        description: "Impossible de charger l'historique des retraits.", 
+        variant: 'destructive' 
+      });
     } finally {
       setLoading(false);
     }
@@ -47,10 +77,33 @@ const WithdrawalHistoryTab = ({ actorId }) => {
     fetchLogs();
   }, [fetchLogs]);
 
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      withdrawal_approved: { variant: 'default', label: 'Approuvé' },
+      withdrawal_rejected: { variant: 'destructive', label: 'Rejeté' },
+      withdrawal_paid: { variant: 'secondary', label: 'Payé' }
+    };
+    
+    const config = statusConfig[status] || statusConfig.withdrawal_approved;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
   return (
     <Card className="glass-effect shadow-lg">
       <CardHeader>
-        <CardTitle>Historique des Traitements de Retraits</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Historique des Traitements de Retraits</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchLogs} 
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </CardTitle>
         <CardDescription>
           Suivi des approbations et rejets de demandes de retrait.
         </CardDescription>
@@ -67,53 +120,69 @@ const WithdrawalHistoryTab = ({ actorId }) => {
         </div>
 
         {loading ? (
-          <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Organisateur</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Action</TableHead>
-                {!actorId && <TableHead>Traité par</TableHead>}
-                <TableHead>Date</TableHead>
-                <TableHead>Notes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.length === 0 ? (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={actorId ? 5 : 6} className="text-center">Aucun traitement de retrait trouvé.</TableCell>
+                  <TableHead>Organisateur</TableHead>
+                  <TableHead>Montant</TableHead>
+                  <TableHead>Action</TableHead>
+                  {!actorId && <TableHead>Traité par</TableHead>}
+                  <TableHead>Date traitement</TableHead>
+                  <TableHead>Notes</TableHead>
                 </TableRow>
-              ) : (
-                logs.map(log => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <p className="font-semibold">{log.target_user?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{log.target_user?.email}</p>
+              </TableHeader>
+              <TableBody>
+                {logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={actorId ? 5 : 6} className="text-center py-8">
+                      Aucun traitement de retrait trouvé.
                     </TableCell>
-                    <TableCell className="font-bold flex items-center gap-1">
-                      {log.details?.amount_pi} <Coins className="w-4 h-4 text-yellow-400" />
-                    </TableCell>
-                    <TableCell>
-                       <span className={`px-2 py-1 rounded text-xs ${
-                        log.action_type === 'withdrawal_approved' || log.action_type === 'withdrawal_paid' ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-                       }`}>
-                         {log.action_type === 'withdrawal_approved' ? 'Approuvé' : (log.action_type === 'withdrawal_paid' ? 'Payé' : 'Rejeté')}
-                       </span>
-                    </TableCell>
-                    {!actorId && (
-                      <TableCell>
-                        <p>{log.actor?.full_name || 'N/A'}</p>
-                      </TableCell>
-                    )}
-                    <TableCell>{new Date(log.created_at).toLocaleString('fr-FR')}</TableCell>
-                    <TableCell className="text-xs">{log.details?.notes || log.details?.rejection_reason || '—'}</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  logs.map(log => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <p className="font-semibold">{log.target_user?.full_name || 'N/A'}</p>
+                        <p className="text-xs text-muted-foreground">{log.target_user?.email || 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-bold flex items-center gap-1">
+                          {log.details?.amount_pi} <Coins className="w-4 h-4 text-yellow-400" />
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {log.details?.amount_fcfa?.toLocaleString('fr-FR')} FCFA
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(log.action_type)}
+                      </TableCell>
+                      {!actorId && (
+                        <TableCell>
+                          <p className="text-sm">{log.actor?.full_name || 'Système'}</p>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        {new Date(log.created_at).toLocaleDateString('fr-FR')}
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleTimeString('fr-FR')}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm max-w-xs truncate" title={log.details?.notes}>
+                          {log.details?.notes || '—'}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>

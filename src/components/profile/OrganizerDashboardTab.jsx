@@ -33,7 +33,7 @@ const OrganizerDashboardTab = ({ stats: initialStats, loading: initialLoading })
   if (!stats) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground">Aucune donnée disponible pour le tableau de bord.</p>
+        {/* <p className="text-muted-foreground">Aucune donnée disponible pour le tableau de bord.</p> */}
       </div>
     );
   }
@@ -49,8 +49,8 @@ const OrganizerDashboardTab = ({ stats: initialStats, loading: initialLoading })
     },
     {
       title: "Événements Actifs",
-      value: stats.totalEvents,
-      subValue: `${stats.promotedEvents} promus`,
+      value: stats.totalEvents || 0,
+      subValue: `${stats.promotedEvents || 0} promus`,
       icon: Calendar,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10"
@@ -72,10 +72,12 @@ const OrganizerDashboardTab = ({ stats: initialStats, loading: initialLoading })
   ];
 
   const balanceBreakdown = [
-    { label: "Interactions", value: stats.interaction_earnings, color: "bg-blue-500" },
-    { label: "Billets", value: stats.event_revenues, color: "bg-green-500" },
-    { label: "Abonnements", value: stats.subscription_earnings, color: "bg-purple-500" },
+    { label: "Interactions", value: stats.interaction_earnings || 0, color: "bg-blue-500" },
+    { label: "Billets", value: stats.event_revenues || 0, color: "bg-green-500" },
+    { label: "Abonnements", value: stats.subscription_earnings || 0, color: "bg-purple-500" },
   ].filter(item => item.value > 0);
+
+  const totalBalance = (stats.available_balance || 0) + (stats.interaction_earnings || 0) + (stats.event_revenues || 0) + (stats.subscription_earnings || 0);
 
   return (
     <div className="space-y-6">
@@ -138,7 +140,7 @@ const OrganizerDashboardTab = ({ stats: initialStats, loading: initialLoading })
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
                       className={`${item.color} h-2 rounded-full transition-all`}
-                      style={{ width: `${(item.value / stats.totalBalance) * 100}%` }}
+                      style={{ width: `${totalBalance > 0 ? (item.value / totalBalance) * 100 : 0}%` }}
                     />
                   </div>
                 </div>

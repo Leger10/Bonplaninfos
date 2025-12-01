@@ -215,132 +215,134 @@ const CreateRaffleEventPage = () => {
             coverImageUrl: ''
         }));
     };
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+        toast({ title: 'Erreur', description: 'Vous devez être connecté.', variant: 'destructive' });
+        return;
+    }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!user) {
-            toast({ title: 'Erreur', description: 'Vous devez être connecté.', variant: 'destructive' });
-            return;
+    if (!formData.termsAccepted) {
+        toast({ title: 'Erreur', description: 'Vous devez accepter les conditions.', variant: 'destructive' });
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+        let coverImageUrl = '';
+        let coverImagePath = '';
+
+        // Upload l'image si elle existe
+        if (formData.coverImage) {
+            const imageData = await handleImageUpload(formData.coverImage);
+            if (imageData) {
+                coverImageUrl = imageData.publicUrl;
+                coverImagePath = imageData.filePath;
+            }
         }
 
-        if (!formData.termsAccepted) {
-            toast({ title: 'Erreur', description: 'Vous devez accepter les conditions.', variant: 'destructive' });
-            return;
+        // Convertir le prix en XOF pour stockage
+        const ticketPriceXof = formData.ticketPrice * (exchangeRates[formData.ticketCurrency] || 1);
+
+        // 1. Create Event
+        const { data: eventData, error: eventError } = await supabase
+            .from('events')
+            .insert({
+                title: formData.title,
+                description: formData.description,
+                event_date: formData.drawDate,
+                city: formData.city,
+                country: formData.country,
+                address: formData.isOnline ? 'En ligne' : formData.address,
+                organizer_id: user.id,
+                event_type: 'raffle',
+                category_id: formData.categoryId,
+                status: 'active',
+                is_online: formData.isOnline,
+                cover_image: coverImageUrl
+            })
+            .select()
+            .single();
+
+        if (eventError) {
+            console.error('Erreur création event:', eventError);
+            throw eventError;
         }
+        const newEventId = eventData.id;
 
-        setLoading(true);
-
-        try {
-            let coverImageUrl = '';
-            let coverImagePath = '';
-
-            // Upload l'image si elle existe
-            if (formData.coverImage) {
-                const imageData = await handleImageUpload(formData.coverImage);
-                if (imageData) {
-                    coverImageUrl = imageData.publicUrl;
-                    coverImagePath = imageData.filePath;
-                }
-            }
-
-            // 1. Create Event avec image de couverture - CORRECTION: utilisation de is_online au lieu de isOnline
-            const { data: eventData, error: eventError } = await supabase
-                .from('events')
-                .insert({
-                    title: formData.title,
-                    description: formData.description,
-                    event_date: formData.drawDate,
-                    city: formData.city,
-                    country: formData.country,
-                    address: formData.isOnline ? 'En ligne' : formData.address,
-                    organizer_id: user.id,
-                    event_type: 'raffle',
-                    category_id: formData.categoryId,
-                    status: 'active',
-                    is_online: formData.isOnline, // CORRECTION: nom de colonne correct
-                    cover_image: coverImageUrl
-                })
-                .select()
-                .single();
-
-            if (eventError) {
-                console.error('Erreur création event:', eventError);
-                throw eventError;
-            }
-            const newEventId = eventData.id;
-
-            // 2. Create Raffle Event
-            const { data: raffleEventData, error: raffleError } = await supabase
-                .from('raffle_events')
-                .insert({
-                    event_id: newEventId,
-                    draw_date: formData.drawDate,
-                    base_price: formData.ticketPrice,
-                    base_currency: formData.ticketCurrency,
-                    calculated_price_pi: calculatedPricePi,
-                    total_tickets: formData.totalTickets,
-                    max_tickets_per_user: formData.maxTicketsPerUser,
-                    min_tickets_required: formData.minTicketsRequired,
-                    auto_draw: formData.autoDraw
-                })
-                .select()
-                .single();
-            
-            if (raffleError) {
-                console.error('Erreur création raffle:', raffleError);
-                throw raffleError;
-            }
-            
-            // 3. Insert event_settings
-            const { error: settingsError } = await supabase
-                .from('event_settings')
-                .insert({
-                    event_id: newEventId,
-                    raffle_enabled: true,
-                    raffle_price_fcfa: formData.ticketPrice * (exchangeRates[formData.ticketCurrency] || 1),
-                    show_remaining_tickets: formData.showRemainingTickets,
-                    show_participants: formData.showParticipants,
-                    notify_participants: formData.notifyParticipants
-                });
-            
-            if (settingsError) {
-                console.error('Erreur settings:', settingsError);
-                throw settingsError;
-            }
-
-            // 4. Create Prizes
-            const prizesToInsert = formData.prizes.map(p => ({
+        // 2. Create Raffle Event - Utiliser les colonnes existantes
+        const { data: raffleEventData, error: raffleError } = await supabase
+            .from('raffle_events')
+            .insert({
                 event_id: newEventId,
-                raffle_event_id: raffleEventData.id,
-                rank: p.rank,
-                description: p.description,
-                value_fcfa: p.value_fcfa
-            }));
-            
-            const { error: prizesError } = await supabase.from('raffle_prizes').insert(prizesToInsert);
-            if (prizesError) {
-                console.error('Erreur prizes:', prizesError);
-                throw prizesError;
-            }
-            
-            toast({ 
-                title: '🎉 Tombola créée !', 
-                description: 'Votre tombola a été créée avec succès.',
-            });
-            navigate(`/event/${newEventId}`);
-
-        } catch (error) {
-            console.error('Error creating raffle event:', error);
-            toast({ 
-                title: 'Erreur de création', 
-                description: error.message || 'Une erreur est survenue lors de la création', 
-                variant: 'destructive' 
-            });
-        } finally {
-            setLoading(false);
+                draw_date: formData.drawDate,
+                base_price: formData.ticketPrice, // numeric
+                base_currency: formData.ticketCurrency, // text
+                calculated_price_pi: calculatedPricePi, // integer
+                total_tickets: formData.totalTickets, // integer
+                max_tickets_per_user: formData.maxTicketsPerUser, // integer
+                min_tickets_required: formData.minTicketsRequired, // integer
+                auto_draw: formData.autoDraw // boolean
+            })
+            .select()
+            .single();
+        
+        if (raffleError) {
+            console.error('Erreur création raffle:', raffleError);
+            throw raffleError;
         }
-    };
+        
+        // 3. Insert event_settings - Utiliser uniquement les colonnes existantes
+        // Supposons que event_settings a les colonnes : raffle_enabled, show_remaining_tickets, show_participants, notify_participants
+        const { error: settingsError } = await supabase
+            .from('event_settings')
+            .insert({
+                event_id: newEventId,
+                raffle_enabled: true,
+                show_remaining_tickets: formData.showRemainingTickets,
+                show_participants: formData.showParticipants,
+                notify_participants: formData.notifyParticipants
+                // Si automatic_draw n'existe pas, ne l'insérez pas
+            });
+        
+        if (settingsError) {
+            console.error('Erreur settings:', settingsError);
+            throw settingsError;
+        }
 
+        // 4. Create Prizes
+        const prizesToInsert = formData.prizes.map(p => ({
+            event_id: newEventId,
+            raffle_event_id: raffleEventData.id,
+            rank: p.rank,
+            description: p.description,
+            value_fcfa: p.value_fcfa
+        }));
+        
+        const { error: prizesError } = await supabase.from('raffle_prizes').insert(prizesToInsert);
+        if (prizesError) {
+            console.error('Erreur prizes:', prizesError);
+            throw prizesError;
+        }
+        
+        toast({ 
+            title: '🎉 Tombola créée !', 
+            description: 'Votre tombola a été créée avec succès.',
+        });
+        navigate(`/event/${newEventId}`);
+
+    } catch (error) {
+        console.error('Error creating raffle event:', error);
+        toast({ 
+            title: 'Erreur de création', 
+            description: error.message || 'Une erreur est survenue lors de la création', 
+            variant: 'destructive' 
+        });
+    } finally {
+        setLoading(false);
+    }
+};
     // Étape 1: Informations de base AVEC UPLOAD D'IMAGE
     const Step1 = () => (
         <div className="space-y-6">

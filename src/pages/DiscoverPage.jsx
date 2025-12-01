@@ -279,11 +279,7 @@ const DiscoverPage = () => {
             <p className="text-muted-foreground mb-4">
               {searchQuery ? 'Aucun lieu ne correspond à votre recherche.' : 'Aucun lieu disponible pour le moment.'}
             </p>
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg max-w-md mx-auto">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>Solution:</strong> Vérifiez que vous avez bien des lieux avec <code>is_active = true</code> dans votre base de données.
-              </p>
-            </div>
+            
             <Button onClick={handleAddLocation} className="mt-4 bg-primary hover:bg-primary/90">
               <Plus className="w-4 h-4 mr-2" />
               Ajouter le premier lieu

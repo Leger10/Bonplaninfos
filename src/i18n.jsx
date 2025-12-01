@@ -304,7 +304,7 @@ en: {
       secretary_dashboard: {
         title: "Tableau de bord Secrétaire",
         welcome: "Bienvenue, {{name}}",
-        competence_zone: "Zone de compétence : {{city}}, {{country}}",
+        competence_zone: "Zone de compétence : {{country}}", 
         tabs: {
           user_management: "Gestion Utilisateurs",
           event_management: "Gestion Événements",
@@ -1711,6 +1711,7 @@ testimonials: {
     content: "We use BonPlanInfos for all our clients. Satisfaction is always guaranteed!"
   }
 },
+
 // ===== USER GUIDE PAGE =====
  user_guide_page: {
     meta: {
