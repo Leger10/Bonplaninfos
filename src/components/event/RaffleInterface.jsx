@@ -1001,50 +1001,59 @@ const loadComments = async () => {
         </>
       )}
 
-      {/* MESSAGE SPÉCIAL POUR L'ORGANISATEUR */}
-      {isOrganizer && (
-        <Card className="border-2 border-yellow-500 bg-gradient-to-r from-yellow-50 to-amber-50 shadow-lg">
-          <CardContent className="p-6 text-center">
-            <Crown className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-yellow-700 mb-2">
-              Vous êtes l'organisateur de cette tombola
+    {/* MESSAGE SPÉCIAL POUR L'ORGANISATEUR */}
+{isOrganizer && (
+    <Card className="border-2 border-yellow-400/50 bg-gradient-to-r from-gray-900 to-gray-800 shadow-lg shadow-yellow-500/10">
+        <CardContent className="p-6 text-center">
+            <Crown className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-yellow-300 mb-2">
+                Vous êtes l'organisateur de cette tombola
             </h3>
-            <p className="text-yellow-600 mb-4">
-              En tant qu'organisateur, vous avez accès aux contrôles complets du
-              tirage. Utilisez le <strong>Système de Tirage au Sort</strong>{" "}
-              ci-dessus pour gérer le tirage.
+            <p className="text-gray-300 mb-4">
+                En tant qu'organisateur, vous avez accès aux contrôles complets du
+                tirage. Utilisez le <strong className="text-yellow-300">Système de Tirage au Sort</strong>{" "}
+                ci-dessus pour gérer le tirage.
             </p>
 
             {/* Indicateur de statut pour l'organisateur */}
             <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="text-center p-3 bg-yellow-100 rounded-lg">
-                <Eye className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                <p className="font-bold text-yellow-700">Organisateur</p>
-                <p className="text-sm text-yellow-600">Contrôles actifs</p>
-              </div>
-              <div className="text-center p-3 bg-yellow-100 rounded-lg">
-                <Users className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-                <p className="font-bold text-yellow-700">{ticketsSold}</p>
-                <p className="text-sm text-yellow-600">Tickets vendus</p>
-              </div>
+                <div className="text-center p-3 bg-gray-800/70 rounded-lg border border-gray-700">
+                    <Eye className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                    <p className="font-bold text-yellow-300">Organisateur</p>
+                    <p className="text-sm text-gray-400">Contrôles actifs</p>
+                </div>
+                <div className="text-center p-3 bg-gray-800/70 rounded-lg border border-gray-700">
+                    <Users className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                    <p className="font-bold text-yellow-300">{ticketsSold}</p>
+                    <p className="text-sm text-gray-400">Tickets vendus</p>
+                </div>
             </div>
 
             {/* Instructions pour l'organisateur */}
-            <div className="mt-4 p-3 bg-yellow-100 rounded-lg border border-yellow-300">
-              <h4 className="font-bold text-yellow-800 mb-2">Instructions :</h4>
-              <ul className="text-sm text-yellow-700 text-left space-y-1">
-                <li>
-                  ✅ Utilisez les contrôles dans "Système de Tirage au Sort"
-                </li>
-                <li>✅ Lancez le tirage quand l'objectif est atteint</li>
-                <li>✅ Tous les participants voient le tirage en direct</li>
-                <li>✅ Le gagnant sera annoncé automatiquement</li>
-              </ul>
+            <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h4 className="font-bold text-yellow-300 mb-2">Instructions :</h4>
+                <ul className="text-sm text-gray-300 text-left space-y-1">
+                    <li className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Utilisez les contrôles dans "Système de Tirage au Sort"
+                    </li>
+                    <li className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Lancez le tirage quand l'objectif est atteint
+                    </li>
+                    <li className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Tous les participants voient le tirage en direct
+                    </li>
+                    <li className="flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                        Le gagnant sera annoncé automatiquement
+                    </li>
+                </ul>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
+        </CardContent>
+    </Card>
+)}
       {/* SECTION COMMENTAIRES - VISIBLE PAR TOUS */}
       <Card className="border-2 border-gray-200 shadow-lg">
         <CardHeader>

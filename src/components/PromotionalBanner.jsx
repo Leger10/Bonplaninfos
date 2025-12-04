@@ -1,37 +1,58 @@
-// components/PromotionalBanner.jsx (Version ultra-mobile)
-import React, { useState, useEffect } from 'react';
+// components/PromotionalBanner.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, ChevronRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocation } from 'react-router-dom';
 import { promotionalMessages } from '@/config/promotionalMessages';
+import { cn } from '@/lib/utils';
 
 const PromotionalBanner = ({ userProfile, onClose }) => {
   const location = useLocation();
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [userDismissed, setUserDismissed] = useState(false);
+  const timeoutRef = useRef(null);
 
   const routeMessages = promotionalMessages[location.pathname] || [];
   const filteredMessages = routeMessages.filter(message => 
     message.targetUserTypes.includes(userProfile?.user_type || 'user')
   );
 
+  // Auto-collapse après 3 secondes
   useEffect(() => {
-    if (filteredMessages.length === 0) {
+    if (!userDismissed && isVisible && !isCollapsed) {
+      timeoutRef.current = setTimeout(() => {
+        setIsCollapsed(true);
+      }, 3000);
+    }
+    return () => clearTimeout(timeoutRef.current);
+  }, [isVisible, isCollapsed, userDismissed]);
+
+  // Changer le message toutes les 15 secondes (plus lent)
+  useEffect(() => {
+    if (filteredMessages.length === 0 || userDismissed) {
       setIsVisible(false);
       return;
     }
 
     const messageInterval = setInterval(() => {
       setCurrentMessageIndex(prev => (prev + 1) % filteredMessages.length);
-    }, 8000);
+      // Se déplie brièvement quand le message change
+      setIsCollapsed(false);
+      setTimeout(() => setIsCollapsed(true), 3000);
+    }, 15000); // 15 secondes
 
     return () => clearInterval(messageInterval);
-  }, [filteredMessages.length, location.pathname]);
+  }, [filteredMessages.length, location.pathname, userDismissed]);
 
   const handleClose = () => {
+    setUserDismissed(true);
     setIsVisible(false);
-    setTimeout(() => onClose(), 300);
+    // Sauvegarder dans localStorage
+    localStorage.setItem('bannerDismissed', 'true');
+    setTimeout(() => onClose?.(), 300);
   };
 
   const handleAction = () => {
@@ -41,89 +62,160 @@ const PromotionalBanner = ({ userProfile, onClose }) => {
     }
   };
 
-  if (!isVisible || filteredMessages.length === 0) return null;
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
+  // Vérifier si l'utilisateur a déjà fermé la bannière
+  useEffect(() => {
+    const dismissed = localStorage.getItem('bannerDismissed');
+    if (dismissed === 'true') {
+      setUserDismissed(true);
+      setIsVisible(false);
+    }
+  }, []);
+
+  if (!isVisible || filteredMessages.length === 0 || userDismissed) return null;
 
   const currentMsg = filteredMessages[currentMessageIndex];
 
   return (
-    <div className="fixed top-2 sm:top-4 left-1/2 transform -translate-x-1/2 z-50 w-[98vw] sm:w-[95vw] max-w-lg mx-auto px-1 sm:px-2">
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-40 w-[95vw] max-w-md">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentMessageIndex}
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ 
             opacity: 1, 
             y: 0,
+            scale: 1,
             transition: {
               type: "spring",
-              stiffness: 400,
-              damping: 30
+              stiffness: 300,
+              damping: 25
             }
           }}
           exit={{ 
             opacity: 0, 
-            y: -30,
-            transition: {
-              duration: 0.2
-            }
+            y: -20,
+            scale: 0.95,
+            transition: { duration: 0.2 }
           }}
-          className={`bg-gradient-to-r ${currentMsg.color} rounded-lg sm:rounded-xl shadow-2xl border border-white/20 backdrop-blur-sm overflow-hidden w-full`}
+          className={cn(
+            `bg-gradient-to-r ${currentMsg.color}`,
+            "rounded-xl shadow-lg border border-white/10 backdrop-blur-md overflow-hidden",
+            isCollapsed ? "shadow-sm" : "shadow-lg"
+          )}
         >
-          <div className="p-2 sm:p-3">
-            {/* Structure unique optimisée mobile */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              {/* Ligne 1 : En-tête avec icône, titre et bouton fermer */}
-              <div className="flex items-center justify-between gap-2 w-full">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="text-white bg-white/20 p-1 sm:p-1.5 rounded-full flex-shrink-0">
-                    {React.cloneElement(currentMsg.icon, { 
-                      className: "w-3 h-3 sm:w-4 sm:h-4" 
-                    })}
+          {/* Version dépliée */}
+          <AnimatePresence>
+            {!isCollapsed ? (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="text-white bg-white/20 p-1.5 rounded-full">
+                          {React.cloneElement(currentMsg.icon, { 
+                            className: "w-4 h-4" 
+                          })}
+                        </div>
+                        <h3 className="text-white font-bold text-sm leading-tight">
+                          {currentMsg.title}
+                        </h3>
+                      </div>
+                      <p className="text-white/90 text-xs leading-relaxed mb-3">
+                        {currentMsg.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <Button 
+                          onClick={handleAction}
+                          size="sm"
+                          className="bg-white text-gray-900 hover:bg-white/90 font-semibold text-xs px-3 h-7"
+                        >
+                          {currentMsg.button} <ChevronRight className="ml-1 w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClose}
+                          className="text-white/70 hover:text-white hover:bg-white/10 text-xs h-7"
+                        >
+                          Plus tard
+                        </Button>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClose}
+                      className="text-white hover:bg-white/20 flex-shrink-0 w-6 h-6 mt-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
                   </div>
-                  <h3 className="text-white font-bold text-[13px] sm:text-sm leading-tight flex-1 min-w-0 line-clamp-2">
-                    {currentMsg.title}
-                  </h3>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleClose}
-                  className="text-white hover:bg-white/20 flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 min-w-5 sm:min-w-6"
+                
+                {/* Barre de progression */}
+                <motion.div
+                  className="h-0.5 bg-white/20 relative overflow-hidden"
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ 
+                    duration: 15, 
+                    ease: "linear" 
+                  }}
                 >
-                  <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                </Button>
-              </div>
-
-              {/* Ligne 2 : Description */}
-              <p className="text-white/90 text-[11px] sm:text-xs leading-relaxed line-clamp-2 sm:line-clamp-3 ml-7 sm:ml-0 -mt-1 sm:mt-0">
-                {currentMsg.description}
-              </p>
-
-              {/* Ligne 3 : Bouton d'action */}
-              <div className="flex justify-center sm:justify-start sm:ml-7">
-                <Button 
-                  onClick={handleAction}
-                  size="sm"
-                  className="bg-white text-gray-900 hover:bg-white/90 font-semibold text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 h-7 sm:h-8 w-full sm:w-auto min-w-[120px] sm:min-w-[140px]"
-                >
-                  {currentMsg.button}
-                </Button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Barre de progression */}
-          <motion.div
-            className="h-0.5 sm:h-1 bg-white/30 relative overflow-hidden"
-            initial={{ width: "100%" }}
-            animate={{ width: "0%" }}
-            transition={{ 
-              duration: 8, 
-              ease: "linear" 
-            }}
-          >
-            <div className="h-full bg-white/90 absolute top-0 left-0 w-full" />
-          </motion.div>
+                  <div className="h-full bg-white/70 absolute top-0 left-0 w-full" />
+                </motion.div>
+              </motion.div>
+            ) : (
+              // Version réduite (badge flottant)
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={toggleCollapse}
+                className="cursor-pointer hover:bg-white/5 transition-colors"
+              >
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="text-white bg-white/20 p-1 rounded-full">
+                      <Sparkles className="w-3 h-3" />
+                    </div>
+                    <span className="text-white text-xs font-medium truncate max-w-[120px]">
+                      {currentMsg.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      onClick={handleAction}
+                      className="bg-white/20 hover:bg-white/30 text-white h-6 w-6"
+                    >
+                      <ChevronRight className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClose();
+                      }}
+                      className="text-white/50 hover:text-white hover:bg-white/10 h-6 w-6"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </AnimatePresence>
     </div>

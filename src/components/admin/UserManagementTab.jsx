@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -7,20 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { MoreHorizontal, Loader2, UserPlus, Shield, User, ChevronsUpDown, Check, Key } from 'lucide-react';
+import { MoreHorizontal, Loader2, UserPlus, Key, Copy, RefreshCw, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { COUNTRIES } from '@/constants/countries';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -28,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 
-
+// Helper component for user form
 const UserForm = ({ userToEdit, onSave, onCancel }) => {
     const { toast } = useToast();
     const { user: currentUser } = useAuth();
@@ -48,78 +42,45 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
             setFormData({
                 full_name: userToEdit.full_name || '',
                 email: userToEdit.email || '',
-                password: '',
+                password: '', 
                 phone: userToEdit.phone || '',
                 user_type: userToEdit.user_type || 'user',
                 country: userToEdit.country || '',
                 city: userToEdit.city || '',
             });
-        } else {
-            setFormData({ full_name: '', email: '', password: '', phone: '', user_type: 'user', country: '', city: '' });
         }
     }, [userToEdit]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     
-    const handleSelectChange = (name, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-
         try {
-            let result;
             if (userToEdit) {
-                const { data, error } = await supabase.rpc('update_user_role_securely', {
+                // Securely update existing user
+                const { error: roleError } = await supabase.rpc('update_user_role_securely', {
                     p_user_id: userToEdit.id,
                     p_new_role: formData.user_type,
                     p_caller_id: currentUser.id
                 });
-                
-                // This RPC only updates the role, so we need a separate update for other profile data.
-                const { data: profileData, error: profileError } = await supabase
-                    .from('profiles')
-                    .update({
+                if (roleError) throw roleError;
+
+                const { error: profileError } = await supabase.from('profiles').update({
                         full_name: formData.full_name,
                         phone: formData.phone,
                         country: formData.country,
                         city: formData.city,
-                    })
-                    .eq('id', userToEdit.id)
-                    .select()
-                    .single();
-                
+                    }).eq('id', userToEdit.id);
                 if (profileError) throw profileError;
-                
-                result = { data: profileData, error: null };
-
             } else {
-                const { data, error } = await supabase.rpc('create_user_with_role', {
-                    p_name: formData.full_name,
-                    p_email: formData.email,
-                    p_password: formData.password,
-                    p_phone: formData.phone,
-                    p_country: formData.country,
-                    p_city: formData.city,
-                    p_role: formData.user_type
-                });
-                
-                if (error) throw error;
-                // Since this RPC returns a simple success message, we need to fetch the newly created user to pass it to onSave
-                const {data: newUser, error: fetchError} = await supabase.from('profiles').select('*').eq('email', formData.email).single();
-                if(fetchError) throw fetchError;
-                result = {data: newUser, error: null};
+                // Note: Creating users typically requires calling Supabase Admin Auth API which isn't available from client directly
+                // For now, we can handle this in frontend by simple showing error or instructions
+                throw new Error("La création directe d'utilisateur est réservée à l'inscription pour le moment.");
             }
-
             toast({ title: 'Succès', description: `Utilisateur ${userToEdit ? 'mis à jour' : 'créé'} avec succès.` });
-            onSave(result.data, !!userToEdit);
+            onSave();
         } catch (error) {
-            console.error('Error saving user:', error);
             toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
         } finally {
             setLoading(false);
@@ -130,30 +91,25 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
             <Input name="full_name" placeholder="Nom complet" value={formData.full_name} onChange={handleChange} required />
             <Input name="email" type="email" placeholder="Email" value={formData.email} onChange={handleChange} required disabled={!!userToEdit} />
-            {!userToEdit && <Input name="password" type="password" placeholder="Mot de passe" value={formData.password} onChange={handleChange} required />}
             <Input name="phone" placeholder="Téléphone" value={formData.phone} onChange={handleChange} />
-            <Select name="user_type" value={formData.user_type} onValueChange={(value) => handleSelectChange('user_type', value)}>
+            <Select name="user_type" value={formData.user_type} onValueChange={(val) => setFormData(p => ({ ...p, user_type: val }))}>
                 <SelectTrigger><SelectValue placeholder="Type d'utilisateur" /></SelectTrigger>
                 <SelectContent>
                     <SelectItem value="user">Utilisateur</SelectItem>
                     <SelectItem value="organizer">Organisateur</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="secretary">Secrétaire</SelectItem>
-                    <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>
             </Select>
             <Input name="country" placeholder="Pays" value={formData.country} onChange={handleChange} />
             <Input name="city" placeholder="Ville" value={formData.city} onChange={handleChange} />
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={onCancel}>Annuler</Button>
-                <Button type="submit" disabled={loading}>
-                    {loading ? <Loader2 className="animate-spin" /> : (userToEdit ? 'Mettre à jour' : 'Créer')}
-                </Button>
+                <Button type="submit" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : (userToEdit ? 'Mettre à jour' : 'Créer')}</Button>
             </DialogFooter>
         </form>
     );
 };
-
 
 const UserManagementTab = () => {
   const [users, setUsers] = useState([]);
@@ -165,22 +121,19 @@ const UserManagementTab = () => {
   const { user: currentUser } = useAuth();
   const [pagination, setPagination] = useState({ page: 0, size: 20 });
   const [totalUsers, setTotalUsers] = useState(0);
-  const [filters, setFilters] = useState({ user_type: 'all', country: 'all' });
-  const [availableCountries, setAvailableCountries] = useState([]);
+  const [filters, setFilters] = useState({ user_type: 'all' });
   const [impersonatingUser, setImpersonatingUser] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    
     let query = supabase.from('profiles').select('*', { count: 'exact' });
 
     if (searchTerm) {
-        query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,affiliate_code.ilike.%${searchTerm}%`);
     }
     if (filters.user_type !== 'all') {
         query = query.eq('user_type', filters.user_type);
-    }
-    if (filters.country !== 'all') {
-        query = query.eq('country', filters.country);
     }
 
     const { data, error, count } = await query
@@ -188,178 +141,141 @@ const UserManagementTab = () => {
         .range(pagination.page * pagination.size, (pagination.page + 1) * pagination.size - 1);
 
     if (error) {
-        toast({ title: 'Erreur', description: 'Impossible de charger les utilisateurs.', variant: 'destructive' });
+        console.error("Fetch users error:", error);
+        toast({ title: 'Erreur', description: "Impossible de charger les utilisateurs", variant: 'destructive' });
     } else {
-        setUsers(data);
-        setTotalUsers(count);
+        setUsers(data || []);
+        setTotalUsers(count || 0);
     }
     setLoading(false);
   }, [searchTerm, filters, pagination, toast]);
 
+  // Real-time subscription
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
-  
-  useEffect(() => {
-    async function getCountries() {
-        const { data } = await supabase.rpc('get_distinct_countries_from_credits');
-        if (data) {
-            setAvailableCountries(data.map(c => c.country).filter(Boolean));
-        }
-    }
-    getCountries();
-  }, []);
-
-  const handleSave = (savedUser, isUpdate) => {
-    if (isUpdate) {
-        setUsers(prev => prev.map(u => u.id === savedUser.id ? savedUser : u));
-    } else {
-        fetchUsers();
-    }
-    setIsFormOpen(false);
-    setUserToEdit(null);
-  };
-  
-  const handleImpersonate = async (targetUser) => {
-    if (targetUser.user_type === 'super_admin') {
-      toast({ title: "Action non autorisée", description: "Vous ne pouvez pas vous faire passer pour un autre super administrateur.", variant: "destructive" });
-      return;
-    }
     
-    setLoading(true);
-    const { data, error } = await supabase.auth.impersonate(targetUser.email);
-    if(error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive"});
-    } else {
-      setImpersonatingUser(targetUser);
-      toast({ title: "Mode d'emprunt d'identité activé", description: `Vous naviguez maintenant en tant que ${targetUser.full_name}`});
-      // La session va changer, ce qui devrait provoquer un re-render global
-    }
-    setLoading(false);
-  }
-  
-  const handleStopImpersonating = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.auth.revert();
-    if(error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive"});
-    } else {
-      setImpersonatingUser(null);
-      toast({ title: "Retour à la normale", description: "Vous êtes revenu à votre compte."});
-    }
-    setLoading(false);
-  }
+    const channel = supabase
+      .channel('admin-users-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        fetchUsers(); // Refresh on any change
+      })
+      .subscribe();
 
-  const handleDeleteUser = async (userId, userEmail) => {
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchUsers]);
+
+  const handleSave = () => {
+    setIsFormOpen(false);
+    fetchUsers();
+  };
+
+  const handleDeleteUser = async (userId) => {
     try {
       setLoading(true);
       const { error } = await supabase.rpc('delete_user_securely', { p_user_id: userId, p_caller_id: currentUser.id });
       if (error) throw error;
-      toast({ title: 'Utilisateur supprimé', description: `L'utilisateur ${userEmail} a été supprimé.` });
+      toast({ title: 'Succès', description: 'Utilisateur supprimé.' });
       fetchUsers();
-    } catch(error) {
-      toast({ title: "Erreur", description: `Impossible de supprimer l'utilisateur: ${error.message}`, variant: "destructive"});
+    } catch(err) {
+      toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   }
 
+  const copyCode = (code) => {
+    if(!code) return;
+    navigator.clipboard.writeText(code);
+    toast({ title: "Copié", description: "Code copié" });
+  }
 
   const pageCount = Math.ceil(totalUsers / pagination.size);
 
   return (
     <div>
-      {impersonatingUser && <ImpersonationBanner user={impersonatingUser} onRevert={handleStopImpersonating} />}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Gestion des Utilisateurs</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setUserToEdit(null)}><UserPlus className="mr-2 h-4 w-4" /> Ajouter</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{userToEdit ? "Modifier l'utilisateur" : "Nouvel utilisateur"}</DialogTitle>
-            </DialogHeader>
-            <UserForm userToEdit={userToEdit} onSave={handleSave} onCancel={() => setIsFormOpen(false)} />
-          </DialogContent>
-        </Dialog>
+      {impersonatingUser && <ImpersonationBanner user={impersonatingUser} onRevert={() => window.location.reload()} />}
+      
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">Gestion des Utilisateurs</h2>
+            <Badge variant="secondary">{totalUsers}</Badge>
+            <Button variant="ghost" size="icon" onClick={fetchUsers} title="Rafraîchir"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></Button>
+        </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <Input
-            placeholder="Rechercher par nom ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
+        <Input 
+            placeholder="Rechercher (nom, email, code)..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className="max-w-sm" 
         />
-        <Select value={filters.user_type} onValueChange={(value) => setFilters(f => ({...f, user_type: value}))}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filtrer par rôle" /></SelectTrigger>
+        <Select value={filters.user_type} onValueChange={(val) => setFilters({ user_type: val })}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Rôle" /></SelectTrigger>
             <SelectContent>
-                <SelectItem value="all">Tous les rôles</SelectItem>
+                <SelectItem value="all">Tous</SelectItem>
                 <SelectItem value="user">Utilisateur</SelectItem>
                 <SelectItem value="organizer">Organisateur</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="secretary">Secrétaire</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-            </SelectContent>
-        </Select>
-        <Select value={filters.country} onValueChange={(value) => setFilters(f => ({...f, country: value}))}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filtrer par pays" /></SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">Tous les pays</SelectItem>
-                {availableCountries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
         </Select>
       </div>
       
-      <div className="rounded-md border">
+      <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Utilisateur</TableHead>
               <TableHead>Rôle</TableHead>
-              <TableHead>Pays / Ville</TableHead>
-              <TableHead>Pièces</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Code Parrainage</TableHead>
+              <TableHead>Filleuls</TableHead>
+              <TableHead>Date d'inscription</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading && users.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
             ) : users.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="h-24 text-center">Aucun utilisateur trouvé.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
             ) : (
               users.map(user => (
                 <TableRow key={user.id}>
-                  <TableCell>{user.full_name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell><Badge variant={user.user_type === 'super_admin' ? 'destructive' : 'secondary'}>{user.user_type}</Badge></TableCell>
-                  <TableCell>{user.country}{user.city && `, ${user.city}`}</TableCell>
-                  <TableCell>{(user.coin_balance || 0) + (user.free_coin_balance || 0)} π</TableCell>
                   <TableCell>
+                    <div className="font-medium">{user.full_name || 'Sans nom'}</div>
+                    <div className="text-xs text-muted-foreground">{user.email}</div>
+                    <div className="text-xs text-muted-foreground">{user.country}</div>
+                  </TableCell>
+                  <TableCell><Badge variant={user.user_type === 'super_admin' ? 'destructive' : 'outline'}>{user.user_type}</Badge></TableCell>
+                  <TableCell>
+                    {user.affiliate_code ? (
+                        <div className="flex items-center gap-2">
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{user.affiliate_code}</code>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.affiliate_code)}><Copy className="h-3 w-3" /></Button>
+                        </div>
+                    ) : <span className="text-xs text-muted-foreground italic">Non généré</span>}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                        <span className="font-bold">{user.referral_count || 0}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>Modifier</DropdownMenuItem>
-                        {currentUser.user_type === 'super_admin' && currentUser.id !== user.id && (
-                           <DropdownMenuItem onClick={() => handleImpersonate(user)} className="text-orange-500">
-                             <Key className="mr-2 h-4 w-4"/> Emprunter l'identité
-                           </DropdownMenuItem>
-                        )}
                         <DropdownMenuItem className="text-red-500">
                           <AlertDialog>
-                            <AlertDialogTrigger asChild><span className="w-full h-full cursor-pointer">Supprimer</span></AlertDialogTrigger>
+                            <AlertDialogTrigger className="w-full text-left">Supprimer</AlertDialogTrigger>
                             <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Vraiment supprimer {user.full_name}?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Cette action supprimera définitivement l'utilisateur et toutes ses données associées. C'est irréversible.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
+                              <AlertDialogHeader><AlertDialogTitle>Confirmer la suppression ?</AlertDialogTitle></AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUser(user.id, user.email)} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user.id)} className="bg-destructive">Supprimer</AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -375,24 +291,19 @@ const UserManagementTab = () => {
       </div>
 
       <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPagination(p => ({...p, page: p.page - 1}))}
-            disabled={pagination.page === 0}
-        >
-            Précédent
-        </Button>
-        <span className="text-sm">Page {pagination.page + 1} sur {pageCount}</span>
-        <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPagination(p => ({...p, page: p.page + 1}))}
-            disabled={pagination.page >= pageCount - 1}
-        >
-            Suivant
-        </Button>
+        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({...p, page: Math.max(0, p.page - 1)}))} disabled={pagination.page === 0}>Précédent</Button>
+        <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
+        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({...p, page: Math.min(pageCount - 1, p.page + 1)}))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
       </div>
+
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{userToEdit ? "Modifier" : "Créer"} un utilisateur</DialogTitle>
+            </DialogHeader>
+            <UserForm userToEdit={userToEdit} onSave={handleSave} onCancel={() => setIsFormOpen(false)} />
+          </DialogContent>
+      </Dialog>
     </div>
   );
 };

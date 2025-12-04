@@ -1,7 +1,8 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
-import { AuthProviderWithData } from '@/contexts/SupabaseAuthContext';
+import { AuthProvider, useAuth } from '@/contexts/SupabaseAuthContext';
+import { DataProvider, useData } from '@/contexts/DataContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import MainLayout from '@/components/layout/MainLayout';
 import HomePage from '@/pages/HomePage';
@@ -52,11 +53,25 @@ import PushNotificationManager from '@/components/PushNotificationManager';
 import WelcomePopup from '@/components/WelcomePopup';
 import FloatingActionButton from '@/components/layout/FloatingActionButton';
 
+// Component to sync auth state with data context
+const AuthSync = () => {
+  const { setForceRefresh } = useAuth();
+  const { forceRefreshUserProfile } = useData();
+
+  useEffect(() => {
+    setForceRefresh(() => forceRefreshUserProfile);
+  }, [setForceRefresh, forceRefreshUserProfile]);
+
+  return null;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProviderWithData>
+        <AuthProvider>
+          <DataProvider>
+            <AuthSync />
             <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
               <MainLayout>
                 <Routes>
@@ -114,9 +129,13 @@ function App() {
                 <FloatingActionButton />
               </MainLayout>
             </Suspense>
-        </AuthProviderWithData>
+          </DataProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
+
+
+
   );
 }
 

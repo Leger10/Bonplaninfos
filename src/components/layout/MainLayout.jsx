@@ -14,6 +14,7 @@ import ScreenCaptureBlocker from '@/components/ScreenCaptureBlocker';
 import PromotionalBanner from '@/components/PromotionalBanner';
 import { promotionalRoutes } from '@/config/promotionalMessages';
 import { useData } from '@/contexts/DataContext';
+import { cn } from '@/lib/utils';
 
 const MainLayout = ({ children }) => {
   const { user, hasFetchError } = useAuth();
@@ -114,7 +115,11 @@ const MainLayout = ({ children }) => {
         </Alert>
       )}
 
-      <main className={`flex-grow ${showBottomNav ? 'pb-20 md:pb-0' : ''}`}>
+      <main className={cn(
+        "flex-grow",
+        showBottomNav ? 'pb-20 md:pb-0' : '',
+        showPromoBanner ? 'mt-16' : 'mt-4'
+      )}>
         {children}
       </main>
 

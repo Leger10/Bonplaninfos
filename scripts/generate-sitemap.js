@@ -1,31 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { writeFileSync } from 'fs';
 import path from 'path';
-import { config } from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 
-// ⚠️ CORRECTION : Charger les variables d'environnement
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-config({ path: resolve(__dirname, '../.env') });
+const SUPABASE_URL = 'https://jdeuwvaauerzjdtpwjjz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZXV3dmFhdWVycmpkdHB3amp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzMTkxNTksImV4cCI6MjA3NDg5NTE1OX0.ktxs6yjuy3hRXCjsDzK1x6lJg0e5yEEnzl554nx28Kc';
 
-// Maintenant ces variables seront chargées correctement
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
-
-// ⚠️ CORRECTION : Vérification des variables
-console.log('🔧 Configuration Supabase:');
-console.log('URL:', supabaseUrl ? '✓ Défini' : '✗ Non défini');
-console.log('Key:', supabaseKey ? '✓ Défini (' + supabaseKey.substring(0, 10) + '...)' : '✗ Non défini');
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ ERREUR: Variables Supabase manquantes dans le fichier .env');
-    console.error('   Assurez-vous que VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY sont définis');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const BASE_URL = 'https://bonplaninfos.net';
 
@@ -34,19 +14,9 @@ const africanCountries = [
 ];
 const languages = ['fr', 'en'];
 const staticPages = [
-    '/', 
-    '/decouvrir',           // au lieu de '/discover'
-    '/evenements',          // au lieu de '/events'
-    '/promotions', 
-    '/actualites',          // au lieu de '/news'
-    '/partenaires',         // au lieu de '/sponsors'
-    '/a-propos',            // au lieu de '/about'
-    '/comment-ca-marche',   // au lieu de '/how-it-works'
-    '/tarifs',              // au lieu de '/pricing'
-    '/aide',                // au lieu de '/help-center'
-    '/conditions-utilisation', // au lieu de '/terms'
-    '/politique-confidentialite', // au lieu de '/privacy-policy'
-    '/mentions-legales'     // au lieu de '/legal-mentions'
+    '/', '/discover', '/events', '/promotions', '/news', '/sponsors',
+    '/about', '/how-it-works', '/pricing', '/help-center',
+    '/terms', '/privacy-policy', '/legal-mentions'
 ];
 
 async function fetchDynamicRoutes() {
@@ -54,15 +24,14 @@ async function fetchDynamicRoutes() {
 
     try {
         // Fetch events
-        console.log('📅 Fetching events from Supabase...');
         const { data: events, error: eventsError } = await supabase
             .from('events')
             .select('id, updated_at')
             .eq('status', 'active')
-            .limit(5000);
+            .limit(5000); // Limit to avoid timeout
 
         if (eventsError) {
-            console.error('❌ Error fetching events:', eventsError);
+            console.error('Error fetching events:', eventsError);
         } else {
             events.forEach(event => {
                 dynamicRoutes.push({
@@ -73,30 +42,27 @@ async function fetchDynamicRoutes() {
             console.log(`✅ Fetched ${events.length} events`);
         }
 
-        // Fetch promotions - CORRIGÉ avec les bonnes colonnes
-        console.log('🎯 Fetching promotions from Supabase...');
+        // Fetch promotions
         const { data: promotions, error: promotionsError } = await supabase
-            .from('promotion_packs')
-            .select('id, slug, created_at, is_active')
-            .eq('is_active', true)  // Utilise is_active au lieu de status
+            .from('promotions')
+            .select('id, updated_at')
+            .eq('status', 'active')
             .limit(5000);
 
         if (promotionsError) {
-            console.error('❌ Error fetching promotions:', promotionsError);
+            console.error('Error fetching promotions:', promotionsError);
         } else {
             promotions.forEach(promo => {
-                // Utilise le slug si disponible, sinon l'id
-                const pathSlug = promo.slug || promo.id;
                 dynamicRoutes.push({
-                    path: `/promotion/${pathSlug}`,
-                    lastmod: promo.created_at || new Date().toISOString().split('T')[0]
+                    path: `/promotion/${promo.id}`,
+                    lastmod: promo.updated_at || new Date().toISOString().split('T')[0]
                 });
             });
             console.log(`✅ Fetched ${promotions.length} promotions`);
         }
 
     } catch (error) {
-        console.error('❌ Error in fetchDynamicRoutes:', error);
+        console.error('Error in fetchDynamicRoutes:', error);
     }
 
     return dynamicRoutes;
@@ -126,7 +92,7 @@ async function generateSitemap() {
 
     try {
         const dynamicRoutes = await fetchDynamicRoutes();
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
 
         let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -191,17 +157,17 @@ async function generateSitemap() {
 
         sitemapXml += '\n</urlset>';
 
-       // Write sitemap file
-const distPath = path.resolve(process.cwd(), 'dist');
-writeFileSync(path.join(distPath, 'sitemap.xml'), sitemapXml.trim());
+        // Write sitemap file
+        const publicPath = path.resolve(process.cwd(), 'public');
+        writeFileSync(path.join(publicPath, 'sitemap.xml'), sitemapXml.trim());
 
-console.log('✅ Sitemap generated successfully at dist/sitemap.xml');
-console.log(`📊 Total URLs: ${staticPages.length + dynamicRoutes.length}`);
+        console.log('✅ Sitemap generated successfully at public/sitemap.xml');
+        console.log(`📊 Total URLs: ${staticPages.length + dynamicRoutes.length}`);
 
-} catch (error) {
-    console.error('❌ Error generating sitemap:', error);
-    process.exit(1);
-}
+    } catch (error) {
+        console.error('❌ Error generating sitemap:', error);
+        process.exit(1);
+    }
 }
 
 // Run the script

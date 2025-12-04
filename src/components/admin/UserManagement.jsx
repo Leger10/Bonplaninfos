@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const UserManagement = ({ users, onRefresh }) => {
+const UserManagement = ({ users = [], onRefresh }) => {
   const { userProfile } = useData();
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -26,10 +26,13 @@ const UserManagement = ({ users, onRefresh }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Safely filter users with optional chaining and default empty array
   const filteredUsers = useMemo(() => {
+    if (!users || !Array.isArray(users)) return [];
+    
     return users.filter(user =>
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
 
@@ -52,7 +55,7 @@ const UserManagement = ({ users, onRefresh }) => {
       });
       if (error) throw error;
       toast({ title: 'Succès', description: 'Le rôle a été mis à jour.' });
-      onRefresh();
+      if (onRefresh) onRefresh();
       setIsDialogOpen(false);
     } catch (error) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -70,7 +73,7 @@ const UserManagement = ({ users, onRefresh }) => {
         .eq('id', user.id);
       if (error) throw error;
       toast({ title: 'Succès', description: `L'utilisateur a été ${newStatus ? 'activé' : 'bloqué'}.` });
-      onRefresh();
+      if (onRefresh) onRefresh();
     } catch (error) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     } finally {
@@ -85,12 +88,13 @@ const UserManagement = ({ users, onRefresh }) => {
     }
     
     setLoading(true);
-    const { data, error } = await supabase.auth.impersonate(targetUser.email);
-    if(error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive"});
-    } else {
-      toast({ title: "Mode d'emprunt d'identité activé", description: `Vous naviguez maintenant en tant que ${targetUser.full_name}`});
-      window.location.reload();
+    // Note: impersonate is not a standard supabase-js method, usually requires edge function or custom logic
+    // Assuming specific implementation or placeholder here
+    try {
+        // Custom logic for impersonation if available, else just log/toast
+        toast({ title: "Info", description: "Fonctionnalité d'emprunt d'identité en cours de développement." });
+    } catch (e) {
+        console.error(e);
     }
     setLoading(false);
   }
@@ -142,42 +146,46 @@ const UserManagement = ({ users, onRefresh }) => {
             />
           </div>
           <div className="space-y-4">
-            {filteredUsers.map((user) => (
-              <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-background/50 rounded-lg gap-4">
-                <div className="flex items-center gap-4">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={user.avatar_url} />
-                    <AvatarFallback>{user.full_name?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{user.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <Badge className={getRoleColor(user.user_type)}>{getRoleLabel(user.user_type)}</Badge>
-                      <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Actif' : 'Bloqué'}</Badge>
-                      {user.user_type === 'admin' && (
-                        <Badge variant="outline"><Shield className="w-3 h-3 mr-1" /> Nommé par Super Admin</Badge>
-                      )}
+            {filteredUsers.length === 0 ? (
+                <div className="text-center p-4 text-muted-foreground">Aucun utilisateur trouvé.</div>
+            ) : (
+                filteredUsers.map((user) => (
+                <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-background/50 rounded-lg gap-4">
+                    <div className="flex items-center gap-4">
+                    <Avatar className="w-12 h-12">
+                        <AvatarImage src={user.avatar_url} />
+                        <AvatarFallback>{user.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold">{user.full_name || 'Sans nom'}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                        <Badge className={getRoleColor(user.user_type)}>{getRoleLabel(user.user_type)}</Badge>
+                        <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Actif' : 'Bloqué'}</Badge>
+                        {user.user_type === 'admin' && (
+                            <Badge variant="outline"><Shield className="w-3 h-3 mr-1" /> Nommé par Super Admin</Badge>
+                        )}
+                        </div>
                     </div>
-                  </div>
-                </div>
-                {isSuperAdmin && (
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleStatusChange(user, !user.is_active)}>
-                      {user.is_active ? <Ban className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
-                    </Button>
-                    {userProfile.id !== user.id && (
-                      <Button variant="ghost" size="icon" onClick={() => handleImpersonate(user)}>
-                        <Key className="w-4 h-4 text-orange-400" />
-                      </Button>
+                    </div>
+                    {isSuperAdmin && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}>
+                        <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleStatusChange(user, !user.is_active)}>
+                        {user.is_active ? <Ban className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
+                        </Button>
+                        {userProfile.id !== user.id && (
+                        <Button variant="ghost" size="icon" onClick={() => handleImpersonate(user)}>
+                            <Key className="w-4 h-4 text-orange-400" />
+                        </Button>
+                        )}
+                    </div>
                     )}
-                  </div>
-                )}
-              </div>
-            ))}
+                </div>
+                ))
+            )}
           </div>
         </CardContent>
       </Card>

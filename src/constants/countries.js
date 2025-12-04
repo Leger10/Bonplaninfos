@@ -63,103 +63,77 @@ export const CITIES_BY_COUNTRY = {
   "Bénin": ["Cotonou", "Porto-Novo", "Parakou", "Djougou", "Bohicon", "Abomey", "Natitingou", "Lokossa", "Ouidah", "Abomey-Calavi", "Savalou", "Sakété", "Kandi", "Malanville", "Pobè", "Comè", "Dogbo-Tota", "Savè", "Tchaourou", "Tanguiéta", "Nikki", "Aplahoué", "Dassa-Zoumé", "Grand-Popo", "Kétou"],
   "Botswana": ["Gaborone", "Francistown", "Molepolole", "Maun", "Serowe", "Selibe Phikwe", "Kanye", "Mahalapye", "Mochudi", "Mogoditshane", "Palapye", "Lobatse", "Ramotswa", "Thamaga", "Moshupa", "Jwaneng", "Ghanzi", "Kasane", "Orapa", "Tlokweng", "Letlhakane", "Shoshong", "Tonota", "Tutume", "Gumare"],
  "Burkina Faso": [
+
   // ——— Principales ———
   "Ouagadougou",
   "Bobo-Dioulasso",
-  
-  // ——— Capitale et grandes villes par région ———
-  "Koudougou",
-  "Ouahigouya",
-  "Banfora",
-  "Kaya",
-  "Tenkodogo",
-  "Fada N'Gourma",
-  "Dédougou",
-  "Gaoua",
-  "Dori",
 
-  // ——— Autres grandes villes ———
-  "Houndé",
-  "Pouytenga",
-  "Boussé",
-  "Kombissiri",
-  "Réo",
-  "Manga",
-  "Ziniaré",
-  "Orodara",
+  // ——— Capitales régionales ———
+  "Dédougou",
+  "Nouna",
+  "Solenzo",
   "Toma",
   "Tougan",
-  "Koupéla",
-  "Garango",
-  "Pô",
-  "Boromo",
-  "Yako",
-  "Gourcy",
-  "Zorgho",
+  "Banfora",
+  "Sindou",
+  "Tenkodogo",
+  "Kaya",
   "Kongoussi",
-  "Djibo",
-  "Diébougou",
+  "Boulsa",
+  "Koudougou",
+  "Manga",
   "Léo",
-  "Koupéla",
-  "Zorgho",
-  "Aribinda",
-  "Sebba",
-  "Gayeri",
-  "Bogandé",
-  "Kantchari",
-  "Bittou",
-
-  // ——— Communes et centres économiques ———
-  "Pabré",
-  "Koubri",
-  "Komsilga",
-  "Saponé",
-  "Nioko II",
-  "Saaba",
-  "Tanghin-Dassouri",
-  "Loumbila",
-  "Baskuy",
-  "Boulmiougou",
-  "Sig-Nonghin",
-
-  // ——— Villes du sud ———
+  "Kombissiri",
+  "Pô",
   "Diapaga",
   "Pama",
   "Fada N'Gourma",
-  "Gaoua",
-  "Kampti",
-  "Loropeni",
-
-  // ——— Nord & Sahel ———
+  "Gayeri",
+  "Bogandé",
+  "Orodara",
+  "Houndé",
+  "Ouahigouya",
+  "Titao",
+  "Gourcy",
+  "Yako",
+  "Zorgho",
+  "Boussé",
+  "Ziniaré",
+  "Dori",
+  "Sebba",
   "Gorom-Gorom",
-  "Markoye",
-  "Essakane",
+  "Djibo",
+  "Aribinda",
+  "Gaoua",
+  "Dano",
+  "Batié",
+  "Diébougou",
 
-  // ——— Ouest ———
-  "Banfora",
-  "Banfora",
-  "Sindou",
-  "Niangoloko",
-  "Koloko",
-
-  // ——— Est ———
-  "Kantchari",
-  "Pama",
-  "Fada N'Gourma",
-
-  // ——— Centre-Nord ———
+  // ——— Autres communes importantes ———
+  "Saaba",
+  "Pabré",
+  "Koubri",
+  "Komsilga",
+  "Tanghin-Dassouri",
+  "Baskuy",
+  "Boulmiougou",
+  "Sig-Nonghin",
+  "Nioko II",
+  "Garango",
+  "Bittou",
+  "Koupéla",
+  "Pouytenga",
   "Barsalogho",
   "Pissila",
-  
-  // ——— Centre-Ouest ———
-  "Koudougou",
   "Sourgoubila",
-
-  // ——— Boucle du Mouhoun ———
-  "Nouna",
-  "Toma",
-  "Solenzo"
+  "Réó",
+  "Saponé",
+  "Loumbila",
+  "Kampti",
+  "Loropeni",
+  "Markoye"
 ],
+
 
   "Burundi": ["Bujumbura", "Gitega", "Muyinga", "Ngozi", "Ruyigi", "Kayanza", "Bururi", "Rutana", "Makamba", "Muramvya", "Cibitoke", "Bubanza", "Karuzi", "Cankuzo", "Kirundo", "Rumonge", "Mwaro", "Isale", "Gatumba", "Kabezi", "Gisuru", "Mabanda", "Gihofi", "Bugendana", "Matana"],
  "Cameroun": [

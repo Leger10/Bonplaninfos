@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useData } from '@/contexts/DataContext';
-import { Loader2, AlertTriangle, Upload } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, RefreshCcw, Database, Clock } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import ResetDataModal from './ResetDataModal';
 
 const ConfigTab = () => {
   const { adminConfig, loadingConfig, forceRefreshAdminConfig } = useData();
@@ -28,13 +29,34 @@ const ConfigTab = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [logoUrl, setLogoUrl] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [lastResetTime, setLastResetTime] = useState(null);
 
   useEffect(() => {
     if (adminConfig) {
       setConfigForm(adminConfig);
       setLogoUrl(adminConfig.logo_url || '');
     }
+    fetchLastResetTime();
   }, [adminConfig]);
+
+  const fetchLastResetTime = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_logs')
+        .select('created_at')
+        .eq('action_type', 'reset_data')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (data) {
+        setLastResetTime(new Date(data.created_at));
+      }
+    } catch (e) {
+      console.error("Failed to fetch reset log", e);
+    }
+  };
 
   const handleLogoUpload = async (file) => {
     if (!file) return;
@@ -94,6 +116,7 @@ const ConfigTab = () => {
     }
   };
 
+  // Nuclear option (Deleting everything)
   const handleResetApplication = async () => {
     setIsResetting(true);
     try {
@@ -192,43 +215,77 @@ const ConfigTab = () => {
         </CardContent>
       </Card>
 
-      <Card className="border-destructive shadow-lg rounded-xl mt-8">
+      {/* Zone de Danger - Reset Transactionnel (Soft) */}
+      <Card className="border-orange-500/50 shadow-lg rounded-xl mt-8 bg-orange-500/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive" /> Zone de danger</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-orange-600"><Database className="h-5 w-5" /> Nettoyage des Données</CardTitle>
           <CardDescription>
-            Ces actions sont irréversibles. Procédez avec une extrême prudence.
+            Utile après une période de test. Cela supprimera toutes les transactions et remettra à zéro les compteurs, mais <strong>gardera les utilisateurs et les événements</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p>
-            La réinitialisation de l'application supprimera toutes les données transactionnelles, y compris les utilisateurs (sauf les admins), les événements, les promotions, les transactions de pièces, etc. Ceci est destiné à nettoyer la plateforme avant un lancement officiel.
+          {lastResetTime && (
+            <p className="text-sm text-muted-foreground flex items-center gap-1 mb-4">
+              <Clock className="w-3 h-3" /> Dernier nettoyage : {lastResetTime.toLocaleString('fr-FR')}
+            </p>
+          )}
+          <p className="text-sm text-muted-foreground mb-4">
+            Cette action est idéale pour passer de la phase de test à la production sans devoir recréer tous les comptes et contenus.
           </p>
+          <Button 
+            variant="outline" 
+            className="border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white"
+            onClick={() => setShowResetModal(true)}
+          >
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Nettoyer les Transactions & Données
+          </Button>
         </CardContent>
-        <CardFooter>
+      </Card>
+
+      {/* Zone de Danger - Reset Total (Hard) */}
+      <Card className="border-destructive shadow-lg rounded-xl mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Zone de danger absolue</CardTitle>
+          <CardDescription>
+            Suppression totale de l'application.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Cette action supprimera <strong>TOUT</strong> : utilisateurs (sauf admins), événements, configurations, historiques. L'application repartira de zéro.
+          </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Réinitialiser l'Application</Button>
+              <Button variant="destructive">Réinitialiser TOTALEMENT l'Application</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Êtes-vous absolument certain ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Cette action est IRREVERSIBLE. Elle supprimera définitivement toutes les données de l'application (utilisateurs, événements, transactions, etc.) à l'exception des comptes administrateurs et de la configuration de base.
-                  <br /><br />
-                  <strong>Cette opération ne peut pas être annulée.</strong>
+                  Cette action est <strong>IRREVERSIBLE</strong>. Elle supprimera définitivement toutes les données de l'application (utilisateurs, événements, transactions, etc.) à l'exception des comptes administrateurs.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                 <AlertDialogAction onClick={handleResetApplication} disabled={isResetting} className="bg-destructive hover:bg-destructive/90">
                   {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Oui, réinitialiser
+                  Oui, TOUT supprimer
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </CardFooter>
+        </CardContent>
       </Card>
+
+      <ResetDataModal 
+        open={showResetModal} 
+        onOpenChange={setShowResetModal} 
+        onSuccess={() => {
+          fetchLastResetTime();
+          forceRefreshAdminConfig();
+        }}
+      />
     </div>
   );
 };

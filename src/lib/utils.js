@@ -5,6 +5,46 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Formate un montant en devise
+ * @param {number|string} amount - Montant à formater
+ * @param {string} currency - Code devise (par défaut: FCFA)
+ * @param {string} locale - Locale (par défaut: fr-FR)
+ * @returns {string} Montant formaté
+ */
+export function formatCurrency(amount, currency = 'FCFA', locale = 'fr-FR') {
+  try {
+    if (amount === null || amount === undefined) return '0 ' + currency;
+    
+    const numAmount = typeof amount === 'string' ? 
+      parseFloat(amount.replace(/\s/g, '').replace(',', '.')) : 
+      amount;
+    
+    if (isNaN(numAmount)) {
+      return '0 ' + currency;
+    }
+
+    // Pour le FCFA, on ne veut pas de décimales
+    if (currency === 'FCFA' || currency === 'XOF') {
+      return new Intl.NumberFormat(locale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(numAmount) + ' ' + currency;
+    }
+
+    // Pour les autres devises
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(numAmount);
+  } catch (error) {
+    console.error('Error formatting currency:', error);
+    return String(amount) + ' ' + currency;
+  }
+}
+
 export function generateEventStructuredData(event) {
     if (!event) return null;
 
@@ -78,4 +118,63 @@ export function generateBreadcrumbStructuredData(items) {
             "item": `https://www.bonplaninfos.net${item.href}`
         }))
     };
+}
+
+/**
+ * Formate un nombre avec séparateurs de milliers
+ * @param {number|string} num - Nombre à formater
+ * @param {string} locale - Locale (par défaut: fr-FR)
+ * @returns {string} Nombre formaté
+ */
+export function formatNumber(num, locale = 'fr-FR') {
+  if (num === null || num === undefined) return '0';
+  const number = typeof num === 'string' ? parseFloat(num) : num;
+  if (isNaN(number)) return '0';
+  return new Intl.NumberFormat(locale).format(number);
+}
+
+/**
+ * Formate une date
+ * @param {Date|string} date - Date à formater
+ * @param {string} format - Format de date (par défaut: 'dd/MM/yyyy')
+ * @returns {string} Date formatée
+ */
+export function formatDate(date, format = 'dd/MM/yyyy') {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  
+  return format
+    .replace('dd', day)
+    .replace('MM', month)
+    .replace('yyyy', year);
+}
+
+/**
+ * Tronque un texte avec une longueur maximale
+ * @param {string} text - Texte à tronquer
+ * @param {number} maxLength - Longueur maximale (par défaut: 100)
+ * @returns {string} Texte tronqué
+ */
+export function truncateText(text, maxLength = 100) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+/**
+ * Version simplifiée de formatCurrency (alternative)
+ * @param {number|string} amount - Montant à formater
+ * @param {string} currency - Code devise (par défaut: FCFA)
+ * @returns {string} Montant formaté
+ */
+export function formatCurrencySimple(amount, currency = 'FCFA') {
+  if (amount === null || amount === undefined) return '0 ' + currency;
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '0 ' + currency;
+  return num.toLocaleString('fr-FR') + ' ' + currency;
 }

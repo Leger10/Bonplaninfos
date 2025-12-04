@@ -238,7 +238,7 @@ en: {
         },
         stats: {
           error_title: "Erreur de statistiques",
-          revenue_title: "Revenus (Crédits Manuels)",
+          revenue_title: "Chiffres affaires (Zone)",
         },
         license: {
           partner_error_title: "Erreur de chargement du partenaire",
@@ -1928,7 +1928,7 @@ partner_signup: {
         },
         stats: {
           error_title: "Statistics Error",
-          revenue_title: "Revenue (Manual Credits)",
+          revenue_title: "Chiffres affaires zone)",
         },
         license: {
           partner_error_title: "Error loading partner",

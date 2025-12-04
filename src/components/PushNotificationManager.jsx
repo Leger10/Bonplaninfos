@@ -1,109 +1,118 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { isPushSupported, subscribeUserToPush, getExistingSubscription } from '@/utils/pushNotifications';
+import { isPushSupported, subscribeUserToPush, getExistingSubscription, askNotificationPermission } from '@/utils/pushNotifications';
 import { supabase } from '@/lib/customSupabaseClient';
+import { Button } from '@/components/ui/button';
+import { Bell } from 'lucide-react';
 
 const PushNotificationManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [permissionState, setPermissionState] = useState('default');
+  const [isLoading, setIsLoading] = useState(false);
+  const initializationAttempted = useRef(false);
 
+  // Check current status
   useEffect(() => {
-    const checkSubscription = async () => {
-      if (!user || !isPushSupported()) {
-        setIsLoading(false);
+    if (!isPushSupported()) return;
+    
+    if (Notification.permission === 'granted') {
+      setPermissionState('granted');
+      getExistingSubscription().then(sub => {
+        if (sub) setIsSubscribed(true);
+      });
+    } else {
+      setPermissionState(Notification.permission);
+    }
+  }, []);
+
+  // Logic to auto-subscribe or prompt
+  useEffect(() => {
+    if (!user || initializationAttempted.current) return;
+    initializationAttempted.current = true;
+
+    const initPush = async () => {
+      if (!isPushSupported()) return;
+
+      // Only auto-subscribe if permission is ALREADY granted
+      if (Notification.permission === 'granted') {
+        await handleSubscribe();
+      }
+      // If permission is 'default', we do NOTHING automatically to avoid browser blocking.
+      // The user must click a button.
+    };
+
+    initPush();
+  }, [user]);
+
+  const handleSubscribe = async () => {
+    setIsLoading(true);
+    try {
+      // 1. Ask permission (browser handles this logic: if granted, resolves immediately)
+      const permission = await askNotificationPermission();
+      setPermissionState(permission);
+
+      if (permission !== 'granted') {
+        toast({
+          title: 'Notifications bloquées',
+          description: 'Veuillez autoriser les notifications dans votre navigateur pour recevoir les alertes.',
+          variant: 'warning'
+        });
         return;
       }
 
-      try {
-        const existingSubscription = await getExistingSubscription();
-        if (existingSubscription) {
-          // Verify if the subscription is still on the server
-          const { data, error } = await supabase
-            .from('push_tokens')
-            .select('id')
-            .eq('token', existingSubscription.endpoint)
-            .single();
-          
-          if (data) {
-            setIsSubscribed(true);
-          } else {
-            // Subscription exists in browser but not on server, re-subscribe
-            await subscribeAndSave();
-          }
-        } else {
-          // No subscription found in browser, attempt to subscribe
-          if (Notification.permission === 'granted') {
-            await subscribeAndSave();
-          }
-        }
-      } catch (error) {
-        console.error('Error checking push subscription:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSubscription();
-  }, [user]);
-
-  const subscribeAndSave = async () => {
-    try {
+      // 2. Get Subscription from browser
       const subscription = await subscribeUserToPush();
+      
       if (subscription) {
+        console.log("Sending subscription to backend...", subscription.endpoint);
+        
+        // Prepare keys
+        const p256dh = subscription.getKey('p256dh') 
+          ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))) 
+          : null;
+        const auth = subscription.getKey('auth') 
+          ? btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')))) 
+          : null;
+
+        // 3. Store in DB
         const { error } = await supabase.from('push_tokens').upsert({
           user_id: user.id,
           token: subscription.endpoint,
-          auth_key: subscription.keys.auth,
-          p256dh_key: subscription.keys.p256dh,
+          auth_key: auth,
+          p256dh_key: p256dh,
+          device_type: 'browser',
           is_active: true,
+          last_used_at: new Date().toISOString()
         }, { onConflict: 'token' });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Database error storing token:', error);
+          // Don't throw, browser subscription was successful
+        }
 
         setIsSubscribed(true);
-        toast({
-          title: 'Notifications activées',
-          description: 'Vous recevrez désormais les notifications.',
-        });
+        console.log('Push setup complete.');
       }
     } catch (error) {
-      console.error('Failed to subscribe and save:', error);
-      if (error.message.includes('denied')) {
-        toast({
-          title: 'Erreur de notification',
-          description: "Les notifications sont bloquées. Veuillez les autoriser dans les paramètres de votre navigateur.",
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Erreur de notification',
-          description: `Impossible d'activer les notifications push. ${error.message}`,
-          variant: 'destructive',
-        });
-      }
+      console.error('Subscription error:', error);
+      toast({
+        title: 'Erreur',
+        description: "Impossible d'activer les notifications: " + error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    const handleSubscriptionRequest = async () => {
-      if (!user || isLoading || isSubscribed || !isPushSupported() || Notification.permission !== 'default') {
-        return;
-      }
-
-      // This logic can be expanded to show a custom UI element to ask for permission
-      // For now, we can try to subscribe if permission is 'default'
-      // This might be blocked by browsers if not triggered by a user action.
-      // A better approach is to have a button in settings to enable notifications.
-      // console.log("Ready to request notification permission.");
-    };
-
-    handleSubscriptionRequest();
-  }, [user, isLoading, isSubscribed, toast]);
-
-  return null; // This is a manager component, it doesn't render anything.
+  // Only show a prompt if user is logged in, permission is default, and we haven't tried yet
+  // But simpler: we return null and let the settings page handle manual subscription mostly.
+  // We can trigger a toast prompt here if desired.
+  
+  return null;
 };
 
 export default PushNotificationManager;

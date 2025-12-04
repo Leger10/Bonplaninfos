@@ -1,203 +1,176 @@
-// This file is not actively used in the main layout based on App.jsx and Header.jsx.
-// Keeping it as is but noting it's not the active navigation component being rendered.
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useData } from '@/contexts/DataContext';
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Home, Calendar, Plus, User, Wallet, Settings, LogOut, Menu, X, Shield, UserCheck, Bell, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Home, Compass, Calendar, User, LogOut, Wallet, Shield, Gem, Menu, X, Bell, PlusCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next'; // Import ajouté
-
-import ThemeToggle from '@/components/ThemeToggle';
-import LanguageSwitcher from '@/components/LanguageSwitcher'; // Import ajouté
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { Badge } from '@/components/ui/badge';
+import { useData } from '@/contexts/DataContext';
 
 const Navbar = () => {
-    const { user, signOut } = useAuth();
-    const { userProfile, notificationBellAnimation } = useData();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const { t } = useTranslation(); // Hook utilisé correctement
+  const { user, signOut, permissions } = useAuth();
+  const { userProfile } = useData();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const getInitial = (name) => name ? name.charAt(0).toUpperCase() : '?';
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+    setIsMobileMenuOpen(false);
+  };
 
-    const handleSignOut = async () => {
-        await signOut();
-        navigate('/');
-    };
-    
-    const navItems = [
-        { name: t('nav.home'), path: '/', icon: Home },
-        { name: t('nav.discover'), path: '/discover', icon: Compass },
-        { name: t('nav.events'), path: '/events', icon: Calendar },
-        { name: t('nav.partnership'), path: '/partner-signup', icon: Gem },
-    ];
-    
-    const UserMenu = () => (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar>
-                        <AvatarImage src={userProfile?.avatar_url} alt={userProfile?.full_name} />
-                        <AvatarFallback>{getInitial(userProfile?.full_name)}</AvatarFallback>
-                    </Avatar>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>{userProfile?.full_name || t('nav.profile')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>{t('nav.profile')}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/wallet')}>
-                    <Wallet className="mr-2 h-4 w-4" />
-                    <span>{t('nav.wallet')}</span>
-                </DropdownMenuItem>
-                {userProfile?.user_type?.includes('admin') && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin</span>
-                    </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>{t('nav.logout')}</span>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-    );
+  const navItems = [
+    { path: '/', icon: Home, label: 'Accueil' },
+    { path: '/events', icon: Calendar, label: 'Événements' },
+    { path: '/promotions', icon: ShoppingBag, label: 'Promos' },
+    ...(user && (permissions?.role === 'organizer' || permissions?.role === 'admin' || permissions?.role === 'super_admin') ? [{ path: '/create-event', icon: Plus, label: 'Créer' }] : [])
+  ];
 
-    const NotificationBell = () => {
-      const [key, setKey] = useState(0);
+  const userItems = [
+    { path: '/wallet', icon: Wallet, label: 'Portefeuille' },
+    { path: '/profile', icon: User, label: 'Profil' }
+  ];
 
-      useEffect(() => {
-        setKey(prev => prev + 1);
-      }, [notificationBellAnimation]);
-      
-      return (
-        <div 
-          key={key} 
-          className="relative cursor-pointer animate-jump animate-once animate-duration-500 animate-ease-in-out"
-          onClick={() => navigate('/notifications')}
-        >
-          <Bell className="h-6 w-6 text-yellow-400 hover:text-yellow-300 transition-colors" />
-        </div>
-      );
-    }
-    
-    const navLinkClass = ({ isActive }) =>
-      `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-        isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-      }`;
+  const adminItems = [
+    ...(permissions?.role === 'admin' || permissions?.role === 'super_admin' ? [{ path: '/admin', icon: Shield, label: 'Admin' }] : []),
+    ...(permissions?.role === 'secretary' ? [{ path: '/secretary', icon: UserCheck, label: 'Secrétaire' }] : [])
+  ];
 
-    return (
-        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center">
-                <NavLink to="/" className="mr-6 flex items-center space-x-2">
-                    <img src="https://res.cloudinary.com/dprp6vxv6/image/upload/v1722428610/bpi/logo-BPI-v2-transparent_pmsz7v.png" alt="BonPlanInfos Logo" className="h-10 w-auto" />
-                </NavLink>
+  const isActive = path => location.pathname === path;
+  const unreadNotifications = 3; // Simulation
 
-                <nav className="hidden md:flex flex-1 items-center gap-4">
-                    {navItems.map(item => (
-                        <NavLink key={item.path} to={item.path} className={navLinkClass}>
-                            <item.icon className="h-4 w-4" />
-                            {item.name}
-                        </NavLink>
-                    ))}
-                </nav>
-
-                <div className="md:hidden flex flex-1 justify-end">
-                    <Button variant="ghost" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                        {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                    </Button>
-                </div>
-                
-                <div className="hidden md:flex items-center justify-end space-x-2">
-                    <ThemeToggle />
-                    <LanguageSwitcher />
-                    {canCreateEvent(userProfile) && (
-                      <Button variant="premium" onClick={() => navigate('/create-event')}>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          {t('nav.create_event')}
-                      </Button>
-                    )}
-                    {user ? (
-                        <>
-                           <NotificationBell/>
-                           <UserMenu />
-                        </>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Button variant="ghost" onClick={() => navigate('/auth')}>{t('auth.login.title')}</Button>
-                            <Button onClick={() => navigate('/auth', { state: { from: location, isSignUp: true } })} className="h-11">{t('auth.register.title')}</Button>
-                        </div>
-                    )}
-                </div>
+  return (
+    <nav className="sticky top-0 z-50 glass-effect border-b border-[#C9A227]/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 gradient-gold rounded-lg flex items-center justify-center">
+              <span className="text-[#0B0B0D] font-bold text-sm">BP</span>
             </div>
+            <span className="text-xl font-bold text-[#C9A227]">BonPlaninfos</span>
+          </Link>
 
-            {isMenuOpen && (
-                <div className="md:hidden absolute top-16 left-0 w-full bg-background/95 backdrop-blur-lg border-t border-border/40 py-4">
-                    <nav className="flex flex-col gap-2 px-4">
-                        {navItems.map(item => (
-                            <NavLink key={item.path} to={item.path} className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                <item.icon className="h-5 w-5" />
-                                {item.name}
-                            </NavLink>
-                        ))}
-                        <div className="border-t border-border/40 my-2"></div>
-                        {user ? (
-                            <>
-                                <NavLink to="/profile" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                    <User className="h-5 w-5" />
-                                    <span>{t('nav.profile')}</span>
-                                </NavLink>
-                                <NavLink to="/wallet" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                    <Wallet className="h-5 w-5" />
-                                    <span>{t('nav.wallet')}</span>
-                                </NavLink>
-                                <NavLink to="/notifications" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                    <Bell className="h-5 w-5" />
-                                    <span>{t('nav.notifications')}</span>
-                                </NavLink>
-                                {userProfile?.user_type?.includes('admin') && (
-                                    <NavLink to="/admin" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                        <Shield className="h-5 w-5" />
-                                        <span>Admin</span>
-                                    </NavLink>
-                                )}
-                                <Button variant="ghost" onClick={() => { handleSignOut(); setIsMenuOpen(false); }} className="justify-start px-3 py-2 text-muted-foreground">
-                                    <LogOut className="h-5 w-5 mr-2" />
-                                    <span>{t('nav.logout')}</span>
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <NavLink to="/auth" className={navLinkClass} onClick={() => setIsMenuOpen(false)}>
-                                    {t('auth.login.title')}
-                                </NavLink>
-                                <Button onClick={() => { navigate('/auth', { state: { from: location, isSignUp: true } }); setIsMenuOpen(false); }} className="w-full mt-2 h-11">
-                                    {t('auth.register.title')}
-                                </Button>
-                            </>
-                        )}
-                        <div className="border-t border-border/40 my-2"></div>
-                         <div className="p-2 flex justify-around">
-                           <LanguageSwitcher />
-                           <ThemeToggle />
-                         </div>
-                    </nav>
+          <div className="hidden md:flex items-center space-x-1">
+            {navItems.map(item => (
+              <Link key={item.path} to={item.path} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${isActive(item.path) ? 'bg-[#C9A227] text-[#0B0B0D]' : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'}`}>
+                <item.icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
+            ))}
+            {adminItems.map(item => (
+              <Link key={item.path} to={item.path} className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${isActive(item.path) ? 'bg-[#E53935] text-white' : 'text-gray-300 hover:text-white hover:bg-[#E53935]'}`}>
+                <item.icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden md:flex items-center space-x-4">
+            {user && userProfile ? (
+              <div className="flex items-center space-x-3">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/notifications')} className="relative text-gray-300 hover:text-[#C9A227]">
+                  <Bell className="w-5 h-5" />
+                  {unreadNotifications > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 gradient-red text-white text-xs border-2 border-[#111]">
+                      {unreadNotifications}
+                    </Badge>
+                  )}
+                </Button>
+
+                <div className="flex items-center space-x-2 bg-[#C9A227]/10 px-3 py-1 rounded-full cursor-pointer" onClick={() => navigate('/wallet')}>
+                  <Wallet className="w-4 h-4 text-[#C9A227]" />
+                  <span className="text-sm font-medium text-[#C9A227]">
+                    {userProfile.total_coins || 0} pièces
+                  </span>
                 </div>
+
+                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/profile')}>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={userProfile.avatar_url} />
+                    <AvatarFallback className="bg-[#C9A227] text-[#0B0B0D]">
+                      {userProfile.name?.charAt(0)?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-gray-300">{userProfile.name}</span>
+                </div>
+
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-300 hover:text-[#E53935]">
+                  <LogOut className="w-5 h-5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" onClick={() => navigate('/auth')} className="text-gray-300 hover:text-[#C9A227]">
+                  Connexion
+                </Button>
+                <Button onClick={() => navigate('/auth')} className="gradient-gold text-[#0B0B0D] hover:opacity-90">
+                  Inscription
+                </Button>
+              </div>
             )}
-        </header>
-    );
+          </div>
+
+          <Button variant="ghost" size="sm" className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
+        </div>
+      </div>
+
+      {isMobileMenuOpen && (
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden glass-effect border-t border-[#C9A227]/20">
+          <div className="px-4 py-4 space-y-2">
+            {navItems.map(item => (
+              <Link key={item.path} to={item.path} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${isActive(item.path) ? 'bg-[#C9A227] text-[#0B0B0D]' : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'}`}>
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            ))}
+
+            {user && (
+              <div className="border-t border-[#C9A227]/20 pt-4 space-y-2">
+                {userItems.map(item => (
+                  <Link key={item.path} to={item.path} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${isActive(item.path) ? 'bg-[#C9A227] text-[#0B0B0D]' : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'}`}>
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {adminItems.map(item => (
+              <Link key={item.path} to={item.path} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${isActive(item.path) ? 'bg-[#E53935] text-white' : 'text-gray-300 hover:text-white hover:bg-[#E53935]'}`}>
+                <item.icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            ))}
+
+            {user ? (
+              <div className="pt-4 border-t border-[#C9A227]/20 space-y-2">
+                <Link to="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center space-x-3 px-3 py-3 rounded-lg text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]">
+                  <Settings className="w-5 h-5" />
+                  <span className="font-medium">Paramètres</span>
+                </Link>
+                <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-[#E53935]">
+                  <LogOut className="w-5 h-5" />
+                  <span className="font-medium">Déconnexion</span>
+                </button>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-[#C9A227]/20 space-y-2">
+                <Button onClick={() => { navigate('/auth'); setIsMobileMenuOpen(false); }} className="w-full justify-start text-gray-300 hover:text-[#C9A227]">
+                  Connexion
+                </Button>
+                <Button onClick={() => { navigate('/auth'); setIsMobileMenuOpen(false); }} className="w-full gradient-gold text-[#0B0B0D] hover:opacity-90">
+                  Inscription
+                </Button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </nav>
+  );
 };
-
-const canCreateEvent = (profile) => {
-  return profile && ['organizer', 'admin', 'super_admin'].includes(profile.user_type);
-}
-
 export default Navbar;

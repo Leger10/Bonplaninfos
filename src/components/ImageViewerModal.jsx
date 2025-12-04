@@ -25,10 +25,10 @@ const ImageViewerModal = ({ imageUrl, altText, isOpen, onClose }) => {
             className="relative max-w-4xl max-h-[90vh] w-full"
           >
             <img
-              class="w-full h-full object-contain rounded-lg shadow-2xl"
-              src={imageUrl}
+              className="w-full h-full object-contain rounded-lg shadow-2xl"
+              src={imageUrl || "https://images.unsplash.com/photo-1573107571566-426fad25031b"}
               alt={altText}
-             src="https://images.unsplash.com/photo-1573107571566-426fad25031b" />
+            />
             <Button
               variant="ghost"
               size="icon"
