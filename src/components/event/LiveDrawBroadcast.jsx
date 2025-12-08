@@ -1,10 +1,9 @@
-// Components/LiveDrawBroadcast.jsx - VERSION CORRECTE
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/customSupabaseClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Radio, Users, Ticket, Sparkles, X, Crown, Gift, Eye } from "lucide-react";
+import { Trophy, Radio, Users, Ticket, Sparkles, X, Crown, Gift, Eye, Award, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,6 +16,9 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
   const [isVisible, setIsVisible] = useState(true);
   const [currentRound, setCurrentRound] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [participantRankings, setParticipantRankings] = useState([]);
+  const [showRankings, setShowRankings] = useState(false);
+  const [rankingsLoading, setRankingsLoading] = useState(false);
   const { toast } = useToast();
 
   const engagementMessages = [
@@ -88,6 +90,9 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
             `🎫 Ticket gagnant: #${winner.ticket_number}`
           ]);
 
+          // Charger le classement
+          await calculateParticipantRankings(winner.ticket_number);
+
           toast({
             title: "🏆 Résultats disponibles",
             description: "Le gagnant du tirage a été annoncé !",
@@ -101,6 +106,99 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
 
     loadInitialData();
   }, [raffleId, toast]);
+
+  // Fonction pour calculer le classement des participants
+  const calculateParticipantRankings = async (winningTicketNumber) => {
+    if (!raffleId) return;
+
+    setRankingsLoading(true);
+    try {
+      // Récupérer tous les tickets du raffle
+      const { data: ticketsData, error } = await supabase
+        .from('raffle_tickets')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            full_name,
+            username,
+            avatar_url,
+            email
+          )
+        `)
+        .eq('raffle_event_id', raffleId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Calculer le nombre de tickets par participant
+      const participantMap = {};
+      
+      ticketsData.forEach(ticket => {
+        if (ticket.profiles) {
+          const userId = ticket.profiles.id;
+          if (!participantMap[userId]) {
+            participantMap[userId] = {
+              user_id: userId,
+              full_name: ticket.profiles.full_name,
+              username: ticket.profiles.username,
+              avatar_url: ticket.profiles.avatar_url,
+              email: ticket.profiles.email,
+              tickets_count: 0,
+              tickets: [],
+              total_spent: 0
+            };
+          }
+          participantMap[userId].tickets_count += 1;
+          participantMap[userId].tickets.push(ticket.ticket_number);
+          participantMap[userId].total_spent += 2; // Prix fixe de 2π
+        }
+      });
+
+      // Convertir en tableau et trier par nombre de tickets (décroissant)
+      const rankings = Object.values(participantMap)
+        .sort((a, b) => {
+          // D'abord par nombre de tickets
+          if (b.tickets_count !== a.tickets_count) {
+            return b.tickets_count - a.tickets_count;
+          }
+          // Ensuite par ordre d'achat (plus ancien en premier)
+          return a.tickets[0] - b.tickets[0];
+        })
+        .map((participant, index) => ({
+          ...participant,
+          rank: index + 1,
+          position: getPositionLabel(index + 1),
+          is_winner: participant.tickets.includes(parseInt(winningTicketNumber))
+        }));
+
+      console.log("🏆 Classement calculé:", rankings);
+      setParticipantRankings(rankings);
+      
+    } catch (error) {
+      console.error("en cours:", error);
+    } finally {
+      setRankingsLoading(false);
+    }
+  };
+
+  // Fonction pour obtenir le label de position
+  const getPositionLabel = (position) => {
+    const positions = {
+      1: "🏆 1er",
+      2: "🥈 2ème",
+      3: "🥉 3ème",
+      4: "4ème",
+      5: "5ème",
+      6: "6ème",
+      7: "7ème",
+      8: "8ème",
+      9: "9ème",
+      10: "10ème"
+    };
+    
+    return positions[position] || `${position}ème`;
+  };
 
   // 🔥 CORRECTION : Système de subscription en temps réel
   useEffect(() => {
@@ -248,7 +346,7 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
         .single();
 
       if (error) {
-        console.error("❌ Erreur chargement détails gagnant:", error);
+        console.error("en cours:", error);
         return;
       }
 
@@ -258,6 +356,9 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
       setShowWinner(true);
       setIsDrawing(false);
       setIsLive(false);
+
+      // Charger le classement
+      await calculateParticipantRankings(winnerDetails.ticket_number);
 
       // Ajouter les messages de félicitations
       setDrawMessages(prev => {
@@ -279,13 +380,134 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
       });
 
     } catch (error) {
-      console.error("❌ Erreur traitement gagnant:", error);
+      console.error("traitement gagnant:", error);
     }
   };
 
   const handleClose = () => {
     setIsVisible(false);
     if (onClose) onClose();
+  };
+
+  // Composant d'affichage du classement
+  const RankingsDisplay = () => {
+    if (!showRankings || rankingsLoading || participantRankings.length === 0) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mt-6 bg-gradient-to-br from-gray-900 to-black rounded-xl p-4 border-2 border-purple-500"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Award className="w-5 h-5 text-yellow-400" />
+            CLASSEMENT DES PARTICIPANTS
+          </h3>
+          <Badge variant="outline" className="bg-purple-900/50 text-purple-300">
+            {participantRankings.length} participants
+          </Badge>
+        </div>
+
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {participantRankings.slice(0, 10).map((participant) => (
+            <div
+              key={participant.user_id}
+              className={`flex items-center justify-between p-3 rounded-lg ${
+                participant.is_winner
+                  ? 'bg-gradient-to-r from-yellow-900/50 to-orange-900/50 border border-yellow-500/50'
+                  : 'bg-gray-800/50 border border-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
+                  ${participant.rank === 1 ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white' :
+                    participant.rank === 2 ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-white' :
+                    participant.rank === 3 ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white' :
+                    'bg-purple-600 text-white'}
+                `}>
+                  {participant.rank}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {participant.avatar_url ? (
+                    <img
+                      src={participant.avatar_url}
+                      alt={participant.full_name}
+                      className="w-8 h-8 rounded-full border border-purple-500"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-purple-700 flex items-center justify-center text-white text-sm font-bold">
+                      {participant.full_name?.charAt(0) || participant.username?.charAt(0) || '?'}
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="font-semibold text-white">
+                      {participant.full_name || participant.username}
+                      {participant.is_winner && (
+                        <span className="ml-2 text-xs bg-red-500 text-white px-2 py-1 rounded animate-pulse">
+                          🎊 GAGNANT
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {participant.tickets_count} ticket{participant.tickets_count > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-sm text-gray-300">
+                  <span className="text-xs text-gray-500">Dépensé: </span>
+                  <span className="font-bold text-yellow-400">{participant.total_spent}π</span>
+                </div>
+                <div className="flex gap-1 mt-1">
+                  {participant.tickets.slice(0, 3).map((ticket, idx) => (
+                    <span
+                      key={idx}
+                      className={`text-xs px-2 py-1 rounded ${
+                        participant.is_winner && ticket === parseInt(liveData?.ticket_number)
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-700 text-gray-300'
+                      }`}
+                    >
+                      #{ticket}
+                    </span>
+                  ))}
+                  {participant.tickets.length > 3 && (
+                    <span className="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded">
+                      +{participant.tickets.length - 3}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-gray-700">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">{participantRankings.length}</div>
+            <div className="text-xs text-gray-400">Participants</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {participantRankings.reduce((sum, p) => sum + p.tickets_count, 0)}
+            </div>
+            <div className="text-xs text-gray-400">Tickets vendus</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-400">
+              {participantRankings.reduce((sum, p) => sum + p.total_spent, 0)}π
+            </div>
+            <div className="text-xs text-gray-400">Revenu total</div>
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
   // Afficher le composant s'il y a une activité de tirage ou un gagnant
@@ -433,6 +655,23 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
                       </div>
                     )}
 
+                    {/* Bouton pour voir le classement */}
+                    {participantRankings.length > 0 && (
+                      <div className="mt-6">
+                        <Button
+                          onClick={() => setShowRankings(!showRankings)}
+                          className={`w-full ${
+                            showRankings 
+                              ? 'bg-gradient-to-r from-purple-600 to-purple-800' 
+                              : 'bg-gradient-to-r from-blue-600 to-indigo-700'
+                          } text-white border-0 font-bold py-3`}
+                        >
+                          <Medal className="w-5 h-5 mr-2" />
+                          {showRankings ? 'MASQUER LE CLASSEMENT' : 'VOIR LE CLASSEMENT COMPLET'}
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Message spécial si c'est l'utilisateur courant */}
                     {currentUser && liveData.user_id === currentUser.id && (
                       <motion.div
@@ -447,6 +686,9 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Affichage du classement */}
+            {showWinner && liveData && <RankingsDisplay />}
 
             {/* Messages du tirage */}
             <div className="space-y-3 max-h-40 overflow-y-auto bg-black/30 rounded-xl p-4 border border-white/10">

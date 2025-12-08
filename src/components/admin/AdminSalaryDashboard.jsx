@@ -387,7 +387,7 @@ const AdminSalaryDashboard = () => {
             doc.setFont("helvetica", "normal");
             doc.text("BonPlanInfos - Plateforme d'information et de services", pageWidth / 2, 315, { align: "center" });
             doc.text("Email: support@bonplaninfos.com | Téléphone: +237 6XX XX XX XX", pageWidth / 2, 322, { align: "center" });
-            doc.text("© 2024 BonPlanInfos. Tous droits réservés. Ce document fait foi de paiement.", pageWidth / 2, 329, { align: "center" });
+            doc.text("© 2025 BonPlanInfos. Tous droits réservés. Ce document fait foi de paiement.", pageWidth / 2, 329, { align: "center" });
 
             // Filigrane de sécurité
             doc.setTextColor(240, 240, 240, 20);

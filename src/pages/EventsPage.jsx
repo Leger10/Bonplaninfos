@@ -35,6 +35,7 @@ import WalletInfoModal from '@/components/WalletInfoModal';
 import { CoinService } from '@/services/CoinService';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '@/constants/countries';
 import PaymentModal from '@/components/PaymentModal';
+import { fetchWithRetry } from '@/lib/utils';
 
 const EventsPage = () => {
     const { t } = useTranslation();
@@ -71,7 +72,7 @@ const EventsPage = () => {
     const fetchUnlockedEvents = useCallback(async () => {
         if (!user) return;
         try {
-            const { data, error } = await supabase.from('protected_event_access').select('event_id').eq('user_id', user.id).eq('status', 'active');
+            const { data, error } = await fetchWithRetry(() => supabase.from('protected_event_access').select('event_id').eq('user_id', user.id).eq('status', 'active'));
             if (error) throw error;
             const unlockedSet = new Set(data.map(item => item.event_id));
             setUnlockedEvents(unlockedSet);
@@ -88,8 +89,8 @@ const EventsPage = () => {
         setLoading(true);
         try {
             const [eventsRes, categoriesRes] = await Promise.all([
-                supabase.from('events_with_categories').select('*').eq('status', 'active'),
-                supabase.from('event_categories').select('*').eq('is_active', true).order('name')
+                fetchWithRetry(() => supabase.from('events_with_categories').select('*').eq('status', 'active')),
+                fetchWithRetry(() => supabase.from('event_categories').select('*').eq('is_active', true).order('name'))
             ]);
             if (eventsRes.error) throw eventsRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
@@ -158,7 +159,7 @@ const EventsPage = () => {
             requiredCoins: 2,
             onSuccess: async () => {
                 try {
-                    const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'});
+                    const { data: rpcData, error: rpcError } = await fetchWithRetry(() => supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'}));
                     if (rpcError) throw rpcError;
                     if (!rpcData.success) throw new Error(rpcData.message);
                     setUnlockedEvents(prev => new Set(prev).add(event.id));

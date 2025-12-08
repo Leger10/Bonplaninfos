@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import WhatsAppCommunityButton from '../WhatsAwhatsAppCommunityButton';
+import WhatsAppCommunityButton from '@/components/WhatsAppCommunityButton';
+
 const ProfileHeader = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();

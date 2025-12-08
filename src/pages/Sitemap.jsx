@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { writeFileSync } from 'fs';
 import path from 'path';

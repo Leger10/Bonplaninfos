@@ -29,7 +29,7 @@ const StandTypeCard = ({ standType, onSelect, isSelected }) => {
     const progress = (standType.quantity_rented / standType.quantity_available) * 100;
 
     return (
-        <div 
+        <div
             className={`bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 rounded-xl p-5 transition-all duration-300 cursor-pointer hover:shadow-lg group ${isSelected ? 'border-primary shadow-lg scale-105' : 'border-purple-500/30'} ${!isAvailable && 'opacity-60'}`}
             onClick={() => isAvailable && onSelect(standType)}
         >
@@ -187,23 +187,23 @@ const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <Label htmlFor="company_name">Nom de l'entreprise *</Label>
-                                    <Input id="company_name" value={companyInfo.company_name} onChange={e => setCompanyInfo({...companyInfo, company_name: e.target.value})} />
+                                    <Input id="company_name" value={companyInfo.company_name} onChange={e => setCompanyInfo({ ...companyInfo, company_name: e.target.value })} />
                                 </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="contact_person">Personne de contact *</Label>
-                                    <Input id="contact_person" value={companyInfo.contact_person} onChange={e => setCompanyInfo({...companyInfo, contact_person: e.target.value})} />
+                                    <Input id="contact_person" value={companyInfo.contact_person} onChange={e => setCompanyInfo({ ...companyInfo, contact_person: e.target.value })} />
                                 </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="contact_email">Email de contact *</Label>
-                                    <Input id="contact_email" type="email" value={companyInfo.contact_email} onChange={e => setCompanyInfo({...companyInfo, contact_email: e.target.value})} />
+                                    <Input id="contact_email" type="email" value={companyInfo.contact_email} onChange={e => setCompanyInfo({ ...companyInfo, contact_email: e.target.value })} />
                                 </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="contact_phone">Téléphone de contact *</Label>
-                                    <Input id="contact_phone" type="tel" value={companyInfo.contact_phone} onChange={e => setCompanyInfo({...companyInfo, contact_phone: e.target.value})} />
+                                    <Input id="contact_phone" type="tel" value={companyInfo.contact_phone} onChange={e => setCompanyInfo({ ...companyInfo, contact_phone: e.target.value })} />
                                 </div>
                                 <div className="md:col-span-2 space-y-1">
                                     <Label htmlFor="business_description">Description de l'activité</Label>
-                                    <Textarea id="business_description" value={companyInfo.business_description} onChange={e => setCompanyInfo({...companyInfo, business_description: e.target.value})} />
+                                    <Textarea id="business_description" value={companyInfo.business_description} onChange={e => setCompanyInfo({ ...companyInfo, business_description: e.target.value })} />
                                 </div>
                             </div>
                             <Button

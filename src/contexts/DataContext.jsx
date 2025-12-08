@@ -1,389 +1,327 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useAuth } from './SupabaseAuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
 const DataContext = createContext();
 
-export const useData = () => useContext(DataContext);
+export const useData = () => {
+  return useContext(DataContext);
+};
+
+// Utility for fetch retries with exponential backoff
+const fetchWithRetry = async (fn, retries = 3, delay = 1000, fallbackValue = null) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) {
+      console.error("All fetch retries failed:", error);
+      return { data: fallbackValue, error };
+    }
+    console.warn(`Fetch failed, retrying in ${delay}ms... (${retries} attempts left)`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRetry(fn, retries - 1, delay * 1.5, fallbackValue);
+  }
+};
 
 export const DataProvider = ({ children }) => {
-  const { user, loading: authLoading, session, hasFetchError: authHasFetchError } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Core Data State
   const [userProfile, setUserProfile] = useState(null);
-  const [adminConfig, setAdminConfig] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [welcomePopups, setWelcomePopups] = useState([]);
+  const [appSettings, setAppSettings] = useState({
+    app_name: 'BonPlanInfos',
+    maintenance_mode: false,
+    coin_to_fcfa_rate: 10,
+    min_withdrawal_pi: 50,
+    support_email: 'support@bonplaninfos.com'
+  });
+  const [loading, setLoading] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [notificationBellAnimation, setNotificationBellAnimation] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Cache mechanism
+  const profileCache = useRef({ data: null, userId: null, timestamp: 0 });
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  // Visual & Sound Effects State
   const [visualEffects, setVisualEffects] = useState([]);
   const [soundEffect, setSoundEffect] = useState(null);
-  const [dataFetchError, setDataFetchError] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const hasFetchError = authHasFetchError || dataFetchError;
 
-  const triggerVisualEffect = useCallback((type) => {
-    const id = Date.now();
+  // --- Effects Handlers ---
+  const addVisualEffect = useCallback((type) => {
+    const id = Math.random().toString(36).substr(2, 9);
     setVisualEffects(prev => [...prev, { id, type }]);
   }, []);
 
   const removeVisualEffect = useCallback((id) => {
-    setVisualEffects(prev => prev.filter(effect => !effect.id.toString().startsWith(id.toString().split('-')[0])));
+    setVisualEffects(prev => prev.filter(effect => effect.id !== id));
   }, []);
 
-  const triggerSoundEffect = useCallback((effect) => {
-    setSoundEffect(effect);
+  const triggerSoundEffect = useCallback((effectName) => {
+    setSoundEffect(effectName);
   }, []);
 
   const clearSoundEffect = useCallback(() => {
     setSoundEffect(null);
   }, []);
 
-  const fetchNotificationCount = useCallback(async () => {
+  // --- Fetching Logic ---
+
+  // 1. Fetch User Profile with Cache and Performance Monitoring
+  const fetchUserProfile = useCallback(async () => {
     if (!user) {
-      setNotificationCount(0);
+      setUserProfile(null);
       return;
     }
+
+    const now = Date.now();
+    const isCacheValid = 
+      profileCache.current.data && 
+      profileCache.current.userId === user.id && 
+      (now - profileCache.current.timestamp < CACHE_DURATION);
+
+    // Use cache if valid and not forced refresh (refreshTrigger increments on force)
+    if (isCacheValid && refreshTrigger === 0) {
+      console.log("Using cached user profile");
+      setUserProfile(profileCache.current.data);
+      return;
+    }
+
+    setLoadingProfile(true);
+    console.time("fetchUserProfile");
+
     try {
-      const { count, error } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+      // Use .maybeSingle() for safe query handling of potentially missing profiles
+      const { data, error } = await fetchWithRetry(
+        () => supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle(),
+        3, 500, null
+      );
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else if (data) {
+        setUserProfile(data);
+        // Update Cache
+        profileCache.current = {
+          data: data,
+          userId: user.id,
+          timestamp: Date.now()
+        };
+      } else {
+        console.warn(`Profile missing for user ${user.id} in DataContext (should have been auto-created)`);
+      }
+    } catch (err) {
+      console.error("Exception fetching profile:", err);
+    } finally {
+      console.timeEnd("fetchUserProfile");
+      setLoadingProfile(false);
+    }
+  }, [user, refreshTrigger]);
+
+  // 2. Fetch App Settings
+  const fetchAppSettings = useCallback(async () => {
+    try {
+        const { data, error } = await fetchWithRetry(
+            () => supabase.from('app_settings').select('*').limit(1).single(),
+            2, 1000, {}
+        );
+
+        if (!error && data) {
+            setAppSettings(prev => ({ ...prev, ...data }));
+        }
+    } catch (err) {
+        console.warn("Exception fetching app_settings:", err);
+    }
+  }, []);
+
+  // 3. Fetch Welcome Popups
+  const fetchWelcomePopups = useCallback(async () => {
+    try {
+        const { data, error } = await fetchWithRetry(
+            () => supabase.from('welcome_popups').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+            2, 1000, []
+        );
+
+        if (!error && data) {
+            setWelcomePopups(data);
+        }
+    } catch (err) {
+        console.warn("Exception fetching welcome_popups:", err);
+    }
+  }, []);
+
+  // 4. Update User Profile Function
+  const updateUserProfile = useCallback(async (userId, updates) => {
+    setLoadingProfile(true);
+    console.log("Updating profile:", Object.keys(updates));
+    try {
+      // Use RPC for secure update including email/bio
+      const { data, error } = await supabase.rpc('update_user_profile', {
+        p_user_id: userId,
+        p_full_name: updates.full_name,
+        p_email: updates.email,
+        p_phone: updates.phone,
+        p_city: updates.city,
+        p_country: updates.country,
+        p_bio: updates.bio,
+        p_avatar_url: updates.avatar_url
+      });
 
       if (error) throw error;
-      setNotificationCount(count || 0);
-    } catch (error) {
-      console.error("Error fetching notification count:", error);
-      setNotificationCount(0);
-    }
-  }, [user]);
 
-  const fetchUserProfile = useCallback(async (currentUser) => {
-    if (!currentUser || !currentUser.id) {
-      setUserProfile(null);
-      setLoadingProfile(false);
-      return;
-    }
-    setLoadingProfile(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116: 0 rows returned
-        throw error;
-      }
+      console.log("Profile updated successfully");
       
-      setUserProfile(data);
-      setDataFetchError(false);
+      // Force refresh to update local state immediately
+      await fetchUserProfile();
+      // Or more aggressively invalidate cache
+      profileCache.current = { ...profileCache.current, timestamp: 0 };
+      setRefreshTrigger(prev => prev + 1);
 
+      return { success: true, data };
     } catch (error) {
-        console.error('Error fetching user profile:', error);
-        if(error instanceof TypeError && error.message.includes('Failed to fetch')) {
-             setDataFetchError(true);
-             toast({
-                title: "Problème de connexion",
-                description: "Profil inaccessible. Une extension (ex: antivirus) pourrait bloquer les requêtes.",
-                variant: "destructive",
-                duration: Infinity,
-            });
-        }
-      setUserProfile(null);
+      console.error("Profile update error:", error);
+      return { success: false, error };
     } finally {
       setLoadingProfile(false);
     }
-  }, [toast]);
-
-  const forceRefreshUserProfile = useCallback(async () => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser(); // Re-fetch user from supabase
-    if (currentUser) {
-      return fetchUserProfile(currentUser);
-    }
-    return Promise.resolve();
   }, [fetchUserProfile]);
 
-
-  const fetchAdminConfig = useCallback(async () => {
-    setLoadingConfig(true);
-    try {
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('app_settings')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
-
-      const { data: coinPacksData, error: coinPacksError } = await supabase
-        .from('coin_packs')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
-      if (coinPacksError) throw coinPacksError;
-
-      const { data: promotionPacksData, error: promotionPacksError } = await supabase
-        .from('promotion_packs')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
-      if (promotionPacksError) throw promotionPacksError;
-
-      setAdminConfig({
-        ...settingsData,
-        coin_packs: coinPacksData || [],
-        promotion_packs: promotionPacksData || [],
-      });
-      setDataFetchError(false);
-    } catch (error) {
-      console.error('Error fetching admin config:', error);
-      if(error instanceof TypeError && error.message.includes('Failed to fetch')) {
-             setDataFetchError(true);
-             toast({
-                title: "Problème de connexion",
-                description: "Configuration inaccessible. Une extension (ex: antivirus) pourrait bloquer les requêtes.",
-                variant: "destructive",
-                duration: Infinity,
-            });
-        }
-      setAdminConfig(null);
-    } finally {
-      setLoadingConfig(false);
-    }
-  }, [toast]);
-
+  // Initial Data Load (Parallelized)
   useEffect(() => {
-    if (user) {
-      fetchNotificationCount();
-      const channel = supabase
-        .channel('realtime-notifications')
-        .on('postgres_changes', 
-          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, 
-          (payload) => {
-            fetchNotificationCount();
-            const newNotification = payload.new;
-            if (newNotification.sound_enabled) {
-              if (newNotification.type === 'earning') {
-                triggerSoundEffect('coin');
-                triggerVisualEffect('bubbles');
-              } else {
-                 triggerSoundEffect(newNotification.sound_effect || 'default');
-              }
-            }
-          }
-        )
-        .subscribe();
+    let isMounted = true;
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user, triggerSoundEffect, triggerVisualEffect, fetchNotificationCount]);
+    const loadGlobalData = async () => {
+      if (!navigator.onLine) {
+        toast({ title: "Mode hors ligne", description: "Vérifiez votre connexion internet.", variant: "warning" });
+      }
 
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchAppSettings(),
+          fetchWelcomePopups()
+        ]);
+      } catch (e) {
+        console.error("Global data load error:", e);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadGlobalData();
+
+    return () => { isMounted = false; };
+  }, [fetchAppSettings, fetchWelcomePopups]);
+
+  // Profile Load on User Change
   useEffect(() => {
-    if (!authLoading) {
-      fetchUserProfile(user);
-    }
-    if (!hasFetchError) {
-      fetchAdminConfig();
-    }
-  }, [user, authLoading, hasFetchError, fetchUserProfile, fetchAdminConfig]);
+    fetchUserProfile();
+  }, [fetchUserProfile]);
 
-  const updateUserProfile = async (userId, updates) => {
+  // Realtime Subscription for Profile
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('public:profiles')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
+        console.log('Profile updated via realtime:', payload);
+        // Invalidate cache on realtime update
+        profileCache.current = { ...profileCache.current, timestamp: 0 };
+        fetchUserProfile();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchUserProfile]);
+
+  const forceRefreshUserProfile = useCallback(() => {
+    // Invalidate cache and trigger refresh
+    profileCache.current = { ...profileCache.current, timestamp: 0 };
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const triggerNotificationAnimation = useCallback(() => {
+    setNotificationBellAnimation(true);
+    setTimeout(() => setNotificationBellAnimation(false), 1000);
+  }, []);
+
+  // Helper to fetch events with optimized selection
+  const getEvents = useCallback(async (filters = {}) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+      let query = supabase
+        .from('events')
+        .select('*') 
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (filters.organizer_id) {
+        query = query.eq('organizer_id', filters.organizer_id);
+      }
+      
+      if (filters.country) {
+        query = query.eq('country', filters.country);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      setUserProfile(data);
       return data;
     } catch (error) {
-      console.error('Error updating user profile:', error);
-      throw error;
+      console.error("Error fetching events:", error);
+      return [];
     }
-  };
-
-  const getEvents = useCallback(async (filters = {}) => {
-    let query = supabase.from('events').select('*, organizer:organizer_id(full_name)');
-    if (filters.organizer_id) query = query.eq('organizer_id', filters.organizer_id);
-    if (filters.status) query = query.eq('status', filters.status);
-    if (filters.country) query = query.eq('country', filters.country);
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching events:', error);
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) throw error;
-    }
-    return data || [];
   }, []);
 
+  // Helper to fetch promotions
   const getPromotions = useCallback(async (filters = {}) => {
-    let query = supabase
-      .from('event_promotions')
-      .select('*, event:event_id(*, organizer:organizer_id(full_name)), pack:promotion_pack_id(*)');
-    
-    if (filters.status) {
-        query = query.eq('status', filters.status);
-    }
-    if (filters.country) {
-      query = query.eq('event.country', filters.country);
-    }
+    try {
+      let query = supabase
+        .from('event_promotions')
+        .select('*, organizer:organizer_id(full_name, email)')
+        .order('created_at', { ascending: false });
 
-    const { data, error } = await query.order('created_at', { ascending: false });
-    
-    if (error) {
-        console.error('Error fetching promotions:', error);
-        if (error instanceof TypeError && error.message.includes('Failed to fetch')) throw error;
-        return [];
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching promotions:", error);
+      return [];
     }
-    
-    if (!data) return [];
-
-    return data.map(p => {
-        const eventData = p.event || {};
-        const packData = p.pack || {};
-        return {
-            id: p.id,
-            event_id: eventData.id,
-            title: eventData.title,
-            description: eventData.description,
-            cover_image: eventData.cover_image,
-            category: eventData.category_id,
-            city: eventData.city,
-            organizer_id: eventData.organizer_id,
-            organizer: eventData.organizer,
-            pack_name: packData.name,
-            pack_expires_at: p.end_date,
-            cost_pi: p.cost_pi,
-            created_at: p.created_at,
-            status: p.status,
-        }
-    }).filter(p => p.event_id);
   }, []);
-
-  const getUserTransactions = useCallback(async (userId) => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching transactions:', error);
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) throw error;
-    }
-    return data || [];
-  }, []);
-
-
-// Dans votre DataContext, ajoutez cette fonction :
-const refreshUserProfile = useCallback(async () => {
-  if (!user) return;
-  
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) throw error;
-    
-    setUserProfile(data);
-    return data;
-  } catch (error) {
-    console.error('Erreur rafraîchissement profil:', error);
-    throw error;
-  }
-}, [user]);
-
-  // Dans DataContext.jsx - AJOUTER CETTE FONCTION
-const refreshCoinBalance = useCallback(async (userId) => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('coin_balance')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-
-    if (data) {
-      setUserProfile(prev => ({
-        ...prev,
-        coin_balance: data.coin_balance
-      }));
-    }
-  } catch (error) {
-    console.error('Erreur rafraîchissement solde coin_balance:', error);
-  }
-}, []);
-  const getAnalyticsData = useCallback(async (range) => {
-    const getStartDate = (range) => {
-      const date = new Date();
-      if (range === '7d') date.setDate(date.getDate() - 7);
-      else if (range === '30d') date.setDate(date.getDate() - 30);
-      else if (range === '90d') date.setDate(date.getDate() - 90);
-      else if (range === '1y') date.setFullYear(date.getFullYear() - 1);
-      return date.toISOString();
-    };
-    const startDate = getStartDate(range);
-
-    const [
-      { data: users, error: usersError },
-      { data: transactions, error: transactionsError },
-      { data: events, error: eventsError },
-      { data: totalSpentData, error: totalSpentError },
-      { data: totalPurchasedData, error: totalPurchasedError },
-      { data: adminCredits, error: adminCreditsError }
-    ] = await Promise.all([
-        supabase.from('profiles').select('id, country, city, created_at, user_type, is_active').gte('created_at', startDate),
-        supabase.from('transactions').select('user_id, transaction_type, amount_fcfa, created_at').gte('created_at', startDate),
-        supabase.from('events').select('organizer_id, created_at').gte('created_at', startDate),
-        supabase.from('coin_spending').select('amount'),
-        supabase.from('user_coin_transactions').select('total_coins').eq('status', 'completed'),
-        supabase.from('admin_logs').select('details, target_user:target_id(country)').eq('action_type', 'user_credited').neq('details->>reversed', 'true').gte('created_at', startDate)
-    ]);
-
-    if (usersError || transactionsError || eventsError || totalSpentError || totalPurchasedError || adminCreditsError) {
-      console.error('Analytics fetch error:', { usersError, transactionsError, eventsError, totalSpentError, totalPurchasedError, adminCreditsError });
-      throw new Error('Failed to fetch analytics data');
-    }
-
-    const totalSpent = totalSpentData.reduce((sum, t) => sum + t.amount, 0);
-    const totalPurchased = totalPurchasedData.reduce((sum, t) => sum + t.total_coins, 0);
-
-    return { users, transactions, events, totalSpent, totalPurchased, adminCredits };
-  }, []);
-
-  const forceRefreshAdminConfig = useCallback(() => {
-    return fetchAdminConfig();
-  }, [fetchAdminConfig]);
 
   const value = {
     userProfile,
-    loadingProfile,
-    adminConfig,
-    loadingConfig,
-    hasFetchError,
+    welcomePopups,
+    appSettings,
+    loading, 
+    loadingProfile, 
+    notificationBellAnimation,
     forceRefreshUserProfile,
-    forceRefreshAdminConfig,
     updateUserProfile,
+    triggerNotificationAnimation,
+    refreshData: () => {
+        fetchAppSettings();
+        fetchWelcomePopups();
+        forceRefreshUserProfile();
+    },
     getEvents,
     getPromotions,
-    getUserTransactions,
-    refreshUserProfile,
-    refreshCoinBalance,
-    getAnalyticsData,
     visualEffects,
-    triggerVisualEffect,
+    addVisualEffect,
     removeVisualEffect,
     soundEffect,
     triggerSoundEffect,
-    clearSoundEffect,
-    notificationCount,
-    fetchNotificationCount,
+    clearSoundEffect
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

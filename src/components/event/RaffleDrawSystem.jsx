@@ -1,4 +1,3 @@
-// Components/RaffleDrawSystem.jsx - VERSION COMPLÈTE CORRIGÉE
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -9,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronLeft, ChevronRight, Users, Ticket, Crown, Target, Sparkles, RotateCcw, Play, Trophy, AlertCircle, CheckCircle, Gift, CreditCard, Loader2, ChevronDown, ChevronUp, Radio, Eye, EyeOff } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Users, Ticket, Crown, Target, Sparkles, RotateCcw, Play, Trophy, AlertCircle, CheckCircle, Gift, CreditCard, Loader2, ChevronDown, ChevronUp, Radio, Eye, EyeOff, Award, Medal } from 'lucide-react';
 
 const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) => {
     const { user } = useAuth();
@@ -34,6 +33,11 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
     const [broadcastStatus, setBroadcastStatus] = useState('idle');
     const [currentDrawSession, setCurrentDrawSession] = useState(null);
 
+    // États pour le classement
+    const [participantRankings, setParticipantRankings] = useState([]);
+    const [showRankings, setShowRankings] = useState(false);
+    const [rankingsLoading, setRankingsLoading] = useState(false);
+
     const ticketPrice = raffleData?.calculated_price_pi || 1;
 
     // Messages engageants pour le tirage
@@ -50,17 +54,101 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
         "🎉 Bravo ! Vous avez fait le bonheur d'un participant !"
     ];
 
-    // 🔥 CORRECTION : Vérification des données de base
-    if (!raffleData) {
-        return (
-            <Card className="border-2 border-dashed border-gray-300">
-                <CardContent className="p-6 text-center">
-                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Données de la tombola non disponibles</p>
-                </CardContent>
-            </Card>
-        );
-    }
+    // Fonction pour obtenir le label de position
+    const getPositionLabel = (position) => {
+        const positions = {
+            1: "🏆 1er",
+            2: "🥈 2ème",
+            3: "🥉 3ème",
+            4: "4ème",
+            5: "5ème",
+            6: "6ème",
+            7: "7ème",
+            8: "8ème",
+            9: "9ème",
+            10: "10ème"
+        };
+        
+        return positions[position] || `${position}ème`;
+    };
+
+    // Fonction pour calculer le classement des participants
+    const calculateParticipantRankings = useCallback(async (winningTicketNumber) => {
+        if (!raffleData?.id || !winningTicketNumber) return;
+
+        setRankingsLoading(true);
+        try {
+            console.log("🏆 Calcul du classement...");
+            
+            // Récupérer tous les tickets du raffle
+            const { data: ticketsData, error } = await supabase
+                .from('raffle_tickets')
+                .select(`
+                    *,
+                    profiles:user_id (
+                        id,
+                        full_name,
+                        username,
+                        avatar_url,
+                        email
+                    )
+                `)
+                .eq('raffle_event_id', raffleData.id)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            // Calculer le nombre de tickets par participant
+            const participantMap = {};
+            
+            ticketsData.forEach(ticket => {
+                if (ticket.profiles) {
+                    const userId = ticket.profiles.id;
+                    if (!participantMap[userId]) {
+                        participantMap[userId] = {
+                            user_id: userId,
+                            full_name: ticket.profiles.full_name,
+                            username: ticket.profiles.username,
+                            avatar_url: ticket.profiles.avatar_url,
+                            email: ticket.profiles.email,
+                            tickets_count: 0,
+                            tickets: [],
+                            total_spent: 0
+                        };
+                    }
+                    participantMap[userId].tickets_count += 1;
+                    participantMap[userId].tickets.push(ticket.ticket_number);
+                    participantMap[userId].total_spent += ticketPrice;
+                }
+            });
+
+            // Convertir en tableau et trier par nombre de tickets (décroissant)
+            const rankings = Object.values(participantMap)
+                .sort((a, b) => {
+                    // D'abord par nombre de tickets
+                    if (b.tickets_count !== a.tickets_count) {
+                        return b.tickets_count - a.tickets_count;
+                    }
+                    // Ensuite par ordre d'achat (plus ancien en premier)
+                    return a.tickets[0] - b.tickets[0];
+                })
+                .map((participant, index) => ({
+                    ...participant,
+                    rank: index + 1,
+                    position: getPositionLabel(index + 1),
+                    is_winner: participant.tickets.includes(parseInt(winningTicketNumber))
+                }));
+
+            console.log("✅ Classement calculé:", rankings);
+            setParticipantRankings(rankings);
+            
+        } catch (error) {
+            console.error("calcul classement:", error);
+            
+        } finally {
+            setRankingsLoading(false);
+        }
+    }, [raffleData?.id, ticketPrice]);
 
     // 🔥 FONCTION : Charger les participants
     const loadParticipants = useCallback(async () => {
@@ -82,7 +170,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 .order('ticket_number', { ascending: true });
 
             if (error) {
-                console.error("❌ Erreur chargement tickets:", error);
+                console.error(" chargement tickets:", error);
                 return;
             }
 
@@ -104,8 +192,8 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                             number: ticket.ticket_number,
                             id: ticket.id
                         });
-                        const ticketPrice = raffleData.calculated_price_pi || 1;
-                        participantsMap[ticket.profiles.id].totalSpent += ticketPrice;
+                        const currentTicketPrice = raffleData.calculated_price_pi || 1;
+                        participantsMap[ticket.profiles.id].totalSpent += currentTicketPrice;
                         participantsMap[ticket.profiles.id].ticketsCount += 1;
                     }
                 });
@@ -113,7 +201,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 const participantsList = Object.values(participantsMap);
                 setParticipants(participantsList);
                 
-                const revenue = (ticketsData?.length || 0) * ticketPrice;
+                const revenue = (ticketsData?.length || 0) * (raffleData.calculated_price_pi || 1);
                 setTotalRevenue(revenue);
             } else {
                 setParticipants([]);
@@ -126,20 +214,21 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                     .map(ticket => ({
                         number: ticket.ticket_number,
                         id: ticket.id,
-                        price: ticketPrice
+                        price: raffleData.calculated_price_pi || 1
                     }));
                 setUserTickets(userTicketsList);
             }
         } catch (err) {
             console.error("💥 Erreur chargement participants:", err);
         }
-    }, [raffleData, user, isOrganizer, ticketPrice]);
+    }, [raffleData, user, isOrganizer]);
 
     // 🔥 FONCTION : Charger l'historique des tirages
     const loadDrawHistory = useCallback(async () => {
         if (!raffleData?.id) return;
 
         try {
+            // Removed raffle_prizes join as it caused an error and seems unnecessary/incorrect schema
             const { data, error } = await supabase
                 .from('raffle_winners')
                 .select(`
@@ -148,11 +237,6 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                         full_name,
                         username,
                         avatar_url
-                    ),
-                    raffle_prizes (
-                        description,
-                        value_fcfa,
-                        rank
                     )
                 `)
                 .eq('raffle_event_id', raffleData.id)
@@ -162,7 +246,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 setDrawHistory(data);
             }
         } catch (err) {
-            console.error("💥 Erreur chargement historique:", err);
+            console.error("💥chargement historique:", err);
         }
     }, [raffleData]);
 
@@ -186,7 +270,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 .eq('raffle_event_id', raffleData.id)
                 .order('created_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle(); // Use maybeSingle instead of single to avoid error when no winner
 
             if (!error && winner) {
                 console.log("✅ Gagnant trouvé pour visibilité:", winner);
@@ -202,6 +286,9 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 
                 setWinnerTicket(winningTicket);
                 
+                // Calculer le classement
+                await calculateParticipantRankings(winner.ticket_number);
+                
                 // Vérifier si l'utilisateur courant est le gagnant
                 if (user && winner.user_id === user.id) {
                     setIsUserWinner(true);
@@ -210,7 +297,69 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
         } catch (error) {
             console.log("ℹ️ Aucun gagnant pour la visibilité:", error);
         }
-    }, [raffleData?.id, user]);
+    }, [raffleData?.id, user, calculateParticipantRankings]);
+
+    // 🔥 FONCTION : Gérer un nouveau gagnant
+    const handleNewWinner = useCallback(async (winnerData) => {
+        try {
+            // Charger les détails complets du gagnant
+            const { data: winnerDetails, error } = await supabase
+                .from('raffle_winners')
+                .select(`
+                    *,
+                    profiles:user_id (
+                        full_name,
+                        username,
+                        avatar_url
+                    )
+                `)
+                .eq('id', winnerData.id)
+                .single();
+
+            if (error) {
+                console.error("chargement détails gagnant:", error);
+                return;
+            }
+
+            if (winnerDetails) {
+                setLiveDrawData(winnerDetails);
+                setShowWinner(true);
+                
+                const winningTicket = {
+                    ticket_number: winnerDetails.ticket_number,
+                    profiles: winnerDetails.profiles,
+                    is_virtual: true
+                };
+                
+                setWinnerTicket(winningTicket);
+                
+                // Calculer le classement
+                await calculateParticipantRankings(winnerDetails.ticket_number);
+                
+                if (user && winnerDetails.user_id === user.id) {
+                    setIsUserWinner(true);
+                    toast({
+                        title: "🎉 FÉLICITATIONS ! 🎉",
+                        description: "Vous avez gagné le tirage !",
+                        duration: 10000
+                    });
+                } else {
+                    // Notification pour tous les participants
+                    toast({
+                        title: "🏆 Tirage terminé !",
+                        description: `Le gagnant est le ticket #${winnerDetails.ticket_number}`,
+                        duration: 6000,
+                    });
+                }
+
+                // Recharger les données
+                await loadParticipants();
+                await loadDrawHistory();
+            }
+        } catch (error) {
+            console.error("traitement nouveau gagnant:", error);
+        }
+    }, [user, toast, loadParticipants, loadDrawHistory, calculateParticipantRankings]);
 
     // 🔥 EFFET : Chargement initial des données
     useEffect(() => {
@@ -229,7 +378,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                         .select('*')
                         .eq('raffle_event_id', raffleData.id)
                         .eq('status', 'live')
-                        .single();
+                        .maybeSingle(); // Use maybeSingle to avoid error if no active session
                         
                     if (activeSession) {
                         setCurrentDrawSession(activeSession);
@@ -238,11 +387,13 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                     }
                 }
             } catch (error) {
-                console.error("💥 Erreur chargement initial:", error);
+                console.error("💥chargement initial:", error);
             }
         };
         
-        loadInitialData();
+        if (raffleData?.id) {
+            loadInitialData();
+        }
     }, [raffleData?.id, loadParticipants, loadDrawHistory, ensureWinnerVisibility]);
 
     // 🔥 EFFET : Écoute en temps réel des gagnants
@@ -271,66 +422,21 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [raffleData?.id]);
+    }, [raffleData?.id, handleNewWinner]);
 
-    // 🔥 FONCTION : Gérer un nouveau gagnant
-    const handleNewWinner = useCallback(async (winnerData) => {
-        try {
-            // Charger les détails complets du gagnant
-            const { data: winnerDetails, error } = await supabase
-                .from('raffle_winners')
-                .select(`
-                    *,
-                    profiles:user_id (
-                        full_name,
-                        username,
-                        avatar_url
-                    )
-                `)
-                .eq('id', winnerData.id)
-                .single();
-
-            if (error) {
-                console.error("❌ Erreur chargement détails gagnant:", error);
-                return;
-            }
-
-            if (winnerDetails) {
-                setLiveDrawData(winnerDetails);
-                setShowWinner(true);
-                
-                const winningTicket = {
-                    ticket_number: winnerDetails.ticket_number,
-                    profiles: winnerDetails.profiles,
-                    is_virtual: true
-                };
-                
-                setWinnerTicket(winningTicket);
-                
-                if (user && winnerDetails.user_id === user.id) {
-                    setIsUserWinner(true);
-                    toast({
-                        title: "🎉 FÉLICITATIONS ! 🎉",
-                        description: "Vous avez gagné le tirage !",
-                        duration: 10000
-                    });
-                } else {
-                    // Notification pour tous les participants
-                    toast({
-                        title: "🏆 Tirage terminé !",
-                        description: `Le gagnant est le ticket #${winnerDetails.ticket_number}`,
-                        duration: 6000,
-                    });
-                }
-
-                // Recharger les données
-                await loadParticipants();
-                await loadDrawHistory();
-            }
-        } catch (error) {
-            console.error("❌ Erreur traitement nouveau gagnant:", error);
-        }
-    }, [user, toast, loadParticipants, loadDrawHistory]);
+    // --------------------------------------------------------------------------------
+    // 🔥 CORRECTION CRITIQUE : Le rendu conditionnel doit être APRÈS tous les Hooks
+    // --------------------------------------------------------------------------------
+    if (!raffleData) {
+        return (
+            <Card className="border-2 border-dashed border-gray-300">
+                <CardContent className="p-6 text-center">
+                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Données de la tombola non disponibles</p>
+                </CardContent>
+            </Card>
+        );
+    }
 
     // Vérifier si l'objectif est atteint
     const isGoalReached = (raffleData?.tickets_sold || 0) >= (raffleData?.min_tickets_required || 1);
@@ -417,10 +523,10 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
             });
 
         } catch (error) {
-            console.error("❌ Erreur démarrage diffusion:", error);
+            console.error("démarrage diffusion:", error);
             toast({
-                title: "Erreur",
-                description: "Impossible de démarrer la diffusion",
+                title: "Diffusion en cours...",
+                description: "démarrage de la diffusion en direct",
                 variant: "destructive"
             });
         }
@@ -566,7 +672,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
         setIsUserWinner(false);
         setDisplayedNumber(null);
         setCurrentRound(0);
-        setLiveDrawData(null); // 🔥 CORRECTION : Réinitialiser les données précédentes
+        setLiveDrawData(null);
 
         try {
             console.log("🎲 DÉBUT DU TIRAGE - Animation des chiffres");
@@ -596,6 +702,9 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
 
             // Sauvegarder le gagnant
             const winnerData = await saveWinnerToDatabase(winner);
+
+            // Calculer le classement
+            await calculateParticipantRankings(winner.ticket_number);
 
             // Notifier les participants
             await notifyAllParticipants(winnerData);
@@ -633,6 +742,136 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                 }
             }, 30000);
         }
+    };
+
+    // Composant d'affichage du classement
+    const RankingsDisplay = () => {
+        if (!showRankings || rankingsLoading || participantRankings.length === 0) return null;
+
+        return (
+            <Card className="border-2 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 shadow-2xl">
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-indigo-700">
+                            <Trophy className="w-6 h-6" />
+                            🏆 CLASSEMENT DES PARTICIPANTS 🏆
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowRankings(false)}
+                        >
+                            Masquer
+                        </Button>
+                    </CardTitle>
+                    <CardDescription className="text-indigo-600">
+                        Classement basé sur le nombre de tickets achetés
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-3">
+                        {/* Liste des participants classés */}
+                        {participantRankings.slice(0, 10).map((participant) => (
+                            <div
+                                key={participant.user_id}
+                                className={`flex items-center justify-between p-3 rounded-lg border ${
+                                    participant.user_id === liveDrawData?.user_id
+                                        ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300'
+                                        : 'bg-white border-indigo-200'
+                                } hover:shadow-md transition-shadow`}
+                            >
+                                <div className="flex items-center gap-3 flex-1">
+                                    <div className={`
+                                        w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
+                                        ${participant.rank === 1 ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white' :
+                                            participant.rank === 2 ? 'bg-gradient-to-r from-gray-300 to-gray-400 text-white' :
+                                            participant.rank === 3 ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white' :
+                                            'bg-indigo-100 text-indigo-700'}
+                                    `}>
+                                        {participant.rank}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        {participant.avatar_url ? (
+                                            <img
+                                                src={participant.avatar_url}
+                                                alt={participant.full_name}
+                                                className="w-8 h-8 rounded-full border-2 border-indigo-300"
+                                            />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                                                {participant.full_name?.charAt(0) || participant.username?.charAt(0) || '?'}
+                                            </div>
+                                        )}
+                                        
+                                        <div>
+                                            <p className="font-semibold text-gray-800">
+                                                {participant.full_name || participant.username}
+                                                {participant.user_id === liveDrawData?.user_id && (
+                                                    <Badge className="ml-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-0 text-xs">
+                                                        🎊 Gagnant
+                                                    </Badge>
+                                                )}
+                                            </p>
+                                            <p className="text-xs text-gray-600">
+                                                {participant.tickets_count} ticket{participant.tickets_count > 1 ? 's' : ''}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="text-right">
+                                    <div className="text-sm text-gray-600">
+                                        <span className="text-xs text-gray-500">Dépensé: </span>
+                                        <span className="font-bold text-indigo-700">{participant.total_spent}π</span>
+                                    </div>
+                                    <div className="flex gap-1 mt-1">
+                                        {participant.tickets.slice(0, 3).map((ticket, idx) => (
+                                            <span
+                                                key={idx}
+                                                className={`text-xs px-2 py-1 rounded ${
+                                                    participant.user_id === liveDrawData?.user_id && 
+                                                    ticket === parseInt(liveDrawData?.ticket_number)
+                                                        ? 'bg-red-500 text-white animate-pulse'
+                                                        : 'bg-indigo-100 text-indigo-700'
+                                                }`}
+                                            >
+                                                #{ticket}
+                                            </span>
+                                        ))}
+                                        {participant.tickets.length > 3 && (
+                                            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                                                +{participant.tickets.length - 3}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Résumé statistique */}
+                        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-indigo-200">
+                            <div className="text-center p-3 bg-gradient-to-r from-indigo-100 to-blue-100 rounded-lg">
+                                <div className="text-2xl font-bold text-indigo-700">{participantRankings.length}</div>
+                                <div className="text-sm text-indigo-600">Participants</div>
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg">
+                                <div className="text-2xl font-bold text-green-700">
+                                    {participantRankings.reduce((sum, p) => sum + p.tickets_count, 0)}
+                                </div>
+                                <div className="text-sm text-green-600">Tickets vendus</div>
+                            </div>
+                            <div className="text-center p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
+                                <div className="text-2xl font-bold text-purple-700">
+                                    {participantRankings.reduce((sum, p) => sum + p.total_spent, 0)} π
+                                </div>
+                                <div className="text-sm text-purple-600">Revenu total</div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        );
     };
 
     // Rendu du composant
@@ -794,70 +1033,92 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
 
             {/* Section Résultats du tirage - VISIBLE APRÈS LE TIRAGE */}
             {!isDrawing && (showWinner || liveDrawData) && (
-                <Card className="border-2 border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 shadow-2xl">
-                    <CardHeader className="px-3 sm:px-6 py-4">
-                        <CardTitle className="text-lg sm:text-xl text-green-700 text-center">
-                            # RÉSULTATS DU TIRAGE
-                        </CardTitle>
-                        <CardDescription className="text-green-600 text-center">
-                            Le gagnant a été sélectionné ! Félicitations au heureux élu.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="px-3 sm:px-6 pb-6">
-                        {/* Ligne de séparation */}
-                        <div className="border-t border-green-300 my-4"></div>
+                <>
+                    <Card className="border-2 border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 shadow-2xl">
+                        <CardHeader className="px-3 sm:px-6 py-4">
+                            <CardTitle className="text-lg sm:text-xl text-green-700 text-center">
+                                # RÉSULTATS DU TIRAGE
+                            </CardTitle>
+                            <CardDescription className="text-green-600 text-center">
+                                Le gagnant a été sélectionné ! Félicitations au heureux élu.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="px-3 sm:px-6 pb-6">
+                            {/* Ligne de séparation */}
+                            <div className="border-t border-green-300 my-4"></div>
 
-                        <div className="text-center space-y-6">
-                            {/* Titre FÉLICITATIONS */}
-                            <div>
-                                <h3 className="text-xl sm:text-2xl font-bold text-green-800 mb-2">
-                                    <strong>FÉLICITATIONS !</strong>
-                                </h3>
-                            </div>
-
-                            {/* Ticket gagnant */}
-                            <div>
-                                <p className="text-lg sm:text-xl text-green-700 mb-3">Ticket gagnant :</p>
-                                <div className="text-4xl sm:text-6xl font-bold text-green-900 bg-white rounded-xl p-4 sm:p-6 mx-auto max-w-xs shadow-2xl border-4 border-green-300">
-                                    #{winnerTicket?.ticket_number || liveDrawData?.ticket_number}
+                            <div className="text-center space-y-6">
+                                {/* Titre FÉLICITATIONS */}
+                                <div>
+                                    <h3 className="text-xl sm:text-2xl font-bold text-green-800 mb-2">
+                                        <strong>FÉLICITATIONS !</strong>
+                                    </h3>
                                 </div>
-                            </div>
 
-                            {/* Gagnant */}
-                            <div>
-                                <p className="text-lg sm:text-xl text-green-700 mb-2">Gagnant :</p>
-                                <p className="text-2xl sm:text-3xl font-bold text-green-900">
-                                    {winnerTicket?.profiles?.full_name || 
-                                     winnerTicket?.profiles?.username || 
-                                     liveDrawData?.profiles?.full_name || 
-                                     liveDrawData?.profiles?.username || 
-                                     'Participant'}
-                                </p>
-                            </div>
-
-                            {/* Badge Grand Gagnant */}
-                            <div className="flex justify-center items-center gap-2">
-                                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                                    <CheckCircle className="w-4 h-4 text-white" />
+                                {/* Ticket gagnant */}
+                                <div>
+                                    <p className="text-lg sm:text-xl text-green-700 mb-3">Ticket gagnant :</p>
+                                    <div className="text-4xl sm:text-6xl font-bold text-green-900 bg-white rounded-xl p-4 sm:p-6 mx-auto max-w-xs shadow-2xl border-4 border-green-300">
+                                        #{winnerTicket?.ticket_number || liveDrawData?.ticket_number}
+                                    </div>
                                 </div>
-                                <Badge variant="secondary" className="text-base sm:text-lg py-2 sm:py-3 px-4 sm:px-6 bg-green-500 text-white border-0 shadow-lg">
-                                    Grand Gagnant
-                                </Badge>
-                            </div>
 
-                            {/* Message spécial si c'est l'utilisateur */}
-                            {isUserWinner && (
-                                <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="mt-4 p-4 bg-red-500 text-white rounded-lg font-bold text-lg shadow-lg"
-                                >
-                                    🎊 C'EST VOUS ! FÉLICITATIONS ! 🎊
-                                </motion.div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                {/* Gagnant */}
+                                <div>
+                                    <p className="text-lg sm:text-xl text-green-700 mb-2">Gagnant :</p>
+                                    <p className="text-2xl sm:text-3xl font-bold text-green-900">
+                                        {winnerTicket?.profiles?.full_name || 
+                                         winnerTicket?.profiles?.username || 
+                                         liveDrawData?.profiles?.full_name || 
+                                         liveDrawData?.profiles?.username || 
+                                         'Participant'}
+                                    </p>
+                                </div>
+
+                                {/* Badge Grand Gagnant */}
+                                <div className="flex justify-center items-center gap-2">
+                                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                        <CheckCircle className="w-4 h-4 text-white" />
+                                    </div>
+                                    <Badge variant="secondary" className="text-base sm:text-lg py-2 sm:py-3 px-4 sm:px-6 bg-green-500 text-white border-0 shadow-lg">
+                                        Grand Gagnant
+                                    </Badge>
+                                </div>
+
+                                {/* Bouton pour voir le classement */}
+                                {participantRankings.length > 0 && (
+                                    <div className="mt-6">
+                                        <Button
+                                            onClick={() => setShowRankings(!showRankings)}
+                                            className={`w-full ${
+                                                showRankings 
+                                                    ? 'bg-gradient-to-r from-purple-600 to-purple-800' 
+                                                    : 'bg-gradient-to-r from-indigo-600 to-purple-700'
+                                            } text-white border-0 font-bold py-3`}
+                                        >
+                                            <Medal className="w-5 h-5 mr-2" />
+                                            {showRankings ? 'MASQUER LE CLASSEMENT' : 'VOIR LE CLASSEMENT COMPLET'}
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {/* Message spécial si c'est l'utilisateur */}
+                                {isUserWinner && (
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="mt-4 p-4 bg-red-500 text-white rounded-lg font-bold text-lg shadow-lg"
+                                    >
+                                        🎊 C'EST VOUS ! FÉLICITATIONS ! 🎊
+                                    </motion.div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Affichage du classement */}
+                    {showRankings && <RankingsDisplay />}
+                </>
             )}
 
             {/* Mes tickets */}

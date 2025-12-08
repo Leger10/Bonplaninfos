@@ -1,166 +1,321 @@
-
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { DataProvider, useData } from './DataContext';
 
 const AuthContext = createContext(undefined);
+
+// Helper for retrying promises with exponential backoff
+const retryPromise = async (fn, retries = 3, delay = 500) => {
+  try {
+    return await fn();
+  } catch (error) {
+    // Critical: Catch Refresh Token errors immediately
+    const errorMessage = error?.message || '';
+    const errorCode = error?.code || '';
+    
+    const isRefreshTokenError = 
+        errorMessage.includes('refresh_token_not_found') || 
+        errorMessage.includes('Invalid Refresh Token') ||
+        errorCode === 'refresh_token_not_found';
+
+    if (isRefreshTokenError) {
+        // Throw a specific error that we can catch in handleSession to trigger logout
+        throw new Error('CRITICAL_AUTH_ERROR: Refresh Token Invalid');
+    }
+
+    // Stop retrying if it's a standard auth-related error (4xx)
+    const isAuthError = error.status === 400 || error.status === 401 || error.status === 403 || 
+                        (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt')) ||
+                        (errorMessage && (errorMessage.includes('bad_jwt') || errorMessage.includes('invalid claim') || errorMessage.includes('session_id')));
+
+    if (isAuthError) {
+      throw error;
+    }
+
+    if (retries <= 0) throw error;
+    
+    const isNetworkError = errorMessage && (
+      errorMessage.includes('Failed to fetch') || 
+      errorMessage.includes('Network request failed') ||
+      errorMessage.includes('NetworkError')
+    );
+    
+    if (isNetworkError) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryPromise(fn, retries - 1, delay * 1.5);
+    }
+    throw error;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const { toast } = useToast();
 
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
+  const [license, setLicense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasFetchError, setHasFetchError] = useState(false);
-
   const [forceRefresh, setForceRefresh] = useState(() => () => { });
 
-  const handleSession = useCallback(async (currentSession) => {
-    // Check for a specific error indicating an invalid refresh token or network issue
-    const isInvalidTokenError = currentSession?.error?.message?.includes('Invalid Refresh Token');
-    const isNetworkError = currentSession?.error instanceof TypeError && currentSession.error.message.includes('Failed to fetch');
-
-    if (currentSession === null || isInvalidTokenError || isNetworkError) {
-      setUser(null);
-      setSession(null);
-
-      if (isInvalidTokenError) {
-        setHasFetchError(true);
-        toast({
-          variant: 'destructive',
-          title: 'Session invalide',
-          description: 'Votre session a expiré. Veuillez vous reconnecter.',
+  // Helper to completely wipe local data
+  const clearSessionData = useCallback(() => {
+    console.log("Cleaning session data due to auth error...");
+    try {
+        // Clear specific supabase keys first to be safe
+        for (const key in localStorage) {
+            if (key.startsWith('sb-')) {
+                localStorage.removeItem(key);
+            }
+        }
+        // Aggressively clear all storage if needed
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Nuke cookies
+        document.cookie.split(";").forEach((c) => {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
-        await supabase.auth.signOut();
-      } else if (isNetworkError) {
-        setHasFetchError(true);
-        toast({
-          title: "Problème de connexion",
-          description: "Authentification impossible. Vérifiez votre connexion ou une extension bloquante.",
-          variant: "destructive",
-          duration: Infinity,
-        });
-      }
+    } catch (e) {
+        console.warn("Error clearing storage:", e);
+    }
+    
+    setUser(null);
+    setSession(null);
+    setLicense(null);
+  }, []);
+
+  const fetchLicense = useCallback(async (userId) => {
+    if (!userId) return;
+    
+    try {
+        const { data: activeLicenseData } = await supabase
+            .from('admin_licences')
+            .select('*')
+            .eq('admin_id', userId)
+            .eq('statut', 'actif');
+
+        if (activeLicenseData && activeLicenseData.length > 0) {
+            const bestLicense = activeLicenseData.sort((a, b) => new Date(b.date_fin) - new Date(a.date_fin))[0];
+            setLicense(bestLicense);
+            return;
+        } 
+        
+        // Fallback: fetch any license
+        const { data: anyLicenseData } = await supabase
+            .from('admin_licences')
+            .select('*')
+            .eq('admin_id', userId)
+            .limit(1);
+            
+        if (anyLicenseData && anyLicenseData.length > 0) {
+            setLicense(anyLicenseData[0]);
+        } else {
+            setLicense(null);
+        }
+    } catch (err) {
+        console.error("License fetch error:", err);
+    }
+  }, []);
+
+  const handleSession = useCallback(async (currentSession, error = null) => {
+    const sessionError = error || currentSession?.error;
+    
+    if (sessionError) {
+        const errorMessage = sessionError.message || '';
+        
+        // Handle Critical Refresh Errors immediately
+        if (errorMessage.includes('CRITICAL_AUTH_ERROR') || errorMessage.includes('refresh_token_not_found')) {
+            console.error("Critical Auth Error detected. Logging out.");
+            clearSessionData();
+            setLoading(false);
+            return;
+        }
+
+        if (errorMessage.includes('session_id claim')) {
+            console.log("Suppressing session_id claim error in handleSession");
+            clearSessionData();
+            setLoading(false);
+            return;
+        }
+
+        const isBadJwtError = 
+            errorMessage.includes('bad_jwt') ||
+            errorMessage.includes('invalid claim') || 
+            errorMessage.includes('not found') ||
+            errorMessage.includes('JWT');
+
+        if (isBadJwtError) {
+            console.warn("Invalid session detected, clearing...");
+            clearSessionData();
+        } else {
+            setHasFetchError(true);
+        }
+        setLoading(false);
+        return;
+    }
+
+    if (currentSession?.user) {
+        const currentUser = currentSession.user;
+        
+        // --- Profile Verification Logic ---
+        console.log(`Checking profile: ${currentUser.id}`);
+        try {
+            const { data: profileCheck, error: profileError } = await supabase.rpc('ensure_user_profile_exists', {
+                p_user_id: currentUser.id,
+                p_email: currentUser.email,
+                p_full_name: currentUser.user_metadata?.full_name
+            });
+
+            if (profileError) {
+                console.error("Profile check error:", profileError);
+            } else if (profileCheck) {
+                if (profileCheck.status === 'created') {
+                    console.log(`Profile not found: ${currentUser.id}`);
+                    console.log(`Creating profile: ${currentUser.id}`);
+                    console.log(`Profile created: ${profileCheck.profile.id}`);
+                    console.log(`Referral code generated: ${profileCheck.profile.affiliate_code}`);
+                } else if (profileCheck.status === 'exists') {
+                    console.log(`Profile exists: ${currentUser.id}`);
+                    console.log(`Profile verified: ${currentUser.id}`);
+                }
+            }
+        } catch (e) {
+            console.error("Profile verification exception:", e);
+        }
+        // ----------------------------------
+
+        setSession(currentSession);
+        setUser(currentUser);
+        setHasFetchError(false);
+        await fetchLicense(currentUser.id);
+        
+        if (typeof forceRefresh === 'function') {
+            forceRefresh();
+        }
     } else {
-      setSession(currentSession);
-      setUser(currentSession.user ?? null);
-      setHasFetchError(false);
-      if (currentSession.user) {
-        forceRefresh();
-      }
+        setSession(null);
+        setUser(null);
+        setLicense(null);
     }
 
     setLoading(false);
-  }, [toast, forceRefresh]);
-
+  }, [forceRefresh, clearSessionData, fetchLicense]);
 
   useEffect(() => {
-    setLoading(true);
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      handleSession(session || { error });
-    });
+    let mounted = true;
+
+    const initSession = async () => {
+        try {
+            setLoading(true);
+            // Try to get session from Supabase client
+            const { data: { session: localSession }, error: sessionError } = await retryPromise(() => supabase.auth.getSession());
+            
+            if (sessionError) {
+                if (mounted) handleSession(null, sessionError);
+                return;
+            }
+
+            if (localSession) {
+                // Verify token validity by fetching user
+                const { data: { user: verifiedUser }, error: userError } = await retryPromise(() => supabase.auth.getUser());
+                
+                if (userError) {
+                    if (mounted) handleSession(null, userError);
+                } else {
+                    if (mounted) handleSession(localSession);
+                }
+            } else {
+                if (mounted) handleSession(null);
+            }
+        } catch (err) {
+            if (mounted) handleSession(null, err);
+        }
+    };
+
+    initSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        if (!mounted) return;
         if (event === 'SIGNED_OUT') {
-          handleSession(null);
-        } else if (session) {
+          clearSessionData();
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           handleSession(session);
         }
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [handleSession]);
+  }, [handleSession, clearSessionData]);
 
   const signUp = useCallback(async (email, password, metadata) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: metadata
-      }
-    });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign up Failed",
-        description: error.message || "Something went wrong",
-      });
+    try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: metadata }
+        });
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        return { data: null, error };
     }
-
-    return { data, error };
-  }, [toast]);
+  }, []);
 
   const signIn = useCallback(async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign in Failed",
-        description: error.message || "Something went wrong",
-      });
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return { data, error: null };
+    } catch (error) {
+        return { data: null, error };
     }
-
-    return { data, error };
-  }, [toast]);
+  }, []);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign out Failed",
-        description: error.message || "Something went wrong",
-      });
+    console.log("Logout started");
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            if (error.message?.includes('session_id claim') || error.message?.includes('JWT') || error.status === 403) {
+                console.log("JWT error caught and ignored during logout");
+            } else {
+                console.warn("Supabase signOut warning (ignoring):", error.message);
+            }
+        }
+    } catch (error) {
+        console.log("Logout exception caught and ignored:", error);
+    } finally {
+        clearSessionData();
+        window.location.href = '/auth';
     }
+  }, [clearSessionData]);
 
-    return { error };
-  }, [toast]);
+  const refreshLicense = useCallback(async () => {
+    if (user) {
+        await fetchLicense(user.id);
+    }
+  }, [user, fetchLicense]);
 
   const value = useMemo(() => ({
     user,
     session,
+    license,
     loading,
     hasFetchError,
     signUp,
     signIn,
     signOut,
     setForceRefresh,
-  }), [user, session, loading, hasFetchError, signUp, signIn, signOut]);
+    refreshLicense
+  }), [user, session, license, loading, hasFetchError, signUp, signIn, signOut, setForceRefresh, refreshLicense]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-const AuthSync = () => {
-  const { setForceRefresh } = useAuth();
-  const { forceRefreshUserProfile } = useData();
-
-  useEffect(() => {
-    setForceRefresh(() => forceRefreshUserProfile);
-  }, [setForceRefresh, forceRefreshUserProfile]);
-
-  return null;
-}
-
-export const AuthProviderWithData = ({ children }) => {
-  return (
-    <AuthProvider>
-      <DataProvider>
-        <AuthSync />
-        {children}
-      </DataProvider>
-    </AuthProvider>
-  );
 };
 
 export const useAuth = () => {

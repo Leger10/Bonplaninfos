@@ -71,7 +71,7 @@ const AdminSalaryListTab = () => {
 
             setAdmins(processedAdmins);
             setGrandTotalWithdrawals(totalGlobalWithdrawals);
-            
+
             console.log("Admin list loaded: [count]", processedAdmins.length);
             console.log("Total admin withdrawals: [amount]", totalGlobalWithdrawals);
 

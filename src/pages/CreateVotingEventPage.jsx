@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -8,447 +8,420 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, Vote, Plus, Trash, User, Coins, Calendar, Users, Settings, Award, Crown, Star, RefreshCcw } from 'lucide-react';
+import { Loader2, Vote, Plus, Trash, Upload, X, ArrowRight, ArrowLeft, Image as ImageIcon, Layers, Users, Calendar, DollarSign, FileText } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { CoinService } from '@/services/CoinService';
+import { Progress } from '@/components/ui/progress';
 
 const CreateVotingEventPage = () => {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [step, setStep] = useState(1);
-    const [selectedTemplate, setSelectedTemplate] = useState('custom');
-    const [exchangeRate, setExchangeRate] = useState(10);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  
+  // Form State
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [votePrice, setVotePrice] = useState(100); // FCFA default
+  const [endDate, setEndDate] = useState('');
+  const [coverImage, setCoverImage] = useState(null);
+  const [categories, setCategories] = useState(['Général']);
+  const [newCategory, setNewCategory] = useState('');
+  
+  // Candidates
+  const [candidates, setCandidates] = useState([
+    { id: uuidv4(), name: '', photo_url: '', description: '', category: 'Général' }
+  ]);
 
-    // Event Details
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [eventDate, setEventDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [city, setCity] = useState('');
-    const [country, setCountry] = useState('');
-    const [address, setAddress] = useState('');
-    const [categoryId, setCategoryId] = useState('');
-    const [isPublic, setIsPublic] = useState(true);
-    const [requiresApproval, setRequiresApproval] = useState(false);
-    const [maxVotesPerUser, setMaxVotesPerUser] = useState(1);
-    const [allowMultipleVotes, setAllowMultipleVotes] = useState(false);
-
-    // Voting Details
-    const [votePricePi, setVotePricePi] = useState(1);
-    const [votePriceXOF, setVotePriceXOF] = useState(10); // Initial value
-    const [voteCurrency, setVoteCurrency] = useState('XOF');
-    const [votingType, setVotingType] = useState('paid');
-    const [candidates, setCandidates] = useState([{ 
-        id: uuidv4(), 
-        name: '', 
-        description: '',
-        image: null,
-        category: ''
-    }]);
-
-    // Coûts prévus
-    const [plannedCosts, setPlannedCosts] = useState([{
-        id: uuidv4(),
-        name: 'Prix du gagnant',
-        amount: 50000,
-        currency: 'XOF',
-        category: 'prize'
-    }]);
-
-    useEffect(() => {
-        const initData = async () => {
-            await CoinService.initializeRate();
-            setExchangeRate(CoinService.COIN_RATE);
-            
-            const { data, error } = await supabase.from('event_categories').select('*');
-            if (error) console.error('Error fetching categories:', error);
-            else setCategories(data);
-        };
-        initData();
-    }, []);
-
-    // Mise à jour du prix du vote avec conversion automatique
-    useEffect(() => {
-        if (votingType === 'paid') {
-            // Forcer XOF comme référence de base pour le calcul
-            console.log(`Organizer price: ${votePriceXOF} F CFA`);
-            
-            // Conversion automatique: 1 Piece = 10 F CFA (Exchange rate from CoinService)
-            const coins = CoinService.convertFcfaToCoins(votePriceXOF);
-            setVotePricePi(coins);
-            
-            console.log(`Converted to coins: ${coins}`);
-        } else {
-            setVotePricePi(0);
-        }
-    }, [votePriceXOF, votingType, exchangeRate]);
-
-    // Templates de concours prédéfinis
-    const votingTemplates = {
-        talent: [
-            { id: uuidv4(), name: 'Meilleur Artiste', description: 'Artiste talentueux en compétition', category: 'art' },
-            { id: uuidv4(), name: 'Meilleur Chanteur', description: 'Voix exceptionnelle en compétition', category: 'music' },
-            { id: uuidv4(), name: 'Meilleur Danseur', description: 'Talentueux danseur en compétition', category: 'dance' }
-        ],
-        miss: [
-            { id: uuidv4(), name: 'Candidate 1', description: 'Candidate au concours de beauté', category: 'beauty' },
-            { id: uuidv4(), name: 'Candidate 2', description: 'Candidate au concours de beauté', category: 'beauty' },
-            { id: uuidv4(), name: 'Candidate 3', description: 'Candidate au concours de beauté', category: 'beauty' }
-        ],
-        business: [
-            { id: uuidv4(), name: 'Startup Innovante', description: 'Jeune entreprise prometteuse', category: 'startup' },
-            { id: uuidv4(), name: 'Projet Social', description: 'Initiative à impact social', category: 'social' },
-            { id: uuidv4(), name: 'Innovation Tech', description: 'Solution technologique innovante', category: 'technology' }
-        ]
-    };
-
-    const applyTemplate = (templateKey) => {
-        setSelectedTemplate(templateKey);
-        if (templateKey !== 'custom') {
-            setCandidates(votingTemplates[templateKey].map(candidate => ({
-                ...candidate,
-                id: uuidv4()
-            })));
-        }
-    };
-
-    const handleCandidateChange = (id, field, value) => {
-        setCandidates(candidates.map(c => c.id === id ? { ...c, [field]: value } : c));
-    };
-
-    const addCandidate = () => {
-        setCandidates([...candidates, { id: uuidv4(), name: '', description: '', category: '' }]);
-    };
-
-    const removeCandidate = (id) => {
-        setCandidates(candidates.filter(c => c.id !== id));
-    };
-
-    const handleCostChange = (id, field, value) => {
-        setPlannedCosts(plannedCosts.map(cost => cost.id === id ? { ...cost, [field]: value } : cost));
-    };
-
-    const addPlannedCost = () => {
-        setPlannedCosts([...plannedCosts, { id: uuidv4(), name: '', amount: 0, currency: 'XOF', category: 'other' }]);
-    };
-
-    const removePlannedCost = (id) => {
-        setPlannedCosts(plannedCosts.filter(cost => cost.id !== id));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!user) {
-            toast({ title: 'Erreur', description: 'Vous devez être connecté.', variant: 'destructive' });
-            return;
-        }
-        if (candidates.length < 2) {
-            toast({ title: 'Erreur', description: 'Ajoutez au moins 2 candidats.', variant: 'destructive' });
-            return;
-        }
-        setLoading(true);
-        try {
-            const { data: eventData, error: eventError } = await supabase
-                .from('events')
-                .insert({
-                    title, 
-                    description, 
-                    event_date: eventDate,
-                    end_date: endDate,
-                    city, 
-                    country, 
-                    address,
-                    organizer_id: user.id, 
-                    event_type: 'voting', 
-                    category_id: categoryId, 
-                    status: 'active',
-                    is_public: isPublic,
-                    requires_approval: requiresApproval
-                })
-                .select()
-                .single();
-
-            if (eventError) throw eventError;
-
-            const newEventId = eventData.id;
-
-            const { error: settingsError } = await supabase.from('event_settings').insert({
-                event_id: newEventId,
-                vote_price_pi: votePricePi,
-                vote_price_fcfa: votePriceXOF,
-                voting_enabled: true,
-                max_votes_per_user: maxVotesPerUser,
-                allow_multiple_votes: allowMultipleVotes,
-                voting_type: votingType
-            });
-            if (settingsError) throw settingsError;
-
-            const candidatesToInsert = candidates.map(c => ({
-                event_id: newEventId,
-                name: c.name,
-                description: c.description,
-                category: c.category
-            }));
-            const { error: candidatesError } = await supabase.from('candidates').insert(candidatesToInsert);
-            if (candidatesError) throw candidatesError;
-
-            const costsToInsert = plannedCosts.map(cost => ({
-                event_id: newEventId,
-                name: cost.name,
-                amount_fcfa: cost.amount,
-                coin_value: CoinService.convertFcfaToCoins(cost.amount),
-                category: cost.category
-            }));
-            
-            // We use event_planned_costs table (assuming it exists from previous context or we skip if not strictly required by prompt)
-            // To be safe and stick to prompt, we focus on vote logic. 
-            // If event_planned_costs exists, insert. If not, user didn't strictly ask for it in this specific prompt but it was in previous code.
-            // We'll try inserting but catch error silently if table doesn't exist to prevent crash on non-critical feature.
-            try {
-                 await supabase.from('event_planned_costs').insert(costsToInsert);
-            } catch (err) {
-                console.warn("Costs table might not exist or schema mismatch", err);
+  // Helper: Convert image to JPG (fixes WebP issues)
+  const convertImageToJpg = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF'; // White background for transparency
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" });
+              resolve(newFile);
+            } else {
+              reject(new Error("Conversion failed"));
             }
+          }, 'image/jpeg', 0.9);
+        };
+        img.onerror = (err) => reject(err);
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
-            toast({ title: 'Succès', description: 'Concours de vote créé avec succès!' });
-            navigate(`/event/${newEventId}`);
+  const handleImageUpload = async (file, candidateId = null) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const convertedFile = await convertImageToJpg(file);
+      const fileName = `${Date.now()}-${uuidv4()}.jpg`;
+      const folder = candidateId ? 'candidates' : 'events';
+      const filePath = `voting/${user.id}/${folder}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage.from('media').upload(filePath, convertedFile);
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(filePath);
+      
+      if (candidateId) {
+        setCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, photo_url: publicUrl } : c));
+      } else {
+        setCoverImage(publicUrl);
+      }
+      toast({ title: "Image téléchargée", description: "Format converti et sauvegardé." });
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({ title: "Erreur upload", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
-        } catch (error) {
-            console.error('Error creating voting event:', error);
-            toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleAddCategory = () => {
+    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
+      setCategories([...categories, newCategory.trim()]);
+      setNewCategory('');
+    }
+  };
 
-    const formPart1 = (
-        <>
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="title">Titre du concours *</Label>
-                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Concours du Meilleur Artiste 2024" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="category">Catégorie *</Label>
-                        <Select onValueChange={setCategoryId} value={categoryId}>
-                            <SelectTrigger><SelectValue placeholder="Sélectionnez une catégorie" /></SelectTrigger>
-                            <SelectContent>
-                                {categories.map(cat => (<SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="description">Description du concours</Label>
-                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Décrivez le concours, les règles, les prix..." rows={4} />
-                </div>
+  const handleRemoveCategory = (catToRemove) => {
+    if (catToRemove === 'Général') return;
+    setCategories(categories.filter(c => c !== catToRemove));
+    setCandidates(prev => prev.map(c => c.category === catToRemove ? { ...c, category: 'Général' } : c));
+  };
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="eventDate">Date de début des votes *</Label>
-                        <Input id="eventDate" type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="endDate">Date de fin des votes *</Label>
-                        <Input id="endDate" type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-                    </div>
-                </div>
+  const handleSubmit = async () => {
+    if (!user) return;
+    if (!title || !coverImage || candidates.some(c => !c.name)) {
+        toast({ title: "Champs manquants", description: "Veuillez remplir tous les champs obligatoires (*)", variant: "destructive" });
+        return;
+    }
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="country">Pays *</Label>
-                        <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Ex: Côte d'Ivoire" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="city">Ville *</Label>
-                        <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ex: Abidjan" required />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="address">Lieu (si applicable)</Label>
-                        <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Lieu de la remise des prix" />
-                    </div>
-                </div>
+    setLoading(true);
+    try {
+        const { data: event, error: eventError } = await supabase.from('events').insert({
+            title,
+            description,
+            organizer_id: user.id,
+            event_type: 'voting',
+            status: 'active',
+            cover_image: coverImage,
+            cover_image_url: coverImage,
+            event_date: new Date().toISOString(),
+            city: 'Online',
+            country: 'Global',
+            tags: categories
+        }).select().single();
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Type de vote</Label>
-                            <Select value={votingType} onValueChange={setVotingType}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="paid">Vote payant</SelectItem>
-                                    <SelectItem value="free">Vote gratuit</SelectItem>
-                                </SelectContent>
-                            </Select>
+        if (eventError) throw eventError;
+
+        const pricePi = Math.ceil(votePrice / 10);
+        const { error: settingsError } = await supabase.from('event_settings').insert({
+            event_id: event.id,
+            vote_price_fcfa: votePrice,
+            vote_price_pi: pricePi,
+            voting_enabled: true,
+            end_date: endDate || new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+            organizer_rate: 95,
+            commission_rate: 5
+        });
+
+        if (settingsError) throw settingsError;
+
+        const candidatesData = candidates.map(c => ({
+            event_id: event.id,
+            name: c.name,
+            description: c.description,
+            photo_url: c.photo_url || null,
+            vote_count: 0,
+            category: c.category || 'Général'
+        }));
+
+        const { error: candError } = await supabase.from('candidates').insert(candidatesData);
+        if (candError) throw candError;
+
+        toast({ title: "Concours créé avec succès !", className: "bg-green-600 text-white" });
+        navigate(`/event/${event.id}`);
+
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const steps = [
+    { id: 1, title: "Détails", icon: FileText },
+    { id: 2, title: "Catégories", icon: Layers },
+    { id: 3, title: "Candidats", icon: Users }
+  ];
+
+  const progress = (step / steps.length) * 100;
+
+  return (
+    <div className="min-h-screen bg-black text-white py-8 px-4 sm:px-6 lg:px-8">
+        <Helmet><title>Créer un vote - BonPlanInfos</title></Helmet>
+        
+        <div className="max-w-4xl mx-auto">
+            <div className="mb-8 text-center">
+                <h1 className="text-3xl font-bold text-white mb-2">Créer un Concours</h1>
+                <p className="text-gray-400">Configurez votre événement, définissez des catégories et ajoutez vos candidats.</p>
+            </div>
+
+            <div className="mb-8">
+                <div className="flex justify-between mb-4">
+                    {steps.map((s) => (
+                        <div key={s.id} className={`flex flex-col items-center ${step >= s.id ? 'text-emerald-500' : 'text-gray-600'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 mb-2 transition-colors ${step >= s.id ? 'border-emerald-500 bg-emerald-950' : 'border-gray-700 bg-gray-900'}`}>
+                                <s.icon className="w-5 h-5" />
+                            </div>
+                            <span className="text-xs font-medium uppercase tracking-wider">{s.title}</span>
                         </div>
+                    ))}
+                </div>
+                <Progress value={progress} className="h-1 bg-gray-800" indicatorClassName="bg-emerald-500" />
+            </div>
 
-                        {votingType === 'paid' && (
-                            <Card className="border-primary/50 bg-primary/5">
-                                <CardContent className="p-4 space-y-4">
+            <Card className="border-0 bg-gray-900 shadow-xl ring-1 ring-white/10">
+                <CardContent className="p-6 sm:p-8">
+                    {step === 1 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-5">
                                     <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            Prix par vote en FCFA
-                                            <Badge variant="outline" className="ml-auto">1 Pièce = {exchangeRate} F CFA</Badge>
-                                        </Label>
+                                        <Label htmlFor="title" className="text-gray-300">Titre de l'événement <span className="text-red-500">*</span></Label>
                                         <div className="relative">
                                             <Input 
-                                                type="number" 
-                                                value={votePriceXOF} 
-                                                onChange={(e) => setVotePriceXOF(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                                                min="0"
-                                                className="pr-16 text-lg font-semibold"
+                                                id="title" 
+                                                value={title} 
+                                                onChange={e => setTitle(e.target.value)} 
+                                                placeholder="Ex: Awards de la Musique 2024" 
+                                                className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500 focus:border-emerald-500 h-12" 
                                             />
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">FCFA</div>
+                                            <Vote className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center justify-between bg-background p-3 rounded-lg border border-dashed">
-                                        <div className="text-sm text-muted-foreground">Conversion automatique :</div>
-                                        <div className="flex items-center gap-2">
-                                            <Coins className="w-5 h-5 text-yellow-500" />
-                                            <span className="text-xl font-bold">{votePricePi}</span>
-                                            <span className="text-sm font-medium">Pièces</span>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="desc" className="text-gray-300">Description</Label>
+                                        <Textarea 
+                                            id="desc" 
+                                            value={description} 
+                                            onChange={e => setDescription(e.target.value)} 
+                                            placeholder="Décrivez le but du concours..." 
+                                            className="min-h-[120px] bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500 focus:border-emerald-500" 
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="price" className="text-gray-300">Prix du vote (FCFA)</Label>
+                                            <div className="relative">
+                                                <Input 
+                                                    id="price" 
+                                                    type="number" 
+                                                    value={votePrice} 
+                                                    onChange={e => setVotePrice(Number(e.target.value))} 
+                                                    min="0" 
+                                                    className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500" 
+                                                />
+                                                <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
+                                            </div>
+                                            <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice/10)} π</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="date" className="text-gray-300">Fin des votes</Label>
+                                            <div className="relative">
+                                                <Input 
+                                                    id="date" 
+                                                    type="datetime-local" 
+                                                    value={endDate} 
+                                                    onChange={e => setEndDate(e.target.value)} 
+                                                    className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500 [&::-webkit-calendar-picker-indicator]:invert" 
+                                                />
+                                                <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
+                                            </div>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label>Votes maximum par utilisateur</Label>
-                            <Input type="number" value={maxVotesPerUser} onChange={(e) => setMaxVotesPerUser(parseInt(e.target.value, 10))} min="1" max="100" />
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label className="text-gray-300">Image de couverture <span className="text-red-500">*</span></Label>
+                                    <div className={`border-2 border-dashed rounded-xl h-64 md:h-full flex flex-col items-center justify-center p-4 transition-all ${coverImage ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-gray-800 hover:border-gray-600 bg-gray-950'}`}>
+                                        {coverImage ? (
+                                            <div className="relative w-full h-full group">
+                                                <img src={coverImage} alt="Cover" className="w-full h-full object-cover rounded-lg shadow-sm" />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                                    <Button variant="secondary" size="sm" className="pointer-events-none">Changer l'image</Button>
+                                                </div>
+                                                <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                                            </div>
+                                        ) : (
+                                            <div className="text-center relative w-full h-full flex flex-col items-center justify-center">
+                                                {uploadingImage ? <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-2" /> : <ImageIcon className="w-10 h-10 text-gray-600 mb-2" />}
+                                                <p className="text-sm font-medium text-gray-400">Cliquez pour ajouter une image</p>
+                                                <p className="text-xs text-gray-600 mt-1">JPG, PNG (Max 5MB)</p>
+                                                <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5"><Label htmlFor="isPublic">Concours public</Label><div className="text-sm text-muted-foreground">Visible par tous les utilisateurs</div></div>
-                            <Switch id="isPublic" checked={isPublic} onCheckedChange={setIsPublic} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5"><Label htmlFor="allowMultipleVotes">Votes multiples</Label><div className="text-sm text-muted-foreground">Permettre plusieurs votes pour le même candidat</div></div>
-                            <Switch id="allowMultipleVotes" checked={allowMultipleVotes} onCheckedChange={setAllowMultipleVotes} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5"><Label htmlFor="requiresApproval">Validation requise</Label><div className="text-sm text-muted-foreground">Approuver chaque participant</div></div>
-                            <Switch id="requiresApproval" checked={requiresApproval} onCheckedChange={setRequiresApproval} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="flex justify-end mt-8">
-                <Button onClick={() => setStep(2)} size="lg">Suivant</Button>
-            </div>
-        </>
-    );
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 max-w-2xl mx-auto">
+                            <div className="text-center mb-6">
+                                <h3 className="text-lg font-semibold text-white">Définir les Catégories</h3>
+                                <p className="text-sm text-gray-400">Créez des catégories pour classer vos candidats (ex: Meilleur Acteur, Révélation, etc.)</p>
+                            </div>
 
-    const formPart2 = (
-        <>
-            <Tabs defaultValue="candidates" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="candidates">Candidats</TabsTrigger>
-                    <TabsTrigger value="costs">Prix & Coûts</TabsTrigger>
-                </TabsList>
+                            <div className="flex gap-2">
+                                <Input 
+                                    value={newCategory} 
+                                    onChange={e => setNewCategory(e.target.value)} 
+                                    placeholder="Nom de la catégorie..." 
+                                    onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                                    className="bg-gray-950 border-gray-800 text-white focus:ring-emerald-500"
+                                />
+                                <Button onClick={handleAddCategory} disabled={!newCategory.trim()} className="bg-emerald-600 hover:bg-emerald-700 text-white"><Plus className="w-4 h-4 mr-2"/> Ajouter</Button>
+                            </div>
 
-                <TabsContent value="candidates" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Modèles de concours prédéfinis</CardTitle>
-                            <CardDescription>Choisissez un modèle ou créez vos propres candidats</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <RadioGroup value={selectedTemplate} onValueChange={applyTemplate} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                {['custom', 'talent', 'miss', 'business'].map((t) => (
-                                    <div key={t}>
-                                        <RadioGroupItem value={t} id={t} className="sr-only" />
-                                        <Label htmlFor={t} className={`flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer ${selectedTemplate === t ? 'border-primary' : ''}`}>
-                                            {t === 'custom' ? <User className="mb-3 h-6 w-6" /> : t === 'talent' ? <Star className="mb-3 h-6 w-6" /> : t === 'miss' ? <Crown className="mb-3 h-6 w-6" /> : <Award className="mb-3 h-6 w-6" />}
-                                            <span className="text-sm font-medium capitalize">{t}</span>
-                                        </Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                                {categories.map((cat, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-950 border border-gray-800 rounded-lg shadow-sm group hover:border-gray-700 transition-colors">
+                                        <span className="font-medium text-gray-200">{cat}</span>
+                                        {cat !== 'Général' && (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400 hover:bg-red-950/20" onClick={() => handleRemoveCategory(cat)}>
+                                                <X className="w-4 h-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
-                            </RadioGroup>
-                        </CardContent>
-                    </Card>
+                            </div>
+                            
+                            {categories.length === 1 && (
+                                <div className="bg-blue-950/30 border border-blue-900/50 p-4 rounded-lg text-blue-300 text-sm flex items-center gap-2">
+                                    <Layers className="w-4 h-4" />
+                                    Si vous n'ajoutez pas de catégories, tous les candidats seront dans "Général".
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                    <div className="space-y-4">
-                        {candidates.map((c, index) => (
-                            <Card key={c.id} className="bg-card/50">
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">{index + 1}</div>
-                                            <Label className="text-lg font-bold">Candidat #{index + 1}</Label>
-                                        </div>
-                                        {candidates.length > 2 && <Button variant="ghost" size="icon" onClick={() => removeCandidate(c.id)}><Trash className="w-4 h-4 text-destructive" /></Button>}
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2"><Label>Nom du candidat *</Label><Input value={c.name} onChange={e => handleCandidateChange(c.id, 'name', e.target.value)} placeholder="Ex: Marie Koné" required /></div>
-                                        <div className="space-y-2"><Label>Catégorie</Label><Input value={c.category} onChange={e => handleCandidateChange(c.id, 'category', e.target.value)} placeholder="Ex: Musique, Danse..." /></div>
-                                    </div>
-                                    <div className="space-y-2"><Label>Description *</Label><Textarea value={c.description} onChange={e => handleCandidateChange(c.id, 'description', e.target.value)} placeholder="Biographie..." rows={3} required /></div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                    <Button variant="outline" onClick={addCandidate} className="w-full"><Plus className="w-4 h-4 mr-2" /> Ajouter un candidat</Button>
-                </TabsContent>
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {candidates.map((c, idx) => (
+                                    <Card key={c.id} className="overflow-hidden border-l-4 border-l-emerald-500 bg-gray-950 border-y-gray-800 border-r-gray-800 relative group hover:bg-gray-900 transition-colors">
+                                        <CardContent className="p-4">
+                                            <div className="flex gap-4 items-start">
+                                                <div className="w-24 h-24 bg-gray-900 rounded-lg flex-shrink-0 relative overflow-hidden border border-gray-800 group-hover:border-gray-700">
+                                                    {c.photo_url ? (
+                                                        <img src={c.photo_url} alt={c.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-gray-600">
+                                                            <Upload className="w-8 h-8" />
+                                                        </div>
+                                                    )}
+                                                    <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0], c.id)} disabled={uploadingImage} />
+                                                    {uploadingImage && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin"/></div>}
+                                                </div>
+                                                
+                                                <div className="flex-1 space-y-3">
+                                                    <Input 
+                                                        placeholder="Nom du candidat *" 
+                                                        value={c.name} 
+                                                        onChange={e => setCandidates(prev => prev.map(item => item.id === c.id ? { ...item, name: e.target.value } : item))} 
+                                                        className="font-semibold bg-black/20 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500"
+                                                    />
+                                                    
+                                                    <Select 
+                                                        value={c.category} 
+                                                        onValueChange={(val) => setCandidates(prev => prev.map(item => item.id === c.id ? { ...item, category: val } : item))}
+                                                    >
+                                                        <SelectTrigger className="h-8 text-sm bg-black/20 border-gray-800 text-gray-300">
+                                                            <SelectValue placeholder="Catégorie" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                                            {categories.map(cat => (
+                                                                <SelectItem key={cat} value={cat} className="focus:bg-gray-800 focus:text-emerald-400">{cat}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
 
-                <TabsContent value="costs" className="space-y-6">
-                    <div className="space-y-4">
-                        {plannedCosts.map((cost) => (
-                            <Card key={cost.id} className="bg-card/50">
-                                <CardContent className="p-4 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2"><Label>Nom du prix</Label><Input value={cost.name} onChange={e => handleCostChange(cost.id, 'name', e.target.value)} placeholder="Ex: Prix du gagnant" /></div>
-                                            <div className="space-y-2"><Label>Montant (FCFA)</Label><Input type="number" value={cost.amount} onChange={e => handleCostChange(cost.id, 'amount', e.target.value)} /></div>
-                                        </div>
-                                        {plannedCosts.length > 1 && <Button variant="ghost" size="icon" onClick={() => removePlannedCost(cost.id)} className="ml-4"><Trash className="w-4 h-4 text-destructive" /></Button>}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                    <Button variant="outline" onClick={addPlannedCost} className="w-full"><Plus className="w-4 h-4 mr-2" /> Ajouter un prix</Button>
-                </TabsContent>
-            </Tabs>
-
-            <div className="flex justify-between mt-8">
-                <Button variant="outline" onClick={() => setStep(1)}>Précédent</Button>
-                <Button onClick={handleSubmit} disabled={loading || candidates.length < 2} size="lg">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Vote className="w-4 h-4 mr-2" />} Créer le concours
-                </Button>
-            </div>
-        </>
-    );
-
-    return (
-        <div className="min-h-screen bg-background text-foreground">
-            <Helmet><title>Créer un Concours - BonPlanInfos</title></Helmet>
-            <main className="container mx-auto max-w-6xl px-4 py-8">
-                <Card className="glass-effect">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-3xl font-bold flex items-center justify-center"><Vote className="w-8 h-8 mr-3 text-primary"/>Créer un concours</CardTitle>
-                        <CardDescription>{step === 1 ? "Détails et tarification" : "Candidats et Récompenses"}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form className="space-y-6">{step === 1 ? formPart1 : formPart2}</form>
-                    </CardContent>
-                </Card>
-            </main>
+                                                    <Textarea 
+                                                        placeholder="Courte bio..." 
+                                                        value={c.description} 
+                                                        onChange={e => setCandidates(prev => prev.map(item => item.id === c.id ? { ...item, description: e.target.value } : item))} 
+                                                        className="h-16 text-xs resize-none bg-black/20 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        {candidates.length > 1 && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="absolute top-2 right-2 text-gray-600 hover:text-red-400 hover:bg-red-950/20"
+                                                onClick={() => setCandidates(prev => prev.filter(item => item.id !== c.id))}
+                                            >
+                                                <Trash className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </Card>
+                                ))}
+                                
+                                <Button 
+                                    variant="outline" 
+                                    className="h-full min-h-[200px] border-dashed border-2 border-gray-800 bg-transparent text-gray-500 flex flex-col gap-2 hover:border-emerald-500/50 hover:text-emerald-500 hover:bg-emerald-950/10 transition-all"
+                                    onClick={() => setCandidates(prev => [...prev, { id: uuidv4(), name: '', photo_url: '', category: categories[0] || 'Général' }])}
+                                >
+                                    <Plus className="w-8 h-8" />
+                                    <span>Ajouter un candidat</span>
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+                <CardFooter className="flex justify-between border-t border-gray-800 bg-gray-950 p-6 rounded-b-xl">
+                    <Button variant="outline" onClick={() => setStep(Math.max(1, step - 1))} disabled={step === 1 || loading} className="border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white">
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+                    </Button>
+                    
+                    {step < 3 ? (
+                        <Button onClick={() => setStep(Math.min(3, step + 1))} className="bg-gray-100 text-black hover:bg-white">
+                            Suivant <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    ) : (
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[150px] shadow-lg shadow-emerald-900/20" onClick={handleSubmit} disabled={loading || uploadingImage}>
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Vote className="w-4 h-4 mr-2" />}
+                            Publier le Concours
+                        </Button>
+                    )}
+                </CardFooter>
+            </Card>
         </div>
-    );
+    </div>
+  );
 };
 
 export default CreateVotingEventPage;

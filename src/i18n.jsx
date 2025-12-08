@@ -159,6 +159,12 @@ en: {
           success_desc:
             'Vous pouvez maintenant voir les détails de "{{title}}".',
         },
+
+      
+  common: {
+    whatsapp_community: "Rejoindre la communauté WhatsApp"
+  },
+
       },
 
       // ===== PROFILE PAGE =====
@@ -823,12 +829,12 @@ create_event_page: {
 user_guide_page: {
     meta: {
       title: "BonPlanInfos - Plateforme Événementielle 100% Africaine",
-      description: "Créez, gérez et monétisez vos événements avec BonPlanInfos. La plateforme ivoirienne qui vous reverse 95% de vos revenus."
+      description: "Créez, gérez et monétisez vos événements avec BonPlanInfos. La plateforme africaine qui vous reverse 95% de vos revenus."
     },
     hero: {
       title: "BonPlanInfos",
       subtitle: "Votre Succès Événementiel",
-      description: "La plateforme ivoirienne qui vous reverse <strong>95% de vos revenus</strong>",
+      description: "La plateforme africaine qui vous reverse <strong>95% de vos revenus</strong>",
       coin_info: "1 pièce = 10F • 1 interaction = 1 pièce",
       create_event: "Créer un Événement",
       become_partner: "Devenir Partenaire",
@@ -995,7 +1001,7 @@ user_guide_page: {
       become_partner: "Devenir Partenaire"
     },
     footer: {
-      description: "La plateforme événementielle ivoirienne qui vous reverse 95% de vos revenus.",
+      description: "La plateforme événementielle africaine qui vous reverse 95% de vos revenus.",
       navigation: "Navigation",
       home: "Accueil",
       events: "Événements",
@@ -1003,7 +1009,7 @@ user_guide_page: {
       become_partner: "Devenir partenaire",
       contact: "Contact",
       information: "Informations",
-      copyright: "© 2024 BonPlanInfos. Tous droits réservés."
+      copyright: "©2025 BonPlanInfos. Tous droits réservés."
     }
   },
 
@@ -1821,7 +1827,7 @@ testimonials: {
       become_partner: "Become a partner",
       contact: "Contact",
       information: "Information",
-      copyright: "© 2024 BonPlanInfos. All rights reserved."
+      copyright: "© 2025 BonPlanInfos. All rights reserved."
     }
   },
 partner_signup: {
