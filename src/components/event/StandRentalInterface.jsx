@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Store, Coins, ShoppingCart, Sparkles, Info, Crown, Zap, Target, Users, TrendingUp, Star, Gift } from 'lucide-react';
+import { Loader2, Store, Users, Phone, Mail, FileText, CheckCircle2, Building2, AlertCircle } from 'lucide-react';
 import WalletInfoModal from '@/components/WalletInfoModal';
 import {
     AlertDialog,
@@ -23,64 +23,104 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
+// Helper to generate consistent colors based on string
+const getStandColor = (str) => {
+    const colors = [
+        { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-300', icon: 'bg-blue-100 dark:bg-blue-900' },
+        { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300', icon: 'bg-green-100 dark:bg-green-900' },
+        { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300', icon: 'bg-purple-100 dark:bg-purple-900' },
+        { bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300', icon: 'bg-orange-100 dark:bg-orange-900' },
+        { bg: 'bg-pink-50 dark:bg-pink-900/20', border: 'border-pink-200 dark:border-pink-800', text: 'text-pink-700 dark:text-pink-300', icon: 'bg-pink-100 dark:bg-pink-900' },
+        { bg: 'bg-teal-50 dark:bg-teal-900/20', border: 'border-teal-200 dark:border-teal-800', text: 'text-teal-700 dark:text-teal-300', icon: 'bg-teal-100 dark:bg-teal-900' },
+    ];
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+};
+
 const StandTypeCard = ({ standType, onSelect, isSelected }) => {
-    const isAvailable = standType.quantity_available > standType.quantity_rented;
-    const availableStands = standType.quantity_available - standType.quantity_rented;
-    const progress = (standType.quantity_rented / standType.quantity_available) * 100;
+    // Determine availability
+    const quantityAvailable = standType.quantity_available || 0;
+    const quantityRented = standType.quantity_rented || 0;
+    const availableStands = Math.max(0, quantityAvailable - quantityRented);
+    const isAvailable = availableStands > 0;
+    const progress = quantityAvailable > 0 
+        ? (quantityRented / quantityAvailable) * 100 
+        : 0;
+    
+    const colorTheme = getStandColor(standType.name || 'default');
 
     return (
         <div
-            className={`bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 rounded-xl p-5 transition-all duration-300 cursor-pointer hover:shadow-lg group ${isSelected ? 'border-primary shadow-lg scale-105' : 'border-purple-500/30'} ${!isAvailable && 'opacity-60'}`}
+            className={`
+                flex flex-col h-full
+                relative overflow-hidden rounded-xl p-5 border-2 transition-all duration-300 cursor-pointer group
+                ${isSelected 
+                    ? 'border-primary shadow-lg ring-2 ring-primary/20 bg-background scale-[1.02]' 
+                    : `${colorTheme.bg} ${colorTheme.border} hover:shadow-md hover:scale-[1.01]`
+                }
+                ${!isAvailable ? 'opacity-70 grayscale cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}
+            `}
             onClick={() => isAvailable && onSelect(standType)}
         >
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm text-purple-500">
+                    <div className={`p-2.5 rounded-lg ${isSelected ? 'bg-primary text-white' : `${colorTheme.icon} ${colorTheme.text}`} transition-colors`}>
                         <Store className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-lg group-hover:text-primary transition-colors">
-                            {standType.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                            <Users className="w-3 h-3" />
-                            {availableStands} stand(s) disponible(s)
+                        <h3 className={`font-bold text-lg leading-tight ${isSelected ? 'text-primary' : colorTheme.text}`}>{standType.name}</h3>
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Building2 className="w-3 h-3" /> {standType.size || 'Taille standard'}
                         </p>
                     </div>
                 </div>
-                <Badge className={`text-xs font-bold ${isAvailable ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}>
-                    {isAvailable ? 'DISPONIBLE' : 'COMPLET'}
-                </Badge>
+                {isAvailable ? (
+                    <Badge className="bg-green-500 hover:bg-green-600 shadow-sm whitespace-nowrap">{availableStands} DISPO</Badge>
+                ) : (
+                    <Badge variant="destructive" className="whitespace-nowrap">COMPLET</Badge>
+                )}
             </div>
 
             <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-xs font-medium">
-                    <span className="text-green-600">{availableStands} restant(s)</span>
-                    <span className="text-muted-foreground">{standType.quantity_rented}/{standType.quantity_available} loué(s)</span>
+                    <span className={isAvailable ? "text-green-600" : "text-muted-foreground"}>Occupation</span>
+                    <span className="text-muted-foreground">{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-2 bg-muted/50" />
+                <Progress value={progress} className="h-2" />
             </div>
 
-            <div className="text-sm text-muted-foreground mb-4">{standType.description}</div>
+            <div className="text-sm text-muted-foreground mb-4 line-clamp-3 min-h-[3em] flex-grow">
+                {standType.description || "Aucune description supplémentaire pour ce type de stand."}
+            </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-white/20">
-                <div className="text-center">
-                    <p className="text-2xl font-bold text-primary flex items-center gap-1">
-                        {standType.calculated_price_pi} <Coins className="w-5 h-5" />
+            <div className="flex items-center justify-between pt-4 border-t border-black/5 dark:border-white/5 mt-auto">
+                <div>
+                    <p className="text-2xl font-extrabold text-foreground flex items-baseline gap-1">
+                        {standType.calculated_price_pi} <span className="text-sm font-normal text-muted-foreground">coins</span>
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                        {standType.base_price.toLocaleString()} FCFA
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                        ~ {(standType.base_price || 0).toLocaleString()} {standType.base_currency}
                     </p>
                 </div>
-                <Button variant={isSelected ? 'default' : 'outline'} size="sm">
-                    {isSelected ? 'Sélectionné' : 'Sélectionner'}
+                <Button 
+                    variant={isSelected ? 'default' : 'outline'} 
+                    size="sm" 
+                    disabled={!isAvailable}
+                    className={`
+                        ${isSelected ? 'shadow-md' : 'bg-white/50 hover:bg-white'} 
+                        transition-all font-semibold
+                    `}
+                >
+                    {isSelected ? <CheckCircle2 className="w-4 h-4 mr-1" /> : null}
+                    {isSelected ? 'Sélectionné' : 'Choisir'}
                 </Button>
             </div>
         </div>
     );
 };
 
-const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
+const ParticipantView = ({ event, standEventId, onPurchaseSuccess }) => {
     const { user } = useAuth();
     const [selectedStand, setSelectedStand] = useState(null);
     const [companyInfo, setCompanyInfo] = useState({
@@ -91,23 +131,96 @@ const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
         business_description: ''
     });
     const [loading, setLoading] = useState(false);
+    const [fetchingStands, setFetchingStands] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
     const [showWalletInfo, setShowWalletInfo] = useState(false);
     const navigate = useNavigate();
     const [confirmation, setConfirmation] = useState({ isOpen: false, cost: 0, costFcfa: 0, onConfirm: null });
+    const [standTypes, setStandTypes] = useState([]);
+
+    // Fetch stand types robustly
+    const fetchStandTypes = useCallback(async () => {
+        if (!event?.id) return;
+        setFetchingStands(true);
+        setFetchError(null);
+        try {
+            const { data, error } = await supabase
+                .from('stand_types')
+                .select('*')
+                .eq('event_id', event.id)
+                .order('base_price', { ascending: true });
+
+            if (error) throw error;
+            setStandTypes(data || []);
+        } catch (err) {
+            console.error('Error fetching stand types:', err);
+            setFetchError("Impossible de charger les types de stands. Veuillez réessayer.");
+        } finally {
+            setFetchingStands(false);
+        }
+    }, [event?.id]);
+
+    useEffect(() => {
+        fetchStandTypes();
+
+        const channel = supabase
+            .channel('stand_updates_public')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'stand_types', filter: `event_id=eq.${event.id}` },
+                (payload) => {
+                    setStandTypes(prev => prev.map(st => 
+                        st.id === payload.new.id ? { ...st, ...payload.new } : st
+                    ));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [event?.id, fetchStandTypes]);
 
     const handleSelectStand = (standType) => {
         setSelectedStand(standType);
+        if (user && !companyInfo.contact_email) {
+            setCompanyInfo(prev => ({ 
+                ...prev, 
+                contact_email: user.email,
+                contact_person: user.user_metadata?.full_name || ''
+            }));
+        }
+    };
+
+    const validateForm = () => {
+        const errors = [];
+        if (!companyInfo.company_name.trim()) errors.push("Nom de l'entreprise");
+        if (!companyInfo.contact_person.trim()) errors.push("Contact");
+        if (!companyInfo.contact_email.trim()) errors.push("Email");
+        if (!companyInfo.contact_phone.trim()) errors.push("Téléphone");
+        
+        if (errors.length > 0) {
+            toast({ 
+                title: "Champs manquants", 
+                description: `Veuillez remplir : ${errors.join(', ')}`, 
+                variant: "destructive" 
+            });
+            return false;
+        }
+        return true;
     };
 
     const handlePurchaseConfirmation = () => {
+        if (!user) {
+            navigate('/auth');
+            return;
+        }
         if (!selectedStand) {
             toast({ title: "Aucun stand sélectionné", variant: "destructive" });
             return;
         }
-        if (!companyInfo.company_name || !companyInfo.contact_person || !companyInfo.contact_email || !companyInfo.contact_phone) {
-            toast({ title: "Informations requises", description: "Veuillez remplir les informations sur votre entreprise.", variant: "destructive" });
-            return;
-        }
+        if (!validateForm()) return;
+
         setConfirmation({
             isOpen: true,
             cost: selectedStand.calculated_price_pi,
@@ -124,7 +237,11 @@ const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
                 p_event_id: event.id,
                 p_user_id: user.id,
                 p_stand_type_id: selectedStand.id,
-                ...companyInfo
+                company_name: companyInfo.company_name,
+                contact_person: companyInfo.contact_person,
+                contact_email: companyInfo.contact_email,
+                contact_phone: companyInfo.contact_phone,
+                business_description: companyInfo.business_description
             });
 
             if (error) throw error;
@@ -132,141 +249,183 @@ const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
             if (data.success) {
                 toast({
                     title: "🎉 Stand réservé !",
-                    description: `Votre stand ${data.stand_number} a été réservé avec succès.`,
-                    className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+                    description: `Stand ${data.stand_number} attribué avec succès.`,
+                    className: "bg-green-600 text-white border-none"
                 });
-                onPurchaseSuccess();
+                if (onPurchaseSuccess) onPurchaseSuccess();
+                fetchStandTypes(); // Refresh list to update availability immediately
                 setSelectedStand(null);
+                setCompanyInfo({ company_name: '', contact_person: '', contact_email: '', contact_phone: '', business_description: '' });
             } else {
-                toast({ title: "Erreur de réservation", description: data.message, variant: "destructive" });
-                if (data.message.includes('Solde')) {
+                toast({ title: "Erreur", description: data.message, variant: "destructive" });
+                if (data.message && data.message.includes('Solde')) {
                     setShowWalletInfo(true);
                 }
             }
         } catch (error) {
-            toast({ title: "Erreur de réservation", description: error.message, variant: "destructive" });
+            console.error(error);
+            toast({ title: "Erreur technique", description: error.message || "Une erreur inconnue est survenue", variant: "destructive" });
         } finally {
             setLoading(false);
         }
     };
 
+    if (fetchingStands) {
+        return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    }
+
+    if (fetchError) {
+        return (
+            <div className="p-6 text-center border rounded-lg bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                <p>{fetchError}</p>
+                <Button variant="outline" onClick={fetchStandTypes} className="mt-4">Réessayer</Button>
+            </div>
+        );
+    }
+
+    if (standTypes.length === 0) {
+        return (
+            <div className="p-12 text-center border-2 border-dashed rounded-xl bg-muted/30">
+                <Store className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <h3 className="text-lg font-semibold text-muted-foreground">Aucun stand disponible</h3>
+                <p className="text-sm text-muted-foreground">L'organisateur n'a pas encore configuré les stands pour cet événement.</p>
+            </div>
+        );
+    }
+
     return (
         <>
-            <Card className="glass-effect border-2 border-primary/20 shadow-xl">
-                <CardHeader className="text-center pb-4">
-                    <div className="flex justify-center mb-3">
-                        <div className="relative">
-                            <Store className="w-10 h-10 text-primary" />
-                            <Sparkles className="w-5 h-5 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
-                        </div>
-                    </div>
-                    <CardTitle className="flex items-center justify-center gap-3 text-2xl">
-                        <Target className="w-6 h-6 text-red-500" />
-                        RÉSERVEZ VOTRE STAND
-                        <Target className="w-6 h-6 text-red-500" />
-                    </CardTitle>
-                    <CardDescription className="text-lg">
-                        Présentez vos produits et services à un public captivé.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4">
-                        {standEventData.stand_types.map((st) => (
-                            <StandTypeCard
-                                key={st.id}
-                                standType={st}
-                                onSelect={handleSelectStand}
-                                isSelected={selectedStand?.id === st.id}
-                            />
-                        ))}
-                    </div>
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold font-heading">Réservez votre emplacement</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        Sélectionnez le type de stand qui correspond à vos besoins.
+                    </p>
+                </div>
 
-                    {selectedStand && (
-                        <div className="pt-6 border-t border-primary/20 space-y-4">
-                            <h3 className="font-bold text-lg">Informations sur votre entreprise</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label htmlFor="company_name">Nom de l'entreprise *</Label>
-                                    <Input id="company_name" value={companyInfo.company_name} onChange={e => setCompanyInfo({ ...companyInfo, company_name: e.target.value })} />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {standTypes.map((st) => (
+                        <StandTypeCard
+                            key={st.id}
+                            standType={st}
+                            onSelect={handleSelectStand}
+                            isSelected={selectedStand?.id === st.id}
+                        />
+                    ))}
+                </div>
+
+                {selectedStand && (
+                    <Card className="border-primary/20 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8">
+                        <div className="bg-primary/5 p-6 border-b border-primary/10">
+                            <h3 className="font-bold text-xl flex items-center gap-2 text-primary">
+                                <FileText className="w-5 h-5" />
+                                Finaliser la réservation : {selectedStand.name}
+                            </h3>
+                        </div>
+                        
+                        <CardContent className="p-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold">Nom de l'entreprise / Marque *</Label>
+                                            <Input 
+                                                value={companyInfo.company_name} 
+                                                onChange={e => setCompanyInfo({ ...companyInfo, company_name: e.target.value })} 
+                                                placeholder="Ex: Ma Super Marque"
+                                                className="h-11 bg-muted/30"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold">Secteur d'activité / Description</Label>
+                                            <Textarea 
+                                                value={companyInfo.business_description} 
+                                                onChange={e => setCompanyInfo({ ...companyInfo, business_description: e.target.value })} 
+                                                placeholder="Que proposez-vous sur votre stand ?"
+                                                className="bg-muted/30 min-h-[100px]"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor="contact_person">Personne de contact *</Label>
-                                    <Input id="contact_person" value={companyInfo.contact_person} onChange={e => setCompanyInfo({ ...companyInfo, contact_person: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor="contact_email">Email de contact *</Label>
-                                    <Input id="contact_email" type="email" value={companyInfo.contact_email} onChange={e => setCompanyInfo({ ...companyInfo, contact_email: e.target.value })} />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor="contact_phone">Téléphone de contact *</Label>
-                                    <Input id="contact_phone" type="tel" value={companyInfo.contact_phone} onChange={e => setCompanyInfo({ ...companyInfo, contact_phone: e.target.value })} />
-                                </div>
-                                <div className="md:col-span-2 space-y-1">
-                                    <Label htmlFor="business_description">Description de l'activité</Label>
-                                    <Textarea id="business_description" value={companyInfo.business_description} onChange={e => setCompanyInfo({ ...companyInfo, business_description: e.target.value })} />
+
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold">Personne à contacter *</Label>
+                                            <Input 
+                                                value={companyInfo.contact_person} 
+                                                onChange={e => setCompanyInfo({ ...companyInfo, contact_person: e.target.value })} 
+                                                placeholder="Nom complet"
+                                                className="h-11 bg-muted/30"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="font-semibold">Email *</Label>
+                                                <Input 
+                                                    type="email" 
+                                                    value={companyInfo.contact_email} 
+                                                    onChange={e => setCompanyInfo({ ...companyInfo, contact_email: e.target.value })} 
+                                                    placeholder="email@pro.com"
+                                                    className="h-11 bg-muted/30"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="font-semibold">Téléphone *</Label>
+                                                <Input 
+                                                    type="tel" 
+                                                    value={companyInfo.contact_phone} 
+                                                    onChange={e => setCompanyInfo({ ...companyInfo, contact_phone: e.target.value })} 
+                                                    placeholder="+225..."
+                                                    className="h-11 bg-muted/30"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <Button
-                                onClick={handlePurchaseConfirmation}
-                                disabled={loading}
-                                size="lg"
-                                className="w-full py-6 text-lg font-bold bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                            >
-                                {loading ? (
-                                    <Loader2 className="animate-spin w-6 h-6" />
-                                ) : (
-                                    <div className="flex items-center gap-3">
-                                        <Sparkles className="w-6 h-6 animate-pulse" />
-                                        <span>RÉSERVER LE STAND</span>
-                                        <Sparkles className="w-6 h-6 animate-pulse" />
+
+                            <div className="mt-8 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="flex flex-col items-center md:items-start">
+                                    <span className="text-sm text-muted-foreground uppercase font-bold tracking-wider">Total à régler</span>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-4xl font-extrabold text-primary">{selectedStand.calculated_price_pi}</span>
+                                        <span className="text-xl font-medium text-muted-foreground">coins</span>
                                     </div>
-                                )}
-                            </Button>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                </div>
+                                
+                                <Button 
+                                    onClick={handlePurchaseConfirmation} 
+                                    disabled={loading} 
+                                    size="lg" 
+                                    className="w-full md:w-auto min-w-[300px] h-14 text-lg font-bold shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all bg-gradient-to-r from-primary to-purple-600 border-0"
+                                >
+                                    {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
+                                    Confirmer et Payer
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
             <WalletInfoModal isOpen={showWalletInfo} onClose={() => setShowWalletInfo(false)} onProceed={() => { setShowWalletInfo(false); navigate('/packs'); }} />
 
-            <AlertDialog open={confirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, cost: 0, costFcfa: 0, onConfirm: null })}>
-                <AlertDialogContent className="border-2 border-primary/20 shadow-2xl">
+            <AlertDialog open={confirmation.isOpen} onOpenChange={(open) => !open && setConfirmation({ ...confirmation, isOpen: false })}>
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center justify-center gap-2 text-xl text-center">
-                            <Crown className="w-6 h-6 text-yellow-500" />
-                            Confirmer votre réservation ?
-                            <Crown className="w-6 h-6 text-yellow-500" />
-                        </AlertDialogTitle>
+                        <AlertDialogTitle>Confirmer la réservation</AlertDialogTitle>
                         <AlertDialogDescription>
-                            <div className="flex flex-col items-center justify-center text-center p-4 space-y-4">
-                                <div className="p-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full">
-                                    <Store className="w-12 h-12 text-yellow-500" />
-                                </div>
-                                <p className="text-lg font-medium">
-                                    Vous investissez <strong className="text-2xl text-primary">{confirmation.cost}π</strong>
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    Équivalent à {confirmation.costFcfa?.toLocaleString('fr-FR')} FCFA
-                                </p>
-                            </div>
+                            Vous allez réserver le <strong>{selectedStand?.name}</strong> pour <strong>{confirmation.cost} π</strong>.
+                            <br/><br/>
+                            Cette action débitera votre solde immédiatement. Assurez-vous que vos informations de contact sont correctes.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="flex gap-3">
-                        <AlertDialogCancel className="flex-1 border-2">Retour</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={confirmation.onConfirm}
-                            disabled={loading}
-                            className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
-                        >
-                            {loading ? (
-                                <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4" />
-                                    Confirmer la réservation
-                                    <Sparkles className="w-4 h-4" />
-                                </div>
-                            )}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmation.onConfirm} disabled={loading} className="bg-primary text-white">
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Payer et Réserver'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -275,134 +434,150 @@ const ParticipantView = ({ event, standEventData, onPurchaseSuccess }) => {
     );
 };
 
-const OwnerView = ({ event, standEventData }) => {
-    const { data: rentals, error, loading } = useSWR(standEventData.id, async (standEventId) => {
-        const { data, error } = await supabase
-            .from('stand_rentals')
-            .select('*, user:user_id(full_name, email), stand_type:stand_type_id(name)')
-            .eq('stand_event_id', standEventId)
-            .order('confirmed_at', { ascending: false });
-        if (error) throw error;
-        return data;
-    });
+const OwnerView = ({ event, standEventId }) => {
+    const [rentals, setRentals] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({ total_stands: 0, rented_stands: 0, revenue: 0 });
 
-    const totalRevenuePi = useMemo(() => {
-        return rentals?.reduce((sum, rental) => sum + (rental.rental_amount_pi || 0), 0) || 0;
-    }, [rentals]);
+    const fetchData = React.useCallback(async () => {
+        if (!standEventId) return;
+        setLoading(true);
+        try {
+            // Fetch rentals
+            const { data: rentalData, error: rentalError } = await supabase
+                .from('stand_rentals')
+                .select('*, user:user_id(full_name, email), stand_type:stand_type_id(name)')
+                .eq('stand_event_id', standEventId)
+                .order('confirmed_at', { ascending: false });
+            
+            if (rentalError) throw rentalError;
+            setRentals(rentalData || []);
 
-    const totalStandsRented = standEventData.stand_types.reduce((sum, st) => sum + (st.quantity_rented || 0), 0);
-    const totalStandsAvailable = standEventData.stand_types.reduce((sum, st) => sum + st.quantity_available, 0);
-    const progress = (totalStandsRented / totalStandsAvailable) * 100;
+            // Fetch summary stats via types
+            const { data: typeData, error: typeError } = await supabase
+                .from('stand_types')
+                .select('quantity_available, quantity_rented')
+                .eq('stand_event_id', standEventId);
+
+            if (typeError) throw typeError;
+
+            const totalStands = typeData?.reduce((acc, st) => acc + st.quantity_available, 0) || 0;
+            const rentedStands = typeData?.reduce((acc, st) => acc + (st.quantity_rented || 0), 0) || 0;
+            const revenue = rentalData?.reduce((acc, r) => acc + (r.rental_amount_pi || 0), 0) || 0;
+
+            setStats({ total_stands: totalStands, rented_stands: rentedStands, revenue });
+
+        } catch (err) {
+            console.error("Error fetching data:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [standEventId]);
+
+    useEffect(() => {
+        fetchData();
+        
+        // Listen for new rentals in real-time
+        const channel = supabase
+            .channel('rentals_update_owner')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'stand_rentals', filter: `stand_event_id=eq.${standEventId}` }, () => {
+                fetchData();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [standEventId, fetchData]);
+
+    const occupancyRate = stats.total_stands > 0 ? (stats.rented_stands / stats.total_stands) * 100 : 0;
 
     return (
-        <Card className="glass-effect border-2 border-primary/30 shadow-xl">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                    <Crown className="w-7 h-7 text-yellow-500" />
-                    Tableau de Bord des Stands
-                    <Crown className="w-7 h-7 text-yellow-500" />
-                </CardTitle>
-                <CardDescription className="text-base">
-                    Supervisez la location des stands de votre événement.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl text-center border border-green-500/20">
-                        <p className="text-2xl font-bold text-green-600">{totalStandsRented}</p>
-                        <p className="text-sm text-muted-foreground font-medium">Stands Loués</p>
+        <div className="space-y-6 mt-6">
+            <Card className="border-l-4 border-l-primary shadow-md bg-gradient-to-r from-background to-primary/5">
+                <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="text-center p-4 bg-white dark:bg-black/20 rounded-xl shadow-sm border border-border/50">
+                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">Revenu Total (Brut)</p>
+                            <p className="text-3xl font-extrabold text-primary mt-2">{stats.revenue} π</p>
+                            <p className="text-xs text-muted-foreground mt-1">~ {(stats.revenue * 10).toLocaleString()} FCFA</p>
+                        </div>
+                        <div className="text-center p-4 bg-white dark:bg-black/20 rounded-xl shadow-sm border border-border/50">
+                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">Stands Loués</p>
+                            <p className="text-3xl font-extrabold mt-2">{stats.rented_stands} <span className="text-lg text-muted-foreground font-normal">/ {stats.total_stands}</span></p>
+                        </div>
+                        <div className="text-center p-4 bg-white dark:bg-black/20 rounded-xl shadow-sm border border-border/50">
+                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">Occupation</p>
+                            <p className="text-3xl font-extrabold text-green-600 mt-2">{Math.round(occupancyRate)}%</p>
+                            <Progress value={occupancyRate} className="h-2 mt-2 w-24 mx-auto" />
+                        </div>
                     </div>
-                    <div className="p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-xl text-center border border-yellow-500/20">
-                        <p className="text-2xl font-bold text-yellow-600 flex items-center justify-center gap-1">
-                            {totalRevenuePi} <Coins className="w-5 h-5" />
-                        </p>
-                        <p className="text-sm text-muted-foreground font-medium">Revenu Total</p>
-                    </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                <div className="space-y-3">
-                    <div className="flex justify-between text-sm font-medium">
-                        <span className="text-green-600">Progression des locations</span>
-                        <span className="text-primary font-bold">{Math.round(progress)}%</span>
-                    </div>
-                    <Progress value={progress} className="w-full h-3" />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>{totalStandsRented}/{totalStandsAvailable} loués</span>
-                        <span>{totalStandsAvailable - totalStandsRented} restants</span>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 className="font-semibold mb-3 flex items-center gap-2 text-lg">
-                        <TrendingUp className="w-5 h-5 text-blue-500" />
-                        Dernières Réservations ({rentals?.length || 0})
-                    </h4>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-primary" />
+                        Liste des Réservations
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
                     {loading ? (
-                        <div className="flex justify-center py-8">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+                    ) : rentals.length === 0 ? (
+                        <div className="text-center py-16 text-muted-foreground bg-muted/10 rounded-xl border-2 border-dashed">
+                            <Store className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <p className="text-lg font-medium">Aucune réservation pour le moment.</p>
+                            <p className="text-sm">Partagez votre événement pour attirer des exposants !</p>
                         </div>
                     ) : (
-                        <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
-                            {(rentals || []).map(r => (
-                                <div key={r.id} className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-500/5 to-cyan-500/5 rounded-lg border border-blue-500/10 hover:border-blue-500/20 transition-colors">
-                                    <div>
-                                        <p className="font-medium">{r.company_name} ({r.user?.full_name})</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {new Date(r.confirmed_at).toLocaleString('fr-FR')}
-                                        </p>
+                        <div className="space-y-4">
+                            {rentals.map((rental) => (
+                                <div key={rental.id} className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 border rounded-xl hover:bg-muted/30 transition-colors shadow-sm animate-in fade-in">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-lg text-primary">{rental.company_name}</span>
+                                            <Badge variant="outline" className="bg-background font-mono">{rental.stand_number}</Badge>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-1">
+                                            <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {rental.contact_person}</span>
+                                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {rental.contact_email}</span>
+                                            <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {rental.contact_phone}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant="secondary" className="text-xs">{rental.stand_type?.name}</Badge>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="font-bold text-primary">{r.stand_number} ({r.stand_type.name})</span>
-                                        <p className="text-sm text-muted-foreground">{r.rental_amount_pi}π</p>
+                                    <div className="mt-4 md:mt-0 text-right min-w-[140px] flex flex-col items-end">
+                                        <div className="font-bold text-xl text-foreground">{rental.rental_amount_pi} π</div>
+                                        <div className="text-xs text-muted-foreground mb-2">
+                                            {new Date(rental.confirmed_at).toLocaleDateString()}
+                                        </div>
+                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none px-3">Payé</Badge>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     )}
-                    {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                            <p className="text-destructive text-sm text-center">Erreur de chargement des réservations</p>
-                        </div>
-                    )}
-                    {!loading && (!rentals || rentals.length === 0) && (
-                        <div className="text-center py-8">
-                            <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <p className="text-lg font-medium text-muted-foreground">Aucune réservation pour le moment</p>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 
-const useSWR = (key, fetcher) => {
-    const [data, setData] = useState(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    React.useEffect(() => {
-        if (key) {
-            setLoading(true);
-            fetcher(key)
-                .then(res => setData(res))
-                .catch(err => setError(err))
-                .finally(() => setLoading(false));
-        }
-    }, [key, fetcher]);
-
-    return { data, error, loading };
-}
-
 const StandRentalInterface = ({ event, standEventData, isUnlocked, isOwner, onRefresh }) => {
+    // If standEventData is provided by parent (EventDetailPage), use it to get ID.
+    // Otherwise we might need to fetch it if only event is provided (handled inside views if needed, but here we assume standEventData is the entry point)
+    
+    // Safety check: if standEventData is missing, we can't do much.
+    // However, if we know event.id, we might try to find it. But usually parent does this check.
     if (!isUnlocked || !standEventData) return null;
 
     return (
-        <div className="mt-8 space-y-8">
+        <div className="mt-8 animate-in fade-in slide-in-from-bottom-8 duration-500">
             {isOwner ? (
-                <OwnerView event={event} standEventData={standEventData} />
+                <OwnerView event={event} standEventId={standEventData.id} />
             ) : (
-                <ParticipantView event={event} standEventData={standEventData} onPurchaseSuccess={onRefresh} />
+                <ParticipantView event={event} standEventId={standEventData.id} onPurchaseSuccess={onRefresh} />
             )}
         </div>
     );

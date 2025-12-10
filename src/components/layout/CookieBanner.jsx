@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Cookie, Shield, Settings } from 'lucide-react';
+import { Cookie, Shield } from 'lucide-react';
 import '@/styles/CookieBanner.css';
 
 const CookieBanner = () => {
@@ -29,10 +29,6 @@ const CookieBanner = () => {
         }
     };
 
-    const handleCustomize = () => {
-        console.log('Open cookie preferences');
-    };
-
     return (
         <AnimatePresence>
             {isVisible && (
@@ -54,9 +50,6 @@ const CookieBanner = () => {
                                 <Cookie size={20} />
                             </div>
                             <div className="cookie-text-content">
-                                <h3 className="cookie-title">
-                                    {t('cookie_banner.title')}
-                                </h3>
                                 <p className="cookie-text">
                                     {t('cookie_banner.message')}
                                     <Link to="/privacy-policy" className="cookie-link">
@@ -67,15 +60,6 @@ const CookieBanner = () => {
                         </div>
 
                         <div className="cookie-buttons">
-                            <Button
-                                onClick={handleCustomize}
-                                variant="outline"
-                                className="cookie-button cookie-button--secondary"
-                                size="sm"
-                            >
-                                <Settings size={16} />
-                                {t('cookie_banner.customize')}
-                            </Button>
                             <Button
                                 onClick={() => handleConsent('rejected')}
                                 variant="outline"

@@ -1,13 +1,78 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, Plus } from 'lucide-react';
+import { Calendar, Loader2, Plus, Trash2 } from 'lucide-react';
 import EventCard from '@/components/EventCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { supabase } from '@/lib/customSupabaseClient';
+import { toast } from '@/components/ui/use-toast';
+import { extractStoragePath } from '@/lib/utils';
 
-const MyEventsTab = ({ userProfile, userEvents, loadingEvents }) => {
+const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
   const navigate = useNavigate();
+  const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, event: null });
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const canCreateEvent = userProfile && (userProfile.user_type === 'organizer' || userProfile.user_type === 'admin' || userProfile.user_type === 'super_admin');
+
+  const handleDeleteClick = (event) => {
+    console.log('MyEventsTab: Delete clicked for event', event.id);
+    setDeleteConfirmation({ isOpen: true, event });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation.event) return;
+    
+    setIsDeleting(true);
+    const event = deleteConfirmation.event;
+
+    try {
+      // 1. Delete cover image from storage if exists
+      if (event.cover_image) {
+        const storageInfo = extractStoragePath(event.cover_image);
+        if (storageInfo) {
+          const { error: storageError } = await supabase.storage
+            .from(storageInfo.bucket)
+            .remove([storageInfo.path]);
+          
+          if (storageError) {
+            console.warn("Could not delete image from storage:", storageError);
+            // We continue even if image delete fails, as DB cleanup is priority
+          }
+        }
+      }
+
+      // 2. Delete event from DB using RPC which handles cascades
+      const { error: dbError } = await supabase.rpc('delete_event_completely', { p_event_id: event.id });
+      if (dbError) throw dbError;
+
+      toast({ title: "Événement supprimé", description: "L'événement a été supprimé avec succès." });
+      
+      // 3. Close modal and refresh list
+      setDeleteConfirmation({ isOpen: false, event: null });
+      if (onRefresh) onRefresh();
+
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de supprimer l'événement. " + error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loadingEvents) {
     return (
@@ -38,6 +103,7 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents }) => {
               event={event}
               onClick={() => navigate(`/event/${event.id}`)}
               isUnlocked={true}
+              onDelete={handleDeleteClick}
             />
           ))}
         </div>
@@ -62,6 +128,29 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents }) => {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={deleteConfirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setDeleteConfirmation({ isOpen: false, event: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer l'événement ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer "{deleteConfirmation.event?.title}" ?<br/><br/>
+              Cette action est irréversible et effacera toutes les données associées (billets, votes, statistiques).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }} 
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

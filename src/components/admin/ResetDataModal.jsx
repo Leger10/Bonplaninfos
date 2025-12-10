@@ -101,10 +101,6 @@ const ResetDataModal = ({ open, onOpenChange, onSuccess }) => {
 
       console.log("Reset completed successfully", data);
       if (data.counts) {
-        console.log("Transactions deleted:", data.counts.transactions);
-        console.log("Revenues reset:", data.counts.revenues);
-        console.log("Tickets deleted:", data.counts.tickets);
-        console.log("Balances reset:", data.counts.balances);
         setDeleteCounts(data.counts);
       }
 

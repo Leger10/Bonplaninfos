@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useData } from '@/contexts/DataContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Settings, BarChart2, Video, Loader2, Briefcase, Wallet, Megaphone, Calendar, Target, Image as ImageIcon, CreditCard, ShieldCheck, Clock, RefreshCw as RefreshCwIcon, UserCheck, History, BookOpen, DollarSign, MapPin, AreaChart, RotateCcw, ShoppingCart, AlertTriangle, Key, Shield } from 'lucide-react';
+import { Users, Settings, BarChart2, Video, Loader2, Briefcase, Wallet, Megaphone, Calendar, Target, Image as ImageIcon, CreditCard, ShieldCheck, Clock, RefreshCw as RefreshCwIcon, UserCheck, History, BookOpen, DollarSign, MapPin, AreaChart, RotateCcw, AlertTriangle } from 'lucide-react';
 import UserManagement from '@/components/admin/UserManagement';
 import ConfigTab from '@/components/admin/ConfigTab';
 import AnalyticsDashboard from '@/components/admin/AnalyticsDashboard';
@@ -18,7 +18,6 @@ import PromotionsManagement from '@/components/admin/PromotionsManagement';
 import WelcomePopupManagement from '@/components/admin/WelcomePopupManagement';
 import CreditManagement from '@/components/admin/CreditManagement';
 import AdminCreditsTab from '@/components/admin/AdminCreditsTab';
-import PartnerVerificationForm from '@/components/admin/PartnerVerificationForm';
 import BadgeManagementPanel from '@/components/admin/BadgeManagementPanel';
 import SecretaryManagementTab from '@/components/admin/SecretaryManagementTab';
 import TransactionsTable from '@/components/admin/TransactionsTable';
@@ -50,6 +49,7 @@ const AdminStats = ({ userProfile }) => {
     const { t } = useTranslation();
     const [stats, setStats] = useState({ 
         credited: 0, 
+        purchased: 0,
         activeUsers: 0,
         monthlyRevenue: 0 
     });
@@ -67,12 +67,12 @@ const AdminStats = ({ userProfile }) => {
             const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
             const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
             
-            // 1. Pièces créditées dans la zone ce mois-ci
+            // 1. Pièces CRÉDITÉES MANUELLEMENT (manual_credit) dans la zone ce mois-ci
             let creditedQuery = supabase
                 .from('transactions')
                 .select('amount_pi')
                 .eq('country', userProfile.country)
-                .in('transaction_type', ['manual_credit', 'event_participation', 'video_watch'])
+                .eq('transaction_type', 'manual_credit')
                 .gte('created_at', firstDayOfMonth.toISOString())
                 .lte('created_at', lastDayOfMonth.toISOString());
             
@@ -81,12 +81,32 @@ const AdminStats = ({ userProfile }) => {
             }
             
             const { data: creditedData, error: creditedError } = await creditedQuery;
-            
             if (creditedError) throw creditedError;
 
-            const totalCredited = creditedData.reduce((sum, item) => sum + (item.amount_pi || 0), 0);
+            const totalManualCredited = creditedData.reduce((sum, item) => sum + (item.amount_pi || 0), 0);
             
-            // 2. Nombre d'utilisateurs actifs dans la zone
+            // 2. Pièces ACHETÉES (user_coin_transactions - coin_pack, partner_license, etc.)
+            let purchasedQuery = supabase
+                .from('user_coin_transactions')
+                .select(`
+                    amount_fcfa,
+                    user:user_id!inner(country, city)
+                `)
+                .eq('user.country', userProfile.country)
+                .gte('created_at', firstDayOfMonth.toISOString())
+                .lte('created_at', lastDayOfMonth.toISOString())
+                .eq('status', 'completed');
+
+            if (userProfile.city) {
+                purchasedQuery = purchasedQuery.eq('user.city', userProfile.city);
+            }
+
+            const { data: purchasedData, error: purchasedError } = await purchasedQuery;
+            if (purchasedError) throw purchasedError;
+
+            const totalPurchasedFCFA = purchasedData.reduce((sum, item) => sum + (Number(item.amount_fcfa) || 0), 0);
+
+            // 3. Nombre d'utilisateurs actifs dans la zone
             let usersQuery = supabase
                 .from('profiles')
                 .select('id', { count: 'exact' })
@@ -98,17 +118,18 @@ const AdminStats = ({ userProfile }) => {
             }
             
             const { count: activeUsers, error: usersError } = await usersQuery;
-            
             if (usersError) throw usersError;
             
-            // 3. Revenu mensuel en FCFA (π × 10)
-            const piToFcfaRate = 10; // Taux de conversion π en FCFA
-            const monthlyRevenue = totalCredited * piToFcfaRate;
+            // 4. Calcul du revenu mensuel Total
+            const piToFcfaRate = 10; 
+            const revenueFromCredits = totalManualCredited * piToFcfaRate;
+            const totalMonthlyRevenue = revenueFromCredits + totalPurchasedFCFA;
 
             setStats({ 
-                credited: totalCredited, 
+                credited: totalManualCredited,
+                purchased: totalPurchasedFCFA,
                 activeUsers: activeUsers || 0,
-                monthlyRevenue 
+                monthlyRevenue: totalMonthlyRevenue 
             });
             
         } catch (error) {
@@ -145,18 +166,19 @@ const AdminStats = ({ userProfile }) => {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="glass-effect shadow-lg">
+            <Card className="glass-effect shadow-lg border-l-4 border-l-green-500">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">{t('admin_dashboard.stats.revenue_title')}</CardTitle>
-                    <DollarSign className="h-5 w-5 text-primary" />
+                    <DollarSign className="h-5 w-5 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {stats.monthlyRevenue.toLocaleString('fr-FR')} FCFA
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {stats.credited.toLocaleString('fr-FR')} π crédités ce mois
-                    </p>
+                    <div className="text-xs text-muted-foreground mt-1">
+                        <span className="block">Achats: {stats.purchased.toLocaleString('fr-FR')} FCFA</span>
+                        <span className="block">Crédits: {(stats.credited * 10).toLocaleString('fr-FR')} FCFA ({stats.credited} π)</span>
+                    </div>
                 </CardContent>
             </Card>
             
@@ -317,12 +339,10 @@ const LicenseStatus = ({ user }) => {
 
     const { days, hours, minutes, seconds, expired, totalSeconds } = timeLeft;
     
-    // Calcul du nombre de jours restants
     const today = new Date();
     const expirationDateObj = new Date(partner.expiration_date);
     const daysRemaining = Math.ceil((expirationDateObj - today) / (1000 * 60 * 60 * 24));
     
-    // Déterminer la couleur en fonction du temps restant
     let statusColor = '';
     let statusText = '';
     
@@ -441,7 +461,6 @@ const LicenseStatus = ({ user }) => {
                 </AlertDialog>
             </div>
             
-            {/* Barre de progression */}
             {!expired && (
                 <div className="mt-4">
                     <div className="flex justify-between text-xs mb-1">
@@ -578,13 +597,11 @@ const AdminDashboard = () => {
         }
     }, [isAdmin, user]);
 
-    // Initialiser l'onglet actif selon le type d'utilisateur
     useEffect(() => {
         if (isSuperAdmin) {
             setActiveTab('analytics');
         } else if (isAdmin) {
-            // Ne pas forcer l'onglet 'salary' pour éviter l'erreur de chargement
-            // L'onglet par défaut sera le premier dans la liste des onglets
+            // Default tab selection for admin
         } else if (isSecretaryBySuperAdmin) {
             setActiveTab('credits');
         }
@@ -610,8 +627,9 @@ const AdminDashboard = () => {
 
             let transactionsQuery;
             if (isSuperAdmin) {
-                transactionsQuery = supabase.from('coin_spending').select(`
-                    id, amount, description, created_at, purpose,
+                // Updated to use 'transactions' table and 'amount_pi' column
+                transactionsQuery = supabase.from('transactions').select(`
+                    id, amount_pi, amount_fcfa, description, created_at, transaction_type,
                     user:user_id (full_name, email)
                 `).order('created_at', { ascending: false });
             }
@@ -641,10 +659,11 @@ const AdminDashboard = () => {
                     user_full_name: t.user?.full_name,
                     user_email: t.user?.email,
                     description: t.description,
-                    amount: t.amount,
+                    amount: t.amount_pi, // Map amount_pi to amount for compatibility
+                    amount_fcfa: t.amount_fcfa,
                     created_at: t.created_at,
                     status: 'completed',
-                    type: t.purpose,
+                    type: t.transaction_type,
                 })));
             }
 
@@ -702,7 +721,6 @@ const AdminDashboard = () => {
                     {t('admin_dashboard.welcome', { name: userProfile.full_name || user.email })}
                 </p>
                 
-                {/* Afficher la zone pour les admins */}
                 {isAdmin && userProfile?.country && (
                     <div className="mt-2">
                         <Badge variant="outline" className="text-sm">
@@ -714,355 +732,121 @@ const AdminDashboard = () => {
                 )}
             </header>
 
-            {/* Statistiques pour les admins actifs */}
             {isAdmin && isFunctionalityActive && userProfile?.country && (
                 <AdminStats userProfile={userProfile} />
             )}
             
-            {/* Statut de licence pour les admins */}
             {isAdmin && isFunctionalityActive && (
                 <LicenseStatus user={userProfile} />
             )}
             
-            {/* Bannière de statut */}
             {isAdmin && (
                 <AdminStatusBanner status={partnerStatus} />
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="flex flex-wrap h-auto items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                    {isSuperAdmin ? (
+                    {isSuperAdmin && (
                         <>
-                            <TabsTrigger value="analytics">
-                                <BarChart2 className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.analytics')}
-                            </TabsTrigger>
-                            <TabsTrigger value="credit_stats">
-                                <AreaChart className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.credit_stats')}
-                            </TabsTrigger>
-                            <TabsTrigger value="activity_log">
-                                <BookOpen className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.activity_log')}
-                            </TabsTrigger>
-                            <TabsTrigger value="transactions">
-                                <History className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.transactions')}
-                            </TabsTrigger>
-                            <TabsTrigger value="payments">
-                                <DollarSign className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.payments')}
-                            </TabsTrigger>
-                            <TabsTrigger value="users">
-                                <Users className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.users')}
-                            </TabsTrigger>
-                            <TabsTrigger value="secretaries">
-                                <UserCheck className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.secretaries')}
-                            </TabsTrigger>
-                            <TabsTrigger value="credits">
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.credits')}
-                            </TabsTrigger>
-                            <TabsTrigger value="reversed_credits">
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.reversed_credits')}
-                            </TabsTrigger>
-                            <TabsTrigger value="withdrawals">
-                                <Wallet className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.withdrawals')}
-                            </TabsTrigger>
-                            <TabsTrigger value="salary_withdrawals">
-                                <Wallet className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.salary_withdrawals')}
-                            </TabsTrigger>
-                            <TabsTrigger value="withdrawal_history">
-                                <History className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.withdrawal_history')}
-                            </TabsTrigger>
-                            <TabsTrigger value="events">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.events')}
-                            </TabsTrigger>
-                            <TabsTrigger value="locations">
-                                <MapPin className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.locations')}
-                            </TabsTrigger>
-                            <TabsTrigger value="promotions">
-                                <Target className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.promotions')}
-                            </TabsTrigger>
-                            <TabsTrigger value="partners">
-                                <Briefcase className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.partners')}
-                            </TabsTrigger>
-                            <TabsTrigger value="badges">
-                                <ShieldCheck className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.badges')}
-                            </TabsTrigger>
-                            <TabsTrigger value="announcements">
-                                <Megaphone className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.announcements')}
-                            </TabsTrigger>
-                            <TabsTrigger value="popups">
-                                <ImageIcon className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.popups')}
-                            </TabsTrigger>
-                            <TabsTrigger value="videos">
-                                <Video className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.videos')}
-                            </TabsTrigger>
-                            <TabsTrigger value="config">
-                                <Settings className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.config')}
-                            </TabsTrigger>
+                            <TabsTrigger value="analytics"><BarChart2 className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.analytics')}</TabsTrigger>
+                            <TabsTrigger value="credit_stats"><AreaChart className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.credit_stats')}</TabsTrigger>
+                            <TabsTrigger value="activity_log"><BookOpen className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.activity_log')}</TabsTrigger>
+                            <TabsTrigger value="transactions"><History className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.transactions')}</TabsTrigger>
+                            <TabsTrigger value="payments"><DollarSign className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.payments')}</TabsTrigger>
+                            <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.users')}</TabsTrigger>
+                            <TabsTrigger value="secretaries"><UserCheck className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.secretaries')}</TabsTrigger>
+                            <TabsTrigger value="credits"><CreditCard className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.credits')}</TabsTrigger>
+                            <TabsTrigger value="reversed_credits"><RotateCcw className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.reversed_credits')}</TabsTrigger>
+                            <TabsTrigger value="withdrawals"><Wallet className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.withdrawals')}</TabsTrigger>
+                            <TabsTrigger value="salary_withdrawals"><Wallet className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.salary_withdrawals')}</TabsTrigger>
+                            <TabsTrigger value="withdrawal_history"><History className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.withdrawal_history')}</TabsTrigger>
+                            <TabsTrigger value="events"><Calendar className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.events')}</TabsTrigger>
+                            <TabsTrigger value="locations"><MapPin className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.locations')}</TabsTrigger>
+                            <TabsTrigger value="promotions"><Target className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.promotions')}</TabsTrigger>
+                            <TabsTrigger value="partners"><Briefcase className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.partners')}</TabsTrigger>
+                            <TabsTrigger value="badges"><ShieldCheck className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.badges')}</TabsTrigger>
+                            <TabsTrigger value="announcements"><Megaphone className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.announcements')}</TabsTrigger>
+                            <TabsTrigger value="popups"><ImageIcon className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.popups')}</TabsTrigger>
+                            <TabsTrigger value="videos"><Video className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.videos')}</TabsTrigger>
+                            <TabsTrigger value="config"><Settings className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.config')}</TabsTrigger>
                         </>
-                    ) : isAdmin && isFunctionalityActive ? (
+                    )}
+                    
+                    {isAdmin && isFunctionalityActive && (
                         <>
-                            <TabsTrigger value="salary">
-                                <DollarSign className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.salary')}
-                            </TabsTrigger>
-                            <TabsTrigger value="events">
-                                <Calendar className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.events')}
-                            </TabsTrigger>
-                            <TabsTrigger value="locations">
-                                <MapPin className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.locations')}
-                            </TabsTrigger>
-                            <TabsTrigger value="promotions">
-                                <Target className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.promotions')}
-                            </TabsTrigger>
-                            <TabsTrigger value="credits_history">
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.credits')}
-                            </TabsTrigger>
-                            <TabsTrigger value="reversed_credits">
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.reversed_credits')}
-                            </TabsTrigger>
-                            <TabsTrigger value="withdrawals">
-                                <Wallet className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.withdrawals')}
-                            </TabsTrigger>
-                            <TabsTrigger value="users">
-                                <Users className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.users')}
-                            </TabsTrigger>
-                            <TabsTrigger value="secretaries">
-                                <UserCheck className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.secretaries')}
-                            </TabsTrigger>
-                            <TabsTrigger value="activity_log">
-                                <BookOpen className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.activity_log')}
-                            </TabsTrigger>
+                            <TabsTrigger value="salary"><Wallet className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.salary') || 'Salaire'}</TabsTrigger>
+                            <TabsTrigger value="events"><Calendar className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.events')}</TabsTrigger>
+                            <TabsTrigger value="locations"><MapPin className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.locations')}</TabsTrigger>
+                            <TabsTrigger value="promotions"><Target className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.promotions')}</TabsTrigger>
+                            <TabsTrigger value="credits_history"><CreditCard className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.credits_history') || 'Historique Crédits'}</TabsTrigger>
+                            <TabsTrigger value="reversed_credits"><RotateCcw className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.reversed_credits')}</TabsTrigger>
+                            <TabsTrigger value="withdrawals"><Wallet className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.withdrawals')}</TabsTrigger>
+                            <TabsTrigger value="users"><Users className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.users')}</TabsTrigger>
+                            <TabsTrigger value="secretaries"><UserCheck className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.secretaries')}</TabsTrigger>
+                            <TabsTrigger value="activity_log"><BookOpen className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.activity_log')}</TabsTrigger>
                         </>
-                    ) : isSecretaryBySuperAdmin ? (
+                    )}
+
+                    {isSecretaryBySuperAdmin && (
                         <>
-                            <TabsTrigger value="credits">
-                                <CreditCard className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.credit_management')}
-                            </TabsTrigger>
-                            <TabsTrigger value="reversed_credits">
-                                <RotateCcw className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.reversed_credits')}
-                            </TabsTrigger>
-                            <TabsTrigger value="withdrawals">
-                                <Wallet className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.withdrawal_management')}
-                            </TabsTrigger>
-                            <TabsTrigger value="withdrawal_history">
-                                <History className="w-4 h-4 mr-2" />
-                                {t('admin_dashboard.tabs.withdrawal_history')}
-                            </TabsTrigger>
+                            <TabsTrigger value="credits"><CreditCard className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.credits')}</TabsTrigger>
+                            <TabsTrigger value="reversed_credits"><RotateCcw className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.reversed_credits')}</TabsTrigger>
+                            <TabsTrigger value="withdrawals"><Wallet className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.withdrawals')}</TabsTrigger>
+                            <TabsTrigger value="withdrawal_history"><History className="w-4 h-4 mr-2" />{t('admin_dashboard.tabs.withdrawal_history')}</TabsTrigger>
                         </>
-                    ) : null}
+                    )}
                 </TabsList>
-                
-                <div className="mt-6">
-                    {isSuperAdmin ? (
-                        <>
-                            <TabsContent value="analytics">
-                                <AnalyticsDashboard />
-                            </TabsContent>
-                            <TabsContent value="credit_stats">
-                                <CreditStatsTab />
-                            </TabsContent>
-                            <TabsContent value="activity_log">
-                                <ActivityLogTab />
-                            </TabsContent>
-                            <TabsContent value="transactions">
-                                <TransactionsTable transactions={allTransactions} />
-                            </TabsContent>
-                            <TabsContent value="payments">
-                                <AdminPaymentsTab userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="users">
-                                <UserManagement 
-                                    users={allUsers} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="secretaries">
-                                <SecretaryManagementTab 
-                                    users={allUsers} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="credits">
-                                <CreditManagement 
-                                    onRefresh={fetchData} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="reversed_credits">
-                                <ReversedCreditsTab 
-                                    isSuperAdmin={true} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="withdrawals">
-                                <WithdrawalManagement userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="salary_withdrawals">
-                                <SalaryWithdrawalManagement userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="withdrawal_history">
-                                <WithdrawalHistoryTab userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="events">
-                                <EventsManagement 
-                                    events={allEvents} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="locations">
-                                <LocationManagementTab userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="promotions">
-                                <PromotionsManagement 
-                                    promotions={allPromotions} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="partners">
-                                <PartnersManagement 
-                                    onRefresh={fetchData} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="badges">
-                                <BadgeManagementPanel userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="announcements">
-                                <AnnouncementsManagement 
-                                    announcements={allAnnouncements} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="popups">
-                                <WelcomePopupManagement 
-                                    popups={allPopups} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="videos">
-                                <VideoManager userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="config">
-                                <ConfigTab userProfile={userProfile} />
-                            </TabsContent>
-                        </>
-                    ) : isAdmin && isFunctionalityActive ? (
-                        <>
-                            <TabsContent value="salary">
-                                <AdminSalaryDashboard userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="events">
-                                <EventsManagement 
-                                    events={allEvents} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="locations">
-                                <LocationManagementTab userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="promotions">
-                                <PromotionsManagement 
-                                    promotions={allPromotions} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="credits_history">
-                                <AdminCreditsTab userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="reversed_credits">
-                                <ReversedCreditsTab 
-                                    isSuperAdmin={false} 
-                                    country={userProfile.country} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="withdrawals">
-                                <WithdrawalManagement userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="users">
-                                <UserManagement 
-                                    users={allUsers} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="secretaries">
-                                <SecretaryManagementTab 
-                                    users={allUsers} 
-                                    userProfile={userProfile} 
-                                    onRefresh={fetchData} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="activity_log">
-                                <ActivityLogTab userProfile={userProfile} />
-                            </TabsContent>
-                        </>
-                    ) : isSecretaryBySuperAdmin ? (
-                        <>
-                            <TabsContent value="credits">
-                                <CreditManagement 
-                                    onRefresh={fetchData} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="reversed_credits">
-                                <ReversedCreditsTab 
-                                    isSuperAdmin={false} 
-                                    actorId={userProfile.id} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                            <TabsContent value="withdrawals">
-                                <WithdrawalManagement userProfile={userProfile} />
-                            </TabsContent>
-                            <TabsContent value="withdrawal_history">
-                                <WithdrawalHistoryTab 
-                                    actorId={userProfile.id} 
-                                    userProfile={userProfile} 
-                                />
-                            </TabsContent>
-                        </>
-                    ) : null}
-                </div>
+
+                {/* Content Sections */}
+                {isSuperAdmin && (
+                    <>
+                        <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
+                        <TabsContent value="credit_stats"><CreditStatsTab /></TabsContent>
+                        <TabsContent value="activity_log"><ActivityLogTab /></TabsContent>
+                        <TabsContent value="transactions"><TransactionsTable transactions={allTransactions} /></TabsContent>
+                        <TabsContent value="payments"><AdminPaymentsTab /></TabsContent>
+                        <TabsContent value="users"><UserManagement users={allUsers} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="secretaries"><SecretaryManagementTab users={allUsers} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="credits"><CreditManagement onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="reversed_credits"><ReversedCreditsTab isSuperAdmin={true} /></TabsContent>
+                        <TabsContent value="withdrawals"><WithdrawalManagement /></TabsContent>
+                        <TabsContent value="salary_withdrawals"><SalaryWithdrawalManagement /></TabsContent>
+                        <TabsContent value="withdrawal_history"><WithdrawalHistoryTab /></TabsContent>
+                        <TabsContent value="events"><EventsManagement events={allEvents} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="locations"><LocationManagementTab /></TabsContent>
+                        <TabsContent value="promotions"><PromotionsManagement promotions={allPromotions} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="partners"><PartnersManagement /></TabsContent>
+                        <TabsContent value="badges"><BadgeManagementPanel /></TabsContent>
+                        <TabsContent value="announcements"><AnnouncementsManagement announcements={allAnnouncements} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="popups"><WelcomePopupManagement popups={allPopups} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="videos"><VideoManager /></TabsContent>
+                        <TabsContent value="config"><ConfigTab /></TabsContent>
+                    </>
+                )}
+
+                {isAdmin && isFunctionalityActive && (
+                    <>
+                        <TabsContent value="salary"><AdminSalaryDashboard userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="events"><EventsManagement events={allEvents} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="locations"><LocationManagementTab userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="promotions"><PromotionsManagement promotions={allPromotions} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="credits_history"><AdminCreditsTab userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="reversed_credits"><ReversedCreditsTab isSuperAdmin={false} country={userProfile.country} userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="withdrawals"><WithdrawalManagement userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="users"><UserManagement users={allUsers} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="secretaries"><SecretaryManagementTab users={allUsers} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
+                        <TabsContent value="activity_log"><ActivityLogTab userProfile={userProfile} /></TabsContent>
+                    </>
+                )}
+
+                {isSecretaryBySuperAdmin && (
+                    <>
+                        <TabsContent value="credits"><CreditManagement onRefresh={fetchData} userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="reversed_credits"><ReversedCreditsTab isSuperAdmin={false} actorId={userProfile.id} userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="withdrawals"><WithdrawalManagement userProfile={userProfile} /></TabsContent>
+                        <TabsContent value="withdrawal_history"><WithdrawalHistoryTab actorId={userProfile.id} userProfile={userProfile} /></TabsContent>
+                    </>
+                )}
             </Tabs>
         </div>
     );

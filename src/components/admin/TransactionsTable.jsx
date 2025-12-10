@@ -32,7 +32,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
   const fetchTransactions = useCallback(async (isLoadMore = false, currentRetry = 0) => {
     const startTime = performance.now();
     const cacheKey = `${country || 'all'}-${typeFilter}-${searchTerm}-${page}`;
-    
+
     // Check Cache
     if (!isLoadMore && cache.current[cacheKey] && (Date.now() - cache.current[cacheKey].timestamp < CACHE_DURATION)) {
       console.log('Using cached transactions');
@@ -46,7 +46,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
 
     try {
       // Timeout Promise
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out')), TIMEOUT_MS)
       );
 
@@ -64,7 +64,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
             .eq('country', country)
             .order('created_at', { ascending: false })
             .range(from, to);
-            
+
           if (typeFilter !== 'all') query = query.eq('transaction_type', typeFilter);
           if (searchTerm) query = query.ilike('description', `%${searchTerm}%`);
 
@@ -107,7 +107,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
 
       setTransactions(prev => isLoadMore ? [...prev, ...formattedData] : formattedData);
       setHasMore(transactions.length + formattedData.length < count);
-      
+
       // Update Cache
       cache.current[cacheKey] = {
         data: formattedData,
@@ -120,7 +120,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
 
     } catch (err) {
       console.error('Error fetching transactions:', err);
-      
+
       // Retry Logic
       if (currentRetry < 3) {
         const backoffDelay = Math.pow(2, currentRetry) * 1000; // 1s, 2s, 4s
@@ -202,7 +202,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
           </Button>
         </div>
       </CardHeader>
-      
+
       <CardContent>
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -295,7 +295,7 @@ const TransactionsTable = ({ country, initialTransactions }) => {
                         <td className="px-6 py-4">
                           <Badge variant={
                             transaction.status === 'completed' ? 'success' :
-                            transaction.status === 'pending' ? 'warning' : 'destructive'
+                              transaction.status === 'pending' ? 'warning' : 'destructive'
                           }>
                             {transaction.status}
                           </Badge>
@@ -316,8 +316,8 @@ const TransactionsTable = ({ country, initialTransactions }) => {
             {/* Pagination / Load More */}
             {hasMore && (
               <div className="mt-4 text-center">
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     setPage(p => p + 1);
                     fetchTransactions(true);

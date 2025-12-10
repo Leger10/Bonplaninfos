@@ -19,13 +19,11 @@ const retryPromise = async (fn, retries = 3, delay = 500) => {
         errorCode === 'refresh_token_not_found';
 
     if (isRefreshTokenError) {
-        // Throw a specific error that we can catch in handleSession to trigger logout
         throw new Error('CRITICAL_AUTH_ERROR: Refresh Token Invalid');
     }
 
-    // Stop retrying if it's a standard auth-related error (4xx)
     const isAuthError = error.status === 400 || error.status === 401 || error.status === 403 || 
-                        (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt')) ||
+                        (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt' || errorCode === 'session_not_found')) ||
                         (errorMessage && (errorMessage.includes('bad_jwt') || errorMessage.includes('invalid claim') || errorMessage.includes('session_id')));
 
     if (isAuthError) {
@@ -58,21 +56,16 @@ export const AuthProvider = ({ children }) => {
   const [hasFetchError, setHasFetchError] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(() => () => { });
 
-  // Helper to completely wipe local data
   const clearSessionData = useCallback(() => {
     console.log("Cleaning session data due to auth error...");
     try {
-        // Clear specific supabase keys first to be safe
         for (const key in localStorage) {
             if (key.startsWith('sb-')) {
                 localStorage.removeItem(key);
             }
         }
-        // Aggressively clear all storage if needed
         localStorage.clear();
         sessionStorage.clear();
-        
-        // Nuke cookies
         document.cookie.split(";").forEach((c) => {
             document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
@@ -87,7 +80,6 @@ export const AuthProvider = ({ children }) => {
 
   const fetchLicense = useCallback(async (userId) => {
     if (!userId) return;
-    
     try {
         const { data: activeLicenseData } = await supabase
             .from('admin_licences')
@@ -101,7 +93,6 @@ export const AuthProvider = ({ children }) => {
             return;
         } 
         
-        // Fallback: fetch any license
         const { data: anyLicenseData } = await supabase
             .from('admin_licences')
             .select('*')
@@ -123,8 +114,8 @@ export const AuthProvider = ({ children }) => {
     
     if (sessionError) {
         const errorMessage = sessionError.message || '';
+        const errorCode = sessionError.code || sessionError.error_code || '';
         
-        // Handle Critical Refresh Errors immediately
         if (errorMessage.includes('CRITICAL_AUTH_ERROR') || errorMessage.includes('refresh_token_not_found')) {
             console.error("Critical Auth Error detected. Logging out.");
             clearSessionData();
@@ -132,8 +123,13 @@ export const AuthProvider = ({ children }) => {
             return;
         }
 
+        if (errorCode === 'session_not_found' || errorMessage.includes('session_not_found')) {
+            clearSessionData();
+            setLoading(false);
+            return;
+        }
+
         if (errorMessage.includes('session_id claim')) {
-            console.log("Suppressing session_id claim error in handleSession");
             clearSessionData();
             setLoading(false);
             return;
@@ -146,7 +142,6 @@ export const AuthProvider = ({ children }) => {
             errorMessage.includes('JWT');
 
         if (isBadJwtError) {
-            console.warn("Invalid session detected, clearing...");
             clearSessionData();
         } else {
             setHasFetchError(true);
@@ -158,8 +153,26 @@ export const AuthProvider = ({ children }) => {
     if (currentSession?.user) {
         const currentUser = currentSession.user;
         
-        // --- Profile Verification Logic ---
-        console.log(`Checking profile: ${currentUser.id}`);
+        // CHECK IF USER IS ACTIVE
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('is_active')
+                .eq('id', currentUser.id)
+                .single();
+            
+            if (profile && profile.is_active === false) {
+                console.warn("User is deactivated. Logging out.");
+                await supabase.auth.signOut();
+                clearSessionData();
+                setLoading(false);
+                // Optionally trigger a custom event or toast here, usually handled by specific components or redirects
+                return; 
+            }
+        } catch (e) {
+            console.error("Profile active check failed", e);
+        }
+
         try {
             const { data: profileCheck, error: profileError } = await supabase.rpc('ensure_user_profile_exists', {
                 p_user_id: currentUser.id,
@@ -169,21 +182,10 @@ export const AuthProvider = ({ children }) => {
 
             if (profileError) {
                 console.error("Profile check error:", profileError);
-            } else if (profileCheck) {
-                if (profileCheck.status === 'created') {
-                    console.log(`Profile not found: ${currentUser.id}`);
-                    console.log(`Creating profile: ${currentUser.id}`);
-                    console.log(`Profile created: ${profileCheck.profile.id}`);
-                    console.log(`Referral code generated: ${profileCheck.profile.affiliate_code}`);
-                } else if (profileCheck.status === 'exists') {
-                    console.log(`Profile exists: ${currentUser.id}`);
-                    console.log(`Profile verified: ${currentUser.id}`);
-                }
             }
         } catch (e) {
             console.error("Profile verification exception:", e);
         }
-        // ----------------------------------
 
         setSession(currentSession);
         setUser(currentUser);
@@ -208,7 +210,6 @@ export const AuthProvider = ({ children }) => {
     const initSession = async () => {
         try {
             setLoading(true);
-            // Try to get session from Supabase client
             const { data: { session: localSession }, error: sessionError } = await retryPromise(() => supabase.auth.getSession());
             
             if (sessionError) {
@@ -217,7 +218,6 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (localSession) {
-                // Verify token validity by fetching user
                 const { data: { user: verifiedUser }, error: userError } = await retryPromise(() => supabase.auth.getUser());
                 
                 if (userError) {
@@ -271,6 +271,21 @@ export const AuthProvider = ({ children }) => {
     try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        // Force check profile status immediately after sign in
+        if (data?.user) {
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('is_active')
+                .eq('id', data.user.id)
+                .single();
+            
+            if (profile && profile.is_active === false) {
+                await supabase.auth.signOut();
+                throw new Error('ACCOUNT_DEACTIVATED');
+            }
+        }
+
         return { data, error: null };
     } catch (error) {
         return { data: null, error };

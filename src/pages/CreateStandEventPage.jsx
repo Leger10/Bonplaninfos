@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -8,677 +8,561 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Store, Plus, Trash, Coins, Calendar, MapPin, Users, Settings } from 'lucide-react';
+import { Loader2, Store, Plus, Trash, Coins, Calendar, MapPin, CheckCircle2, ArrowRight, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import ImageUpload from '@/components/ImageUpload';
+
+// --- Utility Functions ---
+const convertToCoins = (amount, currency) => {
+  let rate = 10;
+  if (currency === 'XOF' || currency === 'XAF') rate = 10;
+  else if (currency === 'EUR') rate = 655 / 10;
+  else if (currency === 'USD') rate = 600 / 10;
+  
+  const safeAmount = parseFloat(amount) || 0;
+  return Math.ceil(safeAmount / rate);
+};
+
+const formatCurrency = (amount, currency) => {
+  const safeAmount = parseFloat(amount) || 0;
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: currency === 'XOF' ? 'XOF' : currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(safeAmount);
+};
+
+// --- Sub-components for Optimization ---
+
+// Memoized Stand Type Row to prevent full list re-render on single input change
+const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
+  return (
+    <Card className="relative border-2 border-muted hover:border-primary/30 transition-all group mb-4">
+      <CardContent className="p-6">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <Badge variant="outline" className="bg-background">Type #{index + 1}</Badge>
+          {canRemove && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onRemove(st.id)} 
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div className="space-y-2">
+            <Label>Nom du stand *</Label>
+            <Input 
+              value={st.name} 
+              onChange={e => onChange(st.id, 'name', e.target.value)} 
+              placeholder="Ex: Stand Premium" 
+              className="font-semibold" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Dimensions</Label>
+              <Input 
+                value={st.size} 
+                onChange={e => onChange(st.id, 'size', e.target.value)} 
+                placeholder="Ex: 9m²" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Quantité *</Label>
+              <Input 
+                type="number" 
+                min="1" 
+                value={st.quantity_available} 
+                onChange={e => onChange(st.id, 'quantity_available', e.target.value)} 
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+          <div className="space-y-2">
+            <Label>Prix unitaire *</Label>
+            <Input 
+              type="number" 
+              min="0" 
+              value={st.base_price} 
+              onChange={e => onChange(st.id, 'base_price', e.target.value)} 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Devise</Label>
+            <Select 
+              value={st.base_currency} 
+              onValueChange={val => onChange(st.id, 'base_currency', val)}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="XOF">FCFA (XOF)</SelectItem>
+                <SelectItem value="USD">Dollar (USD)</SelectItem>
+                <SelectItem value="EUR">Euro (EUR)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-primary font-bold">Prix en Pièces (Auto)</Label>
+            <div className="h-10 flex items-center px-3 rounded-md bg-primary/10 text-primary font-bold border border-primary/20">
+              <Coins className="w-4 h-4 mr-2" />
+              {convertToCoins(st.base_price, st.base_currency)} π
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Inclus / Description</Label>
+          <Textarea 
+            value={st.description} 
+            onChange={e => onChange(st.id, 'description', e.target.value)} 
+            placeholder="Électricité, Wifi, Mobilier..." 
+            rows={2} 
+            className="bg-muted/20" 
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
 
 const CreateStandEventPage = () => {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [step, setStep] = useState(1);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [step, setStep] = useState(1);
 
-    // Taux de conversion (exemple)
-    const conversionRates = {
-        XOF: { USD: 0.0017, EUR: 0.0021, XOF: 1 },
-        USD: { XOF: 555, EUR: 0.55, USD: 1 },
-        EUR: { XOF: 655, USD: 1.18, EUR: 1 }
+  // --- Step 1: Event Details ---
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [coverImage, setCoverImage] = useState(null);
+  const [eventDate, setEventDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
+  const [address, setAddress] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [maxParticipants, setMaxParticipants] = useState(500);
+  const [isPublic, setIsPublic] = useState(true);
+
+  // --- Step 2: Stand Configurations ---
+  const [standTypes, setStandTypes] = useState([{
+    id: uuidv4(),
+    name: 'Stand Standard',
+    base_price: 50000,
+    base_currency: 'XOF',
+    quantity_available: 10,
+    description: 'Espace 3x3m avec table et chaises',
+    size: '3x3m'
+  }]);
+
+  // Load Categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase.from('event_categories').select('*').eq('is_active', true).order('name');
+      if (error) console.error('Error fetching categories:', error);
+      else setCategories(data || []);
     };
+    fetchCategories();
+  }, []);
 
-    // Prix en pièces (1€ = 100 pièces, 1$ = 85 pièces, 1000 FCFA = 150 pièces)
-    const coinConversion = {
-        XOF: 0.10, // 1000 FCFA = 150 pièces
-        EUR: 80,   // 1€ = 100 pièces
-        USD: 65     // 1$ = 85 pièces
-    };
+  // Optimized change handler
+  const handleStandTypeChange = useCallback((id, field, value) => {
+    setStandTypes(prev => prev.map(st => st.id === id ? { ...st, [field]: value } : st));
+  }, []);
 
-    // Event Details
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [eventDate, setEventDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [city, setCity] = useState('');
-    const [country, setCountry] = useState('');
-    const [address, setAddress] = useState('');
-    const [categoryId, setCategoryId] = useState('');
-    const [maxParticipants, setMaxParticipants] = useState(100);
-    const [isPublic, setIsPublic] = useState(true);
-    
-    // Stand Details
-    const [standTypes, setStandTypes] = useState([{ 
-        id: uuidv4(), 
-        name: 'Standard', 
-        base_price: 15000, 
-        base_currency: 'XOF',
-        quantity_available: 20,
-        description: '',
-        size: '3x3m',
-        includes: ['Table', '2 chaises', 'Éclairage basique']
+  const addStandType = () => {
+    setStandTypes(prev => [...prev, {
+      id: uuidv4(),
+      name: '',
+      base_price: 0,
+      base_currency: 'XOF',
+      quantity_available: 5,
+      description: '',
+      size: '3x3m'
     }]);
+  };
 
-    // Coûts prévus
-    const [plannedCosts, setPlannedCosts] = useState([{
-        id: uuidv4(),
-        name: 'Logistique',
-        amount: 50000,
-        currency: 'XOF',
-        category: 'logistics'
-    }]);
+  const removeStandType = useCallback((id) => {
+    setStandTypes(prev => {
+        if (prev.length > 1) {
+            return prev.filter(st => st.id !== id);
+        } else {
+            toast({ title: "Action impossible", description: "Vous devez proposer au moins un type de stand.", variant: "destructive" });
+            return prev;
+        }
+    });
+  }, []);
 
-    useEffect(() => {
-        const fetchCategories = async () => {
-            const { data, error } = await supabase.from('event_categories').select('*');
-            if (error) console.error('Error fetching categories:', error);
-            else setCategories(data);
-        };
-        fetchCategories();
-    }, []);
-
-    // Fonctions de conversion
-    const convertCurrency = (amount, fromCurrency, toCurrency) => {
-        if (fromCurrency === toCurrency) return amount;
-        const rate = conversionRates[fromCurrency]?.[toCurrency];
-        return rate ? Math.round(amount * rate) : amount;
-    };
-
-    const convertToCoins = (amount, currency) => {
-        const rate = coinConversion[currency];
-        return rate ? Math.round(amount * rate) : amount;
-    };
-
-    const formatCurrency = (amount, currency) => {
-        const formatter = new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: currency === 'XOF' ? 'XOF' : currency,
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        });
-        return formatter.format(amount);
-    };
-
-    const handleStandTypeChange = (id, field, value) => {
-        setStandTypes(standTypes.map(st => st.id === id ? { ...st, [field]: value } : st));
-    };
-
-    const addStandType = () => {
-        setStandTypes([...standTypes, { 
-            id: uuidv4(), 
-            name: '', 
-            base_price: 0, 
-            base_currency: 'XOF',
-            quantity_available: 10,
-            description: '',
-            size: '3x3m',
-            includes: []
-        }]);
-    };
+  // --- Validation ---
+  const validateStep1 = () => {
+    const requiredFields = { title, categoryId, eventDate, city, country };
+    const missing = Object.keys(requiredFields).filter(k => !requiredFields[k]);
     
-    const removeStandType = (id) => {
-        setStandTypes(standTypes.filter(st => st.id !== id));
-    };
+    if (missing.length > 0) {
+      toast({ title: "Champs manquants", description: "Veuillez remplir tous les champs obligatoires (*)", variant: "destructive" });
+      return false;
+    }
 
-    const handleCostChange = (id, field, value) => {
-        setPlannedCosts(plannedCosts.map(cost => cost.id === id ? { ...cost, [field]: value } : cost));
-    };
+    const start = new Date(eventDate);
+    if (start < new Date()) {
+        toast({ title: "Date invalide", description: "La date de début doit être dans le futur", variant: "destructive" });
+        return false;
+    }
+    
+    if (endDate && new Date(endDate) <= start) {
+        toast({ title: "Date invalide", description: "La date de fin doit être après la date de début", variant: "destructive" });
+        return false;
+    }
 
-    const addPlannedCost = () => {
-        setPlannedCosts([...plannedCosts, {
-            id: uuidv4(),
-            name: '',
-            amount: 0,
-            currency: 'XOF',
-            category: 'other'
-        }]);
-    };
+    if (!coverImage) {
+        toast({ title: "Image manquante", description: "Une image de couverture est recommandée pour attirer les exposants.", variant: "default" });
+    }
+    return true;
+  };
 
-    const removePlannedCost = (id) => {
-        setPlannedCosts(plannedCosts.filter(cost => cost.id !== id));
-    };
+  const validateStep2 = () => {
+    for (const stand of standTypes) {
+      if (!stand.name.trim() || stand.base_price <= 0 || stand.quantity_available < 1) {
+        toast({ title: "Configuration invalide", description: "Vérifiez que tous les stands ont un nom, un prix valide et une quantité positive.", variant: "destructive" });
+        return false;
+      }
+    }
+    return true;
+  };
 
-    // Calcul du total des coûts en pièces
-    const totalCostInCoins = plannedCosts.reduce((total, cost) => {
-        return total + convertToCoins(cost.amount, cost.currency);
-    }, 0);
+  const nextStep = () => {
+    if (step === 1 && validateStep1()) setStep(2);
+    else if (step === 2 && validateStep2()) setStep(3);
+  };
+  const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
-    // Calcul des revenus potentiels en pièces
-    const potentialRevenueInCoins = standTypes.reduce((total, stand) => {
-        const standRevenue = stand.base_price * stand.quantity_available;
-        return total + convertToCoins(standRevenue, stand.base_currency);
-    }, 0);
+  // --- Submission ---
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      toast({ title: 'Erreur', description: 'Session expirée. Veuillez vous reconnecter.', variant: 'destructive' });
+      navigate('/auth');
+      return;
+    }
+    if (!validateStep1() || !validateStep2()) return;
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!user) {
-            toast({ title: 'Erreur', description: 'Vous devez être connecté.', variant: 'destructive' });
-            return;
-        }
-        setLoading(true);
+    setLoading(true);
 
-        try {
-            // 1. Create Event
-            const { data: eventData, error: eventError } = await supabase
-                .from('events')
-                .insert({
-                    title, 
-                    description, 
-                    event_date: eventDate,
-                    end_date: endDate,
-                    city, 
-                    country, 
-                    address,
-                    organizer_id: user.id, 
-                    event_type: 'stand_rental', 
-                    category_id: categoryId, 
-                    status: 'active',
-                    max_participants: maxParticipants,
-                    is_public: isPublic
-                }).select().single();
+    try {
+      // 1. Create Main Event
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .insert({
+          title,
+          description,
+          event_date: eventDate,
+          end_date: endDate ? endDate : null,
+          city,
+          country,
+          address,
+          organizer_id: user.id,
+          event_type: 'stand_rental',
+          category_id: categoryId,
+          status: 'active',
+          max_participants: maxParticipants,
+          is_public: isPublic,
+          cover_image: coverImage, 
+          created_at: new Date().toISOString()
+        }).select().single();
 
-            if (eventError) throw eventError;
-            const newEventId = eventData.id;
+      if (eventError) throw eventError;
+      const newEventId = eventData.id;
 
-            // 2. Create Stand Event
-            const { data: standEventData, error: standEventError } = await supabase
-                .from('stand_events').insert({ event_id: newEventId }).select().single();
-            if (standEventError) throw standEventError;
-            const standEventId = standEventData.id;
+      // 2. Create Stand Event Metadata
+      const { data: standEventData, error: standEventError } = await supabase
+        .from('stand_events').insert({ 
+            event_id: newEventId,
+            base_currency: standTypes[0].base_currency || 'XOF' 
+        }).select().single();
+        
+      if (standEventError) throw standEventError;
+      const standEventId = standEventData.id;
 
-            // 3. Insert event_settings
-            const { error: settingsError } = await supabase
-                .from('event_settings')
-                .insert({
-                    event_id: newEventId,
-                    stands_enabled: true,
-                    currency_display: true,
-                    coin_system: true
-                });
-            if (settingsError) throw settingsError;
+      // 3. Create Stand Types
+      const standTypesToInsert = standTypes.map(st => ({
+        stand_event_id: standEventId,
+        event_id: newEventId,
+        name: st.name,
+        description: st.description,
+        size: st.size,
+        base_price: parseFloat(st.base_price),
+        base_currency: st.base_currency,
+        calculated_price_pi: convertToCoins(st.base_price, st.base_currency),
+        quantity_available: parseInt(st.quantity_available),
+        quantity_rented: 0,
+        is_active: true
+      }));
+      
+      const { error: standTypesError } = await supabase.from('stand_types').insert(standTypesToInsert);
+      if (standTypesError) throw standTypesError;
 
-            // 4. Create Stand Types
-            const standTypesToInsert = standTypes.map(st => ({
-                ...st,
-                stand_event_id: standEventId,
-                event_id: newEventId,
-            }));
-            const { error: standTypesError } = await supabase.from('stand_types').insert(standTypesToInsert);
-            if (standTypesError) throw standTypesError;
+      // 4. Update Settings
+      await supabase.from('event_settings').insert({
+          event_id: newEventId,
+          stands_enabled: true,
+          total_stands: standTypes.reduce((acc, st) => acc + parseInt(st.quantity_available), 0),
+          stands_rented: 0,
+          created_at: new Date().toISOString()
+      });
 
-            // 5. Create Planned Costs
-            const costsToInsert = plannedCosts.map(cost => ({
-                ...cost,
-                event_id: newEventId,
-                coin_value: convertToCoins(cost.amount, cost.currency)
-            }));
-            const { error: costsError } = await supabase.from('event_planned_costs').insert(costsToInsert);
-            if (costsError) throw costsError;
-            
-            toast({ title: 'Succès', description: 'Événement de location de stands créé avec succès!' });
-            navigate(`/event/${newEventId}`);
+      toast({ 
+          title: 'Félicitations !', 
+          description: 'Votre espace de location de stands a été créé avec succès.',
+          className: "bg-green-600 text-white border-none"
+      });
+      
+      navigate(`/event/${newEventId}`);
 
-        } catch (error) {
-            console.error('Error creating stand event:', error);
-            toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
-        } finally {
-            setLoading(false);
-        }
-    };
+    } catch (error) {
+      console.error('Error creating stand event:', error);
+      toast({ title: 'Erreur technique', description: error.message || 'Impossible de créer l\'événement.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const CurrencyDisplay = ({ amount, currency, className = "" }) => (
-        <div className={`space-y-1 ${className}`}>
-            <div className="font-semibold">{formatCurrency(amount, currency)}</div>
-            <div className="text-sm text-muted-foreground space-y-1">
-                <div>USD: {formatCurrency(convertCurrency(amount, currency, 'USD'), 'USD')}</div>
-                <div>EUR: {formatCurrency(convertCurrency(amount, currency, 'EUR'), 'EUR')}</div>
-                <div className="flex items-center gap-1 text-primary font-medium">
-                    <Coins className="w-3 h-3" />
-                    {convertToCoins(amount, currency)} pièces
-                </div>
-            </div>
+  // --- Step Content Components ---
+
+  const Step1Details = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="space-y-4">
+        <Label className="text-lg font-semibold flex items-center gap-2">
+          <ImageIcon className="w-5 h-5 text-primary" /> Image de couverture
+        </Label>
+        <div className="bg-muted/30 p-6 rounded-xl border border-dashed border-2 hover:border-primary/50 transition-colors">
+          <ImageUpload 
+            onImageUploaded={setCoverImage} 
+            existingImage={coverImage}
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground mt-2 text-center">Recommandé: 1200x630px. Max 5MB.</p>
         </div>
-    );
+      </div>
 
-    const formPart1 = (
-        <>
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="title">Titre du salon/foire *</Label>
-                        <Input 
-                            id="title" 
-                            value={title} 
-                            onChange={(e) => setTitle(e.target.value)} 
-                            placeholder="Ex: Salon International de l'Agriculture"
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="category">Catégorie *</Label>
-                        <Select onValueChange={setCategoryId} value={categoryId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Sélectionnez une catégorie" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {categories.map(cat => (
-                                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                
-                <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea 
-                        id="description" 
-                        value={description} 
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Décrivez votre événement, les objectifs, les participants attendus..."
-                        rows={4}
-                    />
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="title" className="font-semibold">Titre du salon/foire *</Label>
+          <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Salon de l'Habitat 2025" required className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="category" className="font-semibold">Catégorie *</Label>
+          <Select onValueChange={setCategoryId} value={categoryId}>
+            <SelectTrigger className="h-11"><SelectValue placeholder="Choisir une catégorie" /></SelectTrigger>
+            <SelectContent>{categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="eventDate">Date et heure de début *</Label>
-                        <Input 
-                            id="eventDate" 
-                            type="datetime-local" 
-                            value={eventDate} 
-                            onChange={(e) => setEventDate(e.target.value)} 
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="endDate">Date et heure de fin</Label>
-                        <Input 
-                            id="endDate" 
-                            type="datetime-local" 
-                            value={endDate} 
-                            onChange={(e) => setEndDate(e.target.value)} 
-                        />
-                    </div>
-                </div>
+      <div className="space-y-2">
+        <Label htmlFor="description" className="font-semibold">Description complète</Label>
+        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Décrivez votre événement, les opportunités pour les exposants, le public attendu..." className="min-h-[120px]" />
+      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="country">Pays *</Label>
-                        <Input 
-                            id="country" 
-                            value={country} 
-                            onChange={(e) => setCountry(e.target.value)} 
-                            placeholder="Ex: Côte d'Ivoire"
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="city">Ville *</Label>
-                        <Input 
-                            id="city" 
-                            value={city} 
-                            onChange={(e) => setCity(e.target.value)} 
-                            placeholder="Ex: Abidjan"
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="address">Adresse</Label>
-                        <Input 
-                            id="address" 
-                            value={address} 
-                            onChange={(e) => setAddress(e.target.value)} 
-                            placeholder="Adresse complète"
-                        />
-                    </div>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="eventDate" className="font-semibold">Date de début *</Label>
+          <Input id="eventDate" type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="endDate" className="font-semibold">Date de fin</Label>
+          <Input id="endDate" type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-11" />
+        </div>
+      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="maxParticipants">Nombre maximum de participants</Label>
-                        <Input 
-                            id="maxParticipants" 
-                            type="number" 
-                            value={maxParticipants} 
-                            onChange={(e) => setMaxParticipants(e.target.value)} 
-                            min="1"
-                        />
-                    </div>
-                    <div className="flex items-center justify-between space-y-0 pt-6">
-                        <div className="space-y-0.5">
-                            <Label htmlFor="isPublic">Événement public</Label>
-                            <div className="text-sm text-muted-foreground">
-                                Visible par tous les utilisateurs
-                            </div>
-                        </div>
-                        <Switch 
-                            id="isPublic"
-                            checked={isPublic}
-                            onCheckedChange={setIsPublic}
-                        />
-                    </div>
-                </div>
-            </div>
-            <div className="flex justify-end mt-8">
-                <Button onClick={() => setStep(2)} size="lg">
-                    Suivant
-                </Button>
-            </div>
-        </>
-    );
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="country" className="font-semibold">Pays *</Label>
+          <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Pays" required className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="city" className="font-semibold">Ville *</Label>
+          <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ville" required className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="address" className="font-semibold">Lieu / Adresse</Label>
+          <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Palais des Congrès..." className="h-11" />
+        </div>
+      </div>
+    </div>
+  );
 
-    const formPart2 = (
-        <>
-            <Tabs defaultValue="stands" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="stands">Types de Stands</TabsTrigger>
-                    <TabsTrigger value="costs">Coûts Prévus</TabsTrigger>
-                </TabsList>
+  const Step2Stands = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-xl border border-blue-200 dark:border-blue-800 mb-6 flex gap-3">
+        <Store className="w-6 h-6 text-blue-600 dark:text-blue-400 mt-1 shrink-0" />
+        <div>
+          <h4 className="font-bold text-blue-700 dark:text-blue-300">Gagnez 95% des revenus</h4>
+          <p className="text-sm text-blue-600/80 dark:text-blue-400/80">Configurez vos types de stands (Standard, Premium, Corner...). La plateforme prélève 5% de commission.</p>
+        </div>
+      </div>
 
-                <TabsContent value="stands" className="space-y-6">
-                    <div className="space-y-4">
-                        {standTypes.map((st) => (
-                            <Card key={st.id} className="bg-card/50">
-                                <CardContent className="p-6 space-y-4">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="flex-1 space-y-4">
-                                            <div className="flex items-center gap-4">
-                                                <Input 
-                                                    placeholder="Nom du type de stand (ex: Premium)" 
-                                                    value={st.name} 
-                                                    onChange={e => handleStandTypeChange(st.id, 'name', e.target.value)} 
-                                                    className="text-lg font-bold flex-grow"
-                                                />
-                                                {standTypes.length > 1 && (
-                                                    <Button variant="ghost" size="icon" onClick={() => removeStandType(st.id)}>
-                                                        <Trash className="w-4 h-4 text-destructive" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Prix de location</Label>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <div className="space-y-1">
-                                                            <div className="text-sm font-medium">FCFA</div>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={st.base_currency === 'XOF' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'XOF')}
-                                                                onChange={e => handleStandTypeChange(st.id, 'base_price', e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <div className="text-sm font-medium">USD</div>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={st.base_currency === 'USD' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'USD')}
-                                                                onChange={e => handleStandTypeChange(st.id, 'base_price', e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <div className="text-sm font-medium">EUR</div>
-                                                            <Input 
-                                                                type="number" 
-                                                                value={st.base_currency === 'EUR' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'EUR')}
-                                                                onChange={e => handleStandTypeChange(st.id, 'base_price', e.target.value)}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="space-y-2">
-                                                    <Label>Quantité disponible</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        value={st.quantity_available} 
-                                                        onChange={e => handleStandTypeChange(st.id, 'quantity_available', e.target.value)} 
-                                                    />
-                                                </div>
-                                            </div>
+      <div className="space-y-4">
+        {standTypes.map((st, index) => (
+          <StandTypeItem 
+            key={st.id} 
+            st={st} 
+            index={index} 
+            onChange={handleStandTypeChange} 
+            onRemove={removeStandType}
+            canRemove={standTypes.length > 1}
+          />
+        ))}
+      </div>
 
-                                            <div className="space-y-2">
-                                                <Label>Description du stand</Label>
-                                                <Textarea 
-                                                    value={st.description} 
-                                                    onChange={e => handleStandTypeChange(st.id, 'description', e.target.value)}
-                                                    placeholder="Décrivez les caractéristiques de ce type de stand..."
-                                                    rows={2}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+      <Button onClick={addStandType} variant="outline" className="w-full py-8 border-dashed border-2 hover:border-primary hover:bg-primary/5 hover:text-primary transition-all">
+        <Plus className="w-5 h-5 mr-2" /> Ajouter un autre type de stand
+      </Button>
+    </div>
+  );
 
-                                    {/* Affichage des prix convertis */}
-                                    <Card className="bg-muted/50">
-                                        <CardContent className="p-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                <CurrencyDisplay 
-                                                    amount={st.base_currency === 'XOF' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'XOF')} 
-                                                    currency="XOF" 
-                                                />
-                                                <CurrencyDisplay 
-                                                    amount={st.base_currency === 'USD' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'USD')} 
-                                                    currency="USD" 
-                                                />
-                                                <CurrencyDisplay 
-                                                    amount={st.base_currency === 'EUR' ? st.base_price : convertCurrency(st.base_price, st.base_currency, 'EUR')} 
-                                                    currency="EUR" 
-                                                />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                    
-                    <Button variant="outline" onClick={addStandType} className="w-full">
-                        <Plus className="w-4 h-4 mr-2" /> Ajouter un type de stand
-                    </Button>
-
-                    {/* Résumé des revenus potentiels */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Coins className="w-5 h-5" />
-                                Revenus Potentiels
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <span>Total en pièces:</span>
-                                    <Badge variant="secondary" className="text-lg">
-                                        {potentialRevenueInCoins} pièces
-                                    </Badge>
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                    Basé sur la vente de tous les stands disponibles
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="costs" className="space-y-6">
-                    <div className="space-y-4">
-                        {plannedCosts.map((cost) => (
-                            <Card key={cost.id} className="bg-card/50">
-                                <CardContent className="p-4 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Nom du coût</Label>
-                                                <Input 
-                                                    value={cost.name} 
-                                                    onChange={e => handleCostChange(cost.id, 'name', e.target.value)}
-                                                    placeholder="Ex: Location salle, Marketing..."
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Catégorie</Label>
-                                                <Select 
-                                                    value={cost.category} 
-                                                    onValueChange={value => handleCostChange(cost.id, 'category', value)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="logistics">Logistique</SelectItem>
-                                                        <SelectItem value="marketing">Marketing</SelectItem>
-                                                        <SelectItem value="personnel">Personnel</SelectItem>
-                                                        <SelectItem value="materials">Matériels</SelectItem>
-                                                        <SelectItem value="other">Autre</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Montant</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    value={cost.amount} 
-                                                    onChange={e => handleCostChange(cost.id, 'amount', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Devise</Label>
-                                                <Select 
-                                                    value={cost.currency} 
-                                                    onValueChange={value => handleCostChange(cost.id, 'currency', value)}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="XOF">FCFA</SelectItem>
-                                                        <SelectItem value="USD">USD</SelectItem>
-                                                        <SelectItem value="EUR">EUR</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        {plannedCosts.length > 1 && (
-                                            <Button variant="ghost" size="icon" onClick={() => removePlannedCost(cost.id)} className="ml-4">
-                                                <Trash className="w-4 h-4 text-destructive" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Affichage de la conversion */}
-                                    <Card className="bg-muted/50">
-                                        <CardContent className="p-3">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm font-medium">Équivalent en pièces:</span>
-                                                <Badge>
-                                                    <Coins className="w-3 h-3 mr-1" />
-                                                    {convertToCoins(cost.amount, cost.currency)} pièces
-                                                </Badge>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-
-                    <Button variant="outline" onClick={addPlannedCost} className="w-full">
-                        <Plus className="w-4 h-4 mr-2" /> Ajouter un coût prévu
-                    </Button>
-
-                    {/* Résumé des coûts */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Settings className="w-5 h-5" />
-                                Résumé des Coûts
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span>Total des coûts en pièces:</span>
-                                    <Badge variant="destructive" className="text-lg">
-                                        {totalCostInCoins} pièces
-                                    </Badge>
-                                </div>
-                                <div className="flex justify-between items-center text-sm text-muted-foreground">
-                                    <span>Bénéfice potentiel net:</span>
-                                    <Badge variant={potentialRevenueInCoins - totalCostInCoins >= 0 ? "default" : "destructive"}>
-                                        {potentialRevenueInCoins - totalCostInCoins} pièces
-                                    </Badge>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-
-            <div className="flex justify-between mt-8">
-                <Button variant="outline" onClick={() => setStep(1)}>
-                    Précédent
-                </Button>
-                <Button onClick={handleSubmit} disabled={loading} size="lg">
-                    {loading ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                        <Store className="w-4 h-4 mr-2" />
-                    )} 
-                    Créer l'événement
-                </Button>
-            </div>
-        </>
-    );
+  const Step3Confirmation = () => {
+    const totalPotentialStands = standTypes.reduce((acc, st) => acc + (parseInt(st.quantity_available) || 0), 0);
+    const totalPotentialRevenuePi = standTypes.reduce((acc, st) => acc + (convertToCoins(st.base_price, st.base_currency) * (parseInt(st.quantity_available) || 0)), 0);
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <Helmet>
-                <title>Créer un Événement Salon/Foire - BonPlanInfos</title>
-            </Helmet>
-            <main className="container mx-auto max-w-6xl px-4 py-8">
-                <Card className="glass-effect">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-3xl font-bold font-heading flex items-center justify-center">
-                            <Store className="w-8 h-8 mr-3 text-primary"/>
-                            Créer un événement de location de stands
-                        </CardTitle>
-                        <CardDescription className="text-lg">
-                            {step === 1 ? "Détails de base de votre salon ou foire" : "Configurez les stands et les coûts de votre événement"}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className={`flex-1 text-center p-3 rounded-lg transition-all ${
-                                step === 1 ? 'bg-primary text-primary-foreground shadow-lg' : 'bg-muted'
-                            }`}>
-                                <div className="flex items-center justify-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    Étape 1: Détails
-                                </div>
-                            </div>
-                            <div className="flex-1 border-t-2 border-dashed border-muted-foreground/20"></div>
-                            <div className={`flex-1 text-center p-3 rounded-lg transition-all ${
-                                step === 2 ? 'bg-primary text-primary-foreground shadow-lg' : 'bg-muted'
-                            }`}>
-                                <div className="flex items-center justify-center gap-2">
-                                    <Users className="w-4 h-4" />
-                                    Étape 2: Configuration
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <form className="space-y-6">
-                            {step === 1 ? formPart1 : formPart2}
-                        </form>
-                    </CardContent>
-                </Card>
-            </main>
+      <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-card p-6 rounded-xl border shadow-sm flex flex-col md:flex-row gap-6">
+          {coverImage && (
+            <div className="w-full md:w-1/3 aspect-video rounded-lg overflow-hidden border">
+              <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+            </div>
+          )}
+          <div className="flex-1 space-y-4">
+            <div>
+              <h3 className="text-2xl font-bold">{title}</h3>
+              <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                <MapPin className="w-4 h-4" /> {city}, {country}
+              </p>
+              <p className="text-muted-foreground flex items-center gap-2">
+                <Calendar className="w-4 h-4" /> {new Date(eventDate).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="p-4 bg-muted rounded-lg text-sm">
+              {description || <span className="italic text-muted-foreground">Aucune description</span>}
+            </div>
+          </div>
         </div>
+
+        <div>
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Store className="w-5 h-5 text-primary" />
+            Configuration des Stands
+          </h3>
+          <div className="grid grid-cols-1 gap-3">
+            {standTypes.map((st, i) => (
+              <div key={i} className="flex justify-between items-center p-4 bg-background border rounded-lg hover:border-primary/30 transition-colors">
+                <div>
+                  <p className="font-bold">{st.name}</p>
+                  <p className="text-xs text-muted-foreground">{st.quantity_available} unités • {st.size}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-primary text-lg">{convertToCoins(st.base_price, st.base_currency)} π</p>
+                  <p className="text-xs text-muted-foreground">{formatCurrency(st.base_price, st.base_currency)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-6 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-xl flex justify-between items-center">
+            <div>
+              <p className="font-medium text-green-800 dark:text-green-300">Revenu Potentiel Max (brut)</p>
+              <p className="text-xs text-green-600/80 dark:text-green-400/80">Si les {totalPotentialStands} stands sont loués</p>
+            </div>
+            <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{totalPotentialRevenuePi} π</p>
+          </div>
+        </div>
+      </div>
     );
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      <Helmet>
+        <title>Créer un Espace Stands - BonPlanInfos</title>
+      </Helmet>
+      
+      <main className="container mx-auto max-w-4xl px-4 py-8">
+        <Card className="shadow-xl border-primary/10">
+          <CardHeader className="text-center pb-6 bg-muted/20 border-b">
+            <CardTitle className="text-3xl font-bold font-heading">
+              Créer un Espace Stands
+            </CardTitle>
+            <CardDescription className="text-base mt-2">
+              Organisez votre salon professionnel en 3 étapes simples
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="pt-8 px-6 md:px-10">
+            {/* Simple Step Indicator */}
+            <div className="flex items-center justify-center mb-10 w-full max-w-2xl mx-auto">
+              {[1, 2, 3].map((i) => (
+                <React.Fragment key={i}>
+                  <div className="flex flex-col items-center">
+                    <div className={`
+                      w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 font-bold
+                      ${step >= i ? 'bg-primary text-white border-primary shadow-lg scale-110' : 'bg-background text-muted-foreground border-muted'}
+                    `}>
+                      {i}
+                    </div>
+                    <span className={`text-xs mt-2 font-medium ${step >= i ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {i === 1 ? 'Détails' : i === 2 ? 'Stands' : 'Confirmer'}
+                    </span>
+                  </div>
+                  {i < 3 && (
+                    <div className={`flex-1 h-1 mx-4 w-12 transition-all duration-500 rounded-full ${step > i ? 'bg-primary' : 'bg-muted'}`} />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+            
+            <div className="mt-8">
+              {step === 1 && <Step1Details />}
+              {step === 2 && <Step2Stands />}
+              {step === 3 && <Step3Confirmation />}
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex justify-between border-t bg-muted/20 p-6 md:px-10">
+            {step > 1 ? (
+              <Button onClick={prevStep} variant="outline" size="lg" className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> Précédent
+              </Button>
+            ) : (
+              <div></div>
+            )}
+
+            {step < 3 ? (
+              <Button onClick={nextStep} size="lg" className="gap-2 shadow-md">
+                Suivant <ArrowRight className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-lg min-w-[200px]">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                Publier l'événement
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </main>
+    </div>
+  );
 };
 
 export default CreateStandEventPage;

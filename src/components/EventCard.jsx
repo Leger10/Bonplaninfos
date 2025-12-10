@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, Sparkles, Lock, Zap, Clock, Coins } from 'lucide-react';
+import { Calendar, MapPin, Users, Sparkles, Lock, Zap, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import EventCountdown from '@/components/EventCountdown';
@@ -30,7 +30,7 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
   };
 
   const handlePromoteClick = (e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent the card's onClick from firing
     navigate('/boost', { state: { preselectedContent: `event_${event.id}` } });
   };
 
@@ -52,24 +52,25 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
     return formatDistanceToNowStrict(end, { locale: fr, addSuffix: true });
   };
   
-  const promotionTimeLeft = getPromotionTimeLeft(event.promotion_end);
+  const promotionTimeLeft = getPromotionTimeLeft(event.promotion_end || event.promoted_until);
+
 
   const isProtectedAndLocked = event.event_type === 'protected' && !isUnlocked;
 
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
+      whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
       className="cursor-pointer h-full group flex flex-col"
-      onClick={onClick}
     >
       <Card 
-        className="h-full card-hover glass-effect border-border/20 overflow-hidden flex flex-col flex-grow transition-all duration-200 group-hover:shadow-lg group-hover:border-primary/30"
+        onClick={onClick}
+        className="h-full card-hover glass-effect border-[#C9A227]/20 overflow-hidden flex flex-col flex-grow"
       >
         <div className="relative">
-          <div className="w-full h-48 bg-muted-foreground/20 overflow-hidden">
+          <div className="w-full h-48 bg-muted-foreground/20">
              <img  
-                className={`w-full h-48 object-cover transition-all duration-500 ${isProtectedAndLocked ? 'blur-sm group-hover:blur-[1px]' : ''}`}
+                className={`w-full h-48 object-cover transition-all duration-300 ${isProtectedAndLocked ? 'blur-sm group-hover:blur-none' : ''}`}
                 alt={`Image de l'événement ${event.title}`}
                 src={event.cover_image || "https://images.unsplash.com/photo-1703269074563-938cdd3a40e5"} 
               />
@@ -80,11 +81,11 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
           <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
              {event.is_promoted && (
                 <div className="flex gap-2">
-                    <Badge className="gradient-gold text-background border-0">
+                    <Badge className="gradient-gold text-[#0B0B0D] border-0">
                         Sponsorisé
                     </Badge>
                     {promotionTimeLeft && (
-                        <Badge variant="secondary" className="bg-orange-500/20 text-orange-300 border-orange-400/30 backdrop-blur-sm">
+                        <Badge variant="secondary" className="bg-orange-500/20 text-orange-300 border-orange-400/30">
                             <Clock className="w-3 h-3 mr-1" />
                             {promotionTimeLeft}
                         </Badge>
@@ -92,68 +93,54 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
                 </div>
             )}
             {isNew && !event.is_promoted && (
-              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-400/30 backdrop-blur-sm">
+              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-400/30">
                 <Sparkles className="w-3 h-3 mr-1" />
                 Nouveau
               </Badge>
             )}
           </div>
 
+
           {isProtectedAndLocked && (
-            <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-black/70 flex flex-col items-center justify-center text-center p-4 backdrop-blur-sm group-hover:backdrop-blur-[2px] transition-all duration-300">
-                <Lock className="w-10 h-10 text-primary mb-2 group-hover:scale-110 transition-transform duration-200"/>
-                <h3 className="font-bold text-lg text-white group-hover:drop-shadow-lg">Événement Protégé</h3>
-                <p className="text-sm text-yellow-300 flex items-center gap-1 group-hover:drop-shadow-lg mt-1">
-                  <Coins className="w-4 h-4"/> 2π pour débloquer
-                </p>
-                <p className="text-xs text-gray-300 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  Cliquez pour débloquer l'accès
-                </p>
+            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4 backdrop-blur-sm group-hover:backdrop-blur-0 transition-all duration-300">
+                <Lock className="w-10 h-10 text-primary mb-2"/>
+                <h3 className="font-bold text-lg text-white">Événement Protégé</h3>
+                <p className="text-sm text-amber-300">Cliquez pour débloquer</p>
             </div>
           )}
           
-          {/* Indicateur pour l'organisateur */}
-          {isOwner && (
-            <div className="absolute bottom-3 left-3">
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 backdrop-blur-sm">
-                Mon événement
-              </Badge>
-            </div>
-          )}
         </div>
 
         <CardContent className="p-4 flex-grow flex flex-col justify-between">
           <div className="space-y-3">
             <div>
-              <h3 className="font-bold text-lg text-foreground line-clamp-2 group-hover:text-primary transition-colors duration-200">
+              <h3 className="font-bold text-lg text-white line-clamp-2">
                 {event.title}
               </h3>
             </div>
             
             <div className="space-y-2">
-              <div className="flex items-center text-muted-foreground text-sm">
-                <Calendar className="w-4 h-4 mr-2 text-primary group-hover:scale-110 transition-transform duration-200" />
+              <div className="flex items-center text-gray-300 text-sm">
+                <Calendar className="w-4 h-4 mr-2 text-[#C9A227]" />
                 {formatDate(event.event_date)}
               </div>
               
-              <div className="flex items-center text-muted-foreground text-sm">
-                <MapPin className="w-4 h-4 mr-2 text-primary group-hover:scale-110 transition-transform duration-200" />
-                <span className="group-hover:text-foreground transition-colors duration-200">
-                  {isProtectedAndLocked ? `${event.city}, ${event.country}` : (event.location || `${event.city}, ${event.country}`)}
-                </span>
+              <div className="flex items-center text-gray-300 text-sm">
+                <MapPin className="w-4 h-4 mr-2 text-[#C9A227]" />
+                 {isProtectedAndLocked ? `${event.city}, ${event.country}` : (event.location || `${event.city}, ${event.country}`)}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-border/20 mt-3">
+          <div className="flex items-center justify-between pt-2 border-t border-[#C9A227]/20 mt-3">
               <Badge 
                   variant="outline"
-                  className="border-primary/50 text-primary group-hover:border-primary group-hover:bg-primary/5 transition-all duration-200"
+                  className="border-primary/50 text-primary"
                 >
                   {event.category_name || event.event_type}
               </Badge>
 
-              <div className="flex items-center text-xs text-muted-foreground group-hover:text-foreground transition-colors duration-200">
+              <div className="flex items-center text-xs text-gray-400">
                 <Users className="w-3 h-3 mr-1" />
                 {event.interactions_count || 0} intéressés
               </div>
@@ -161,12 +148,7 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
         </CardContent>
       </Card>
       {isOwner && !event.is_promoted && (
-        <Button 
-          onClick={handlePromoteClick} 
-          variant="premium" 
-          size="sm" 
-          className="mt-2 w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        >
+        <Button onClick={handlePromoteClick} variant="premium" size="sm" className="mt-2 w-full">
           <Zap className="w-4 h-4 mr-2"/>
           Promouvoir
         </Button>

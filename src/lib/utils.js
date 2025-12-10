@@ -23,6 +23,36 @@ export const fetchWithRetry = async (fn, retries = 3, delay = 1000) => {
 };
 
 /**
+ * Extracts the bucket and path from a Supabase public URL
+ * @param {string} url - The public URL of the file
+ * @returns {{ bucket: string, path: string } | null}
+ */
+export function extractStoragePath(url) {
+  if (!url) return null;
+  try {
+    const urlObj = new URL(url);
+    // Pattern: .../storage/v1/object/public/[bucket]/[path]
+    const pathParts = urlObj.pathname.split('/public/');
+    
+    if (pathParts.length < 2) return null;
+    
+    const fullPath = pathParts[1]; // e.g., "media/folder/image.jpg" or "media/image.jpg"
+    
+    // The bucket is the first segment
+    const firstSlashIndex = fullPath.indexOf('/');
+    if (firstSlashIndex === -1) return null;
+
+    const bucket = fullPath.substring(0, firstSlashIndex);
+    const path = fullPath.substring(firstSlashIndex + 1);
+    
+    return { bucket, path: decodeURIComponent(path) };
+  } catch (e) {
+    console.error("Error parsing storage URL", e);
+    return null;
+  }
+}
+
+/**
  * Formate un montant en devise
  * @param {number|string} amount - Montant à formater
  * @param {string} currency - Code devise (par défaut: FCFA)

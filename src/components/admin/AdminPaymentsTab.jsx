@@ -65,7 +65,7 @@ const AdminPaymentsTab = () => {
     try {
       const { error } = await supabase
         .from('paiements_admin')
-        .update({ 
+        .update({
           statut: 'payé',
           paye_le: new Date().toISOString()
         })
@@ -73,9 +73,9 @@ const AdminPaymentsTab = () => {
 
       if (error) throw error;
 
-      setPayments(payments.map(p => 
-        p.id === paymentId 
-          ? { ...p, statut: 'payé', paye_le: new Date().toISOString() } 
+      setPayments(payments.map(p =>
+        p.id === paymentId
+          ? { ...p, statut: 'payé', paye_le: new Date().toISOString() }
           : p
       ));
 
@@ -113,10 +113,10 @@ const AdminPaymentsTab = () => {
   };
 
   const filteredPayments = payments.filter(payment => {
-    const matchesSearch = 
+    const matchesSearch =
       (payment.admin?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (payment.admin?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || payment.statut === statusFilter;
 
     return matchesSearch && matchesStatus;
@@ -209,8 +209,8 @@ const AdminPaymentsTab = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       {payment.statut !== 'payé' && (
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => handleMarkAsPaid(payment.id)}
                           className="bg-green-600 hover:bg-green-700"
                         >

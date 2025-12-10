@@ -448,6 +448,10 @@ en: {
         faq: "FAQ",
         data_protection: "Protection des données",
         legal_mentions: "Mentions légales",
+        message: "Nous utilisons des cookies pour améliorer votre expérience. En continuant à visiter ce site, vous acceptez notre utilisation des cookies. ",
+    learn_more: "Politique de Confidentialité",
+    reject: "Rejeter",
+    accept: "Accepter",
       },
 
 
@@ -1718,6 +1722,9 @@ testimonials: {
   }
 },
 
+
+
+
 // ===== USER GUIDE PAGE =====
  user_guide_page: {
     meta: {
@@ -1863,8 +1870,15 @@ partner_signup: {
     basic: {
       feature1: "Zone management",
       feature2: "Monthly reports",
-      feature3: "Basic support"
+      feature3: "Basic support",
+      message: "We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies. ",
+    learn_more: "Privacy Policy",
+    reject: "Reject",
+    accept: "Accept",
+
     },
+
+    
     
     // Revenue descriptions
     revenue_description_40: "40% revenue share from your zone's turnover",

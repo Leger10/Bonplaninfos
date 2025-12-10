@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Ban, CheckCircle, Coins, DollarSign, Edit, Shield } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Search, MoreHorizontal, Ban, CheckCircle, Coins, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({ page: 0, size: 20 });
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -36,21 +38,39 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
       u.country === userProfile?.country &&
       (u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
        u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       u.user_type?.toLowerCase().includes(searchTerm.toLowerCase()))
+       u.user_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       u.affiliate_code?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [users, searchTerm, userProfile?.country]);
 
-  const handleStatusChange = async (targetUser, newStatus) => {
+  const paginatedUsers = useMemo(() => {
+    const start = pagination.page * pagination.size;
+    const end = start + pagination.size;
+    return filteredUsers.slice(start, end);
+  }, [filteredUsers, pagination]);
+
+  const pageCount = Math.ceil(filteredUsers.length / pagination.size);
+
+  const handleStatusChange = async (targetUser) => {
+    const newStatus = !targetUser.is_active;
     setLoading(true);
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ is_active: newStatus })
         .eq('id', targetUser.id);
+      
       if (error) throw error;
-      toast({ title: 'Succès', description: `L'utilisateur a été ${newStatus ? 'activé' : 'bloqué'}.` });
-      onRefresh();
+      
+      toast({ 
+        title: newStatus ? "Utilisateur réactivé" : "Utilisateur désactivé", 
+        description: `Le compte de ${targetUser.full_name || targetUser.email} est maintenant ${newStatus ? 'actif' : 'inactif'}.`,
+        variant: newStatus ? "default" : "destructive"
+      });
+      
+      if (onRefresh) onRefresh();
     } catch (error) {
+      console.error("Status toggle error:", error);
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -81,15 +101,11 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
         p_creditor_id: user.id,
       });
 
-      if (error) {
-        throw error;
-      }
-      if (!data.success) {
-        throw new Error(data.message || 'Échec du crédit utilisateur.');
-      }
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message || 'Échec du crédit utilisateur.');
 
       toast({ title: 'Succès', description: data.message || `Utilisateur ${selectedUser.full_name} crédité de ${amount} pièces.` });
-      onRefresh();
+      if (onRefresh) onRefresh();
       setIsCreditDialogOpen(false);
     } catch (error) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -98,84 +114,120 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
     }
   };
 
-  const getRoleColor = (role) => {
-    const colors = {
-      user: 'bg-blue-500/20 text-blue-300',
-      organizer: 'bg-yellow-500/20 text-yellow-300',
-      secretary: 'bg-purple-500/20 text-purple-300',
-      admin: 'bg-orange-500/20 text-orange-300',
-      super_admin: 'bg-red-500/20 text-red-300'
-    };
-    return colors[role] || 'bg-gray-500/20 text-gray-300';
-  };
-
-  const getRoleLabel = (role) => {
-    const labels = {
-      user: 'Utilisateur',
-      organizer: 'Organisateur',
-      secretary: 'Secrétaire',
-      admin: 'Admin',
-      super_admin: 'Super Admin'
-    };
-    return labels[role] || role;
-  };
+  const copyCode = (code) => {
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    toast({ title: "Copié", description: "Code copié" });
+  }
 
   return (
     <>
-      <Card className="glass-effect border-purple-500/20">
-        <CardHeader>
-          <CardTitle>Gestion des Utilisateurs ({userProfile?.country})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom ou email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="space-y-4">
-            {filteredUsers.length === 0 ? (
-              <p className="text-center text-muted-foreground">Aucun utilisateur trouvé dans votre pays.</p>
+      <div className="flex flex-col md:flex-row gap-4 mb-4 items-center justify-between">
+        <h2 className="text-xl font-bold">Gestion des Utilisateurs ({userProfile?.country})</h2>
+        <div className="relative w-full md:w-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher (nom, email, code)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 max-w-sm"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Utilisateur</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Rôle</TableHead>
+              <TableHead>Solde</TableHead>
+              <TableHead>Code Parrainage</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading && paginatedUsers.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+            ) : paginatedUsers.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
             ) : (
-              filteredUsers.map((u) => (
-                <div key={u.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-background/50 rounded-lg gap-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={u.avatar_url} />
-                      <AvatarFallback>{u.full_name?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-semibold">{u.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{u.email}</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <Badge className={getRoleColor(u.user_type)}>{getRoleLabel(u.user_type)}</Badge>
-                        <Badge variant={u.is_active ? 'success' : 'destructive'}>{u.is_active ? 'Actif' : 'Bloqué'}</Badge>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Coins className="w-3 h-3" /> {u.coin_balance || 0}
-                        </Badge>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" /> {u.available_earnings || 0}
-                        </Badge>
+              paginatedUsers.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="font-medium">
+                        <div>{u.full_name || 'Sans nom'}</div>
+                        <div className="text-xs text-muted-foreground">{u.email}</div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenCreditDialog(u)}>
-                      <Coins className="w-4 h-4 text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleStatusChange(u, !u.is_active)}>
-                      {u.is_active ? <Ban className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
-                    </Button>
-                  </div>
-                </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={u.is_active ? "success" : "destructive"} className="text-[10px]">
+                      {u.is_active ? "Actif" : "Inactif"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{u.user_type}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col text-xs">
+                        <span className="font-semibold">{u.coin_balance || 0} π (Payant)</span>
+                        <span className="text-muted-foreground">{u.free_coin_balance || 0} π (Gratuit)</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {u.affiliate_code ? (
+                      <div className="flex items-center gap-2">
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{u.affiliate_code}</code>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(u.affiliate_code)}><Copy className="h-3 w-3" /></Button>
+                      </div>
+                    ) : <span className="text-xs text-muted-foreground italic">Non généré</span>}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        
+                        <DropdownMenuItem onClick={() => handleOpenCreditDialog(u)}>
+                          <Coins className="mr-2 h-4 w-4 text-primary" /> Créditer
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem onClick={() => handleStatusChange(u)} disabled={loading}>
+                          {u.is_active ? (
+                            <>
+                              <Ban className="mr-2 h-4 w-4 text-orange-500" /> 
+                              <span className="text-orange-500">Désactiver</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                              <span className="text-green-500">Réactiver</span>
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.max(0, p.page - 1) }))} disabled={pagination.page === 0}>Précédent</Button>
+        <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
+        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.min(pageCount - 1, p.page + 1) }))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
+      </div>
 
       <Dialog open={isCreditDialogOpen} onOpenChange={setIsCreditDialogOpen}>
         <DialogContent>

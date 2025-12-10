@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Save, Check, X } from 'lucide-react';
+import { Loader2, Save, Check, X, Phone, Hash, User, CreditCard } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
+// Super Admin Component to manage salary withdrawals
 const SalaryWithdrawalManagement = () => {
     const [activeTab, setActiveTab] = useState('requests');
 
@@ -20,26 +22,26 @@ const SalaryWithdrawalManagement = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">Gestion des Retraits Salaires</h2>
-                    <p className="text-muted-foreground">Gérez les demandes de retrait des administrateurs et la configuration.</p>
+                    <p className="text-muted-foreground">Supervisez et validez les demandes de salaire des administrateurs.</p>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
-                    <TabsTrigger value="requests">Demandes en cours</TabsTrigger>
+                    <TabsTrigger value="requests">Demandes en attente</TabsTrigger>
                     <TabsTrigger value="history">Historique</TabsTrigger>
                     <TabsTrigger value="config">Configuration</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="requests" className="space-y-4">
+                <TabsContent value="requests" className="space-y-4 animate-in fade-in slide-in-from-left-2">
                     <RequestsTable status="pending" />
                 </TabsContent>
 
-                <TabsContent value="history" className="space-y-4">
+                <TabsContent value="history" className="space-y-4 animate-in fade-in slide-in-from-left-2">
                     <RequestsTable status="history" />
                 </TabsContent>
 
-                <TabsContent value="config" className="space-y-4">
+                <TabsContent value="config" className="space-y-4 animate-in fade-in slide-in-from-left-2">
                     <ConfigPanel />
                 </TabsContent>
             </Tabs>
@@ -55,21 +57,37 @@ const RequestsTable = ({ status }) => {
 
     const fetchRequests = async () => {
         setLoading(true);
-        let query = supabase
-            .from('admin_withdrawal_requests')
-            .select('*, admin:admin_id(full_name, email)')
-            .order('requested_at', { ascending: false });
+        try {
+            // Fetch request with related admin profile details
+            let query = supabase
+                .from('admin_withdrawal_requests')
+                .select(`
+                    *,
+                    admin:admin_id (
+                        full_name,
+                        email,
+                        phone,
+                        city,
+                        country
+                    )
+                `)
+                .order('requested_at', { ascending: false });
 
-        if (status === 'pending') {
-            query = query.eq('status', 'pending');
-        } else {
-            query = query.neq('status', 'pending');
+            if (status === 'pending') {
+                query = query.eq('status', 'pending');
+            } else {
+                query = query.neq('status', 'pending');
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            setRequests(data || []);
+        } catch (error) {
+            console.error("Error fetching requests:", error);
+            toast({ title: "Erreur", description: "Impossible de charger les demandes.", variant: "destructive" });
+        } finally {
+            setLoading(false);
         }
-
-        const { data, error } = await query;
-        if (error) toast({ title: "Erreur chargement", description: error.message, variant: "destructive" });
-        setRequests(data || []);
-        setLoading(false);
     };
 
     useEffect(() => {
@@ -78,11 +96,8 @@ const RequestsTable = ({ status }) => {
 
     const handleAction = async (id, action) => {
         setProcessingId(id);
-        console.log(`Processing withdrawal approval: ${id}`);
-        
         try {
             if (action === 'approved') {
-                // Approve via RPC to handle balance deduction
                 const { data, error } = await supabase.rpc('approve_admin_withdrawal', { 
                     p_request_id: id, 
                     p_processed_by: user.id 
@@ -91,15 +106,8 @@ const RequestsTable = ({ status }) => {
                 if (error) throw error;
                 if (!data.success) throw new Error(data.message);
 
-                console.log(`Withdrawal approved: ${id}`);
-                console.log(`Balance before: ${data.balance_before}`);
-                console.log(`Balance after: ${data.balance_after}`);
-                console.log("Balance updated successfully");
-                console.log(`Withdrawal completed: ${id}`);
-
-                toast({ title: "Succès", description: "Retrait approuvé et solde débité." });
+                toast({ title: "Succès", description: "Demande approuvée et solde mis à jour.", variant: "success" });
             } else {
-                // Reject logic (No deduction occurred yet, so just update status)
                 const { error } = await supabase
                     .from('admin_withdrawal_requests')
                     .update({ 
@@ -110,83 +118,143 @@ const RequestsTable = ({ status }) => {
                     .eq('id', id);
                 
                 if (error) throw error;
-                console.log(`Withdrawal rejected: ${id}`);
                 toast({ title: "Rejeté", description: "Demande rejetée." });
             }
-            
             fetchRequests();
         } catch (error) {
-            console.error(`Withdrawal error: ${error.message}`);
+            console.error("Processing error:", error);
             toast({ title: "Erreur", description: error.message, variant: "destructive" });
         } finally {
             setProcessingId(null);
         }
     };
 
-    if (loading) return <Loader2 className="animate-spin mx-auto" />;
+    if (loading) return <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>{status === 'pending' ? 'Demandes en attente' : 'Historique des traitements'}</CardTitle>
+                <CardTitle>{status === 'pending' ? 'Validations requises' : 'Historique complet'}</CardTitle>
+                <CardDescription>Vérifiez les identifiants de paiement avant de valider.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Admin</TableHead>
-                            <TableHead>Montant</TableHead>
-                            <TableHead>Méthode</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            {status === 'pending' && <TableHead>Actions</TableHead>}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {requests.map(req => (
-                            <TableRow key={req.id}>
-                                <TableCell>
-                                    <div className="font-medium">{req.admin?.full_name}</div>
-                                    <div className="text-xs text-muted-foreground">{req.admin?.email}</div>
-                                </TableCell>
-                                <TableCell>{req.amount_fcfa?.toLocaleString()} FCFA</TableCell>
-                                <TableCell>
-                                    <Badge variant="outline">{req.method}</Badge>
-                                </TableCell>
-                                <TableCell>{format(new Date(req.requested_at), 'dd/MM/yyyy HH:mm')}</TableCell>
-                                <TableCell>
-                                    <Badge variant={req.status === 'pending' ? 'secondary' : req.status === 'approved' ? 'success' : 'destructive'}>
-                                        {req.status}
-                                    </Badge>
-                                </TableCell>
-                                {status === 'pending' && (
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Demandeur</TableHead>
+                                <TableHead>Montant</TableHead>
+                                <TableHead>Détails Paiement</TableHead>
+                                <TableHead>Infos Contact</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Statut</TableHead>
+                                {status === 'pending' && <TableHead className="text-right">Actions</TableHead>}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {requests.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                        Aucune demande trouvée.
+                                    </TableCell>
+                                </TableRow>
+                            ) : requests.map(req => (
+                                <TableRow key={req.id} className={req.status === 'pending' ? 'bg-muted/20' : ''}>
                                     <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button 
-                                                size="sm" 
-                                                variant="default" 
-                                                className="bg-green-600 hover:bg-green-700" 
-                                                onClick={() => handleAction(req.id, 'approved')}
-                                                disabled={processingId === req.id}
-                                            >
-                                                {processingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                            </Button>
-                                            <Button 
-                                                size="sm" 
-                                                variant="destructive" 
-                                                onClick={() => handleAction(req.id, 'rejected')}
-                                                disabled={processingId === req.id}
-                                            >
-                                                {processingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                                            </Button>
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                {req.admin?.full_name?.charAt(0) || 'A'}
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold">{req.admin?.full_name}</div>
+                                                <div className="text-xs text-muted-foreground">{req.admin?.email}</div>
+                                            </div>
                                         </div>
                                     </TableCell>
-                                )}
-                            </TableRow>
-                        ))}
-                        {requests.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">Aucune demande</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
+                                    <TableCell>
+                                        <span className="font-bold text-lg text-primary">
+                                            {req.amount_fcfa?.toLocaleString('fr-FR')}
+                                        </span> 
+                                        <span className="text-xs text-muted-foreground ml-1">FCFA</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1">
+                                            <Badge variant="outline" className="w-fit capitalize">
+                                                {req.method?.replace('_', ' ')}
+                                            </Badge>
+                                            <div className="flex items-center gap-1.5 text-sm font-medium">
+                                                {req.method?.includes('bank') ? (
+                                                    <>
+                                                        <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        <span>{req.bank_name} - {req.account_number}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                                                        <span>{req.mobile_money_number || req.account_number}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1.5 text-sm">
+                                                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span>{req.admin?.phone || 'N/A'}</span>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {req.admin?.city}, {req.admin?.country}
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm whitespace-nowrap">
+                                            {format(new Date(req.requested_at), 'dd MMM yyyy', { locale: fr })}
+                                        </span>
+                                        <div className="text-xs text-muted-foreground">
+                                            {format(new Date(req.requested_at), 'HH:mm')}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={
+                                            req.status === 'pending' ? 'secondary' : 
+                                            req.status === 'approved' ? 'success' : 'destructive'
+                                        }>
+                                            {req.status === 'approved' ? 'Validé' : 
+                                             req.status === 'pending' ? 'En attente' : 'Refusé'}
+                                        </Badge>
+                                    </TableCell>
+                                    {status === 'pending' && (
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button 
+                                                    size="sm" 
+                                                    className="bg-green-600 hover:bg-green-700 text-white h-8 w-8 p-0" 
+                                                    onClick={() => handleAction(req.id, 'approved')}
+                                                    disabled={processingId === req.id}
+                                                    title="Approuver"
+                                                >
+                                                    {processingId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="destructive" 
+                                                    className="h-8 w-8 p-0"
+                                                    onClick={() => handleAction(req.id, 'rejected')}
+                                                    disabled={processingId === req.id}
+                                                    title="Rejeter"
+                                                >
+                                                    {processingId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    )}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );
@@ -211,19 +279,15 @@ const ConfigPanel = () => {
                 .limit(1)
                 .maybeSingle();
             
-            if (data) {
-                setConfig(data);
-            }
+            if (data) setConfig(data);
         } catch(e) {
-            console.error("Error loading config", e);
+            console.error("Error config:", e);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchConfig();
-    }, []);
+    useEffect(() => { fetchConfig(); }, []);
 
     const handleSave = async () => {
         setSaving(true);
@@ -232,79 +296,71 @@ const ConfigPanel = () => {
                 withdrawal_available_date: parseInt(config.withdrawal_available_date),
                 min_withdrawal_amount: parseInt(config.min_withdrawal_amount),
                 max_withdrawal_amount: parseInt(config.max_withdrawal_amount),
-                withdrawal_methods: config.withdrawal_methods
+                withdrawal_methods: Array.isArray(config.withdrawal_methods) ? config.withdrawal_methods : config.withdrawal_methods.split(',').map(s => s.trim())
             };
 
-            // Ensure we use the existing ID if present to update
             const { error } = await supabase
                 .from('admin_withdrawal_config')
                 .upsert(config.id ? { ...payload, id: config.id } : payload);
 
             if (error) throw error;
-            toast({ title: "Configuration sauvegardée", description: "Les paramètres de retrait ont été mis à jour." });
+            toast({ title: "Configuration sauvegardée", variant: "success" });
             fetchConfig(); 
         } catch (error) {
-            console.error(error);
             toast({ title: "Erreur", description: error.message, variant: "destructive" });
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <Loader2 className="animate-spin mx-auto" />;
+    if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Paramètres des Retraits</CardTitle>
-                <CardDescription>Définissez les règles pour les demandes de retrait des administrateurs.</CardDescription>
+                <CardTitle>Configuration du système</CardTitle>
+                <CardDescription>Paramètres globaux pour les retraits administrateurs.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label>Jour de disponibilité (du mois)</Label>
+                        <Label>Jour d'ouverture (du mois)</Label>
                         <Input 
                             type="number" 
-                            min="1" 
-                            max="28" 
+                            min="1" max="28" 
                             value={config.withdrawal_available_date} 
                             onChange={e => setConfig({...config, withdrawal_available_date: e.target.value})} 
                         />
-                        <p className="text-sm text-muted-foreground">Les retraits seront disponibles à partir de ce jour chaque mois.</p>
+                        <p className="text-xs text-muted-foreground">Date à partir de laquelle le retrait est possible.</p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Montant Minimum (FCFA)</Label>
-                            <Input 
-                                type="number" 
-                                value={config.min_withdrawal_amount} 
-                                onChange={e => setConfig({...config, min_withdrawal_amount: e.target.value})} 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Montant Maximum (FCFA)</Label>
-                            <Input 
-                                type="number" 
-                                value={config.max_withdrawal_amount} 
-                                onChange={e => setConfig({...config, max_withdrawal_amount: e.target.value})} 
-                            />
-                        </div>
-                    </div>
-
                     <div className="space-y-2">
-                        <Label>Méthodes de retrait autorisées (séparées par des virgules)</Label>
+                        <Label>Méthodes autorisées (virgule)</Label>
                         <Input 
                             value={Array.isArray(config.withdrawal_methods) ? config.withdrawal_methods.join(', ') : config.withdrawal_methods} 
-                            onChange={e => setConfig({...config, withdrawal_methods: e.target.value.split(',').map(s => s.trim())})} 
+                            onChange={e => setConfig({...config, withdrawal_methods: e.target.value.split(',')})} 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Minimim (FCFA)</Label>
+                        <Input 
+                            type="number" 
+                            value={config.min_withdrawal_amount} 
+                            onChange={e => setConfig({...config, min_withdrawal_amount: e.target.value})} 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Maximum (FCFA)</Label>
+                        <Input 
+                            type="number" 
+                            value={config.max_withdrawal_amount} 
+                            onChange={e => setConfig({...config, max_withdrawal_amount: e.target.value})} 
                         />
                     </div>
                 </div>
-
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-4">
                     <Button onClick={handleSave} disabled={saving}>
                         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <Save className="mr-2 h-4 w-4" /> Enregistrer la configuration
+                        <Save className="mr-2 h-4 w-4" /> Sauvegarder
                     </Button>
                 </div>
             </CardContent>

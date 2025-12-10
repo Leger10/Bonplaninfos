@@ -194,8 +194,8 @@ const AnimatedBadgesBanner = () => {
                     key={index}
                     onClick={() => setCurrentIndex(index * visibleCount)}
                     className={`w-2 h-2 rounded-full transition-all ${Math.floor(currentIndex / visibleCount) === index
-                        ? 'bg-blue-600 scale-125'
-                        : 'bg-gray-300 hover:bg-gray-400'
+                      ? 'bg-blue-600 scale-125'
+                      : 'bg-gray-300 hover:bg-gray-400'
                       }`}
                     aria-label={`Go to group ${index + 1}`}
                   />

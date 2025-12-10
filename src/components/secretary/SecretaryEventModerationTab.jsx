@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useData } from '@/contexts/DataContext';
@@ -11,6 +11,7 @@ import { Loader2, Calendar, Trash2, PowerOff, Power, Users } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import ZoneUsersList from './ZoneUsersList';
+import { extractStoragePath } from '@/lib/utils';
 
 const SecretaryEventModerationTab = () => {
     const { t } = useTranslation();
@@ -21,6 +22,8 @@ const SecretaryEventModerationTab = () => {
     const [filter, setFilter] = useState('all');
     const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
     const [selectedEventForCredit, setSelectedEventForCredit] = useState(null);
+    const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, eventId: null });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const logAction = useCallback(async (action_type, target_id, details = {}) => {
         await supabase.from('admin_logs').insert({
@@ -53,15 +56,35 @@ const SecretaryEventModerationTab = () => {
         fetchEvents();
     }, [fetchEvents]);
 
-    const handleDelete = async (eventId) => {
+    const handleDelete = async () => {
+        if (!deleteDialog.eventId) return;
+        setIsDeleting(true);
         try {
-            const { error } = await supabase.rpc('delete_event_completely', { p_event_id: eventId });
+            const eventToDelete = events.find(e => e.id === deleteDialog.eventId);
+      
+            // 1. Delete image from storage
+            if (eventToDelete && eventToDelete.cover_image) {
+                const storageInfo = extractStoragePath(eventToDelete.cover_image);
+                if (storageInfo) {
+                    const { error: storageError } = await supabase.storage
+                        .from(storageInfo.bucket)
+                        .remove([storageInfo.path]);
+                    if (storageError) console.warn("Storage cleanup warning:", storageError);
+                }
+            }
+
+            // 2. Delete event
+            const { error } = await supabase.rpc('delete_event_completely', { p_event_id: deleteDialog.eventId });
             if (error) throw error;
+            
             toast({ title: t('common.success_title'), description: t('secretary_dashboard.event_moderation.event_deleted_success') });
-            await logAction('event_deleted', eventId);
+            await logAction('event_deleted', deleteDialog.eventId);
             fetchEvents();
         } catch(error) {
             toast({ title: t('common.error_title'), description: t('secretary_dashboard.event_moderation.event_deleted_error'), variant: 'destructive' });
+        } finally {
+            setIsDeleting(false);
+            setDeleteDialog({ isOpen: false, eventId: null });
         }
     };
 
@@ -122,23 +145,14 @@ const SecretaryEventModerationTab = () => {
                                         <Button size="icon" variant="ghost" onClick={() => handleToggleStatus(event)} className="hover:text-yellow-400">
                                             {event.status === 'active' ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                                         </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button size="icon" variant="ghost" className="hover:text-red-400">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>{t('secretary_dashboard.event_moderation.confirm_delete_title')}</AlertDialogTitle>
-                                                    <AlertDialogDescription>{t('secretary_dashboard.event_moderation.confirm_delete_desc')}</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(event.id)}>{t('common.delete')}</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className="hover:text-red-400"
+                                            onClick={() => setDeleteDialog({ isOpen: true, eventId: event.id })}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
@@ -156,6 +170,21 @@ const SecretaryEventModerationTab = () => {
                     />
                 )}
             </Dialog>
+
+            <AlertDialog open={deleteDialog.isOpen} onOpenChange={(isOpen) => !isOpen && setDeleteDialog({ isOpen: false, eventId: null })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t('secretary_dashboard.event_moderation.confirm_delete_title')}</AlertDialogTitle>
+                        <AlertDialogDescription>{t('secretary_dashboard.event_moderation.confirm_delete_desc')}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>{t('common.cancel')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : t('common.delete')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 };

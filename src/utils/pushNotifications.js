@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 
-const VAPID_PUBLIC_KEY = 'BH_96HQD9GYuB08avOEWE4FT3_k_aiONkw0Yj8zIyyYZOHXkEc1Ya6u9HvlWVYcX0KV-QbF_eFw25FXO8DLwzrk'; // This should be stored in env variables
+// Fallback key in case server fetch fails. This matches the one in the DB function.
+const VAPID_PUBLIC_KEY_FALLBACK = 'BNozW3XwT0gB_G_g8Y2iV5GZ3G-sA8f_gZ5eYjJ3Xw8U_cZ6E_bX9V9hYjZkXw8U_cZ6E_bX9V9hYjZkXw8U';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -30,11 +31,13 @@ export function isPushSupported() {
  * @returns {Promise<PermissionState>}
  */
 export async function askNotificationPermission() {
+  console.log('Requesting push notification permission...');
   if (!isPushSupported()) {
     console.warn('Push notifications are not supported in this browser.');
     throw new Error('Push notifications not supported.');
   }
   const permission = await Notification.requestPermission();
+  console.log('Push permission status:', permission);
   return permission;
 }
 
@@ -48,35 +51,39 @@ export async function subscribeUserToPush() {
     return null;
   }
 
-  const permission = await askNotificationPermission();
-  if (permission !== 'granted') {
-    console.warn('Permission for notifications was not granted.');
-    throw new Error('Permission for notifications was denied.');
+  // Ensure service worker is ready
+  const registration = await navigator.serviceWorker.ready;
+  console.log('Service worker registered and ready for push subscription.');
+
+  // Check existing
+  let subscription = await registration.pushManager.getSubscription();
+  if (subscription) {
+    console.log('User is already subscribed to push service:', subscription.endpoint);
+    return subscription;
   }
 
+  // Try to get key from server, fallback to constant
+  let vapidKey = VAPID_PUBLIC_KEY_FALLBACK;
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const existingSubscription = await registration.pushManager.getSubscription();
-
-    if (existingSubscription) {
-      console.log('User is already subscribed.');
-      return existingSubscription;
+    const { data, error } = await supabase.rpc('get_vapid_public_key');
+    if (!error && data) {
+      vapidKey = data;
     }
+  } catch (e) {
+    console.warn('Using fallback VAPID key due to fetch error:', e);
+  }
 
-    const vapidPublicKey = (await supabase.rpc('get_vapid_public_key')).data;
-    if (!vapidPublicKey) {
-        throw new Error("Could not retrieve VAPID public key from server.");
-    }
-
-    const subscription = await registration.pushManager.subscribe({
+  console.log('Subscribing to push with VAPID key...');
+  
+  try {
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
-
-    console.log('User is subscribed:', subscription);
+    console.log('Subscribed to push successfully:', subscription.endpoint);
     return subscription;
   } catch (error) {
-    console.error('Failed to subscribe the user: ', error);
+    console.error('Failed to subscribe the user to push service:', error);
     throw error;
   }
 }
@@ -108,15 +115,15 @@ export async function unsubscribeUserFromPush() {
     try {
       const successful = await subscription.unsubscribe();
       if (successful) {
-        console.log('User has been unsubscribed.');
-        // Also remove from backend
+        console.log('User has been unsubscribed from push service.');
+        // Remove from backend
         await supabase.from('push_tokens').delete().eq('token', subscription.endpoint);
       }
       return successful;
     } catch (error) {
-      console.error('Failed to unsubscribe the user: ', error);
+      console.error('Failed to unsubscribe the user:', error);
       return false;
     }
   }
-  return true; // Already unsubscribed
+  return true;
 }

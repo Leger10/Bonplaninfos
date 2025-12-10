@@ -19,7 +19,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     const [loading, setLoading] = useState(false);
     const [purchasedTickets, setPurchasedTickets] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    
+
     // Gift/Recipient State
     const [isGift, setIsGift] = useState(false);
     const [recipientEmail, setRecipientEmail] = useState('');
@@ -61,7 +61,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
     const handlePurchase = async () => {
         if (!user) return toast({ title: "Connexion requise", variant: "destructive" });
-        
+
         // Validation for Gift Email
         if (isGift && !recipientEmail) {
             return toast({ title: "Email manquant", description: "Veuillez entrer l'email du destinataire.", variant: "destructive" });
@@ -178,9 +178,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
                                     <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
                                         <div className="text-xs font-medium flex items-center">
-                                            {isSoldOut ? 
-                                                <Badge variant="destructive" className="uppercase tracking-wide">Épuisé</Badge> 
-                                                : 
+                                            {isSoldOut ?
+                                                <Badge variant="destructive" className="uppercase tracking-wide">Épuisé</Badge>
+                                                :
                                                 <span className={`flex items-center ${available < 10 ? 'text-orange-500 font-bold' : 'text-muted-foreground'}`}>
                                                     <Ticket className="w-3 h-3 mr-1" />
                                                     {available} restants
@@ -218,7 +218,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 <div className="fixed bottom-6 left-0 right-0 z-50 px-4 md:px-0 flex justify-center pointer-events-none">
                     <Card className="shadow-2xl border-t-4 border-t-primary animate-in slide-in-from-bottom-10 bg-card/95 backdrop-blur-md w-full max-w-2xl pointer-events-auto">
                         <CardContent className="p-4">
-                            
+
                             {/* Gift Option Section */}
                             <div className="mb-4 pb-4 border-b border-border/50">
                                 <div className="flex items-center justify-between mb-2">
@@ -228,15 +228,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     </div>
                                     <Switch id="gift-mode" checked={isGift} onCheckedChange={setIsGift} />
                                 </div>
-                                
+
                                 {isGift && (
                                     <div className="animate-in slide-in-from-top-2 fade-in duration-300 mt-2">
                                         <div className="flex gap-2">
                                             <div className="relative flex-grow">
                                                 <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input 
-                                                    placeholder="Email du destinataire" 
-                                                    className="pl-9" 
+                                                <Input
+                                                    placeholder="Email du destinataire"
+                                                    className="pl-9"
                                                     value={recipientEmail}
                                                     onChange={(e) => setRecipientEmail(e.target.value)}
                                                 />
@@ -289,7 +289,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     </DialogHeader>
                     <div className="py-6 space-y-4">
                         <div className="bg-muted/50 p-4 rounded-lg text-left border border-border/50">
-                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2"><Ticket className="w-4 h-4"/> Récapitulatif :</h4>
+                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2"><Ticket className="w-4 h-4" /> Récapitulatif :</h4>
                             <ul className="text-sm space-y-2">
                                 {purchasedTickets?.map((t, i) => (
                                     <li key={i} className="flex justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0">
