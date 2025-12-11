@@ -11,7 +11,7 @@ export const useAuth = () => {
   return context;
 };
 
-const ADMIN_EMAILS = ['digihouse10@gmail.com', 'bonplaninfos@gmail.com'];
+const ADMIN_EMAILS = ['digihouse10@gmail.com', 'digihouse117@gmail.com'];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

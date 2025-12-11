@@ -97,10 +97,10 @@ const PushNotificationManager = () => {
         console.log('Push setup complete.');
       }
     } catch (error) {
-      console.error('Subscription error:', error);
+      console.error('chargement:', error);
       toast({
-        title: 'Erreur',
-        description: "Impossible d'activer les notifications: " + error.message,
+        title: 'en cours d’exécution',
+        description: "activer les notifications: " + error.message,
         variant: 'destructive'
       });
     } finally {

@@ -1,122 +1,225 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2, Eye } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Edit, Ban, CheckCircle, Loader2, Shield, Search, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { useData } from '@/contexts/DataContext';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EventManagementTab = ({ events, onRefresh }) => {
-  const navigate = useNavigate();
-  const { userProfile } = useAuth();
+const UserManagement = ({ users = [], onRefresh }) => {
+  const { userProfile } = useData();
+  const [loading, setLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [newRole, setNewRole] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleEventAction = async (eventId, action) => {
-    if (!userProfile) {
-      toast({ title: "Action non autorisée", variant: "destructive" });
-      return;
-    }
+  // Safely filter users with optional chaining and default empty array
+  const filteredUsers = useMemo(() => {
+    if (!users || !Array.isArray(users)) return [];
+    
+    return users.filter(user =>
+      (user.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
 
-    const { user_type } = userProfile;
-    const allowedRoles = ['super_admin', 'admin', 'secretaire'];
+  const isSuperAdmin = userProfile?.user_type === 'super_admin';
 
-    if (!allowedRoles.includes(user_type)) {
-      toast({ title: "Permissions insuffisantes", variant: "destructive" });
-      return;
-    }
+  const handleOpenDialog = (user) => {
+    setSelectedUser(user);
+    setNewRole(user.user_type);
+    setIsDialogOpen(true);
+  };
 
-    if (action === 'disable') {
-      try {
-        const { error } = await supabase.from('events').update({ status: 'inactive' }).eq('id', eventId);
-        if (error) throw error;
-        toast({ title: "Événement désactivé" });
-        onRefresh();
-      } catch (error) {
-        toast({ title: "Erreur", description: error.message, variant: "destructive" });
-      }
-    } else if (action === 'delete') {
-      if (user_type === 'super_admin') {
-        try {
-          const { error } = await supabase.rpc('delete_event_completely', { p_event_id: eventId });
-          if (error) throw error;
-          toast({ title: "Événement supprimé définitivement" });
-          onRefresh();
-        } catch (error) {
-          toast({ title: "Erreur", description: error.message, variant: "destructive" });
-        }
-      } else {
-        toast({ title: "Action non autorisée", description: "Seul un Super Admin peut supprimer définitivement un événement.", variant: "destructive" });
-      }
-    } else {
-      toast({
-        title: "🚧 Cette fonctionnalité n'est pas encore implémentée—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochaine requête ! 🚀",
+  const handleRoleChange = async () => {
+    if (!selectedUser || !newRole || loading) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.rpc('update_user_role_securely', {
+        p_user_id: selectedUser.id,
+        p_new_role: newRole,
+        p_caller_id: userProfile.id,
       });
+      if (error) throw error;
+      toast({ title: 'Succès', description: 'Le rôle a été mis à jour.' });
+      if (onRefresh) onRefresh();
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <Card className="glass-effect border-primary/20 shadow-lg rounded-xl">
-      <CardHeader>
-        <CardTitle className="text-white">Gestion des événements</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {events.slice(0, 10).map((event) => (
-            <div
-              key={event.id}
-              className="flex items-center justify-between p-4 bg-background/50 rounded-xl shadow-sm"
-            >
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h4 className="font-medium text-white">{event.title}</h4>
-                  {event.isSponsored && (
-                    <Badge className="bg-[#C9A227] text-[#0B0B0D] text-xs">
-                      Sponsorisé
-                    </Badge>
-                  )}
-                  <Badge className={`${event.status === 'active' ? 'bg-green-500' : 'bg-gray-500'} text-white text-xs`}>
-                    {event.status === 'active' ? 'Actif' : 'Inactif'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-400 mb-1">{event.description}</p>
-                <p className="text-xs text-gray-500">
-                  {event.city} • {new Date(event.event_date).toLocaleDateString('fr-FR')}
-                </p>
-              </div>
+  const handleStatusChange = async (user, newStatus) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: newStatus })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast({ title: 'Succès', description: `L'utilisateur a été ${newStatus ? 'activé' : 'bloqué'}.` });
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-              <div className="flex items-center space-x-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => navigate(`/event/${event.id}`)}
-                  className="text-gray-300 hover:text-blue-400"
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEventAction(event.id, 'edit')}
-                  className="text-gray-300 hover:text-[#C9A227]"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEventAction(event.id, 'delete')}
-                  className="text-gray-300 hover:text-red-400"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+  const handleImpersonate = async (targetUser) => {
+    if (targetUser.user_type === 'super_admin') {
+      toast({ title: "Action non autorisée", description: "Vous ne pouvez pas vous faire passer pour un autre super administrateur.", variant: "destructive" });
+      return;
+    }
+    
+    setLoading(true);
+    // Note: impersonate is not a standard supabase-js method, usually requires edge function or custom logic
+    // Assuming specific implementation or placeholder here
+    try {
+        // Custom logic for impersonation if available, else just log/toast
+        toast({ title: "Info", description: "Fonctionnalité d'emprunt d'identité en cours de développement." });
+    } catch (e) {
+        console.error(e);
+    }
+    setLoading(false);
+  }
+
+  const getRoleColor = (role) => {
+    const colors = {
+      user: 'bg-blue-500/20 text-blue-300',
+      organizer: 'bg-yellow-500/20 text-yellow-300',
+      secretary: 'bg-purple-500/20 text-purple-300',
+      admin: 'bg-orange-500/20 text-orange-300',
+      super_admin: 'bg-red-500/20 text-red-300'
+    };
+    return colors[role] || 'bg-gray-500/20 text-gray-300';
+  };
+
+  const getRoleLabel = (role) => {
+    const labels = {
+      user: 'Utilisateur',
+      organizer: 'Organisateur',
+      secretary: 'Secrétaire',
+      admin: 'Admin',
+      super_admin: 'Super Admin'
+    };
+    return labels[role] || role;
+  };
+
+  const roleOptions = [
+    { value: 'user', label: 'Utilisateur' },
+    { value: 'organizer', label: 'Organisateur' },
+    { value: 'secretary', label: 'Secrétaire' },
+    { value: 'admin', label: 'Admin' },
+  ];
+
+  return (
+    <>
+      <Card className="glass-effect border-primary/20">
+        <CardHeader>
+          <CardTitle>Gestion des Utilisateurs</CardTitle>
+          <CardDescription>Gérez les rôles et statuts des utilisateurs.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom ou email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="space-y-4">
+            {filteredUsers.length === 0 ? (
+                <div className="text-center p-4 text-muted-foreground">Aucun utilisateur trouvé.</div>
+            ) : (
+                filteredUsers.map((user) => (
+                <div key={user.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-background/50 rounded-lg gap-4">
+                    <div className="flex items-center gap-4">
+                    <Avatar className="w-12 h-12">
+                        <AvatarImage src={user.avatar_url} />
+                        <AvatarFallback>{user.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold">{user.full_name || 'Sans nom'}</p>
+                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                        <Badge className={getRoleColor(user.user_type)}>{getRoleLabel(user.user_type)}</Badge>
+                        <Badge variant={user.is_active ? 'success' : 'destructive'}>{user.is_active ? 'Actif' : 'Bloqué'}</Badge>
+                        {user.user_type === 'admin' && (
+                            <Badge variant="outline"><Shield className="w-3 h-3 mr-1" /> Nommé par Super Admin</Badge>
+                        )}
+                        </div>
+                    </div>
+                    </div>
+                    {isSuperAdmin && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}>
+                        <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleStatusChange(user, !user.is_active)}>
+                        {user.is_active ? <Ban className="w-4 h-4 text-red-500" /> : <CheckCircle className="w-4 h-4 text-green-500" />}
+                        </Button>
+                        {userProfile.id !== user.id && (
+                        <Button variant="ghost" size="icon" onClick={() => handleImpersonate(user)}>
+                            <Key className="w-4 h-4 text-orange-400" />
+                        </Button>
+                        )}
+                    </div>
+                    )}
+                </div>
+                ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le rôle de {selectedUser?.full_name}</DialogTitle>
+            <DialogDescription>
+              Attention, la modification du rôle d'un utilisateur impacte ses permissions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={newRole} onValueChange={setNewRole}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un rôle" />
+              </SelectTrigger>
+              <SelectContent>
+                {roleOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+            <Button onClick={handleRoleChange} disabled={loading}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sauvegarder'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
-export default EventManagementTab;
+export default UserManagement;
