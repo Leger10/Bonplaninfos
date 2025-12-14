@@ -13,15 +13,28 @@ import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+// MODIFICATION 1: Ajout de couleurs de texte pour assurer la lisibilité
 const TICKET_COLORS = {
-    blue: 'bg-blue-500 border-blue-500',
-    bronze: 'bg-amber-600 border-amber-600',
-    silver: 'bg-slate-400 border-slate-400',
-    gold: 'bg-yellow-500 border-yellow-500',
-    purple: 'bg-purple-600 border-purple-600',
-    red: 'bg-red-500 border-red-500',
-    green: 'bg-green-500 border-green-500',
-    black: 'bg-slate-900 border-slate-900',
+    blue: 'bg-blue-500 border-blue-500 text-white',
+    bronze: 'bg-amber-600 border-amber-600 text-white',
+    silver: 'bg-slate-400 border-slate-400 text-slate-900',
+    gold: 'bg-yellow-500 border-yellow-500 text-slate-900',
+    purple: 'bg-purple-600 border-purple-600 text-white',
+    red: 'bg-red-500 border-red-500 text-white',
+    green: 'bg-green-500 border-green-500 text-white',
+    black: 'bg-slate-900 border-slate-900 text-white',
+};
+
+// MODIFICATION 2: Ajout de variantes claires pour les cartes
+const TICKET_LIGHT_VARIANTS = {
+    blue: 'bg-blue-50 border-blue-200 hover:border-blue-500',
+    bronze: 'bg-amber-50 border-amber-200 hover:border-amber-500',
+    silver: 'bg-slate-100 border-slate-300 hover:border-slate-500',
+    gold: 'bg-yellow-50 border-yellow-200 hover:border-yellow-500',
+    purple: 'bg-purple-50 border-purple-200 hover:border-purple-500',
+    red: 'bg-red-50 border-red-200 hover:border-red-500',
+    green: 'bg-green-50 border-green-200 hover:border-green-500',
+    black: 'bg-slate-100 border-slate-300 hover:border-slate-700',
 };
 
 const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh }) => {
@@ -181,15 +194,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         🌟 Tarif Prévente Actif (J-1)
                     </Badge>
                 ) : (
-                    <Badge variant="outline" className="bg-background">Tarif Jour J</Badge>
+                    <Badge variant="outline" className="bg-background text-foreground">Tarif Jour J</Badge>
                 )}
             </div>
 
             {!ticketTypes || ticketTypes.length === 0 ? (
                 <Alert>
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Aucun billet</AlertTitle>
-                    <AlertDescription>
+                    <AlertTitle className="text-foreground">Aucun billet</AlertTitle>
+                    <AlertDescription className="text-muted-foreground">
                         Aucun type de billet n'est disponible pour le moment. Revenez plus tard !
                     </AlertDescription>
                 </Alert>
@@ -201,9 +214,10 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
                         const isSoldOut = available <= 0;
                         const colorStyle = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
+                        const lightStyle = TICKET_LIGHT_VARIANTS[type.color] || TICKET_LIGHT_VARIANTS.blue;
 
                         return (
-                            <Card key={type.id} className={`relative overflow-hidden border-l-4 transition-all hover:shadow-lg hover:-translate-y-1 ${colorStyle} ${isSoldOut ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                            <Card key={type.id} className={`relative overflow-hidden border-l-4 transition-all hover:shadow-lg hover:-translate-y-1 ${lightStyle} ${isSoldOut ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                                 <CardContent className="p-6 flex flex-col h-full justify-between gap-4">
                                     <div>
                                         <div className="flex justify-between items-start mb-2">
@@ -221,14 +235,21 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             </div>
                                         </div>
                                         <p className="text-sm text-muted-foreground line-clamp-3 mb-4 min-h-[3rem]">{type.description || 'Accès standard à l\'événement.'}</p>
+                                        
+                                        {/* MODIFICATION: Badge de couleur avec meilleur contraste */}
+                                        <div className="mb-2">
+                                            <Badge className={`${colorStyle} text-xs font-semibold px-2 py-1`}>
+                                                {type.color.charAt(0).toUpperCase() + type.color.slice(1)}
+                                            </Badge>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
                                         <div className="text-xs font-medium flex items-center">
                                             {isSoldOut ?
-                                                <Badge variant="destructive" className="uppercase tracking-wide">Épuisé</Badge>
+                                                <Badge variant="destructive" className="uppercase tracking-wide text-white">Épuisé</Badge>
                                                 :
-                                                <span className={`flex items-center ${available < 10 ? 'text-orange-500 font-bold' : 'text-muted-foreground'}`}>
+                                                <span className={`flex items-center ${available < 10 ? 'text-orange-600 font-bold dark:text-orange-400' : 'text-muted-foreground'}`}>
                                                     <Ticket className="w-3 h-3 mr-1" />
                                                     {available} restants
                                                 </span>
@@ -237,15 +258,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
                                         <div className="flex items-center gap-3 bg-muted/50 p-1 rounded-lg">
                                             <Button
-                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm"
+                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm text-foreground"
                                                 onClick={() => handleQuantityChange(type.id, -1)}
                                                 disabled={!cart[type.id] || isSoldOut}
                                             >
                                                 <Minus className="w-3 h-3" />
                                             </Button>
-                                            <span className="w-8 text-center font-bold text-lg">{cart[type.id] || 0}</span>
+                                            <span className="w-8 text-center font-bold text-lg text-foreground">{cart[type.id] || 0}</span>
                                             <Button
-                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm"
+                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm text-foreground"
                                                 onClick={() => handleQuantityChange(type.id, 1)}
                                                 disabled={available <= (cart[type.id] || 0) || isSoldOut}
                                             >
@@ -281,10 +302,10 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" size="icon" onClick={() => setCart({})}>
+                                <Button variant="outline" size="icon" onClick={() => setCart({})} className="text-foreground">
                                     <Trash2 className="w-4 h-4 text-destructive" />
                                 </Button>
-                                <Button size="lg" onClick={() => setShowCheckoutModal(true)} className="flex-1 sm:w-auto px-8 font-bold shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-primary to-purple-600 border-0">
+                                <Button size="lg" onClick={() => setShowCheckoutModal(true)} className="flex-1 sm:w-auto px-8 font-bold shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-primary to-purple-600 text-white border-0">
                                     Commander
                                 </Button>
                             </div>
@@ -297,8 +318,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Récapitulatif de la commande</DialogTitle>
-                        <DialogDescription>Vérifiez vos billets avant le paiement.</DialogDescription>
+                        <DialogTitle className="text-foreground">Récapitulatif de la commande</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">Vérifiez vos billets avant le paiement.</DialogDescription>
                     </DialogHeader>
                     
                     <div className="py-4 space-y-4">
@@ -306,22 +327,25 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             {Object.entries(cart).map(([id, qty]) => {
                                 const type = ticketTypes.find(t => t.id === id);
                                 if(!type) return null;
+                                const colorStyle = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
                                 return (
                                     <div key={id} className="flex justify-between items-center border-b border-border/50 pb-2 last:border-0 last:pb-0">
                                         <div>
-                                            <p className="font-bold flex items-center gap-2">
+                                            <p className="font-bold text-foreground flex items-center gap-2">
                                                 {type.name} 
-                                                <Badge variant="outline" className="text-[10px] h-5">{type.color}</Badge>
+                                                <Badge className={`${colorStyle} text-xs px-2 py-0.5 font-semibold`}>
+                                                    {type.color}
+                                                </Badge>
                                             </p>
                                             <p className="text-xs text-muted-foreground">{qty} x {getActivePrice(type)} π</p>
                                         </div>
-                                        <span className="font-mono font-medium">{qty * getActivePrice(type)} π</span>
+                                        <span className="font-mono font-medium text-foreground">{qty * getActivePrice(type)} π</span>
                                     </div>
                                 );
                             })}
                         </div>
 
-                        <div className="flex justify-between items-center text-lg font-bold border-t pt-4">
+                        <div className="flex justify-between items-center text-lg font-bold border-t pt-4 text-foreground">
                             <span>Total à payer</span>
                             <span className="text-primary">{cartTotal} π</span>
                         </div>
@@ -331,7 +355,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                     <Gift className="w-4 h-4 text-purple-500" />
-                                    <Label htmlFor="gift-mode" className="text-sm font-medium cursor-pointer">Offrir ces billets ?</Label>
+                                    <Label htmlFor="gift-mode" className="text-sm font-medium text-foreground cursor-pointer">Offrir ces billets ?</Label>
                                 </div>
                                 <Switch id="gift-mode" checked={isGift} onCheckedChange={setIsGift} />
                             </div>
@@ -343,7 +367,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 placeholder="Email du destinataire"
-                                                className="pl-9"
+                                                className="pl-9 text-foreground bg-background"
                                                 value={recipientEmail}
                                                 onChange={(e) => setRecipientEmail(e.target.value)}
                                             />
@@ -356,8 +380,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCheckoutModal(false)}>Annuler</Button>
-                        <Button onClick={handlePurchase} disabled={loading} className="bg-primary font-bold">
+                        <Button variant="outline" onClick={() => setShowCheckoutModal(false)} className="text-foreground">Annuler</Button>
+                        <Button onClick={handlePurchase} disabled={loading} className="bg-primary text-white font-bold">
                             {loading ? <Loader2 className="animate-spin mr-2" /> : <Check className="mr-2 w-4 h-4" />}
                             Confirmer {cartTotal} π
                         </Button>
@@ -365,49 +389,73 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 </DialogContent>
             </Dialog>
 
-            {/* Success Modal with PDF Download */}
+            {/* MODIFICATION 3: Message de confirmation mis à jour */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
                 <DialogContent className="sm:max-w-md text-center">
                     <DialogHeader>
-                        <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                            <CheckCircle2 className="w-8 h-8 text-green-600" />
+                        <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+                            <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
                         </div>
-                        <DialogTitle className="text-2xl font-bold text-green-700 mb-2">Commande Validée !</DialogTitle>
-                        <DialogDescription className="text-base text-gray-600 dark:text-gray-300">
-                            Vos billets sont prêts. Un email récapitulatif a été envoyé.
+                        <DialogTitle className="text-2xl font-bold text-green-700 dark:text-green-400 mb-2">
+                            Commande Validée !
+                        </DialogTitle>
+                        <DialogDescription className="text-base text-gray-700 dark:text-gray-300 space-y-3">
+                            <p className="font-medium">
+                                Votre commande a bien été effectuée, les billets sont envoyés à l'adresse email. 
+                                <span className="block mt-1 font-semibold">Allez-y vérifier !</span>
+                            </p>
+                            
                             {finalRecipient && (
-                                <span className="block mt-4 font-medium text-primary bg-primary/10 dark:bg-primary/20 py-2 px-3 rounded-lg text-sm border border-primary/20">
-                                    Envoyé à : {finalRecipient}
-                                </span>
+                                <div className="mt-4 font-medium text-primary bg-primary/10 dark:bg-primary/20 py-2 px-3 rounded-lg text-sm border border-primary/20">
+                                    <Mail className="inline w-4 h-4 mr-2" />
+                                    Envoyé à : <span className="font-semibold">{finalRecipient}</span>
+                                </div>
                             )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-6 space-y-4">
-                        <div className="bg-muted/50 p-4 rounded-lg text-left border border-border/50 max-h-60 overflow-y-auto">
-                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2"><Ticket className="w-4 h-4" /> Vos Codes :</h4>
+                        <div className="bg-muted/50 dark:bg-muted/30 p-4 rounded-lg text-left border border-border/50 max-h-60 overflow-y-auto">
+                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2 text-foreground">
+                                <Ticket className="w-4 h-4" /> Vos Codes :
+                            </h4>
                             <ul className="text-sm space-y-2">
-                                {purchasedTickets?.map((t, i) => (
-                                    <li key={i} className="flex justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0 items-center">
-                                        <div className="flex flex-col">
-                                            <span className="text-muted-foreground text-xs">{t.type_name}</span>
-                                            <span className="font-mono font-bold text-base tracking-wider text-primary">{t.ticket_code_short || t.ticket_number}</span>
-                                        </div>
-                                        <Badge variant="outline" className={TICKET_COLORS[t.color] ? TICKET_COLORS[t.color].replace('border-', 'text-') : ''}>{t.color}</Badge>
-                                    </li>
-                                ))}
+                                {purchasedTickets?.map((t, i) => {
+                                    const colorStyle = TICKET_COLORS[t.color] || TICKET_COLORS.blue;
+                                    return (
+                                        <li key={i} className="flex justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0 items-center">
+                                            <div className="flex flex-col">
+                                                <span className="text-muted-foreground text-xs">{t.type_name}</span>
+                                                <span className="font-mono font-bold text-base tracking-wider text-primary">
+                                                    {t.ticket_code_short || t.ticket_number}
+                                                </span>
+                                            </div>
+                                            <Badge className={`${colorStyle} text-xs px-2 py-0.5 font-semibold`}>
+                                                {t.color}
+                                            </Badge>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
 
                         <div className="flex flex-col gap-3">
-                            <Button onClick={handleDownloadPDF} className="w-full bg-green-600 hover:bg-green-700 text-white py-6 shadow-md hover:shadow-lg transition-all group">
+                            <Button 
+                                onClick={handleDownloadPDF} 
+                                className="w-full bg-green-600 hover:bg-green-700 text-white py-6 shadow-md hover:shadow-lg transition-all group"
+                            >
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-center text-lg font-bold">
-                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" /> Télécharger Billets (PDF)
+                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" /> 
+                                        Télécharger Billets (PDF)
                                     </div>
                                     <span className="text-[10px] font-normal opacity-90">Avec QR & Codes Courts</span>
                                 </div>
                             </Button>
-                            <Button variant="outline" onClick={() => setShowSuccessModal(false)} className="w-full">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setShowSuccessModal(false)} 
+                                className="w-full text-foreground"
+                            >
                                 Fermer
                             </Button>
                         </div>
