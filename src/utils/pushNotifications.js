@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/customSupabaseClient';
 
 // Use the public key from secrets or fallback
-const VAPID_PUBLIC_KEY = 'BNozW3XwT0gB_G_g8Y2iV5GZ3G-sA8f_gZ5eYjJ3Xw8U_cZ6E_bX9V9hYjZkXw8U_cZ6E_bX9V9hYjZkXw8U';
+const VAPID_PUBLIC_KEY = 'BAHwYo5VME1pPaNkvlLG4R8lMoQyZ-gblT2vpRHxWmBTna0Fw8Qrv8pRaz1ZSkL1zZcer7F39DDB9mC4AZYROWE';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
