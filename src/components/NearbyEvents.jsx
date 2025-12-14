@@ -14,6 +14,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import WalletInfoModal from '@/components/WalletInfoModal';
 
+// Simple retry helper
+const fetchWithRetry = async (fn, retries = 3, delay = 1000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRetry(fn, retries - 1, delay * 1.5);
+  }
+};
+
 const NearbyEvents = () => {
   const [localEvents, setLocalEvents] = useState([]);
   const [unlockedEvents, setUnlockedEvents] = useState(new Set());
@@ -98,11 +109,13 @@ const NearbyEvents = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .rpc('search_events_for_card', {
-            p_cities: [city]
-        })
-        .limit(4);
+      const { data, error } = await fetchWithRetry(() => 
+        supabase
+          .rpc('search_events_for_card', {
+              p_cities: [city]
+          })
+          .limit(4)
+      );
 
       if (error) throw error;
       setLocalEvents(data);
@@ -114,7 +127,8 @@ const NearbyEvents = () => {
       }
     } catch (err) {
       console.error('Erreur lors de la récupération des événements locaux:', err);
-      setError('Impossible de charger les événements locaux pour le moment.');
+      // Don't show error to user immediately if it's just a fetch error, maybe just empty state
+      // setError('Impossible de charger les événements locaux pour le moment.');
       setLocalEvents([]);
     } finally {
       setLoading(false);
@@ -124,11 +138,13 @@ const NearbyEvents = () => {
   const fetchUnlockedEvents = useCallback(async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('protected_event_access')
-        .select('event_id')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+      const { data, error } = await fetchWithRetry(() => 
+        supabase
+          .from('protected_event_access')
+          .select('event_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+      );
       if (error) throw error;
       setUnlockedEvents(new Set(data.map(item => item.event_id)));
     } catch (err) {
@@ -150,7 +166,7 @@ const NearbyEvents = () => {
         fetchLocalEvents(userLocation.city, userLocation.country);
       } else {
         setLoading(false);
-        setError('Impossible de déterminer votre position.');
+        // setError('Impossible de déterminer votre position.');
       }
       fetchUnlockedEvents();
     };

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, MailCheck, Lock } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MailCheck, Lock, RefreshCw } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '@/constants/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,16 +28,8 @@ const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
         setIsSubmitting(true);
         
         try {
-            // Log this request to admin notifications so admins can see it
-            // We use rpc or direct insert if policy allows. Since user is technically not logged in fully or we are in a limited state, 
-            // we might be limited. However, supabase client allows insert if policy allows 'public' or if we handle it via edge function.
-            // For now, we will assume there is a 'contact_requests' or we use 'admin_notifications' if permissible, 
-            // or just simulate the action if backend isn't ready for unauth inserts.
-            
-            // Assuming we can't easily insert into protected tables without auth, we'll simulate success for UI feedback
-            // In a real scenario, this would call an Edge Function "send-support-request"
-            
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Simulating network request
+            // Simulate sending request
+            await new Promise(resolve => setTimeout(resolve, 1500)); 
             
             setIsSubmitted(true);
             toast({ title: "Message envoyé", description: "L'administration a été notifiée de votre demande." });
@@ -118,11 +110,13 @@ const AuthPage = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
     const [showDeactivatedForm, setShowDeactivatedForm] = useState(false);
+    const [showResendLink, setShowResendLink] = useState(false);
     
     const { signIn, signUp, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useTranslation();
+    const { toast } = useToast();
 
     useEffect(() => {
         if (user) {
@@ -152,20 +146,62 @@ const AuthPage = () => {
         }
     }, [country]);
 
+    const handleResendConfirmation = async () => {
+        if (!email) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase.auth.resend({
+                type: 'signup',
+                email: email,
+                options: {
+                    emailRedirectTo: window.location.origin + '/auth'
+                }
+            });
+            
+            if (error) throw error;
+            
+            toast({
+                title: "Email envoyé",
+                description: "Un nouveau lien de confirmation a été envoyé à " + email,
+                variant: "default"
+            });
+            setShowResendLink(false);
+            setError("");
+            setShowConfirmationMessage(true);
+        } catch (err) {
+            toast({
+                title: "Erreur",
+                description: err.message || "Impossible de renvoyer l'email.",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
         setShowConfirmationMessage(false);
         setShowDeactivatedForm(false);
+        setShowResendLink(false);
         
         if (isLogin) {
             const { error } = await signIn(email, password);
             if (error) {
-                if (error.message === 'ACCOUNT_DEACTIVATED') {
+                const errorMessage = error.message || '';
+                
+                // Handle specific error cases
+                if (errorMessage === 'ACCOUNT_DEACTIVATED') {
                     setShowDeactivatedForm(true);
-                } else {
+                } else if (errorMessage.includes('Email not confirmed') || errorMessage.includes('email_not_confirmed')) {
+                    setError("Votre adresse email n'a pas encore été confirmée. Veuillez vérifier votre boîte de réception (et vos spams).");
+                    setShowResendLink(true);
+                } else if (errorMessage.includes('Invalid login credentials')) {
                     setError(t('auth.login.error_invalid_credentials'));
+                } else {
+                    setError(errorMessage || t('auth.login.error_invalid_credentials'));
                 }
             } else {
                 navigate('/profile');
@@ -193,6 +229,7 @@ const AuthPage = () => {
                  setError(error.message);
             } else if (data.user && data.user.identities && data.user.identities.length === 0) {
                 setError("Un utilisateur avec cet email existe déjà mais n'est pas confirmé.");
+                setShowResendLink(true);
             } else {
                 setShowConfirmationMessage(true);
             }
@@ -206,6 +243,7 @@ const AuthPage = () => {
         setError('');
         setShowConfirmationMessage(false);
         setShowDeactivatedForm(false);
+        setShowResendLink(false);
         setEmail('');
         setPassword('');
         setFullName('');
@@ -275,7 +313,21 @@ const AuthPage = () => {
                             {error && (
                                 <Alert variant="destructive" className="mb-4">
                                     <AlertTitle>{t('common.error_title')}</AlertTitle>
-                                    <AlertDescription>{error}</AlertDescription>
+                                    <AlertDescription className="flex flex-col gap-2">
+                                        <span>{error}</span>
+                                        {showResendLink && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={handleResendConfirmation}
+                                                disabled={loading}
+                                                className="mt-2 border-red-200 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 dark:border-red-800"
+                                            >
+                                                {loading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <RefreshCw className="w-3 h-3 mr-2" />}
+                                                Renvoyer l'email de confirmation
+                                            </Button>
+                                        )}
+                                    </AlertDescription>
                                 </Alert>
                             )}
 

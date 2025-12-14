@@ -5,6 +5,17 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { X, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// Simple retry helper
+const fetchWithRetry = async (fn, retries = 3, delay = 1000) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return fetchWithRetry(fn, retries - 1, delay * 1.5);
+  }
+};
+
 const WelcomePopup = () => {
     const { user } = useAuth();
     const [popups, setPopups] = useState([]);
@@ -15,22 +26,28 @@ const WelcomePopup = () => {
 
     useEffect(() => {
         const fetchPopups = async () => {
-            const { data, error } = await supabase
-                .from('welcome_popups')
-                .select('image_url, alt_text')
-                .eq('is_active', true)
-                .order('created_at', { ascending: true });
+            try {
+                const { data, error } = await fetchWithRetry(() => 
+                    supabase
+                        .from('welcome_popups')
+                        .select('image_url, alt_text')
+                        .eq('is_active', true)
+                        .order('created_at', { ascending: true })
+                );
 
-            if (error) {
-                console.error('Error fetching welcome popups:', error);
-            } else if (data && data.length > 0) {
-                setPopups(data);
-                const sessionKey = user ? `hasSeenWelcomePopup_${user.id}` : 'hasSeenWelcomePopup';
-                const hasSeenPopup = sessionStorage.getItem(sessionKey);
-                if (!hasSeenPopup) {
-                    setIsOpen(true);
-                    sessionStorage.setItem(sessionKey, 'true');
+                if (error) {
+                    console.error('Error fetching welcome popups:', error);
+                } else if (data && data.length > 0) {
+                    setPopups(data);
+                    const sessionKey = user ? `hasSeenWelcomePopup_${user.id}` : 'hasSeenWelcomePopup';
+                    const hasSeenPopup = sessionStorage.getItem(sessionKey);
+                    if (!hasSeenPopup) {
+                        setIsOpen(true);
+                        sessionStorage.setItem(sessionKey, 'true');
+                    }
                 }
+            } catch (err) {
+                console.error('Failed to fetch welcome popups after retries:', err);
             }
         };
         fetchPopups();

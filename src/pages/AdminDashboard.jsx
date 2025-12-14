@@ -538,6 +538,19 @@ const AdminDashboard = () => {
     
     const isFunctionalityActive = isSuperAdmin || partnerStatus === 'active';
 
+    // Validate session on mount to prevent stale auth errors
+    useEffect(() => {
+        const validateSession = async () => {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error || !session) {
+                console.warn("Invalid session on dashboard load. Redirecting.");
+                await supabase.auth.signOut();
+                window.location.href = '/auth';
+            }
+        };
+        validateSession();
+    }, []);
+
     useEffect(() => {
         const checkImpersonation = async () => {
             const { data: { user: currentUser } } = await supabase.auth.getUser();

@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Loader2, Copy, RefreshCw, Ban, CheckCircle, Edit, Trash2, AlertTriangle, UserCheck, XCircle, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, Loader2, Copy, RefreshCw, Ban, CheckCircle, Edit, Trash2, AlertTriangle, UserCheck, XCircle, MessageSquare, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Badge } from '@/components/ui/badge';
@@ -113,7 +113,8 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
 
 const UserManagementTab = ({ onRefresh }) => {
   const { toast } = useToast();
-  const { userProfile } = useData(); // Use useData to get the robust user profile
+  const { userProfile } = useData(); 
+  const { invokeFunction } = useAuth();
   
   // Tabs state
   const [activeTab, setActiveTab] = useState('users');
@@ -136,6 +137,13 @@ const UserManagementTab = ({ onRefresh }) => {
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(null);
+
+  // Password Reset State
+  const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
+  const [resetUser, setResetUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   // Check super admin status
   const isSuperAdmin = userProfile?.user_type === 'super_admin';
@@ -222,7 +230,7 @@ const UserManagementTab = ({ onRefresh }) => {
         toast({
             title: newStatus ? "Utilisateur réactivé" : "Utilisateur désactivé",
             description: `Le compte de ${user.full_name || user.email} est maintenant ${newStatus ? 'actif' : 'inactif'}.`,
-            variant: newStatus ? "default" : "destructive"
+            variant: newStatus ? "success" : "destructive"
         });
         
         fetchUsers();
@@ -237,7 +245,6 @@ const UserManagementTab = ({ onRefresh }) => {
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
     
-    // Explicitly check userProfile instead of currentUser for reliability
     if (userProfile?.user_type !== 'super_admin') {
         toast({ title: 'Non autorisé', description: "Seul le Super Admin peut supprimer un utilisateur.", variant: 'destructive' });
         return;
@@ -267,14 +274,12 @@ const UserManagementTab = ({ onRefresh }) => {
     setRequestActionLoading(requestId);
     try {
         if (action === 'approve') {
-            // 1. Activate User
             const { error: profileError } = await supabase
                 .from('profiles')
                 .update({ is_active: true })
                 .eq('id', userId);
             if (profileError) throw profileError;
 
-            // 2. Update Request Status
             const { error: reqError } = await supabase
                 .from('reactivation_requests')
                 .update({ 
@@ -285,9 +290,8 @@ const UserManagementTab = ({ onRefresh }) => {
                 .eq('id', requestId);
             if (reqError) throw reqError;
 
-            toast({ title: "Approuvé", description: "Utilisateur réactivé avec succès." });
+            toast({ title: "Approuvé", description: "Utilisateur réactivé avec succès.", variant: 'success' });
         } else {
-            // Reject
             const { error: reqError } = await supabase
                 .from('reactivation_requests')
                 .update({ 
@@ -301,7 +305,6 @@ const UserManagementTab = ({ onRefresh }) => {
             toast({ title: "Rejeté", description: "Demande de réactivation rejetée." });
         }
         
-        // Refresh both lists
         fetchRequests();
         fetchUsers();
     } catch (err) {
@@ -309,6 +312,50 @@ const UserManagementTab = ({ onRefresh }) => {
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     } finally {
         setRequestActionLoading(null);
+    }
+  };
+
+  const handleOpenResetPassword = (user) => {
+    setResetUser(user);
+    setNewPassword('000000');
+    setResetPasswordDialog(true);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetUser || !newPassword) return;
+    setResetLoading(true);
+    try {
+        console.log("Invoking admin-reset-password for user:", resetUser.id);
+        const { data, error } = await invokeFunction('admin-reset-password', {
+            body: JSON.stringify({ userId: resetUser.id, newPassword: newPassword })
+        });
+
+        if (error) {
+            console.error("Invoke function returned error:", error);
+            throw error;
+        }
+        
+        if (data && data.error) {
+            console.error("Function data contained error:", data.error);
+            throw new Error(data.error);
+        }
+
+        toast({ 
+            title: "Mot de passe réinitialisé", 
+            description: `Le mot de passe de ${resetUser.full_name || resetUser.email} a été défini sur : ${newPassword}. L'email de l'utilisateur a également été confirmé.`,
+            variant: "success",
+            duration: 10000 
+        });
+        setResetPasswordDialog(false);
+    } catch (err) {
+        console.error("Reset password error catch:", err);
+        toast({ 
+            title: 'Erreur technique', 
+            description: err.message || "Impossible de joindre le serveur. Vérifiez votre connexion ou réessayez.", 
+            variant: 'destructive' 
+        });
+    } finally {
+        setResetLoading(false);
     }
   };
 
@@ -439,7 +486,12 @@ const UserManagementTab = ({ onRefresh }) => {
                                 <Edit className="mr-2 h-4 w-4" /> Modifier
                                 </DropdownMenuItem>
                                 
-                                {/* Deactivate/Reactivate - Available to all admins */}
+                                {isSuperAdmin && (
+                                    <DropdownMenuItem onClick={() => handleOpenResetPassword(user)}>
+                                        <KeyRound className="mr-2 h-4 w-4" /> Réinit. mot de passe
+                                    </DropdownMenuItem>
+                                )}
+
                                 <DropdownMenuItem onClick={() => handleToggleStatus(user)} disabled={toggleLoading || user.user_type === 'super_admin'}>
                                 {user.is_active ? (
                                     <>
@@ -588,6 +640,65 @@ const UserManagementTab = ({ onRefresh }) => {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordDialog} onOpenChange={setResetPasswordDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+                <DialogDescription>
+                    Définissez un mot de passe temporaire pour <strong>{resetUser?.full_name || resetUser?.email}</strong>.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <div className="flex gap-2 relative">
+                    <Input 
+                        value={newPassword} 
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Nouveau mot de passe"
+                        type={showPassword ? 'text' : 'password'}
+                    />
+                    <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-24 top-1/2 -translate-y-1/2 text-muted-foreground px-2"
+                    >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                    <Button variant="outline" onClick={() => setNewPassword('Temp' + Math.floor(1000 + Math.random() * 9000) + '!')}>
+                        Générer
+                    </Button>
+                </div>
+                
+                <div className="flex gap-2">
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => copyCode(newPassword)}
+                        disabled={!newPassword}
+                    >
+                        <Copy className="h-3 w-3 mr-2" /> Copier le mot de passe
+                    </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-md">
+                    <p className="font-semibold mb-1">Important :</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                        <li>Le mot de passe par défaut est <strong>000000</strong></li>
+                        <li>Communiquez ce mot de passe à l'utilisateur de manière sécurisée.</li>
+                        <li>L'email de l'utilisateur sera automatiquement marqué comme confirmé.</li>
+                    </ul>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setResetPasswordDialog(false)}>Annuler</Button>
+                <Button onClick={confirmResetPassword} disabled={resetLoading}>
+                    {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer la réinitialisation"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -12,17 +12,22 @@ const retryPromise = async (fn, retries = 3, delay = 500) => {
     // Critical: Catch Refresh Token errors immediately
     const errorMessage = error?.message || '';
     const errorCode = error?.code || '';
+    const errorStatus = error?.status || '';
+    const apiErrorCode = error?.error_code || ''; // Supabase specific
     
     const isRefreshTokenError = 
         errorMessage.includes('refresh_token_not_found') || 
         errorMessage.includes('Invalid Refresh Token') ||
-        errorCode === 'refresh_token_not_found';
+        errorCode === 'refresh_token_not_found' ||
+        apiErrorCode === 'refresh_token_not_found';
 
     if (isRefreshTokenError) {
+        // Throw a specific error that we can catch and handle by logging out
         throw new Error('CRITICAL_AUTH_ERROR: Refresh Token Invalid');
     }
 
-    const isAuthError = error.status === 400 || error.status === 401 || error.status === 403 || 
+    // Don't retry 4xx errors (client errors)
+    const isAuthError = errorStatus === 400 || errorStatus === 401 || errorStatus === 403 || 
                         (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt' || errorCode === 'session_not_found')) ||
                         (errorMessage && (errorMessage.includes('bad_jwt') || errorMessage.includes('invalid claim') || errorMessage.includes('session_id')));
 
@@ -35,7 +40,8 @@ const retryPromise = async (fn, retries = 3, delay = 500) => {
     const isNetworkError = errorMessage && (
       errorMessage.includes('Failed to fetch') || 
       errorMessage.includes('Network request failed') ||
-      errorMessage.includes('NetworkError')
+      errorMessage.includes('NetworkError') ||
+      errorMessage.includes('Load failed')
     );
     
     if (isNetworkError) {
@@ -59,13 +65,20 @@ export const AuthProvider = ({ children }) => {
   const clearSessionData = useCallback(() => {
     console.log("Cleaning session data due to auth error...");
     try {
-        for (const key in localStorage) {
-            if (key.startsWith('sb-')) {
+        // Clear all Supabase related items
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sb-')) {
                 localStorage.removeItem(key);
             }
         }
-        localStorage.clear();
+        // Also clear supabase.auth.token if it exists (legacy)
+        localStorage.removeItem('supabase.auth.token');
+        
+        // Clear session storage as well
         sessionStorage.clear();
+        
+        // Clear cookies
         document.cookie.split(";").forEach((c) => {
             document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
@@ -116,7 +129,12 @@ export const AuthProvider = ({ children }) => {
         const errorMessage = sessionError.message || '';
         const errorCode = sessionError.code || sessionError.error_code || '';
         
-        if (errorMessage.includes('CRITICAL_AUTH_ERROR') || errorMessage.includes('refresh_token_not_found')) {
+        // Handle Critical Auth Errors
+        if (errorMessage.includes('CRITICAL_AUTH_ERROR') || 
+            errorMessage.includes('refresh_token_not_found') || 
+            errorMessage.includes('Invalid Refresh Token') ||
+            errorCode === 'refresh_token_not_found') {
+            
             console.error("Critical Auth Error detected. Logging out.");
             clearSessionData();
             setLoading(false);
@@ -166,7 +184,6 @@ export const AuthProvider = ({ children }) => {
                 await supabase.auth.signOut();
                 clearSessionData();
                 setLoading(false);
-                // Optionally trigger a custom event or toast here, usually handled by specific components or redirects
                 return; 
             }
         } catch (e) {
@@ -174,7 +191,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const { data: profileCheck, error: profileError } = await supabase.rpc('ensure_user_profile_exists', {
+            // Ensure profile exists
+            const { error: profileError } = await supabase.rpc('ensure_user_profile_exists', {
                 p_user_id: currentUser.id,
                 p_email: currentUser.email,
                 p_full_name: currentUser.user_metadata?.full_name
@@ -204,12 +222,50 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [forceRefresh, clearSessionData, fetchLicense]);
 
+  // Global Error Handler for Edge Functions Auth
+  useEffect(() => {
+    const handleUnhandledRejection = async (event) => {
+      const reason = event.reason;
+      
+      // Detect Supabase Edge Function Auth Errors
+      const isAuthError = 
+        reason?.message?.includes('AuthSessionMissingError') || 
+        reason?.message?.includes('Invalid token') ||
+        reason?.message?.includes('Unauthorized') ||
+        (reason?.details && reason.details.__isAuthError) ||
+        (reason?.name === 'FunctionsHttpError' && reason?.context?.json?.error === 'Unauthorized: Invalid token');
+
+      if (isAuthError) {
+        console.warn("Caught unhandled auth error (likely Edge Function). Attempting recovery...", reason);
+        event.preventDefault(); // Prevent browser console error if possible
+        
+        // Attempt to refresh the session
+        const { data, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+            console.error("Session refresh failed during recovery. Logging out.");
+            clearSessionData();
+            window.location.href = '/auth';
+        } else if (data.session) {
+            console.log("Session successfully recovered.");
+            // Update context state
+            handleSession(data.session);
+        }
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, [clearSessionData, handleSession]);
+
   useEffect(() => {
     let mounted = true;
 
     const initSession = async () => {
         try {
             setLoading(true);
+            
+            // Attempt to get session
             const { data: { session: localSession }, error: sessionError } = await retryPromise(() => supabase.auth.getSession());
             
             if (sessionError) {
@@ -218,6 +274,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (localSession) {
+                // Verify user with getUser to ensure token is valid on server
                 const { data: { user: verifiedUser }, error: userError } = await retryPromise(() => supabase.auth.getUser());
                 
                 if (userError) {
@@ -238,6 +295,9 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        
+        console.log("Auth state change:", event);
+        
         if (event === 'SIGNED_OUT') {
           clearSessionData();
           setLoading(false);
@@ -274,7 +334,7 @@ export const AuthProvider = ({ children }) => {
 
         // Force check profile status immediately after sign in
         if (data?.user) {
-            const { data: profile, error: profileError } = await supabase
+            const { data: profile } = await supabase
                 .from('profiles')
                 .select('is_active')
                 .eq('id', data.user.id)
@@ -297,6 +357,7 @@ export const AuthProvider = ({ children }) => {
     try {
         const { error } = await supabase.auth.signOut();
         if (error) {
+            // Ignore specific errors during logout
             if (error.message?.includes('session_id claim') || error.message?.includes('JWT') || error.status === 403) {
                 console.log("JWT error caught and ignored during logout");
             } else {
@@ -307,6 +368,7 @@ export const AuthProvider = ({ children }) => {
         console.log("Logout exception caught and ignored:", error);
     } finally {
         clearSessionData();
+        // Force reload to clear any in-memory state
         window.location.href = '/auth';
     }
   }, [clearSessionData]);
@@ -316,6 +378,29 @@ export const AuthProvider = ({ children }) => {
         await fetchLicense(user.id);
     }
   }, [user, fetchLicense]);
+
+  // Helper to invoke functions with auto-retry on auth error
+  const invokeFunction = useCallback(async (functionName, options = {}) => {
+    // Wrap the invoke call in retryPromise to handle network errors
+    return retryPromise(async () => {
+        try {
+            const { data, error } = await supabase.functions.invoke(functionName, options);
+            if (error) throw error;
+            return { data, error: null };
+        } catch (error) {
+            // Handle auth errors specifically
+            if (error.message?.includes('AuthSessionMissingError') || error.context?.json?.error === 'Unauthorized: Invalid token') {
+                 console.log("Auth error in invokeFunction, attempting refresh...");
+                 const { error: refreshError } = await supabase.auth.refreshSession();
+                 if (!refreshError) {
+                     // Retry once
+                     return await supabase.functions.invoke(functionName, options);
+                 }
+            }
+            throw error;
+        }
+    });
+  }, []);
 
   const value = useMemo(() => ({
     user,
@@ -327,8 +412,9 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     setForceRefresh,
-    refreshLicense
-  }), [user, session, license, loading, hasFetchError, signUp, signIn, signOut, setForceRefresh, refreshLicense]);
+    refreshLicense,
+    invokeFunction
+  }), [user, session, license, loading, hasFetchError, signUp, signIn, signOut, setForceRefresh, refreshLicense, invokeFunction]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

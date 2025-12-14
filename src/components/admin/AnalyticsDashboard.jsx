@@ -11,7 +11,6 @@ import {
   AlertCircle, 
   Wallet,
   ArrowUpRight,
-  PieChart as PieChartIcon,
   Activity,
   Coins
 } from 'lucide-react';
@@ -25,7 +24,7 @@ import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { fetchWithRetry, formatCurrency } from '@/lib/utils';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -110,14 +109,16 @@ const AnalyticsDashboard = () => {
       const formattedRevenueType = Object.entries(typeMap).map(([name, value]) => ({
         name: name === 'ticket_purchase' ? 'Billetterie' : 
               name === 'vote_participation' ? 'Votes' : 
-              name === 'raffle_participation' ? 'Tombola' : name,
+              name === 'raffle_participation' ? 'Tombola' : 
+              name === 'stand_rental' ? 'Stands' :
+              name === 'event_access' ? 'Év. Protégés' : name,
         value
       })).sort((a, b) => b.value - a.value);
 
       // Update State
       setStats({
         totalCommissions: rpcData?.total_commissions || 0,
-        estimatedRevenue: rpcData?.total_user_balance || 0, // Corresponds to user balance sum
+        estimatedRevenue: rpcData?.total_user_balance || 0, // Corresponds to user balance sum (Circulating Supply)
         totalTransactions: rpcData?.total_transactions || 0,
         pendingWithdrawals: rpcData?.pending_withdrawals || 0,
         totalUsers: rpcData?.total_users || 0,
@@ -201,7 +202,7 @@ const AnalyticsDashboard = () => {
           <StatCard
             title="Commissions Totales"
             value={`${stats.totalCommissions.toLocaleString()} π`}
-            subtext="5% net + 1π (événements protégés)"
+            subtext="Cumul commissions plateforme (5%)"
             icon={Coins}
             colorClass="text-yellow-500"
             borderClass="border-l-yellow-500"
@@ -209,9 +210,9 @@ const AnalyticsDashboard = () => {
 
           {/* 2. Estimated Revenue (User Holdings) */}
           <StatCard
-            title="Revenu Estimé (Solde)"
+            title="Masse Monétaire (Utilisateurs)"
             value={`${stats.estimatedRevenue.toLocaleString()} π`}
-            subtext="Masse monétaire utilisateurs (Crédité - Utilisé)"
+            subtext="Total solde actuel des utilisateurs"
             icon={Wallet}
             colorClass="text-blue-500"
             borderClass="border-l-blue-500"
@@ -244,7 +245,7 @@ const AnalyticsDashboard = () => {
         <StatCard
           title="Chiffre d'Affaires (Ventes)"
           value={formatCurrency(stats.totalSalesFcfa)}
-          subtext="Total achats de packs"
+          subtext="Total achats de packs et licences"
           icon={TrendingUp}
           colorClass="text-emerald-600"
         />
