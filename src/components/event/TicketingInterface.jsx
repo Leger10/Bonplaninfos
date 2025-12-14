@@ -4,26 +4,53 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, AlertCircle, Gift, Mail, CheckCircle2 } from 'lucide-react';
+import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, AlertCircle, Gift, Mail, CheckCircle2, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { generateTicketPDF } from '@/utils/generateTicketPDF';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const TICKET_COLORS = {
+    blue: 'bg-blue-500 border-blue-500',
+    bronze: 'bg-amber-600 border-amber-600',
+    silver: 'bg-slate-400 border-slate-400',
+    gold: 'bg-yellow-500 border-yellow-500',
+    purple: 'bg-purple-600 border-purple-600',
+    red: 'bg-red-500 border-red-500',
+    green: 'bg-green-500 border-green-500',
+    black: 'bg-slate-900 border-slate-900',
+};
 
 const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh }) => {
     const { user } = useAuth();
-    const [cart, setCart] = useState({});
+    
+    // Load cart from localStorage or start empty
+    const [cart, setCart] = useState(() => {
+        try {
+            const saved = localStorage.getItem(`cart_${event?.id}`);
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) { return {}; }
+    });
+
     const [loading, setLoading] = useState(false);
     const [purchasedTickets, setPurchasedTickets] = useState(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
     // Gift/Recipient State
     const [isGift, setIsGift] = useState(false);
     const [recipientEmail, setRecipientEmail] = useState('');
     const [finalRecipient, setFinalRecipient] = useState('');
+
+    // Save cart on change
+    useEffect(() => {
+        if (event?.id) {
+            localStorage.setItem(`cart_${event.id}`, JSON.stringify(cart));
+        }
+    }, [cart, event?.id]);
 
     // Determine Active Price (J-0 vs J-1)
     const isPresale = useMemo(() => {
@@ -60,7 +87,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     }, [cart, ticketTypes, isPresale]);
 
     const handlePurchase = async () => {
-        if (!user) return toast({ title: "Connexion requise", variant: "destructive" });
+        if (!user) {
+            toast({ title: "Connexion requise", variant: "destructive" });
+            setShowCheckoutModal(false);
+            return;
+        }
 
         // Validation for Gift Email
         if (isGift && !recipientEmail) {
@@ -84,16 +115,23 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
             setFinalRecipient(data.recipient_email || (isGift ? recipientEmail : user.email));
 
+            // Process returned tickets
+            const generatedTickets = data.tickets || [];
             let ticketCounter = 0;
+            
             const newTickets = Object.entries(cart).flatMap(([typeId, qty]) => {
                 const type = ticketTypes.find(t => t.id === typeId);
                 if (!type) return [];
                 const typeTickets = [];
                 for (let i = 0; i < qty; i++) {
+                    const ticketData = generatedTickets[ticketCounter] || {};
+                    
                     typeTickets.push({
                         type_name: type.name,
                         price: getActivePrice(type),
-                        ticket_number: data.ticket_codes?.[ticketCounter] || `TICKET-${Date.now()}-${ticketCounter}`
+                        ticket_number: ticketData.number || `TICKET-${Date.now()}-${ticketCounter}`,
+                        ticket_code_short: ticketData.short_code || 'PENDING',
+                        color: type.color
                     });
                     ticketCounter++;
                 }
@@ -101,8 +139,13 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             });
 
             setPurchasedTickets(newTickets);
+            setShowCheckoutModal(false);
             setShowSuccessModal(true);
+            
+            // Clear cart
             setCart({});
+            localStorage.removeItem(`cart_${event.id}`);
+            
             setIsGift(false);
             setRecipientEmail('');
             if (onRefresh) onRefresh();
@@ -157,13 +200,17 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         const regularPrice = type.price_coins || type.price_pi || 0;
                         const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
                         const isSoldOut = available <= 0;
+                        const colorStyle = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
 
                         return (
-                            <Card key={type.id} className={`relative overflow-hidden border-l-4 border-l-primary transition-all hover:shadow-lg hover:-translate-y-1 ${isSoldOut ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                            <Card key={type.id} className={`relative overflow-hidden border-l-4 transition-all hover:shadow-lg hover:-translate-y-1 ${colorStyle} ${isSoldOut ? 'opacity-70 grayscale-[0.5]' : ''}`}>
                                 <CardContent className="p-6 flex flex-col h-full justify-between gap-4">
                                     <div>
                                         <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold text-xl text-foreground">{type.name}</h3>
+                                            <h3 className="font-bold text-xl text-foreground flex items-center gap-2">
+                                                {type.name}
+                                                {type.color === 'gold' && <span className="text-lg">👑</span>}
+                                            </h3>
                                             <div className="text-right shrink-0 ml-2">
                                                 {isPresale && regularPrice > price && (
                                                     <span className="text-xs text-muted-foreground line-through block">{regularPrice} π</span>
@@ -213,62 +260,110 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 </div>
             )}
 
-            {/* Cart Summary & Options */}
+            {/* Sticky Cart Summary */}
             {cartTotal > 0 && (
                 <div className="fixed bottom-6 left-0 right-0 z-50 px-4 md:px-0 flex justify-center pointer-events-none">
                     <Card className="shadow-2xl border-t-4 border-t-primary animate-in slide-in-from-bottom-10 bg-card/95 backdrop-blur-md w-full max-w-2xl pointer-events-auto">
-                        <CardContent className="p-4">
-
-                            {/* Gift Option Section */}
-                            <div className="mb-4 pb-4 border-b border-border/50">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <Gift className="w-4 h-4 text-purple-500" />
-                                        <Label htmlFor="gift-mode" className="text-sm font-medium cursor-pointer">Offrir ces billets à un ami ?</Label>
-                                    </div>
-                                    <Switch id="gift-mode" checked={isGift} onCheckedChange={setIsGift} />
+                        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-primary/10 p-3 rounded-full relative">
+                                    <ShoppingCart className="w-6 h-6 text-primary" />
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold">
+                                        {Object.values(cart).reduce((a, b) => a + b, 0)}
+                                    </span>
                                 </div>
-
-                                {isGift && (
-                                    <div className="animate-in slide-in-from-top-2 fade-in duration-300 mt-2">
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-grow">
-                                                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Email du destinataire"
-                                                    className="pl-9"
-                                                    value={recipientEmail}
-                                                    onChange={(e) => setRecipientEmail(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1 ml-1">Le billet sera envoyé directement à cette adresse.</p>
+                                <div>
+                                    <p className="text-sm text-muted-foreground font-medium">Total Panier</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-2xl font-bold text-foreground">{cartTotal} π</p>
+                                        <span className="text-xs text-muted-foreground">({(cartTotal * 10).toLocaleString()} FCFA)</span>
                                     </div>
-                                )}
+                                </div>
                             </div>
-
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-primary/10 p-3 rounded-full">
-                                        <ShoppingCart className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground font-medium">Total à payer</p>
-                                        <div className="flex items-baseline gap-2">
-                                            <p className="text-2xl font-bold text-foreground">{cartTotal} π</p>
-                                            <span className="text-xs text-muted-foreground">({(cartTotal * 10).toLocaleString()} FCFA)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <Button size="lg" onClick={handlePurchase} disabled={loading} className="w-full sm:w-auto px-8 font-bold shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-primary to-purple-600 border-0">
-                                    {loading ? <Loader2 className="animate-spin mr-2" /> : <Check className="mr-2 w-5 h-5" />}
-                                    {isGift ? "Offrir les billets" : "Confirmer l'achat"}
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="icon" onClick={() => setCart({})}>
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                                <Button size="lg" onClick={() => setShowCheckoutModal(true)} className="flex-1 sm:w-auto px-8 font-bold shadow-lg hover:shadow-xl transition-all bg-gradient-to-r from-primary to-purple-600 border-0">
+                                    Commander
                                 </Button>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
             )}
+
+            {/* Checkout Modal */}
+            <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Récapitulatif de la commande</DialogTitle>
+                        <DialogDescription>Vérifiez vos billets avant le paiement.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4 space-y-4">
+                        <div className="bg-muted/30 p-4 rounded-lg space-y-3 max-h-[40vh] overflow-y-auto">
+                            {Object.entries(cart).map(([id, qty]) => {
+                                const type = ticketTypes.find(t => t.id === id);
+                                if(!type) return null;
+                                return (
+                                    <div key={id} className="flex justify-between items-center border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <div>
+                                            <p className="font-bold flex items-center gap-2">
+                                                {type.name} 
+                                                <Badge variant="outline" className="text-[10px] h-5">{type.color}</Badge>
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">{qty} x {getActivePrice(type)} π</p>
+                                        </div>
+                                        <span className="font-mono font-medium">{qty * getActivePrice(type)} π</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex justify-between items-center text-lg font-bold border-t pt-4">
+                            <span>Total à payer</span>
+                            <span className="text-primary">{cartTotal} π</span>
+                        </div>
+
+                        {/* Gift Option Section */}
+                        <div className="pt-4 border-t border-border/50">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Gift className="w-4 h-4 text-purple-500" />
+                                    <Label htmlFor="gift-mode" className="text-sm font-medium cursor-pointer">Offrir ces billets ?</Label>
+                                </div>
+                                <Switch id="gift-mode" checked={isGift} onCheckedChange={setIsGift} />
+                            </div>
+
+                            {isGift && (
+                                <div className="animate-in slide-in-from-top-2 fade-in duration-300 mt-2">
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-grow">
+                                            <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Email du destinataire"
+                                                className="pl-9"
+                                                value={recipientEmail}
+                                                onChange={(e) => setRecipientEmail(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1 ml-1">Les billets seront envoyés à cette adresse.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCheckoutModal(false)}>Annuler</Button>
+                        <Button onClick={handlePurchase} disabled={loading} className="bg-primary font-bold">
+                            {loading ? <Loader2 className="animate-spin mr-2" /> : <Check className="mr-2 w-4 h-4" />}
+                            Confirmer {cartTotal} π
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Success Modal with PDF Download */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
@@ -277,24 +372,27 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                             <CheckCircle2 className="w-8 h-8 text-green-600" />
                         </div>
-                        <DialogTitle className="text-2xl font-bold text-green-700 mb-2">Achat Réussi !</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold text-green-700 mb-2">Commande Validée !</DialogTitle>
                         <DialogDescription className="text-base text-gray-600 dark:text-gray-300">
-                            Félicitations! Un email vous a été envoyé. Présentez le jour-J.
+                            Vos billets sont prêts. Un email récapitulatif a été envoyé.
                             {finalRecipient && (
                                 <span className="block mt-4 font-medium text-primary bg-primary/10 dark:bg-primary/20 py-2 px-3 rounded-lg text-sm border border-primary/20">
-                                    Email de confirmation envoyé à : {finalRecipient}
+                                    Envoyé à : {finalRecipient}
                                 </span>
                             )}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-6 space-y-4">
-                        <div className="bg-muted/50 p-4 rounded-lg text-left border border-border/50">
-                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2"><Ticket className="w-4 h-4" /> Récapitulatif :</h4>
+                        <div className="bg-muted/50 p-4 rounded-lg text-left border border-border/50 max-h-60 overflow-y-auto">
+                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2"><Ticket className="w-4 h-4" /> Vos Codes :</h4>
                             <ul className="text-sm space-y-2">
                                 {purchasedTickets?.map((t, i) => (
-                                    <li key={i} className="flex justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-muted-foreground">{t.type_name}</span>
-                                        <span className="font-mono font-bold">{t.ticket_number}</span>
+                                    <li key={i} className="flex justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0 items-center">
+                                        <div className="flex flex-col">
+                                            <span className="text-muted-foreground text-xs">{t.type_name}</span>
+                                            <span className="font-mono font-bold text-base tracking-wider text-primary">{t.ticket_code_short || t.ticket_number}</span>
+                                        </div>
+                                        <Badge variant="outline" className={TICKET_COLORS[t.color] ? TICKET_COLORS[t.color].replace('border-', 'text-') : ''}>{t.color}</Badge>
                                     </li>
                                 ))}
                             </ul>
@@ -304,9 +402,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             <Button onClick={handleDownloadPDF} className="w-full bg-green-600 hover:bg-green-700 text-white py-6 shadow-md hover:shadow-lg transition-all group">
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-center text-lg font-bold">
-                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" /> Télécharger mes tickets (PDF)
+                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" /> Télécharger Billets (PDF)
                                     </div>
-                                    <span className="text-[10px] font-normal opacity-90">Format validé pour impression</span>
+                                    <span className="text-[10px] font-normal opacity-90">Avec QR & Codes Courts</span>
                                 </div>
                             </Button>
                             <Button variant="outline" onClick={() => setShowSuccessModal(false)} className="w-full">

@@ -1,57 +1,52 @@
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-undef */
-/* eslint-env serviceworker */
-/* global self, clients */
+
+// Service Worker for BonPlanInfos
+// Handles Push Notifications, Caching, and Background Sync
 
 self.addEventListener('install', (event) => {
-  console.log('🔄 Service Worker: Installed');
   self.skipWaiting();
+  console.log('SW: Installed');
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('✅ Service Worker: Activated');
   event.waitUntil(self.clients.claim());
+  console.log('SW: Activated');
 });
 
-self.addEventListener('push', (event) => {
-  console.log('📨 Service Worker: Push Received', event);
+// Handle incoming push notifications
+self.addEventListener('push', function(event) {
+  console.log('SW: Push Received', event);
 
-  let data = {
-    title: 'BonPlanInfos',
-    body: 'Nouvelle notification',
-    icon: '/icon-192x192.png',
-    url: '/'
+  let data = { 
+    title: 'BonPlanInfos', 
+    body: 'Nouvelle notification', 
+    url: '/',
+    icon: '/icon-192x192.png'
   };
 
   if (event.data) {
     try {
-      const jsonPayload = event.data.json();
-      data = { ...data, ...jsonPayload };
-      // Often backend sends data inside a 'record' or 'data' field, adjust if necessary
-      if (jsonPayload.data) {
-          data = { ...data, ...jsonPayload.data };
-      }
+      const payload = event.data.json();
+      data = { ...data, ...payload };
     } catch (e) {
-      console.warn('Push data is not JSON, using text body');
       data.body = event.data.text();
     }
   }
 
-  console.log('Push notification data:', data);
-
   const options = {
     body: data.body,
-    icon: data.icon || '/icon-192x192.png',
-    badge: data.badge || '/badge-72x72.png',
-    image: data.image,
+    icon: data.icon || '/pwa-192x192.png',
+    badge: '/badge.png', // Small monochrome icon for status bar
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',
-      ...data
+      id: data.id
     },
-    actions: data.actions || [],
-    tag: data.tag || 'general-notification',
-    requireInteraction: true
+    actions: [
+      { action: 'open', title: 'Voir' }
+    ],
+    requireInteraction: true // Keeps notification until user interacts
   };
 
   event.waitUntil(
@@ -59,26 +54,31 @@ self.addEventListener('push', (event) => {
   );
 });
 
-self.addEventListener('notificationclick', (event) => {
-  console.log('👆 Service Worker: Notification Clicked', event.notification);
-  
+// Handle notification click
+self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  // Get URL to open
-  const urlToOpen = event.notification.data?.url || '/';
+  const targetUrl = event.notification.data.url || '/';
 
-  // Focus existing window or open new one
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Check if there is already a window/tab open with the target URL
-      for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Check if there's already a tab open
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        // If tab is open, focus it and navigate
+        if (client.url && 'focus' in client) {
+          return client.focus().then(focusedClient => {
+             // Optional: Navigate to specific URL if needed, or just focus
+             if (focusedClient.navigate) {
+                 return focusedClient.navigate(targetUrl);
+             }
+             return focusedClient;
+          });
         }
       }
-      // If not, check if there is any window open we can navigate
+      // If no tab is open, open a new window
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );

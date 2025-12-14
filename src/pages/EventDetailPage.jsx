@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Lock, Coins, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Lock, Coins, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, Store, TrendingUp, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import VotingInterface from '@/components/event/VotingInterface';
 import EventCountdown from '@/components/EventCountdown';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { extractStoragePath } from '@/lib/utils';
+import { CoinService } from '@/services/CoinService';
 
 // Component for Verification Stats
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
@@ -151,13 +152,20 @@ const EventDetailPage = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
-  const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, cost: 0, costFcfa: 0, action: null });
+  const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, cost: 0, costFcfa: 0, breakdown: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Organizer specific states
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [standStats, setStandStats] = useState({
+    total_rented: 0,
+    gross_revenue: 0,
+    organizer_net: 0,
+    platform_fee: 0,
+    loading: false
+  });
 
   const userId = user?.id;
   const userType = userProfile?.user_type;
@@ -166,8 +174,21 @@ const EventDetailPage = () => {
     if (!id) return;
     setLoading(true);
     try {
-      const { data: fetchedEvent, error: eventError } = await fetchWithRetry(() => supabase.from('events').select('*, organizer:organizer_id(full_name), category:category_id(name, slug)').eq('id', id).single());
+      // Use maybeSingle() to avoid PGRST116 error when event is not found
+      const { data: fetchedEvent, error: eventError } = await fetchWithRetry(() => 
+        supabase.from('events')
+          .select('*, organizer:organizer_id(full_name), category:category_id(name, slug)')
+          .eq('id', id)
+          .maybeSingle()
+      );
+      
       if (eventError) throw eventError;
+      
+      if (!fetchedEvent) {
+        setEvent(null);
+        return;
+      }
+
       setEvent(fetchedEvent);
 
       let specificEventData = null;
@@ -191,18 +212,69 @@ const EventDetailPage = () => {
       if (isOwner || isAdmin || fetchedEvent.event_type !== 'protected') {
         setIsUnlocked(true);
       } else if (userId) {
-        const { data: accessData } = await supabase.rpc('access_protected_event', { p_event_id: fetchedEvent.id, p_user_id: userId });
-        setIsUnlocked(accessData?.has_access || false);
+        // Safe check for unlock
+        const { data: accessData } = await supabase
+            .from('protected_event_access')
+            .select('status, expires_at')
+            .eq('event_id', id)
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .gt('expires_at', new Date().toISOString())
+            .maybeSingle();
+            
+        setIsUnlocked(!!accessData);
       } else {
         setIsUnlocked(false);
       }
     } catch (error) {
       console.error("Error fetching event:", error);
-      if (error.code === 'PGRST116') setEvent(null);
+      setEvent(null);
     } finally { setLoading(false); }
   }, [id, userId, userType]);
 
   useEffect(() => { fetchEventData(); }, [fetchEventData]);
+
+  const isOwner = user && event?.organizer_id === user.id;
+
+  // --- Fetch Stand Stats for Organizer ---
+  useEffect(() => {
+    if (isOwner && event?.event_type === 'stand_rental') {
+      const fetchStandStats = async () => {
+        setStandStats(prev => ({ ...prev, loading: true }));
+        try {
+          // Get basic count
+          const { count } = await supabase
+            .from('stand_rentals')
+            .select('*', { count: 'exact', head: true })
+            .in('stand_event_id', (await supabase.from('stand_events').select('id').eq('event_id', event.id)).data.map(e => e.id))
+            .eq('status', 'confirmed');
+
+          // Get Earnings from organizer_earnings table
+          const { data: earnings } = await supabase
+            .from('organizer_earnings')
+            .select('earnings_coins, platform_commission, amount_pi')
+            .eq('event_id', event.id)
+            .eq('transaction_type', 'stand_rental');
+
+          const gross = earnings?.reduce((acc, curr) => acc + (curr.amount_pi || 0), 0) || 0;
+          const net = earnings?.reduce((acc, curr) => acc + (curr.earnings_coins || 0), 0) || 0;
+          const fee = earnings?.reduce((acc, curr) => acc + (curr.platform_commission || 0), 0) || 0;
+
+          setStandStats({
+            total_rented: count || 0,
+            gross_revenue: gross,
+            organizer_net: net,
+            platform_fee: fee,
+            loading: false
+          });
+        } catch (err) {
+          console.error("Failed to fetch stand stats", err);
+          setStandStats(prev => ({ ...prev, loading: false }));
+        }
+      };
+      fetchStandStats();
+    }
+  }, [isOwner, event]);
 
   const handleDataRefresh = () => { fetchEventData(); if (forceRefreshUserProfile) forceRefreshUserProfile(); };
 
@@ -213,14 +285,15 @@ const EventDetailPage = () => {
       const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id });
       if (rpcError) throw rpcError;
       if (!rpcData.success) throw new Error(rpcData.message);
-      toast({ title: "Accès accordé!", description: `Débloqué avec succès.` });
+      
+      toast({ title: "Accès accordé !", description: `L'événement a été débloqué avec succès.`, className: "bg-green-600 text-white" });
       setIsUnlocked(true);
       handleDataRefresh();
     } catch (error) {
       if (error.message.includes('Solde insuffisant')) setShowWalletInfoModal(true);
       else toast({ title: "Erreur", description: error.message, variant: "destructive" });
     } finally {
-      setConfirmation({ isOpen: false, type: null, cost: 0, costFcfa: 0, action: null });
+      setConfirmation({ isOpen: false, type: null, cost: 0, costFcfa: 0, breakdown: null, action: null });
       setActionLoading(false);
     }
   };
@@ -256,9 +329,29 @@ const EventDetailPage = () => {
     }
   };
 
-  const handleUnlockClick = () => {
+  const handleUnlockClick = async () => {
     if (!user) { navigate('/auth'); return; }
-    setConfirmation({ isOpen: true, type: "Débloquer", cost: 2, costFcfa: 20, action: executeUnlock });
+    
+    // Fetch fresh balances
+    const balances = await CoinService.getWalletBalances(user.id);
+    const cost = 2; // Hardcoded cost for now as per RPC default
+    
+    if (balances.total < cost) {
+        setShowWalletInfoModal(true);
+        return;
+    }
+    
+    // Calculate Breakdown
+    const freeUsed = Math.min(balances.free_coin_balance, cost);
+    const paidUsed = cost - freeUsed;
+    
+    setConfirmation({ 
+        isOpen: true, 
+        type: "Débloquer cet événement", 
+        cost: cost,
+        breakdown: { free: freeUsed, paid: paidUsed },
+        action: executeUnlock 
+    });
   };
 
   const handleScanClick = () => {
@@ -290,10 +383,7 @@ const EventDetailPage = () => {
   if (!event) return <div className="min-h-screen bg-background text-center p-8"><h1 className="text-2xl text-red-500">Événement non trouvé</h1></div>;
 
   const optimizedImageUrl = event.cover_image || "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
-  const isOwner = user && event.organizer_id === user.id;
   const canDelete = isOwner || (userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type));
-
-  console.log('EventDetailPage: Permissions check', { isOwner, userType, canDelete });
 
   return (
     <div className="min-h-screen bg-background">
@@ -329,9 +419,11 @@ const EventDetailPage = () => {
                   <Button onClick={handleUnlockClick} size="lg" className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold shadow-lg transform hover:scale-105 transition-all"><Coins className="mr-2 h-5 w-5" /> Débloquer (2π)</Button>
                 </div>
               )}
-
-              {isUnlocked && event.event_date && (
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
+            </div>
+            
+            {/* Event Countdown moved below the cover image */}
+            {isUnlocked && event.event_date && (
+                <div className="flex justify-center mt-4"> {/* Added margin-top for spacing */}
                   <EventCountdown
                     eventDate={event.event_date}
                     showMotivation={true}
@@ -340,7 +432,6 @@ const EventDetailPage = () => {
                   />
                 </div>
               )}
-            </div>
 
             {isUnlocked ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -407,6 +498,48 @@ const EventDetailPage = () => {
               </Card>
             )}
 
+            {/* ORGANIZER PANEL - ONLY FOR STAND RENTAL EVENTS */}
+            {isOwner && event.event_type === 'stand_rental' && (
+              <Card className="border-blue-500/50 bg-blue-50/10 shadow-lg overflow-hidden animate-in fade-in">
+                <div className="bg-blue-500/10 p-3 border-b border-blue-500/20">
+                  <h3 className="font-bold text-blue-700 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Tableau de bord Stands</h3>
+                </div>
+                <CardContent className="p-4 space-y-4">
+                  {standStats.loading ? (
+                    <div className="flex justify-center py-4"><Loader2 className="animate-spin text-blue-500" /></div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Stands Loués</span>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-lg px-3">
+                          {standStats.total_rented}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 pt-2 border-t border-blue-100">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Revenus Bruts</span>
+                          <span className="font-medium">{standStats.gross_revenue} π</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-red-500 flex items-center gap-1"><PieChart className="w-3 h-3"/> Frais (5%)</span>
+                          <span className="text-red-500">-{standStats.platform_fee} π</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
+                          <span className="font-bold text-green-700">Vos Gains Nets (95%)</span>
+                          <span className="font-bold text-xl text-green-700">{standStats.organizer_net} π</span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-blue-50 p-3 rounded text-xs text-blue-700 mt-2">
+                        Les gains sont automatiquement crédités sur votre compte organisateur après chaque réservation.
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <SocialInteractions event={event} isUnlocked={isUnlocked} />
 
             {/* Organizer Info */}
@@ -435,8 +568,42 @@ const EventDetailPage = () => {
 
       <AlertDialog open={confirmation.isOpen} onOpenChange={(o) => !o && setConfirmation({ isOpen: false, action: null })}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>{confirmation.type}</AlertDialogTitle><AlertDialogDescription>Coût: {confirmation.cost}π. Vos pièces gratuites seront utilisées en priorité.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={confirmation.action} disabled={actionLoading}>{actionLoading ? <Loader2 className="animate-spin" /> : 'Confirmer'}</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmation.type}</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-3">
+                <p>Coût total : <span className="font-bold text-primary text-lg">{confirmation.cost}π</span></p>
+                {confirmation.breakdown && (
+                  <div className="text-sm bg-muted p-3 rounded-md border border-border/50">
+                    <p className="font-semibold mb-2">Détail du paiement :</p>
+                    <ul className="space-y-1">
+                      {confirmation.breakdown.free > 0 && (
+                        <li className="flex justify-between text-green-600 font-medium">
+                          <span>• Pièces gratuites (Bonus/Parrainage) :</span>
+                          <span>-{confirmation.breakdown.free}π</span>
+                        </li>
+                      )}
+                      {confirmation.breakdown.paid > 0 && (
+                        <li className="flex justify-between text-blue-600 font-medium">
+                          <span>• Pièces achetées :</span>
+                          <span>-{confirmation.breakdown.paid}π</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <Coins className="w-3 h-3" /> Les pièces gratuites sont utilisées en priorité.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmation.action} disabled={actionLoading} className="bg-primary">
+              {actionLoading ? <Loader2 className="animate-spin mr-2" /> : 'Confirmer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

@@ -41,6 +41,7 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [notificationBellAnimation, setNotificationBellAnimation] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Cache mechanism
@@ -130,7 +131,7 @@ export const DataProvider = ({ children }) => {
   const fetchAppSettings = useCallback(async () => {
     try {
         const { data, error } = await fetchWithRetry(
-            () => supabase.from('app_settings').select('*').limit(1).single(),
+            () => supabase.from('app_settings').select('*').limit(1).maybeSingle(),
             2, 1000, {}
         );
 
@@ -158,7 +159,25 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  // 4. Update User Profile Function
+  // 4. Fetch Notification Count
+  const fetchNotificationCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      
+      if (!error) {
+        setNotificationCount(count || 0);
+      }
+    } catch (err) {
+      console.error("Error fetching notification count:", err);
+    }
+  }, [user]);
+
+  // 5. Update User Profile Function
   const updateUserProfile = useCallback(async (userId, updates) => {
     setLoadingProfile(true);
     console.log("Updating profile:", Object.keys(updates));
@@ -221,10 +240,11 @@ export const DataProvider = ({ children }) => {
     return () => { isMounted = false; };
   }, [fetchAppSettings, fetchWelcomePopups]);
 
-  // Profile Load on User Change
+  // Profile & Notification Load on User Change
   useEffect(() => {
     fetchUserProfile();
-  }, [fetchUserProfile]);
+    fetchNotificationCount();
+  }, [fetchUserProfile, fetchNotificationCount]);
 
   // Realtime Subscription for Profile
   useEffect(() => {
@@ -306,6 +326,8 @@ export const DataProvider = ({ children }) => {
     loading, 
     loadingProfile, 
     notificationBellAnimation,
+    notificationCount,
+    fetchNotificationCount,
     forceRefreshUserProfile,
     updateUserProfile,
     triggerNotificationAnimation,
@@ -313,6 +335,7 @@ export const DataProvider = ({ children }) => {
         fetchAppSettings();
         fetchWelcomePopups();
         forceRefreshUserProfile();
+        fetchNotificationCount();
     },
     getEvents,
     getPromotions,

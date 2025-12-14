@@ -14,9 +14,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Plus, Ticket, Trash, Coins, Save, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, Plus, Ticket, Trash, Coins, Save, ArrowRight, ArrowLeft, CheckCircle, Palette } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import ImageUpload from '@/components/ImageUpload';
+
+const TICKET_COLORS = [
+    { name: 'Bleu (Standard)', value: 'blue', hex: 'bg-blue-500' },
+    { name: 'Bronze', value: 'bronze', hex: 'bg-amber-600' },
+    { name: 'Argent', value: 'silver', hex: 'bg-slate-400' },
+    { name: 'Or', value: 'gold', hex: 'bg-yellow-500' },
+    { name: 'Violet (VIP)', value: 'purple', hex: 'bg-purple-600' },
+    { name: 'Rouge', value: 'red', hex: 'bg-red-500' },
+    { name: 'Vert', value: 'green', hex: 'bg-green-500' },
+    { name: 'Noir', value: 'black', hex: 'bg-slate-900' },
+];
 
 const CreateTicketingEventPage = () => {
     const { user } = useAuth();
@@ -52,7 +63,8 @@ const CreateTicketingEventPage = () => {
         quantity_available: 100, 
         sales_start_date: '', 
         sales_end_date: '',
-        description: 'Accès standard à l\'événement'
+        description: 'Accès standard à l\'événement',
+        color: 'blue'
     }]);
 
     useEffect(() => {
@@ -77,7 +89,8 @@ const CreateTicketingEventPage = () => {
             quantity_available: 50, 
             sales_start_date: '', 
             sales_end_date: '',
-            description: ''
+            description: '',
+            color: 'blue'
         }]);
     };
 
@@ -119,7 +132,7 @@ const CreateTicketingEventPage = () => {
                     address,
                     cover_image: coverImage,
                     organizer_id: user.id,
-                    event_type: 'ticketing', // Correct event type for ticketing
+                    event_type: 'ticketing', 
                     category_id: categoryId,
                     status: 'active',
                     max_attendees: parseInt(maxAttendees, 10) || null,
@@ -156,7 +169,8 @@ const CreateTicketingEventPage = () => {
                 presale_price_pi: convertToCoins(tt.presale_price),
                 sales_start: tt.sales_start_date || new Date().toISOString(),
                 sales_end: tt.sales_end_date || eventDate,
-                is_active: true
+                is_active: true,
+                color: tt.color || 'blue'
             }));
 
             const { error: typesError } = await supabase.from('ticket_types').insert(ticketTypesToInsert);
@@ -278,7 +292,7 @@ const CreateTicketingEventPage = () => {
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.1 }}
                                     >
-                                        <Card className="border-l-4 border-l-primary overflow-hidden hover:shadow-md transition-all">
+                                        <Card className="border-l-4 overflow-hidden hover:shadow-md transition-all" style={{ borderLeftColor: TICKET_COLORS.find(c => c.value === tt.color)?.hex.replace('bg-', '') || 'gray' }}>
                                             <CardContent className="p-6 space-y-6">
                                                 <div className="flex justify-between items-center border-b pb-4">
                                                     <div className="flex items-center gap-3">
@@ -305,9 +319,32 @@ const CreateTicketingEventPage = () => {
                                                                 <Input type="number" value={tt.quantity_available} onChange={(e) => handleTicketTypeChange(tt.id, 'quantity_available', e.target.value)} className="bg-background/50" />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label>Description courte</Label>
-                                                                <Input value={tt.description} onChange={(e) => handleTicketTypeChange(tt.id, 'description', e.target.value)} placeholder="Avantages inclus..." className="bg-background/50" />
+                                                                <Label>Couleur du billet</Label>
+                                                                <Select value={tt.color} onValueChange={(val) => handleTicketTypeChange(tt.id, 'color', val)}>
+                                                                    <SelectTrigger className="bg-background/50">
+                                                                        <SelectValue placeholder="Choisir une couleur">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className={`w-4 h-4 rounded-full ${TICKET_COLORS.find(c => c.value === tt.color)?.hex}`}></div>
+                                                                                <span>{TICKET_COLORS.find(c => c.value === tt.color)?.name}</span>
+                                                                            </div>
+                                                                        </SelectValue>
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {TICKET_COLORS.map(c => (
+                                                                            <SelectItem key={c.value} value={c.value}>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <div className={`w-4 h-4 rounded-full ${c.hex}`}></div>
+                                                                                    <span>{c.name}</span>
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
                                                             </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label>Description courte</Label>
+                                                            <Input value={tt.description} onChange={(e) => handleTicketTypeChange(tt.id, 'description', e.target.value)} placeholder="Avantages inclus..." className="bg-background/50" />
                                                         </div>
                                                     </div>
 

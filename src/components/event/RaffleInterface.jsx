@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import RaffleDrawSystem from './RaffleDrawSystem';
+import WalletInfoModal from '@/components/WalletInfoModal';
 import {
   Dialog,
   DialogContent,
@@ -17,55 +18,67 @@ import {
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked }) => {
+const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, isOwner }) => {
     const { user } = useAuth();
-    const { forceRefreshUserProfile } = useData();
+    const { forceRefreshUserProfile, userProfile } = useData();
     const [quantity, setQuantity] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [isOrganizer, setIsOrganizer] = useState(false);
     const [ticketsList, setTicketsList] = useState([]);
     const [showTicketsDialog, setShowTicketsDialog] = useState(false);
     const [myTickets, setMyTickets] = useState([]);
+    const [showWalletModal, setShowWalletModal] = useState(false);
     
     const navigate = useNavigate();
+    
+    // Determine organizer based on prop or data logic to avoid async fetch
+    const isOrganizer = isOwner || (user && raffleData && user.id === raffleData.organizer_id);
+    
     const pricePerTicket = raffleData?.calculated_price_pi || 1;
     const totalCostPi = useMemo(() => pricePerTicket * quantity, [pricePerTicket, quantity]);
 
-    // Check organizer status and fetch tickets
+    // Fetch tickets Logic
     useEffect(() => {
-        const initInterface = async () => {
+        const fetchTickets = async () => {
             if (!user || !raffleData) return;
             
-            // Check organizer
-            const { data: event } = await supabase.from('events').select('organizer_id').eq('id', eventId).single();
-            const isOrg = event?.organizer_id === user.id;
-            setIsOrganizer(isOrg);
-
-            // Fetch My Tickets
-            const { data: myTix } = await supabase
-                .from('raffle_tickets')
-                .select('ticket_number, purchased_at, purchase_price_pi')
-                .eq('raffle_event_id', raffleData.id)
-                .eq('user_id', user.id)
-                .order('ticket_number', { ascending: true });
-            setMyTickets(myTix || []);
-
-            // If organizer, fetch ALL tickets for dashboard
-            if (isOrg) {
-                const { data: allTix } = await supabase
+            try {
+                // Fetch My Tickets
+                const { data: myTix } = await supabase
                     .from('raffle_tickets')
-                    .select('*, profiles:user_id(full_name, email)')
+                    .select('ticket_number, purchased_at, purchase_price_pi')
                     .eq('raffle_event_id', raffleData.id)
-                    .order('purchased_at', { ascending: false }); // Fixed: changed created_at to purchased_at
-                setTicketsList(allTix || []);
+                    .eq('user_id', user.id)
+                    .order('ticket_number', { ascending: true });
+                setMyTickets(myTix || []);
+
+                // If organizer, fetch ALL tickets for dashboard
+                if (isOrganizer) {
+                    const { data: allTix } = await supabase
+                        .from('raffle_tickets')
+                        .select('*, profiles:user_id(full_name, email)')
+                        .eq('raffle_event_id', raffleData.id)
+                        .order('purchased_at', { ascending: false });
+                    setTicketsList(allTix || []);
+                }
+            } catch (err) {
+                console.error("Error fetching tickets:", err);
             }
         };
-        initInterface();
-    }, [user, eventId, raffleData]);
+        
+        fetchTickets();
+    }, [user, eventId, raffleData, isOrganizer]);
 
     const handlePurchase = async () => {
         if (!user) { navigate('/auth'); return; }
         if (quantity < 1) return;
+
+        // Verify balance locally first (Optimistic UI)
+        const currentBalance = userProfile?.coin_balance || 0;
+        
+        if (currentBalance < totalCostPi) {
+            setShowWalletModal(true);
+            return;
+        }
 
         setLoading(true);
         try {
@@ -86,7 +99,7 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked })
             await forceRefreshUserProfile();
             if (onPurchaseSuccess) onPurchaseSuccess();
             
-            // Refresh local tickets list
+            // Refresh local tickets list (simple re-fetch logic for simplicity)
             const { data: myNewTix } = await supabase
                 .from('raffle_tickets')
                 .select('ticket_number, purchased_at, purchase_price_pi')
@@ -95,7 +108,11 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked })
             setMyTickets(myNewTix || []);
 
         } catch (err) {
-            toast({ title: "Erreur", description: err.message, variant: "destructive" });
+            if (err.message && err.message.includes('Solde insuffisant')) {
+                setShowWalletModal(true);
+            } else {
+                toast({ title: "Erreur", description: err.message, variant: "destructive" });
+            }
         } finally {
             setLoading(false);
         }
@@ -128,35 +145,37 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked })
             )}
 
             {/* Participant View: Buy & My Tickets */}
-            {!isOrganizer && raffleData.status === 'active' && (
+            {(!isOrganizer || raffleData.status === 'active') && (
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Buy Card */}
-                    <Card className="border-primary/20 shadow-lg">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Ticket className="w-5 h-5 text-primary" />
-                                Acheter des Tickets
-                            </CardTitle>
-                            <CardDescription>Prix unitaire: {pricePerTicket} π</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                                <span className="font-medium">Quantité</span>
-                                <div className="flex items-center gap-3">
-                                    <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                                    <span className="w-8 text-center font-bold">{quantity}</span>
-                                    <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>+</Button>
+                    {raffleData.status === 'active' && (
+                        <Card className="border-primary/20 shadow-lg">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Ticket className="w-5 h-5 text-primary" />
+                                    Acheter des Tickets
+                                </CardTitle>
+                                <CardDescription>Prix unitaire: {pricePerTicket} π</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                                    <span className="font-medium">Quantité</span>
+                                    <div className="flex items-center gap-3">
+                                        <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                                        <span className="w-8 text-center font-bold">{quantity}</span>
+                                        <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>+</Button>
+                                    </div>
                                 </div>
-                            </div>
-                            <Button 
-                                className="w-full h-12 text-lg font-bold" 
-                                onClick={handlePurchase} 
-                                disabled={loading}
-                            >
-                                {loading ? <Loader2 className="animate-spin" /> : `Payer ${totalCostPi} π`}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                <Button 
+                                    className="w-full h-12 text-lg font-bold" 
+                                    onClick={handlePurchase} 
+                                    disabled={loading}
+                                >
+                                    {loading ? <Loader2 className="animate-spin" /> : `Payer ${totalCostPi} π`}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* My Tickets List */}
                     <Card className="border-blue-100 bg-blue-50/50">
@@ -210,7 +229,7 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked })
                                             <div className="font-medium">{t.profiles?.full_name || 'Inconnu'}</div>
                                             <div className="text-xs text-muted-foreground">{t.profiles?.email}</div>
                                         </TableCell>
-                                        <TableCell>{new Date(t.purchased_at).toLocaleString()}</TableCell> {/* Fixed: changed created_at to purchased_at */}
+                                        <TableCell>{new Date(t.purchased_at).toLocaleString()}</TableCell>
                                         <TableCell>{t.purchase_price_pi} π</TableCell>
                                     </TableRow>
                                 ))}
@@ -219,6 +238,14 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked })
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Insufficient Balance Modal */}
+            <WalletInfoModal
+                isOpen={showWalletModal}
+                onClose={() => setShowWalletModal(false)}
+                requiredAmount={totalCostPi}
+                currentBalance={userProfile?.coin_balance || 0}
+            />
         </div>
     );
 };

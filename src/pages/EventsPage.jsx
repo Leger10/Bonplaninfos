@@ -59,7 +59,7 @@ const EventsPage = () => {
     const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [unlockedEvents, setUnlockedEvents] = useState(new Set());
-    const [confirmation, setConfirmation] = useState({ isOpen: false, event: null, cost: 0, costFcfa: 0, onConfirm: null });
+    const [confirmation, setConfirmation] = useState({ isOpen: false, event: null, cost: 0, costFcfa: 0, breakdown: null, onConfirm: null });
 
     const QUICK_FILTERS = useMemo(() => [
         { label: t("events_page.quick_filters.trending"), value: "trending" },
@@ -154,24 +154,18 @@ const EventsPage = () => {
     }, [events, searchTerm, filters, unlockedEvents]);
 
     const executeUnlock = async (event) => {
-        await CoinService.handleAction({
-            userId: user.id,
-            requiredCoins: 2,
-            onSuccess: async () => {
-                try {
-                    const { data: rpcData, error: rpcError } = await fetchWithRetry(() => supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'}));
-                    if (rpcError) throw rpcError;
-                    if (!rpcData.success) throw new Error(rpcData.message);
-                    setUnlockedEvents(prev => new Set(prev).add(event.id));
-                    await forceRefreshUserProfile();
-                    toast({ title: t('events_page.unlock_modal.success_title'), description: t('events_page.unlock_modal.success_desc', { title: event.title }) });
-                    navigate(`/event/${event.id}`);
-                } catch (error) {
-                    toast({ title: t("common.error_title"), description: error.message, variant: "destructive" });
-                }
-            },
-            onInsufficientBalance: () => setShowWalletInfoModal(true),
-        });
+        try {
+            const { data: rpcData, error: rpcError } = await fetchWithRetry(() => supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'}));
+            if (rpcError) throw rpcError;
+            if (!rpcData.success) throw new Error(rpcData.message);
+            setUnlockedEvents(prev => new Set(prev).add(event.id));
+            await forceRefreshUserProfile();
+            toast({ title: t('events_page.unlock_modal.success_title'), description: t('events_page.unlock_modal.success_desc', { title: event.title }), className: "bg-green-600 text-white" });
+            navigate(`/event/${event.id}`);
+        } catch (error) {
+            if (error.message.includes('Solde insuffisant')) setShowWalletInfoModal(true);
+            else toast({ title: t("common.error_title"), description: error.message, variant: "destructive" });
+        }
     };
 
     const handleEventClick = async (event) => {
@@ -190,7 +184,26 @@ const EventsPage = () => {
         if (!isUnlocked) {
             const cost = 2;
             const costFcfa = cost * (adminConfig?.coin_to_fcfa_rate || 10);
-            setConfirmation({ isOpen: true, event, cost, costFcfa, onConfirm: () => executeUnlock(event) });
+            
+            // Get user balances for breakdown
+            const balances = await CoinService.getWalletBalances(user.id);
+            
+            if (balances.total < cost) {
+                setShowWalletInfoModal(true);
+                return;
+            }
+            
+            const freeUsed = Math.min(balances.free_coin_balance, cost);
+            const paidUsed = cost - freeUsed;
+
+            setConfirmation({ 
+                isOpen: true, 
+                event, 
+                cost, 
+                costFcfa, 
+                breakdown: { free: freeUsed, paid: paidUsed },
+                onConfirm: () => executeUnlock(event) 
+            });
         } else {
             navigate(`/event/${event.id}`);
         }
@@ -254,13 +267,43 @@ const EventsPage = () => {
             </main>
             <WalletInfoModal isOpen={showWalletInfoModal} onClose={() => setShowWalletInfoModal(false)} onProceed={() => {setShowWalletInfoModal(false); setShowPaymentModal(true);}} />
             <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
-            <AlertDialog open={confirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, event: null, cost: 0, costFcfa: 0, onConfirm: null })}>
+            <AlertDialog open={confirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, event: null, cost: 0, costFcfa: 0, breakdown: null, onConfirm: null })}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t('events_page.unlock_modal.title')}</AlertDialogTitle>
-                        <AlertDialogDescription><div className="flex flex-col items-center justify-center text-center p-4"><Coins className="w-12 h-12 text-primary mb-4" /><p className="text-lg">{t('events_page.unlock_modal.description', { title: confirmation.event?.title, cost: confirmation.cost, costFcfa: confirmation.costFcfa?.toLocaleString('fr-FR') })}</p><div className="mt-4 text-xs text-muted-foreground p-2 bg-muted rounded flex items-start gap-2"><Info className="w-4 h-4 mt-0.5 flex-shrink-0" /><span>{t('events_page.unlock_modal.info')}</span></div></div></AlertDialogDescription>
+                        <AlertDialogDescription>
+                            <div className="flex flex-col items-center justify-center text-center p-4">
+                                <Coins className="w-12 h-12 text-primary mb-4" />
+                                <p className="text-lg font-bold mb-2">{t('events_page.unlock_modal.description', { title: confirmation.event?.title, cost: confirmation.cost, costFcfa: confirmation.costFcfa?.toLocaleString('fr-FR') })}</p>
+                                
+                                {confirmation.breakdown && (
+                                    <div className="w-full text-sm bg-muted/50 p-3 rounded border border-border mt-2 mb-2 text-left">
+                                        <p className="font-semibold mb-2 text-xs text-muted-foreground uppercase">Détail du paiement :</p>
+                                        <ul className="space-y-1">
+                                            {confirmation.breakdown.free > 0 && (
+                                                <li className="flex justify-between text-green-600 font-medium">
+                                                    <span>• Pièces gratuites :</span>
+                                                    <span>-{confirmation.breakdown.free}π</span>
+                                                </li>
+                                            )}
+                                            {confirmation.breakdown.paid > 0 && (
+                                                <li className="flex justify-between text-blue-600 font-medium">
+                                                    <span>• Pièces achetées :</span>
+                                                    <span>-{confirmation.breakdown.paid}π</span>
+                                                </li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                )}
+                                
+                                <div className="text-xs text-muted-foreground flex items-start gap-2 mt-2">
+                                    <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span>{t('events_page.unlock_modal.info')}</span>
+                                </div>
+                            </div>
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel><AlertDialogAction onClick={confirmation.onConfirm}>{t('common.confirm')}</AlertDialogAction></AlertDialogFooter>
+                    <AlertDialogFooter><AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel><AlertDialogAction onClick={confirmation.onConfirm} className="bg-primary">{t('common.confirm')}</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>

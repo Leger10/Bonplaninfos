@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
                 .from('profiles')
                 .select('is_active')
                 .eq('id', currentUser.id)
-                .single();
+                .maybeSingle();
             
             if (profile && profile.is_active === false) {
                 console.warn("User is deactivated. Logging out.");
@@ -278,7 +278,7 @@ export const AuthProvider = ({ children }) => {
                 .from('profiles')
                 .select('is_active')
                 .eq('id', data.user.id)
-                .single();
+                .maybeSingle();
             
             if (profile && profile.is_active === false) {
                 await supabase.auth.signOut();

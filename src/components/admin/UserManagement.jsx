@@ -6,22 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { MoreHorizontal, Loader2, Copy, RefreshCw, Ban, CheckCircle, Trash2, Edit } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MoreHorizontal, Loader2, Copy, RefreshCw, Ban, CheckCircle, Edit, Trash2, AlertTriangle, UserCheck, XCircle, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useData } from '@/contexts/DataContext';
 import { Badge } from '@/components/ui/badge';
+import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 // Helper component for user form
 const UserForm = ({ userToEdit, onSave, onCancel }) => {
@@ -73,11 +76,9 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
         }).eq('id', userToEdit.id);
         if (profileError) throw profileError;
       } else {
-        // Note: Direct user creation is limited without Admin API access in client
-        // This is a placeholder for potential RPC or backend integration
-        throw new Error("La création directe d'utilisateur n'est pas supportée depuis cette interface. Invitez l'utilisateur à s'inscrire.");
+        throw new Error("La création directe d'utilisateur n'est pas supportée depuis cette interface.");
       }
-      toast({ title: 'Succès', description: `Utilisateur ${userToEdit ? 'mis à jour' : 'créé'} avec succès.` });
+      toast({ title: 'Succès', description: `Utilisateur mis à jour avec succès.` });
       onSave();
     } catch (error) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
@@ -104,36 +105,44 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
       <Input name="city" placeholder="Ville" value={formData.city} onChange={handleChange} />
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onCancel}>Annuler</Button>
-        <Button type="submit" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : (userToEdit ? 'Mettre à jour' : 'Créer')}</Button>
+        <Button type="submit" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : 'Mettre à jour'}</Button>
       </DialogFooter>
     </form>
   );
 };
 
 const UserManagementTab = ({ onRefresh }) => {
+  const { toast } = useToast();
+  const { userProfile } = useData(); // Use useData to get the robust user profile
+  
+  // Tabs state
+  const [activeTab, setActiveTab] = useState('users');
+
+  // Users List State
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
-  
-  // State for delete confirmation
+  const [toggleLoading, setToggleLoading] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  // State for status toggle confirmation (optional, currently direct action)
-  const [toggleLoading, setToggleLoading] = useState(false);
-
-  const { toast } = useToast();
-  const { user: currentUser } = useAuth();
   const [pagination, setPagination] = useState({ page: 0, size: 20 });
   const [totalUsers, setTotalUsers] = useState(0);
   const [filters, setFilters] = useState({ user_type: 'all' });
   const [impersonatingUser, setImpersonatingUser] = useState(null);
 
+  // Reactivation Requests State
+  const [requests, setRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestActionLoading, setRequestActionLoading] = useState(null);
+
+  // Check super admin status
+  const isSuperAdmin = userProfile?.user_type === 'super_admin';
+
+  // --- Users Fetching ---
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-
     let query = supabase.from('profiles').select('*', { count: 'exact' });
 
     if (searchTerm) {
@@ -157,19 +166,36 @@ const UserManagementTab = ({ onRefresh }) => {
     setLoading(false);
   }, [searchTerm, filters, pagination, toast]);
 
-  // Real-time subscription
+  // --- Requests Fetching ---
+  const fetchRequests = useCallback(async () => {
+    setLoadingRequests(true);
+    try {
+        const { data, error } = await supabase
+            .from('reactivation_requests')
+            .select(`
+                *,
+                user:user_id (id, full_name, email, avatar_url, user_type)
+            `)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setRequests(data || []);
+    } catch (err) {
+        console.error("Fetch requests error:", err);
+        toast({ title: 'Erreur', description: "Impossible de charger les demandes", variant: 'destructive' });
+    } finally {
+        setLoadingRequests(false);
+    }
+  }, [toast]);
+
+  // Initial load
   useEffect(() => {
     fetchUsers();
+    fetchRequests();
+  }, [fetchUsers, fetchRequests]);
 
-    const channel = supabase
-      .channel('admin-users-list')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
-        fetchUsers(); // Refresh on any change
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchUsers]);
+  // --- Actions ---
 
   const handleSave = () => {
     setIsFormOpen(false);
@@ -177,33 +203,12 @@ const UserManagementTab = ({ onRefresh }) => {
     if (onRefresh) onRefresh();
   };
 
-  // Function to delete user completely
-  const handleDeleteUser = async () => {
-    if (!userToDelete) return;
-    
-    try {
-      setDeleteLoading(true);
-      const { error } = await supabase.rpc('delete_user_securely', { 
-        p_user_id: userToDelete.id, 
-        p_caller_id: currentUser.id 
-      });
-      
-      if (error) throw error;
-      
-      toast({ title: 'Succès', description: 'Utilisateur et ses données supprimés.' });
-      fetchUsers();
-      if (onRefresh) onRefresh();
-      setUserToDelete(null); // Close dialog
-    } catch (err) {
-      console.error("Delete user error:", err);
-      toast({ title: 'Erreur', description: "Échec de la suppression: " + err.message, variant: 'destructive' });
-    } finally {
-      setDeleteLoading(false);
-    }
-  }
-
-  // Function to toggle active status
   const handleToggleStatus = async (user) => {
+    if (user.user_type === 'super_admin') {
+      toast({ title: 'Action interdite', description: 'Le Super Admin ne peut pas être désactivé.', variant: 'destructive' });
+      return;
+    }
+
     try {
         setToggleLoading(true);
         const newStatus = !user.is_active;
@@ -221,12 +226,89 @@ const UserManagementTab = ({ onRefresh }) => {
         });
         
         fetchUsers();
-        if (onRefresh) onRefresh();
     } catch (err) {
         console.error("Toggle status error:", err);
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     } finally {
         setToggleLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    // Explicitly check userProfile instead of currentUser for reliability
+    if (userProfile?.user_type !== 'super_admin') {
+        toast({ title: 'Non autorisé', description: "Seul le Super Admin peut supprimer un utilisateur.", variant: 'destructive' });
+        return;
+    }
+
+    setDeleteLoading(true);
+    try {
+        const { error } = await supabase.rpc('delete_user_securely', {
+            p_user_id: userToDelete.id,
+            p_caller_id: userProfile.id
+        });
+        
+        if (error) throw error;
+        
+        toast({ title: 'Succès', description: 'Utilisateur supprimé définitivement.' });
+        fetchUsers();
+        setUserToDelete(null);
+    } catch (err) {
+        console.error("Delete error:", err);
+        toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
+    } finally {
+        setDeleteLoading(false);
+    }
+  };
+
+  const handleRequestAction = async (requestId, userId, action) => {
+    setRequestActionLoading(requestId);
+    try {
+        if (action === 'approve') {
+            // 1. Activate User
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({ is_active: true })
+                .eq('id', userId);
+            if (profileError) throw profileError;
+
+            // 2. Update Request Status
+            const { error: reqError } = await supabase
+                .from('reactivation_requests')
+                .update({ 
+                    status: 'approved', 
+                    reviewed_by: userProfile.id, 
+                    reviewed_at: new Date().toISOString() 
+                })
+                .eq('id', requestId);
+            if (reqError) throw reqError;
+
+            toast({ title: "Approuvé", description: "Utilisateur réactivé avec succès." });
+        } else {
+            // Reject
+            const { error: reqError } = await supabase
+                .from('reactivation_requests')
+                .update({ 
+                    status: 'rejected', 
+                    reviewed_by: userProfile.id, 
+                    reviewed_at: new Date().toISOString() 
+                })
+                .eq('id', requestId);
+            if (reqError) throw reqError;
+
+            toast({ title: "Rejeté", description: "Demande de réactivation rejetée." });
+        }
+        
+        // Refresh both lists
+        fetchRequests();
+        fetchUsers();
+    } catch (err) {
+        console.error("Request action error:", err);
+        toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
+    } finally {
+        setRequestActionLoading(null);
     }
   };
 
@@ -243,127 +325,231 @@ const UserManagementTab = ({ onRefresh }) => {
       {impersonatingUser && <ImpersonationBanner user={impersonatingUser} onRevert={() => window.location.reload()} />}
 
       <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Gestion des Utilisateurs</h2>
         <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold">Gestion des Utilisateurs</h2>
-          <Badge variant="secondary">{totalUsers}</Badge>
-          <Button variant="ghost" size="icon" onClick={fetchUsers} title="Rafraîchir"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></Button>
+            <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchRequests(); }}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading || loadingRequests ? 'animate-spin' : ''}`} />
+                Actualiser
+            </Button>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <Input
-          placeholder="Rechercher (nom, email, code)..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={filters.user_type} onValueChange={(val) => setFilters({ user_type: val })}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Rôle" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous</SelectItem>
-            <SelectItem value="user">Utilisateur</SelectItem>
-            <SelectItem value="organizer">Organisateur</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-4">
+            <TabsTrigger value="users">
+                Utilisateurs
+                <Badge variant="secondary" className="ml-2 text-xs">{totalUsers}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="relative">
+                Demandes Réactivation
+                {requests.length > 0 && (
+                    <Badge variant="destructive" className="ml-2 text-xs animate-pulse">{requests.length}</Badge>
+                )}
+            </TabsTrigger>
+        </TabsList>
 
-      <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Utilisateur</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Rôle</TableHead>
-              <TableHead>Code Parrainage</TableHead>
-              <TableHead>Filleuls</TableHead>
-              <TableHead>Date d'inscription</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && users.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-            ) : users.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
-            ) : (
-              users.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="font-medium">{user.full_name || 'Sans nom'}</div>
-                    <div className="text-xs text-muted-foreground">{user.email}</div>
-                    <div className="text-xs text-muted-foreground">{user.country}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.is_active ? "success" : "destructive"} className="text-[10px]">
-                      {user.is_active ? "Actif" : "Inactif"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell><Badge variant={user.user_type === 'super_admin' ? 'destructive' : 'outline'}>{user.user_type}</Badge></TableCell>
-                  <TableCell>
-                    {user.affiliate_code ? (
-                      <div className="flex items-center gap-2">
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{user.affiliate_code}</code>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.affiliate_code)}><Copy className="h-3 w-3" /></Button>
-                      </div>
-                    ) : <span className="text-xs text-muted-foreground italic">Non généré</span>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <span className="font-bold">{user.referral_count || 0}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        
-                        <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>
-                          <Edit className="mr-2 h-4 w-4" /> Modifier
-                        </DropdownMenuItem>
-                        
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user)} disabled={toggleLoading}>
-                          {user.is_active ? (
-                            <>
-                              <Ban className="mr-2 h-4 w-4 text-orange-500" /> 
-                              <span className="text-orange-500">Désactiver</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                              <span className="text-green-500">Réactiver</span>
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-500 focus:text-red-600 focus:bg-red-50" onClick={() => setUserToDelete(user)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+        {/* --- USERS TAB --- */}
+        <TabsContent value="users">
+            <div className="flex flex-col md:flex-row gap-4 mb-4">
+                <Input
+                placeholder="Rechercher (nom, email, code)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+                />
+                <Select value={filters.user_type} onValueChange={(val) => setFilters({ user_type: val })}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Rôle" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="user">Utilisateur</SelectItem>
+                    <SelectItem value="organizer">Organisateur</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="secretary">Secrétaire</SelectItem>
+                </SelectContent>
+                </Select>
+            </div>
 
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.max(0, p.page - 1) }))} disabled={pagination.page === 0}>Précédent</Button>
-        <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
-        <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.min(pageCount - 1, p.page + 1) }))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
-      </div>
+            <div className="rounded-md border bg-card">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Rôle</TableHead>
+                    <TableHead>Code Parrainage</TableHead>
+                    <TableHead>Filleuls</TableHead>
+                    <TableHead>Date d'inscription</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {loading && users.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                    ) : users.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
+                    ) : (
+                    users.map(user => (
+                        <TableRow key={user.id}>
+                        <TableCell>
+                            <div className="font-medium">{user.full_name || 'Sans nom'}</div>
+                            <div className="text-xs text-muted-foreground">{user.email}</div>
+                            <div className="text-xs text-muted-foreground flex gap-1 items-center">
+                                {user.country} {user.city && `• ${user.city}`}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={user.is_active ? "success" : "destructive"} className="text-[10px]">
+                            {user.is_active ? "Actif" : "Inactif"}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge variant={user.user_type === 'super_admin' ? 'destructive' : 'outline'} className="gap-1">
+                                {user.user_type}
+                                {user.admin_type && ` (${user.admin_type})`}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            {user.affiliate_code ? (
+                            <div className="flex items-center gap-2">
+                                <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{user.affiliate_code}</code>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.affiliate_code)}><Copy className="h-3 w-3" /></Button>
+                            </div>
+                            ) : <span className="text-xs text-muted-foreground italic">Non généré</span>}
+                        </TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-1">
+                            <span className="font-bold">{user.referral_count || 0}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                            {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                
+                                <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>
+                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                                </DropdownMenuItem>
+                                
+                                {/* Deactivate/Reactivate - Available to all admins */}
+                                <DropdownMenuItem onClick={() => handleToggleStatus(user)} disabled={toggleLoading || user.user_type === 'super_admin'}>
+                                {user.is_active ? (
+                                    <>
+                                    <Ban className="mr-2 h-4 w-4 text-orange-500" /> 
+                                    <span className="text-orange-500">Désactiver</span>
+                                    </>
+                                ) : (
+                                    <>
+                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                    <span className="text-green-500">Réactiver</span>
+                                    </>
+                                )}
+                                </DropdownMenuItem>
+
+                                {/* Delete - ONLY Super Admin */}
+                                {isSuperAdmin && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
+                                            onClick={() => setUserToDelete(user)}
+                                            disabled={user.user_type === 'super_admin'}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </TableCell>
+                        </TableRow>
+                    ))
+                    )}
+                </TableBody>
+                </Table>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 py-4">
+                <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.max(0, p.page - 1) }))} disabled={pagination.page === 0}>Précédent</Button>
+                <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
+                <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.min(pageCount - 1, p.page + 1) }))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
+            </div>
+        </TabsContent>
+
+        {/* --- REACTIVATION REQUESTS TAB --- */}
+        <TabsContent value="requests">
+            <div className="rounded-md border bg-card">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Utilisateur</TableHead>
+                            <TableHead>Message / Motif</TableHead>
+                            <TableHead>Date de la demande</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loadingRequests ? (
+                            <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                        ) : requests.length === 0 ? (
+                            <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">Aucune demande de réactivation en attente.</TableCell></TableRow>
+                        ) : (
+                            requests.map(req => (
+                                <TableRow key={req.id}>
+                                    <TableCell>
+                                        <div className="font-medium">{req.user?.full_name || 'Inconnu'}</div>
+                                        <div className="text-xs text-muted-foreground">{req.user?.email}</div>
+                                        <Badge variant="outline" className="mt-1">{req.user?.user_type}</Badge>
+                                    </TableCell>
+                                    <TableCell className="max-w-[300px]">
+                                        <div className="flex gap-2 items-start">
+                                            <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+                                            <span className="text-sm italic text-muted-foreground">"{req.request_message || 'Pas de message'}"</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                        {format(new Date(req.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                                                onClick={() => handleRequestAction(req.id, req.user_id, 'approve')}
+                                                disabled={!!requestActionLoading}
+                                            >
+                                                {requestActionLoading === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4 mr-1" />}
+                                                Approuver
+                                            </Button>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                                onClick={() => handleRequestAction(req.id, req.user_id, 'reject')}
+                                                disabled={!!requestActionLoading}
+                                            >
+                                                {requestActionLoading === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
+                                                Rejeter
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit/Create Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -375,30 +561,31 @@ const UserManagementTab = ({ onRefresh }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert Dialog */}
+      {/* Delete Confirmation Alert (Super Admin Only) */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. Cela supprimera définitivement le compte de 
-              <span className="font-bold text-foreground"> {userToDelete?.full_name || userToDelete?.email} </span>
-              ainsi que toutes ses données associées (événements, tickets, historique).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteLoading}>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => {
-                e.preventDefault(); 
-                handleDeleteUser();
-              }} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteLoading}
-            >
-              {deleteLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Oui, supprimer"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+            <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-5 w-5" />
+                    Confirmer la suppression
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                    Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{userToDelete?.full_name || userToDelete?.email}</strong> ?
+                    <br /><br />
+                    Cette action est irréversible et supprimera toutes les données associées (transactions, événements, etc.).
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteLoading}>Annuler</AlertDialogCancel>
+                <AlertDialogAction 
+                    onClick={handleDeleteUser} 
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                    disabled={deleteLoading}
+                >
+                    {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                    Supprimer définitivement
+                </AlertDialogAction>
+            </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

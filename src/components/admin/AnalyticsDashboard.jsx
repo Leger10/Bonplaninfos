@@ -5,136 +5,137 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
-  DollarSign, 
   CreditCard, 
   TrendingUp, 
-  TrendingDown, 
   RefreshCw, 
   AlertCircle, 
   Wallet,
-  ArrowUpRight
+  ArrowUpRight,
+  PieChart as PieChartIcon,
+  Activity,
+  Coins
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts';
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { fetchWithRetry } from '@/lib/utils';
+import { fetchWithRetry, formatCurrency } from '@/lib/utils';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   
-  // Data States - Initialized with 0s
-  const [globalStats, setGlobalStats] = useState({
+  // Data States
+  const [stats, setStats] = useState({
+    totalCommissions: 0,
+    estimatedRevenue: 0,
+    totalTransactions: 0,
+    pendingWithdrawals: 0,
     totalUsers: 0,
     newUsers: 0,
-    totalRevenue: 0,
     activeEvents: 0,
-    totalTransactions: 0,
-    pendingWithdrawals: 0
+    totalSalesFcfa: 0
   });
   
   const [recentTransactions, setRecentTransactions] = useState([]);
-  const [recentWithdrawals, setRecentWithdrawals] = useState([]);
-  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
-  const [revenueData, setRevenueData] = useState([]);
   const [userActivityData, setUserActivityData] = useState([]);
   const [revenueByType, setRevenueByType] = useState([]);
 
   const fetchDashboardData = useCallback(async (forceRefresh = false) => {
-    setLoading(true);
+    if (forceRefresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
 
     try {
-      // Parallel Fetching with Retry
-      const [
-        analyticsRpc,
-        transactionsRes,
-        withdrawalsRes,
-        announcementsRes,
-        profilesRes,
-        pendingWithdrawalsCount
-      ] = await Promise.all([
-        fetchWithRetry(() => supabase.rpc('get_global_analytics')),
-        fetchWithRetry(() => supabase.from('transactions').select('*, user:user_id(full_name, email)').order('created_at', { ascending: false }).limit(10)),
-        fetchWithRetry(() => supabase.from('withdrawal_requests').select('*, user:user_id(full_name)').order('requested_at', { ascending: false }).limit(10)),
-        fetchWithRetry(() => supabase.from('announcements').select('*').order('created_at', { ascending: false }).limit(5)),
-        fetchWithRetry(() => supabase.from('profiles').select('created_at').gte('created_at', subDays(new Date(), 30).toISOString())),
-        fetchWithRetry(() => supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'))
-      ]);
+      // 1. Fetch Key Stats from new RPC
+      const { data: rpcData, error: rpcError } = await fetchWithRetry(() => 
+        supabase.rpc('get_super_admin_dashboard_stats')
+      );
 
-      if (analyticsRpc.error) throw analyticsRpc.error;
-      
-      // Process RPC Data - Handle empty array safely
-      const analyticsData = (analyticsRpc.data && analyticsRpc.data[0]) ? analyticsRpc.data[0] : {};
-      
-      // Process Revenue Chart Data
-      const rawRevenueData = analyticsData.monthly_revenue || [];
-      const formattedRevenueData = rawRevenueData.map(item => ({
-        name: format(new Date(item.month), 'MMM yyyy', { locale: fr }),
-        revenue: (item.total_pi || 0) * 10 
-      }));
+      if (rpcError) throw rpcError;
 
-      // Process User Activity Chart
+      // 2. Fetch Recent Transactions
+      const { data: transactionsData } = await fetchWithRetry(() => 
+        supabase.from('transactions')
+          .select('*, user:user_id(full_name, email)')
+          .order('created_at', { ascending: false })
+          .limit(5)
+      );
+
+      // 3. Fetch Data for Charts (Activity over 30 days)
+      const { data: profilesData } = await fetchWithRetry(() => 
+        supabase.from('profiles')
+          .select('created_at')
+          .gte('created_at', subDays(new Date(), 30).toISOString())
+      );
+
+      // 4. Fetch Revenue Breakdown (Simulated from coin_spending for now or use existing rpc if available)
+      const { data: spendingData } = await fetchWithRetry(() => 
+        supabase.from('coin_spending')
+          .select('purpose, amount')
+          .gte('created_at', subDays(new Date(), 90).toISOString())
+      );
+
+      // --- Process Data ---
+
+      // Process Activity Chart
       const activityMap = {};
       const today = new Date();
       for (let i = 29; i >= 0; i--) {
-        const date = subDays(today, i);
-        activityMap[format(date, 'yyyy-MM-dd')] = 0;
+        const dateKey = format(subDays(today, i), 'yyyy-MM-dd');
+        activityMap[dateKey] = 0;
       }
-      
-      (profilesRes.data || []).forEach(profile => {
+      (profilesData || []).forEach(profile => {
         const dateKey = format(new Date(profile.created_at), 'yyyy-MM-dd');
-        if (activityMap[dateKey] !== undefined) {
-          activityMap[dateKey]++;
-        }
+        if (activityMap[dateKey] !== undefined) activityMap[dateKey]++;
       });
-
       const formattedActivityData = Object.entries(activityMap).map(([date, count]) => ({
         date: format(new Date(date), 'dd MMM', { locale: fr }),
         users: count
       }));
 
-      setGlobalStats({
-        totalUsers: analyticsData.total_users || 0,
-        newUsers: analyticsData.new_users_last_30_days || 0,
-        totalRevenue: (analyticsData.total_revenue_pi || 0) * 10,
-        activeEvents: analyticsData.active_events || 0,
-        totalTransactions: analyticsData.total_coins_purchased || 0,
-        pendingWithdrawals: pendingWithdrawalsCount.count || 0
+      // Process Revenue Pie Chart
+      const typeMap = {};
+      (spendingData || []).forEach(item => {
+        const type = item.purpose || 'Autre';
+        typeMap[type] = (typeMap[type] || 0) + (item.amount || 0);
+      });
+      const formattedRevenueType = Object.entries(typeMap).map(([name, value]) => ({
+        name: name === 'ticket_purchase' ? 'Billetterie' : 
+              name === 'vote_participation' ? 'Votes' : 
+              name === 'raffle_participation' ? 'Tombola' : name,
+        value
+      })).sort((a, b) => b.value - a.value);
+
+      // Update State
+      setStats({
+        totalCommissions: rpcData?.total_commissions || 0,
+        estimatedRevenue: rpcData?.total_user_balance || 0, // Corresponds to user balance sum
+        totalTransactions: rpcData?.total_transactions || 0,
+        pendingWithdrawals: rpcData?.pending_withdrawals || 0,
+        totalUsers: rpcData?.total_users || 0,
+        newUsers: rpcData?.new_users || 0,
+        activeEvents: rpcData?.active_events || 0,
+        totalSalesFcfa: rpcData?.total_sales_fcfa || 0
       });
 
-      setRecentTransactions(transactionsRes.data || []);
-      setRecentWithdrawals(withdrawalsRes.data || []);
-      setRecentAnnouncements(announcementsRes.data || []);
-      setRevenueData(formattedRevenueData);
+      setRecentTransactions(transactionsData || []);
       setUserActivityData(formattedActivityData);
-      setRevenueByType(analyticsData.revenue_by_type || []);
+      setRevenueByType(formattedRevenueType);
 
     } catch (err) {
-      console.error("Error fetching dashboard data:", err);
-      // We only set error if it's a critical failure, otherwise we show 0s
-      if (err.message?.includes('fetch') || err.message?.includes('connection')) {
-          setError("Erreur de connexion. Vérifiez votre internet.");
-      }
+      console.error("Dashboard fetch error:", err);
+      setError("Impossible de charger les données. Vérifiez votre connexion.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -144,235 +145,254 @@ const AnalyticsDashboard = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4 text-center p-8 border rounded-xl bg-destructive/5">
-        <AlertCircle className="w-12 h-12 text-destructive" />
-        <h3 className="text-xl font-bold text-destructive">Erreur de chargement</h3>
-        <p className="text-muted-foreground max-w-md">{error}</p>
-        <Button onClick={() => fetchDashboardData(true)} variant="outline" className="mt-4">
+      <div className="flex flex-col items-center justify-center p-8 border border-destructive/20 rounded-xl bg-destructive/5 text-destructive animate-in fade-in">
+        <AlertCircle className="w-12 h-12 mb-4" />
+        <h3 className="text-xl font-bold">Erreur de chargement</h3>
+        <p className="mb-4">{error}</p>
+        <Button onClick={() => fetchDashboardData(true)} variant="outline">
           <RefreshCw className="w-4 h-4 mr-2" /> Réessayer
         </Button>
       </div>
     );
   }
 
+  const StatCard = ({ title, value, subtext, icon: Icon, colorClass, borderClass }) => (
+    <Card className={`relative overflow-hidden ${borderClass ? `border-l-4 ${borderClass}` : ''}`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        {Icon && <Icon className={`h-4 w-4 ${colorClass}`} />}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {subtext && <p className="text-xs text-muted-foreground mt-1">{subtext}</p>}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight">Tableau de Bord</h2>
-          <p className="text-muted-foreground">
-            Vue d'ensemble des performances et de l'activité de la plateforme.
-          </p>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Super Admin Dashboard</h2>
+          <p className="text-muted-foreground">Vue d'ensemble et métriques clés de la plateforme.</p>
         </div>
-        <Button variant="outline" onClick={() => fetchDashboardData(true)} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Chargement...' : 'Actualiser'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => fetchDashboardData(true)} 
+            variant="outline" 
+            disabled={refreshing || loading}
+            className="shadow-sm"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Mise à jour...' : 'Actualiser'}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
-          Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Revenu Total (Estimé)</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{globalStats.totalRevenue.toLocaleString()} F CFA</div>
-                <p className="text-xs text-muted-foreground flex items-center mt-1">
-                  <TrendingUp className="w-3 h-3 text-green-500 mr-1" /> 
-                  Basé sur les dépenses en pièces
-                </p>
-              </CardContent>
-            </Card>
+      {/* Loading Skeletons */}
+      {(loading && !refreshing) ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* 1. Commissions */}
+          <StatCard
+            title="Commissions Totales"
+            value={`${stats.totalCommissions.toLocaleString()} π`}
+            subtext="5% net + 1π (événements protégés)"
+            icon={Coins}
+            colorClass="text-yellow-500"
+            borderClass="border-l-yellow-500"
+          />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Utilisateurs Inscrits</CardTitle>
-                <Users className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{globalStats.totalUsers}</div>
-                <p className="text-xs text-muted-foreground flex items-center mt-1">
-                  <ArrowUpRight className="w-3 h-3 text-green-500 mr-1" />
-                  +{globalStats.newUsers} ce mois-ci
-                </p>
-              </CardContent>
-            </Card>
+          {/* 2. Estimated Revenue (User Holdings) */}
+          <StatCard
+            title="Revenu Estimé (Solde)"
+            value={`${stats.estimatedRevenue.toLocaleString()} π`}
+            subtext="Masse monétaire utilisateurs (Crédité - Utilisé)"
+            icon={Wallet}
+            colorClass="text-blue-500"
+            borderClass="border-l-blue-500"
+          />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Transactions Totales</CardTitle>
-                <CreditCard className="h-4 w-4 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{globalStats.totalTransactions}</div>
-                <p className="text-xs text-muted-foreground mt-1">Achats et crédits de pièces</p>
-              </CardContent>
-            </Card>
+          {/* 3. Registered Users */}
+          <StatCard
+            title="Utilisateurs Inscrits"
+            value={stats.totalUsers.toLocaleString()}
+            subtext={`+${stats.newUsers} nouveaux (30j)`}
+            icon={Users}
+            colorClass="text-green-500"
+            borderClass="border-l-green-500"
+          />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Retraits en Attente</CardTitle>
-                <Wallet className="h-4 w-4 text-orange-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{globalStats.pendingWithdrawals}</div>
-                <p className="text-xs text-muted-foreground mt-1">Demandes à traiter</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
+          {/* 4. Pending Withdrawals */}
+          <StatCard
+            title="Retraits en Attente"
+            value={stats.pendingWithdrawals}
+            subtext="Demandes à traiter"
+            icon={AlertCircle}
+            colorClass="text-red-500"
+            borderClass="border-l-red-500"
+          />
+        </div>
+      )}
+
+      {/* Secondary Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="Chiffre d'Affaires (Ventes)"
+          value={formatCurrency(stats.totalSalesFcfa)}
+          subtext="Total achats de packs"
+          icon={TrendingUp}
+          colorClass="text-emerald-600"
+        />
+        <StatCard
+          title="Total Transactions"
+          value={stats.totalTransactions.toLocaleString()}
+          subtext="Volume global d'opérations"
+          icon={CreditCard}
+          colorClass="text-purple-500"
+        />
+        <StatCard
+          title="Événements Actifs"
+          value={stats.activeEvents}
+          subtext="En ligne actuellement"
+          icon={Activity}
+          colorClass="text-indigo-500"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      {/* Charts Section */}
+      <div className="grid gap-4 md:grid-cols-7">
+        {/* Activity Chart */}
+        <Card className="col-span-4 shadow-md">
           <CardHeader>
-            <CardTitle>Activité des Inscriptions</CardTitle>
-            <CardDescription>Nouveaux utilisateurs sur les 30 derniers jours</CardDescription>
+            <CardTitle>Activité Utilisateurs</CardTitle>
+            <CardDescription>Nouvelles inscriptions sur 30 jours</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
-            {loading ? (
-              <Skeleton className="h-[300px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <AreaChart data={userActivityData}>
-                  <defs>
-                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} minTickGap={30} />
-                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }} itemStyle={{ color: '#fff' }} />
-                  <Area type="monotone" dataKey="users" stroke="#3b82f6" fillOpacity={1} fill="url(#colorUsers)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={userActivityData}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#888888" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  minTickGap={30} 
+                />
+                <YAxis 
+                  stroke="#888888" 
+                  fontSize={12} 
+                  tickLine={false} 
+                  axisLine={false} 
+                  allowDecimals={false}
+                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: 'none', borderRadius: '8px', color: '#fff' }} 
+                />
+                <Area type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorUsers)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        {/* Revenue Type Chart */}
+        <Card className="col-span-3 shadow-md">
           <CardHeader>
-            <CardTitle>Répartition par Type</CardTitle>
-            <CardDescription>Sources de revenus</CardDescription>
+            <CardTitle>Sources de Dépenses</CardTitle>
+            <CardDescription>Utilisation des pièces par type</CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <Skeleton className="h-[300px] w-full" />
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={revenueByType}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="total_pi"
-                  >
-                    {revenueByType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={revenueByType}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {revenueByType.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold text-lg">
+                  Types
+                </text>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {revenueByType.map((entry, index) => (
+                <Badge key={index} variant="outline" className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  {entry.name}
+                </Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="transactions" className="space-y-4">
-        <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="transactions">Transactions Récentes</TabsTrigger>
-          <TabsTrigger value="withdrawals">Retraits Récents</TabsTrigger>
-          <TabsTrigger value="announcements">Annonces Récentes</TabsTrigger>
+      {/* Recent Transactions List */}
+      <Tabs defaultValue="recent_tx" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="recent_tx">Dernières Transactions</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="transactions" className="space-y-4">
+        <TabsContent value="recent_tx">
           <Card>
             <CardHeader>
-              <CardTitle>Transactions Récentes</CardTitle>
-              <CardDescription>Les 10 dernières transactions effectuées sur la plateforme.</CardDescription>
+              <CardTitle>Flux Récent</CardTitle>
+              <CardDescription>Les 5 dernières opérations financières.</CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ) : recentTransactions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">Aucune transaction récente.</div>
-              ) : (
-                <div className="space-y-4">
-                  {recentTransactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg bg-card/50">
+              <div className="space-y-4">
+                {recentTransactions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">Aucune transaction récente</p>
+                ) : (
+                  recentTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-card/80 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className={`p-2 rounded-full ${transaction.amount_pi > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                          {transaction.amount_pi > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <div className={`p-2 rounded-full ${tx.amount_pi > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                          {tx.amount_pi > 0 ? <TrendingUp className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                         </div>
                         <div>
-                          <p className="font-medium">{transaction.description || 'Transaction sans description'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {transaction.user?.full_name || 'Utilisateur inconnu'} • {format(new Date(transaction.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
-                          </p>
+                          <p className="font-medium text-sm">{tx.description || tx.transaction_type}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{tx.user?.full_name || 'Utilisateur'}</span>
+                            <span>•</span>
+                            <span>{format(new Date(tx.created_at), 'dd MMM HH:mm', { locale: fr })}</span>
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className={`font-bold ${transaction.amount_pi > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {transaction.amount_pi > 0 ? '+' : ''}{transaction.amount_pi} π
-                        </span>
+                        <div className={`font-bold ${tx.amount_pi > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {tx.amount_pi > 0 ? '+' : ''}{tx.amount_pi} π
+                        </div>
+                        {tx.amount_fcfa && (
+                          <div className="text-xs text-muted-foreground">
+                            {Math.abs(tx.amount_fcfa).toLocaleString()} FCFA
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="withdrawals" className="space-y-4">
-            <Card>
-                <CardHeader><CardTitle>Retraits Récents</CardTitle></CardHeader>
-                <CardContent>
-                    {recentWithdrawals.length === 0 ? <div className="text-center py-4 text-muted-foreground">Aucun retrait récent.</div> : (
-                        <div className="space-y-2">
-                            {recentWithdrawals.map(w => (
-                                <div key={w.id} className="flex justify-between p-2 border rounded">
-                                    <span>{w.user?.full_name}</span>
-                                    <span className="font-bold">{w.amount_pi} π</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-
-        <TabsContent value="announcements" className="space-y-4">
-            <Card>
-                <CardHeader><CardTitle>Annonces Récentes</CardTitle></CardHeader>
-                <CardContent>
-                    {recentAnnouncements.length === 0 ? <div className="text-center py-4 text-muted-foreground">Aucune annonce récente.</div> : (
-                        <div className="space-y-2">
-                            {recentAnnouncements.map(a => (
-                                <div key={a.id} className="flex justify-between p-2 border rounded items-center">
-                                    <span className="font-medium">{a.title}</span>
-                                    <Badge>{a.type}</Badge>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
         </TabsContent>
       </Tabs>
     </div>

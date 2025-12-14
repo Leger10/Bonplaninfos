@@ -15,12 +15,23 @@ export const generateTicketPDF = (event, tickets, user) => {
       // --- Background & Border ---
       doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, 105, 148, 'F');
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
+      
+      // Determine Border Color based on ticket color
+      let r=200, g=200, b=200;
+      if (ticket.color === 'gold') { r=255; g=215; b=0; }
+      if (ticket.color === 'silver') { r=192; g=192; b=192; }
+      if (ticket.color === 'bronze') { r=205; g=127; b=50; }
+      if (ticket.color === 'purple') { r=128; g=0; b=128; }
+      if (ticket.color === 'red') { r=220; g=20; b=60; }
+      if (ticket.color === 'blue') { r=59; g=130; b=246; }
+      if (ticket.color === 'green') { r=34; g=197; b=94; }
+      
+      doc.setDrawColor(r, g, b);
+      doc.setLineWidth(1.5);
       doc.rect(5, 5, 95, 138, 'S'); // Inner border
       
-      // --- Header Bar (Orange Brand Color) ---
-      doc.setFillColor(255, 140, 0); 
+      // --- Header Bar ---
+      doc.setFillColor(r, g, b); 
       doc.rect(5, 5, 95, 22, 'F');
       
       doc.setTextColor(255, 255, 255);
@@ -70,6 +81,7 @@ export const generateTicketPDF = (event, tickets, user) => {
 
       // --- Separator ---
       doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.5);
       doc.setLineDash([2, 2], 0);
       doc.line(10, 75, 95, 75);
       doc.setLineDash([]);
@@ -97,28 +109,28 @@ export const generateTicketPDF = (event, tickets, user) => {
       doc.setFont('helvetica', 'bold');
       doc.text((user.full_name || user.email || "Invité").toUpperCase(), 30, 108);
       
-      doc.setFont('helvetica', 'normal');
-      doc.text(`CODE:`, 10, 114);
-      doc.setFont('helvetica', 'bold');
-      doc.text(ticket.ticket_number || "N/A", 30, 114);
+      // --- Short Code Display ---
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text(ticket.ticket_code_short || ticket.ticket_number || "CODE", 52.5, 115, { align: 'center' });
 
       // --- QR Code ---
       // Using external API for QR generation in client-side PDF for simplicity
-      if (ticket.ticket_number) {
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticket.ticket_number)}`;
-          try {
-              doc.addImage(qrUrl, 'PNG', 37.5, 118, 30, 30);
-          } catch (e) {
-              doc.setDrawColor(0);
-              doc.rect(37.5, 118, 30, 30);
-              doc.setFontSize(8);
-              doc.text("QR Error", 52.5, 133, {align:'center'});
-          }
+      const qrData = ticket.ticket_number || ticket.ticket_code_short || "ERROR";
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+      try {
+          doc.addImage(qrUrl, 'PNG', 37.5, 118, 30, 30);
+      } catch (e) {
+          doc.setDrawColor(0);
+          doc.rect(37.5, 118, 30, 30);
+          doc.setFontSize(8);
+          doc.text("QR Error", 52.5, 133, {align:'center'});
       }
 
       // --- Footer ---
-      doc.setFontSize(7);
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.text("Ce ticket est unique. Ni échangeable, ni remboursable.", 52.5, 153, { align: 'center' });
     });

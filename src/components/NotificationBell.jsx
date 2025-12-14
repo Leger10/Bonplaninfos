@@ -66,11 +66,44 @@ const NotificationItem = ({ notification, onNavigate, onDelete }) => {
 
 const NotificationBell = () => {
   const { user } = useAuth();
-  const { notificationCount, fetchNotificationCount } = useData();
+  const { notificationCount, fetchNotificationCount, triggerNotificationAnimation, notificationBellAnimation } = useData();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Subscribe to Realtime Notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+        .channel('realtime:notifications')
+        .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+            console.log('Realtime notification received:', payload);
+            fetchNotificationCount();
+            triggerNotificationAnimation();
+            
+            // Show toast for the new notification
+            toast({
+                title: payload.new.title,
+                description: payload.new.message,
+                variant: 'info'
+            });
+            
+            // If the bell is open, add it to the list immediately
+            if (isOpen) {
+                setNotifications(prev => [payload.new, ...prev]);
+            }
+        })
+        .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, isOpen, fetchNotificationCount, triggerNotificationAnimation]);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -85,7 +118,7 @@ const NotificationBell = () => {
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de charger les notifications.", variant: "destructive" });
+      console.error("Error loading notifications", error);
     } finally {
       setLoading(false);
     }
@@ -140,9 +173,9 @@ const NotificationBell = () => {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <motion.div
-          animate={notificationCount > 0 ? {
+          animate={notificationBellAnimation || notificationCount > 0 ? {
             rotate: [0, -15, 10, -10, 5, -5, 0],
-            transition: { duration: 0.8, repeat: Infinity, repeatDelay: 2, ease: "easeInOut" }
+            transition: { duration: 0.8, repeat: notificationBellAnimation ? 1 : 0, repeatDelay: 2, ease: "easeInOut" }
           } : { rotate: 0 }}
           className="relative"
         >

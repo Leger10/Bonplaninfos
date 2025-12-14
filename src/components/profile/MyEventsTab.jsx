@@ -23,10 +23,9 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
   const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, event: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const canCreateEvent = userProfile && (userProfile.user_type === 'organizer' || userProfile.user_type === 'admin' || userProfile.user_type === 'super_admin');
+  const canCreateEvent = userProfile && (userProfile.user_type === 'organizer' || userProfile.user_type === 'admin' || userProfile.user_type === 'super_admin' || userProfile.user_type === 'user');
 
   const handleDeleteClick = (event) => {
-    console.log('MyEventsTab: Delete clicked for event', event.id);
     setDeleteConfirmation({ isOpen: true, event });
   };
 
@@ -44,11 +43,7 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
           const { error: storageError } = await supabase.storage
             .from(storageInfo.bucket)
             .remove([storageInfo.path]);
-          
-          if (storageError) {
-            console.warn("Could not delete image from storage:", storageError);
-            // We continue even if image delete fails, as DB cleanup is priority
-          }
+          if (storageError) console.warn("Could not delete image from storage:", storageError);
         }
       }
 

@@ -15,7 +15,7 @@ const ToastIcon = ({ variant }) => {
     case 'success':
       return <CheckCircle className="text-green-500" />;
     case 'destructive':
-      return <AlertTriangle className="text-white" />;
+      return <AlertTriangle className="text-white" />; // Changed icon color to white for contrast
     case 'info':
       return <Info className="text-blue-500" />;
     default:
