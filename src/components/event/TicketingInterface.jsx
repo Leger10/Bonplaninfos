@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, AlertCircle, Gift, Mail, CheckCircle2, Trash2 } from 'lucide-react';
+import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, AlertCircle, Gift, Mail, CheckCircle2, Trash2, Star, Crown, Zap, Sparkles, Gem, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,33 +13,69 @@ import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// MODIFICATION 1: Ajout de couleurs de texte pour assurer la lisibilité
+// MODIFICATION COMPLÈTE : Couleurs vibrantes avec du texte blanc
 const TICKET_COLORS = {
-    blue: 'bg-blue-500 border-blue-500 text-white',
-    bronze: 'bg-amber-600 border-amber-600 text-white',
-    silver: 'bg-slate-400 border-slate-400 text-slate-900',
-    gold: 'bg-yellow-500 border-yellow-500 text-slate-900',
-    purple: 'bg-purple-600 border-purple-600 text-white',
-    red: 'bg-red-500 border-red-500 text-white',
-    green: 'bg-green-500 border-green-500 text-white',
-    black: 'bg-slate-900 border-slate-900 text-white',
-};
-
-// MODIFICATION 2: Ajout de variantes claires pour les cartes
-const TICKET_LIGHT_VARIANTS = {
-    blue: 'bg-blue-50 border-blue-200 hover:border-blue-500',
-    bronze: 'bg-amber-50 border-amber-200 hover:border-amber-500',
-    silver: 'bg-slate-100 border-slate-300 hover:border-slate-500',
-    gold: 'bg-yellow-50 border-yellow-200 hover:border-yellow-500',
-    purple: 'bg-purple-50 border-purple-200 hover:border-purple-500',
-    red: 'bg-red-50 border-red-200 hover:border-red-500',
-    green: 'bg-green-50 border-green-200 hover:border-green-500',
-    black: 'bg-slate-100 border-slate-300 hover:border-slate-700',
+    blue: {
+        bg: 'bg-gradient-to-br from-blue-600 to-blue-700',
+        border: 'border-blue-700',
+        hover: 'hover:from-blue-700 hover:to-blue-800',
+        text: 'text-white',
+        badge: 'bg-blue-500 text-white'
+    },
+    bronze: {
+        bg: 'bg-gradient-to-br from-amber-700 to-amber-800',
+        border: 'border-amber-800',
+        hover: 'hover:from-amber-800 hover:to-amber-900',
+        text: 'text-white',
+        badge: 'bg-amber-600 text-white'
+    },
+    silver: {
+        bg: 'bg-gradient-to-br from-slate-500 to-slate-600',
+        border: 'border-slate-600',
+        hover: 'hover:from-slate-600 hover:to-slate-700',
+        text: 'text-white',
+        badge: 'bg-slate-400 text-slate-900'
+    },
+    gold: {
+        bg: 'bg-gradient-to-br from-yellow-600 to-yellow-700',
+        border: 'border-yellow-700',
+        hover: 'hover:from-yellow-700 hover:to-yellow-800',
+        text: 'text-white',
+        badge: 'bg-yellow-500 text-slate-900'
+    },
+    purple: {
+        bg: 'bg-gradient-to-br from-purple-600 to-purple-700',
+        border: 'border-purple-700',
+        hover: 'hover:from-purple-700 hover:to-purple-800',
+        text: 'text-white',
+        badge: 'bg-purple-500 text-white'
+    },
+    red: {
+        bg: 'bg-gradient-to-br from-red-600 to-red-700',
+        border: 'border-red-700',
+        hover: 'hover:from-red-700 hover:to-red-800',
+        text: 'text-white',
+        badge: 'bg-red-500 text-white'
+    },
+    green: {
+        bg: 'bg-gradient-to-br from-green-600 to-green-700',
+        border: 'border-green-700',
+        hover: 'hover:from-green-700 hover:to-green-800',
+        text: 'text-white',
+        badge: 'bg-green-500 text-white'
+    },
+    black: {
+        bg: 'bg-gradient-to-br from-slate-800 to-slate-900',
+        border: 'border-slate-900',
+        hover: 'hover:from-slate-900 hover:to-black',
+        text: 'text-white',
+        badge: 'bg-slate-700 text-white'
+    },
 };
 
 const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh }) => {
     const { user } = useAuth();
-    
+
     // Load cart from localStorage or start empty
     const [cart, setCart] = useState(() => {
         try {
@@ -131,14 +167,14 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             // Process returned tickets
             const generatedTickets = data.tickets || [];
             let ticketCounter = 0;
-            
+
             const newTickets = Object.entries(cart).flatMap(([typeId, qty]) => {
                 const type = ticketTypes.find(t => t.id === typeId);
                 if (!type) return [];
                 const typeTickets = [];
                 for (let i = 0; i < qty; i++) {
                     const ticketData = generatedTickets[ticketCounter] || {};
-                    
+
                     typeTickets.push({
                         type_name: type.name,
                         price: getActivePrice(type),
@@ -154,11 +190,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             setPurchasedTickets(newTickets);
             setShowCheckoutModal(false);
             setShowSuccessModal(true);
-            
+
             // Clear cart
             setCart({});
             localStorage.removeItem(`cart_${event.id}`);
-            
+
             setIsGift(false);
             setRecipientEmail('');
             if (onRefresh) onRefresh();
@@ -175,6 +211,21 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
         if (purchasedTickets) {
             generateTicketPDF(event, purchasedTickets, user);
             toast({ title: "Téléchargement", description: "Votre PDF a été généré." });
+        }
+    };
+
+    // Icônes pour chaque type de billet
+    const getTicketIcon = (color) => {
+        switch (color) {
+            case 'gold': return <Crown className="w-5 h-5 text-yellow-300" />;
+            case 'silver': return <Star className="w-5 h-5 text-slate-300" />;
+            case 'bronze': return <Trophy className="w-5 h-5 text-amber-300" />;
+            case 'purple': return <Gem className="w-5 h-5 text-purple-300" />;
+            case 'blue': return <Sparkles className="w-5 h-5 text-blue-300" />;
+            case 'red': return <Zap className="w-5 h-5 text-red-300" />;
+            case 'green': return <Sparkles className="w-5 h-5 text-green-300" />;
+            case 'black': return <Star className="w-5 h-5 text-slate-300" />;
+            default: return <Ticket className="w-5 h-5 text-white" />;
         }
     };
 
@@ -214,59 +265,65 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
                         const isSoldOut = available <= 0;
                         const colorStyle = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
-                        const lightStyle = TICKET_LIGHT_VARIANTS[type.color] || TICKET_LIGHT_VARIANTS.blue;
 
                         return (
-                            <Card key={type.id} className={`relative overflow-hidden border-l-4 transition-all hover:shadow-lg hover:-translate-y-1 ${lightStyle} ${isSoldOut ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                            <Card key={type.id} className={`relative overflow-hidden transition-all hover:shadow-2xl hover:-translate-y-1 transform duration-300 ${colorStyle.bg} ${colorStyle.border} ${colorStyle.hover} ${isSoldOut ? 'opacity-80 grayscale-[0.3]' : ''}`}>
+                                <div className={`absolute top-0 right-0 ${colorStyle.bg} text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10`}>
+                                    {type.color.charAt(0).toUpperCase() + type.color.slice(1)}
+                                </div>
+
                                 <CardContent className="p-6 flex flex-col h-full justify-between gap-4">
                                     <div>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold text-xl text-foreground flex items-center gap-2">
-                                                {type.name}
-                                                {type.color === 'gold' && <span className="text-lg">👑</span>}
-                                            </h3>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-2">
+                                                {getTicketIcon(type.color)}
+                                                <h3 className={`font-bold text-xl ${colorStyle.text} flex items-center gap-2`}>
+                                                    {type.name}
+                                                </h3>
+                                            </div>
                                             <div className="text-right shrink-0 ml-2">
                                                 {isPresale && regularPrice > price && (
-                                                    <span className="text-xs text-muted-foreground line-through block">{regularPrice} π</span>
+                                                    <span className={`text-xs ${colorStyle.text} opacity-80 line-through block`}>{regularPrice} π</span>
                                                 )}
-                                                <div className="font-bold text-2xl text-primary flex items-center justify-end gap-1">
-                                                    {price} <Coins className="w-5 h-5" />
+                                                <div className={`font-bold text-2xl ${colorStyle.text} flex items-center justify-end gap-1`}>
+                                                    {price} <Coins className="w-6 h-6 text-yellow-300" />
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-sm text-muted-foreground line-clamp-3 mb-4 min-h-[3rem]">{type.description || 'Accès standard à l\'événement.'}</p>
-                                        
-                                        {/* MODIFICATION: Badge de couleur avec meilleur contraste */}
-                                        <div className="mb-2">
-                                            <Badge className={`${colorStyle} text-xs font-semibold px-2 py-1`}>
-                                                {type.color.charAt(0).toUpperCase() + type.color.slice(1)}
-                                            </Badge>
-                                        </div>
+                                        <p className={`text-sm ${colorStyle.text} opacity-90 line-clamp-3 mb-4 min-h-[3rem]`}>
+                                            {type.description || 'Accès standard à l\'événement.'}
+                                        </p>
                                     </div>
 
-                                    <div className="flex items-center justify-between pt-4 border-t border-border/50 mt-auto">
+                                    <div className="flex items-center justify-between pt-4 border-t border-white/30 mt-auto">
                                         <div className="text-xs font-medium flex items-center">
                                             {isSoldOut ?
-                                                <Badge variant="destructive" className="uppercase tracking-wide text-white">Épuisé</Badge>
+                                                <Badge variant="destructive" className="uppercase tracking-wide text-white bg-red-600 border-red-700">
+                                                    Épuisé
+                                                </Badge>
                                                 :
-                                                <span className={`flex items-center ${available < 10 ? 'text-orange-600 font-bold dark:text-orange-400' : 'text-muted-foreground'}`}>
+                                                <span className={`flex items-center ${available < 10 ? 'text-yellow-300 font-bold' : colorStyle.text} opacity-90`}>
                                                     <Ticket className="w-3 h-3 mr-1" />
                                                     {available} restants
                                                 </span>
                                             }
                                         </div>
 
-                                        <div className="flex items-center gap-3 bg-muted/50 p-1 rounded-lg">
+                                        <div className="flex items-center gap-3 bg-white/20 p-1 rounded-lg backdrop-blur-sm">
                                             <Button
-                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm text-foreground"
+                                                size="icon" variant="ghost"
+                                                className="h-8 w-8 hover:bg-white/30 text-white shadow-sm"
                                                 onClick={() => handleQuantityChange(type.id, -1)}
                                                 disabled={!cart[type.id] || isSoldOut}
                                             >
                                                 <Minus className="w-3 h-3" />
                                             </Button>
-                                            <span className="w-8 text-center font-bold text-lg text-foreground">{cart[type.id] || 0}</span>
+                                            <span className={`w-8 text-center font-bold text-lg ${colorStyle.text}`}>
+                                                {cart[type.id] || 0}
+                                            </span>
                                             <Button
-                                                size="icon" variant="ghost" className="h-8 w-8 hover:bg-background shadow-sm text-foreground"
+                                                size="icon" variant="ghost"
+                                                className="h-8 w-8 hover:bg-white/30 text-white shadow-sm"
                                                 onClick={() => handleQuantityChange(type.id, 1)}
                                                 disabled={available <= (cart[type.id] || 0) || isSoldOut}
                                             >
@@ -321,21 +378,21 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         <DialogTitle className="text-foreground">Récapitulatif de la commande</DialogTitle>
                         <DialogDescription className="text-muted-foreground">Vérifiez vos billets avant le paiement.</DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="py-4 space-y-4">
                         <div className="bg-muted/30 p-4 rounded-lg space-y-3 max-h-[40vh] overflow-y-auto">
                             {Object.entries(cart).map(([id, qty]) => {
                                 const type = ticketTypes.find(t => t.id === id);
-                                if(!type) return null;
+                                if (!type) return null;
                                 const colorStyle = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
                                 return (
                                     <div key={id} className="flex justify-between items-center border-b border-border/50 pb-2 last:border-0 last:pb-0">
                                         <div>
                                             <p className="font-bold text-foreground flex items-center gap-2">
-                                                {type.name} 
-                                                <Badge className={`${colorStyle} text-xs px-2 py-0.5 font-semibold`}>
+                                                {type.name}
+                                                <span className={`text-xs px-2 py-0.5 rounded ${colorStyle.badge} font-semibold`}>
                                                     {type.color}
-                                                </Badge>
+                                                </span>
                                             </p>
                                             <p className="text-xs text-muted-foreground">{qty} x {getActivePrice(type)} π</p>
                                         </div>
@@ -389,7 +446,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 </DialogContent>
             </Dialog>
 
-            {/* MODIFICATION 3: Message de confirmation mis à jour */}
+            {/* Success Modal with PDF Download */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
                 <DialogContent className="sm:max-w-md text-center">
                     <DialogHeader>
@@ -401,10 +458,10 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         </DialogTitle>
                         <DialogDescription className="text-base text-gray-700 dark:text-gray-300 space-y-3">
                             <p className="font-medium">
-                                Votre commande a bien été effectuée, les billets sont envoyés à l'adresse email. 
+                                Votre commande a bien été effectuée, les billets sont envoyés à l'adresse email.
                                 <span className="block mt-1 font-semibold">Allez-y vérifier !</span>
                             </p>
-                            
+
                             {finalRecipient && (
                                 <div className="mt-4 font-medium text-primary bg-primary/10 dark:bg-primary/20 py-2 px-3 rounded-lg text-sm border border-primary/20">
                                     <Mail className="inline w-4 h-4 mr-2" />
@@ -429,9 +486,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                     {t.ticket_code_short || t.ticket_number}
                                                 </span>
                                             </div>
-                                            <Badge className={`${colorStyle} text-xs px-2 py-0.5 font-semibold`}>
+                                            <span className={`text-xs px-2 py-0.5 rounded ${colorStyle.badge} font-semibold`}>
                                                 {t.color}
-                                            </Badge>
+                                            </span>
                                         </li>
                                     );
                                 })}
@@ -439,21 +496,21 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         </div>
 
                         <div className="flex flex-col gap-3">
-                            <Button 
-                                onClick={handleDownloadPDF} 
+                            <Button
+                                onClick={handleDownloadPDF}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white py-6 shadow-md hover:shadow-lg transition-all group"
                             >
                                 <div className="flex flex-col items-center">
                                     <div className="flex items-center text-lg font-bold">
-                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" /> 
+                                        <Download className="w-5 h-5 mr-2 group-hover:animate-bounce" />
                                         Télécharger Billets (PDF)
                                     </div>
                                     <span className="text-[10px] font-normal opacity-90">Avec QR & Codes Courts</span>
                                 </div>
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => setShowSuccessModal(false)} 
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowSuccessModal(false)}
                                 className="w-full text-foreground"
                             >
                                 Fermer

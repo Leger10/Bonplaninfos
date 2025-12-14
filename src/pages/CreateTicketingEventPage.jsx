@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Plus, Ticket, Trash, Coins, Save, ArrowRight, ArrowLeft, CheckCircle, Palette } from 'lucide-react';
+import { Loader2, Plus, Ticket, Trash, Coins, Save, ArrowRight, ArrowLeft, CheckCircle, Palette, AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import ImageUpload from '@/components/ImageUpload';
 
@@ -36,6 +36,7 @@ const CreateTicketingEventPage = () => {
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState([]);
     const [step, setStep] = useState(1);
+    const [ticketValidationErrors, setTicketValidationErrors] = useState({});
 
     // Pricing Configuration
     const COIN_RATE = adminConfig?.coin_to_fcfa_rate || 10; 
@@ -76,11 +77,87 @@ const CreateTicketingEventPage = () => {
         fetchCategories();
     }, []);
 
+    // MODIFICATION: Fonction de validation des billets
+    const validateTicketTypes = () => {
+        const errors = {};
+        let hasErrors = false;
+
+        ticketTypes.forEach((ticket, index) => {
+            const ticketErrors = [];
+            
+            // Validation du nom
+            if (!ticket.name || ticket.name.trim() === '') {
+                ticketErrors.push('Le nom du billet est requis');
+                hasErrors = true;
+            }
+
+            // Validation de la quantité
+            if (!ticket.quantity_available || parseInt(ticket.quantity_available) <= 0) {
+                ticketErrors.push('La quantité doit être supérieure à 0');
+                hasErrors = true;
+            } else if (parseInt(ticket.quantity_available) > 10000) {
+                ticketErrors.push('La quantité ne peut pas dépasser 10 000');
+                hasErrors = true;
+            }
+
+            // Validation du prix
+            if (!ticket.price || parseInt(ticket.price) < 0) {
+                ticketErrors.push('Le prix normal doit être positif');
+                hasErrors = true;
+            } else if (parseInt(ticket.price) > 1000000) {
+                ticketErrors.push('Le prix ne peut pas dépasser 1 000 000 FCFA');
+                hasErrors = true;
+            }
+
+            // Validation du prix prévente (optionnel mais doit être inférieur au prix normal)
+            if (ticket.presale_price && parseInt(ticket.presale_price) < 0) {
+                ticketErrors.push('Le prix prévente doit être positif');
+                hasErrors = true;
+            }
+            
+            if (ticket.presale_price && parseInt(ticket.presale_price) >= parseInt(ticket.price)) {
+                ticketErrors.push('Le prix prévente doit être inférieur au prix normal');
+                hasErrors = true;
+            }
+
+            // Validation de la description (optionnelle mais recommandée)
+            if (ticket.description && ticket.description.length > 500) {
+                ticketErrors.push('La description ne peut pas dépasser 500 caractères');
+                hasErrors = true;
+            }
+
+            if (ticketErrors.length > 0) {
+                errors[ticket.id] = ticketErrors;
+            }
+        });
+
+        setTicketValidationErrors(errors);
+        return !hasErrors;
+    };
+
     const handleTicketTypeChange = (id, field, value) => {
         setTicketTypes(ticketTypes.map(tt => tt.id === id ? { ...tt, [field]: value } : tt));
+        
+        // Effacer l'erreur pour ce champ lors de la modification
+        if (ticketValidationErrors[id]) {
+            setTicketValidationErrors(prev => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+        }
     };
 
     const addTicketType = () => {
+        if (ticketTypes.length >= 8) {
+            toast({ 
+                title: "Limite atteinte", 
+                description: "Vous ne pouvez pas créer plus de 8 types de billets différents.", 
+                variant: "destructive" 
+            });
+            return;
+        }
+
         setTicketTypes([...ticketTypes, { 
             id: uuidv4(), 
             name: 'Nouveau Billet', 
@@ -100,9 +177,45 @@ const CreateTicketingEventPage = () => {
             return;
         }
         setTicketTypes(ticketTypes.filter(tt => tt.id !== id));
+        
+        // Supprimer les erreurs associées
+        if (ticketValidationErrors[id]) {
+            setTicketValidationErrors(prev => {
+                const updated = { ...prev };
+                delete updated[id];
+                return updated;
+            });
+        }
     };
 
     const convertToCoins = (fcfa) => Math.ceil(parseInt(fcfa || 0, 10) / COIN_RATE);
+
+    // MODIFICATION: Fonction pour avancer à l'étape suivante avec validation
+    const handleNextStep = () => {
+        if (step === 1) {
+            // Validation de l'étape 1
+            if (!title || !eventDate || !city || !categoryId) {
+                toast({ 
+                    title: 'Champs obligatoires manquants', 
+                    description: 'Veuillez remplir les champs obligatoires (Titre, Date, Ville, Catégorie).', 
+                    variant: 'destructive' 
+                });
+                return;
+            }
+            setStep(2);
+        } else if (step === 2) {
+            // Validation de l'étape 2
+            if (!validateTicketTypes()) {
+                toast({ 
+                    title: 'Erreurs dans les billets', 
+                    description: 'Veuillez corriger les erreurs dans la configuration des billets.', 
+                    variant: 'destructive' 
+                });
+                return;
+            }
+            setStep(3);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -111,8 +224,34 @@ const CreateTicketingEventPage = () => {
             return;
         }
         
+        // Validation finale de toutes les étapes
         if (!title || !eventDate || !city || !categoryId) {
-            toast({ title: 'Erreur', description: 'Veuillez remplir les champs obligatoires (Titre, Date, Ville, Catégorie).', variant: 'destructive' });
+            toast({ 
+                title: 'Champs obligatoires manquants', 
+                description: 'Veuillez remplir les champs obligatoires (Titre, Date, Ville, Catégorie).', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
+        // Validation des billets
+        if (!validateTicketTypes()) {
+            toast({ 
+                title: 'Erreurs dans les billets', 
+                description: 'Veuillez corriger les erreurs dans la configuration des billets avant de publier.', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
+        // Validation supplémentaire : s'assurer qu'il y a au moins un prix positif
+        const hasValidPrice = ticketTypes.some(tt => parseInt(tt.price) > 0);
+        if (!hasValidPrice) {
+            toast({ 
+                title: 'Prix invalides', 
+                description: 'Au moins un billet doit avoir un prix supérieur à 0 FCFA.', 
+                variant: 'destructive' 
+            });
             return;
         }
 
@@ -176,7 +315,11 @@ const CreateTicketingEventPage = () => {
             const { error: typesError } = await supabase.from('ticket_types').insert(ticketTypesToInsert);
             if (typesError) throw typesError;
             
-            toast({ title: 'Succès', description: 'Événement billetterie créé avec succès!' });
+            toast({ 
+                title: 'Succès', 
+                description: 'Événement billetterie créé avec succès!',
+                variant: 'default'
+            });
             
             // Use a slight delay to ensure database propagation before redirect
             setTimeout(() => {
@@ -233,7 +376,12 @@ const CreateTicketingEventPage = () => {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label>Titre de l'événement *</Label>
-                                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Concert Géant..." className="bg-background/50" />
+                                        <Input 
+                                            value={title} 
+                                            onChange={(e) => setTitle(e.target.value)} 
+                                            placeholder="Ex: Concert Géant..." 
+                                            className="bg-background/50" 
+                                        />
                                     </div>
                                     
                                     <div className="grid grid-cols-2 gap-4">
@@ -264,12 +412,18 @@ const CreateTicketingEventPage = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2"><Label>Début *</Label><Input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="bg-background/50" /></div>
-                                <div className="space-y-2"><Label>Fin</Label><Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-background/50" /></div>
+                                <div className="space-y-2">
+                                    <Label>Début *</Label>
+                                    <Input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="bg-background/50" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Fin</Label>
+                                    <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-background/50" />
+                                </div>
                             </div>
 
                             <div className="flex justify-end mt-8">
-                                <Button onClick={() => setStep(2)} className="px-8">Suivant <ArrowRight className="ml-2 w-4 h-4" /></Button>
+                                <Button onClick={handleNextStep} className="px-8">Suivant <ArrowRight className="ml-2 w-4 h-4" /></Button>
                             </div>
                         </TabsContent>
 
@@ -284,113 +438,200 @@ const CreateTicketingEventPage = () => {
                                 </div>
                             </div>
 
+                            {/* MODIFICATION: Avertissement de validation */}
+                            {Object.keys(ticketValidationErrors).length > 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="font-bold text-red-800 dark:text-red-300 mb-1">Erreurs de validation détectées</p>
+                                            <p className="text-sm text-red-700 dark:text-red-400">
+                                                Veuillez corriger les erreurs ci-dessous avant de continuer.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
+
                             <div className="space-y-4">
-                                {ticketTypes.map((tt, index) => (
-                                    <motion.div 
-                                        key={tt.id} 
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.1 }}
-                                    >
-                                        <Card className="border-l-4 overflow-hidden hover:shadow-md transition-all" style={{ borderLeftColor: TICKET_COLORS.find(c => c.value === tt.color)?.hex.replace('bg-', '') || 'gray' }}>
-                                            <CardContent className="p-6 space-y-6">
-                                                <div className="flex justify-between items-center border-b pb-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <Badge variant="outline" className="text-sm px-3 py-1">Billet #{index + 1}</Badge>
-                                                        <Input 
-                                                            value={tt.name} 
-                                                            onChange={(e) => handleTicketTypeChange(tt.id, 'name', e.target.value)} 
-                                                            className="font-bold text-lg border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[200px]"
-                                                            placeholder="Nom du billet (ex: VIP)" 
-                                                        />
+                                {ticketTypes.map((tt, index) => {
+                                    const ticketErrors = ticketValidationErrors[tt.id] || [];
+                                    
+                                    return (
+                                        <motion.div 
+                                            key={tt.id} 
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.1 }}
+                                        >
+                                            <Card className={`border-l-4 overflow-hidden hover:shadow-md transition-all ${ticketErrors.length > 0 ? 'border-red-500' : ''}`} 
+                                                  style={{ borderLeftColor: ticketErrors.length > 0 ? '#ef4444' : (TICKET_COLORS.find(c => c.value === tt.color)?.hex.replace('bg-', '') || 'gray') }}>
+                                                <CardContent className="p-6 space-y-6">
+                                                    <div className="flex justify-between items-center border-b pb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <Badge variant="outline" className="text-sm px-3 py-1">Billet #{index + 1}</Badge>
+                                                            <Input 
+                                                                value={tt.name} 
+                                                                onChange={(e) => handleTicketTypeChange(tt.id, 'name', e.target.value)} 
+                                                                className={`font-bold text-lg border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[200px] ${ticketErrors.some(e => e.includes('nom')) ? 'text-red-600' : ''}`}
+                                                                placeholder="Nom du billet (ex: VIP)" 
+                                                            />
+                                                        </div>
+                                                        {ticketTypes.length > 1 && (
+                                                            <Button variant="ghost" size="icon" onClick={() => removeTicketType(tt.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                                                <Trash className="w-5 h-5" />
+                                                            </Button>
+                                                        )}
                                                     </div>
-                                                    {ticketTypes.length > 1 && (
-                                                        <Button variant="ghost" size="icon" onClick={() => removeTicketType(tt.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                                                            <Trash className="w-5 h-5" />
-                                                        </Button>
+
+                                                    {/* Affichage des erreurs pour ce billet */}
+                                                    {ticketErrors.length > 0 && (
+                                                        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                                                            <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                                                                {ticketErrors.map((error, i) => (
+                                                                    <li key={i} className="flex items-start gap-2">
+                                                                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                                        <span>{error}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     )}
-                                                </div>
 
-                                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                                    <div className="space-y-4 lg:col-span-2">
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            <div className="space-y-2">
-                                                                <Label>Quantité disponible</Label>
-                                                                <Input type="number" value={tt.quantity_available} onChange={(e) => handleTicketTypeChange(tt.id, 'quantity_available', e.target.value)} className="bg-background/50" />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label>Couleur du billet</Label>
-                                                                <Select value={tt.color} onValueChange={(val) => handleTicketTypeChange(tt.id, 'color', val)}>
-                                                                    <SelectTrigger className="bg-background/50">
-                                                                        <SelectValue placeholder="Choisir une couleur">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <div className={`w-4 h-4 rounded-full ${TICKET_COLORS.find(c => c.value === tt.color)?.hex}`}></div>
-                                                                                <span>{TICKET_COLORS.find(c => c.value === tt.color)?.name}</span>
-                                                                            </div>
-                                                                        </SelectValue>
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {TICKET_COLORS.map(c => (
-                                                                            <SelectItem key={c.value} value={c.value}>
+                                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                        <div className="space-y-4 lg:col-span-2">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label className={ticketErrors.some(e => e.includes('quantité')) ? 'text-red-600' : ''}>
+                                                                        Quantité disponible
+                                                                    </Label>
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        value={tt.quantity_available} 
+                                                                        onChange={(e) => handleTicketTypeChange(tt.id, 'quantity_available', e.target.value)} 
+                                                                        className={`bg-background/50 ${ticketErrors.some(e => e.includes('quantité')) ? 'border-red-500' : ''}`}
+                                                                        min="1"
+                                                                        max="10000"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label>Couleur du billet</Label>
+                                                                    <Select value={tt.color} onValueChange={(val) => handleTicketTypeChange(tt.id, 'color', val)}>
+                                                                        <SelectTrigger className="bg-background/50">
+                                                                            <SelectValue placeholder="Choisir une couleur">
                                                                                 <div className="flex items-center gap-2">
-                                                                                    <div className={`w-4 h-4 rounded-full ${c.hex}`}></div>
-                                                                                    <span>{c.name}</span>
+                                                                                    <div className={`w-4 h-4 rounded-full ${TICKET_COLORS.find(c => c.value === tt.color)?.hex}`}></div>
+                                                                                    <span>{TICKET_COLORS.find(c => c.value === tt.color)?.name}</span>
                                                                                 </div>
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
+                                                                            </SelectValue>
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {TICKET_COLORS.map(c => (
+                                                                                <SelectItem key={c.value} value={c.value}>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div className={`w-4 h-4 rounded-full ${c.hex}`}></div>
+                                                                                        <span>{c.name}</span>
+                                                                                    </div>
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Description courte</Label>
+                                                                <Input 
+                                                                    value={tt.description} 
+                                                                    onChange={(e) => handleTicketTypeChange(tt.id, 'description', e.target.value)} 
+                                                                    placeholder="Avantages inclus..." 
+                                                                    className="bg-background/50" 
+                                                                    maxLength={500}
+                                                                />
+                                                                <p className="text-xs text-muted-foreground text-right">
+                                                                    {tt.description?.length || 0}/500 caractères
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <Label>Description courte</Label>
-                                                            <Input value={tt.description} onChange={(e) => handleTicketTypeChange(tt.id, 'description', e.target.value)} placeholder="Avantages inclus..." className="bg-background/50" />
-                                                        </div>
-                                                    </div>
 
-                                                    <div className="bg-muted/30 p-4 rounded-xl space-y-4 border border-border/50">
-                                                        <div className="space-y-3">
-                                                            <Label className="text-orange-600 font-bold flex items-center gap-2">
-                                                                <span>Prix Prévente (J-1)</span>
-                                                                <Badge variant="secondary" className="text-[10px] h-5">Promo</Badge>
-                                                            </Label>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="relative flex-grow">
-                                                                    <Input type="number" value={tt.presale_price} onChange={(e) => handleTicketTypeChange(tt.id, 'presale_price', e.target.value)} className="pr-12 bg-background" />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
+                                                        <div className="bg-muted/30 p-4 rounded-xl space-y-4 border border-border/50">
+                                                            <div className="space-y-3">
+                                                                <Label className={`text-orange-600 font-bold flex items-center gap-2 ${ticketErrors.some(e => e.includes('prévente')) ? 'text-red-600' : ''}`}>
+                                                                    <span>Prix Prévente (J-1)</span>
+                                                                    <Badge variant="secondary" className="text-[10px] h-5">Promo</Badge>
+                                                                </Label>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="relative flex-grow">
+                                                                        <Input 
+                                                                            type="number" 
+                                                                            value={tt.presale_price} 
+                                                                            onChange={(e) => handleTicketTypeChange(tt.id, 'presale_price', e.target.value)} 
+                                                                            className={`pr-12 bg-background ${ticketErrors.some(e => e.includes('prévente')) ? 'border-red-500' : ''}`}
+                                                                            min="0"
+                                                                            max={tt.price || 1000000}
+                                                                        />
+                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
+                                                                    </div>
+                                                                    <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">
+                                                                        {convertToCoins(tt.presale_price)} π
+                                                                    </Badge>
                                                                 </div>
-                                                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.presale_price)} π</Badge>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Optionnel - Doit être inférieur au prix normal
+                                                                </p>
                                                             </div>
-                                                        </div>
-                                                        
-                                                        <div className="space-y-3 pt-2 border-t border-dashed border-border">
-                                                            <Label className="text-green-600 font-bold">Prix Jour J (J-0)</Label>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="relative flex-grow">
-                                                                    <Input type="number" value={tt.price} onChange={(e) => handleTicketTypeChange(tt.id, 'price', e.target.value)} className="pr-12 bg-background" />
-                                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
+                                                            
+                                                            <div className="space-y-3 pt-2 border-t border-dashed border-border">
+                                                                <Label className={`text-green-600 font-bold ${ticketErrors.some(e => e.includes('prix')) ? 'text-red-600' : ''}`}>
+                                                                    Prix Jour J (J-0)
+                                                                </Label>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="relative flex-grow">
+                                                                        <Input 
+                                                                            type="number" 
+                                                                            value={tt.price} 
+                                                                            onChange={(e) => handleTicketTypeChange(tt.id, 'price', e.target.value)} 
+                                                                            className={`pr-12 bg-background ${ticketErrors.some(e => e.includes('prix')) ? 'border-red-500' : ''}`}
+                                                                            min="0"
+                                                                            max="1000000"
+                                                                        />
+                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
+                                                                    </div>
+                                                                    <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">
+                                                                        {convertToCoins(tt.price)} π
+                                                                    </Badge>
                                                                 </div>
-                                                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.price)} π</Badge>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Obligatoire - Prix final le jour de l'événement
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </motion.div>
-                                ))}
+                                                </CardContent>
+                                            </Card>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
 
                             <Button variant="outline" onClick={addTicketType} className="w-full py-8 border-dashed border-2 hover:border-primary hover:text-primary transition-all group">
                                 <div className="flex flex-col items-center gap-2">
                                     <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
                                     <span>Ajouter un autre type de billet</span>
+                                    <span className="text-xs text-muted-foreground">Maximum 8 types de billets</span>
                                 </div>
                             </Button>
 
                             <div className="flex justify-between pt-8 border-t border-border">
-                                <Button variant="outline" onClick={() => setStep(1)} className="px-6"><ArrowLeft className="mr-2 w-4 h-4" /> Retour</Button>
-                                <Button onClick={() => setStep(3)} className="px-8">Suivant <ArrowRight className="ml-2 w-4 h-4" /></Button>
+                                <Button variant="outline" onClick={() => setStep(1)} className="px-6">
+                                    <ArrowLeft className="mr-2 w-4 h-4" /> Retour
+                                </Button>
+                                <Button onClick={handleNextStep} className="px-8">
+                                    Suivant <ArrowRight className="ml-2 w-4 h-4" />
+                                </Button>
                             </div>
                         </TabsContent>
 
@@ -424,7 +665,9 @@ const CreateTicketingEventPage = () => {
                             </Card>
 
                             <div className="flex justify-between pt-4">
-                                <Button variant="outline" onClick={() => setStep(2)} className="px-6"><ArrowLeft className="mr-2 w-4 h-4" /> Retour</Button>
+                                <Button variant="outline" onClick={() => setStep(2)} className="px-6">
+                                    <ArrowLeft className="mr-2 w-4 h-4" /> Retour
+                                </Button>
                                 <Button onClick={handleSubmit} disabled={loading} size="lg" className="px-8 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white shadow-lg hover:shadow-xl transition-all w-full sm:w-auto">
                                     {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 w-4 h-4" />} 
                                     Confirmer et Publier

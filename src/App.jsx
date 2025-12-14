@@ -133,9 +133,6 @@ function App() {
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
-
-
-
   );
 }
 
