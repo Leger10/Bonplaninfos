@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trash2, CheckCheck, Calendar, Tag, Settings, Coins, CheckCircle, AlertCircle, Info, X } from 'lucide-react';
+import { Bell, X, Calendar, Tag, Settings, Coins, CheckCircle, AlertCircle, Info, Ticket } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,17 @@ import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
+// Sound effect for notifications
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3');
+    audio.volume = 0.5;
+    audio.play().catch(e => console.log('Audio play blocked (user interaction required):', e));
+  } catch (e) {
+    console.error('Error playing sound:', e);
+  }
+};
+
 const NotificationIcon = ({ type }) => {
   const icons = {
     new_event: <Calendar className="w-4 h-4 text-blue-500" />,
@@ -20,6 +31,7 @@ const NotificationIcon = ({ type }) => {
     success: <CheckCircle className="w-4 h-4 text-green-500" />,
     error: <AlertCircle className="w-4 h-4 text-red-500" />,
     info: <Info className="w-4 h-4 text-cyan-500" />,
+    ticket: <Ticket className="w-4 h-4 text-orange-500" />,
     default: <Bell className="w-4 h-4 text-gray-500" />,
   };
   return icons[type] || icons.default;
@@ -34,31 +46,36 @@ const NotificationItem = ({ notification, onNavigate, onDelete }) => {
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer",
-        notification.is_read ? 'hover:bg-muted/50' : 'bg-primary/10 hover:bg-primary/20'
+        "flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer group relative",
+        notification.is_read ? 'hover:bg-muted/50 bg-background' : 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary'
       )}
       onClick={() => onNavigate(notification)}
     >
-      <div className="mt-1">
+      <div className="mt-1 flex-shrink-0">
         <NotificationIcon type={notification.type} />
       </div>
-      <div className="flex-1">
-        <p className="font-semibold text-sm">{notification.title}</p>
-        <p className="text-xs text-muted-foreground">{notification.message}</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-start mb-0.5">
+            <p className={cn("font-semibold text-sm truncate pr-6", !notification.is_read && "text-primary")}>
+                {notification.title}
+            </p>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{notification.message}</p>
+        <p className="text-[10px] text-muted-foreground/60 mt-1.5 flex items-center gap-1">
           {new Date(notification.created_at).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
+      
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        className="h-6 w-6 absolute top-2 right-2 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all"
         onClick={(e) => {
           e.stopPropagation();
           onDelete(notification.id);
         }}
       >
-        <X className="h-4 w-4" />
+        <X className="h-3 w-3" />
       </Button>
     </motion.div>
   );
@@ -71,39 +88,67 @@ const NotificationBell = () => {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const audioRef = useRef(null);
 
-  // Subscribe to Realtime Notifications
+  // Preload sound
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3');
+  }, []);
+
+  // Realtime Subscription for Notifications
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-        .channel('realtime:notifications')
-        .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`
-        }, (payload) => {
-            console.log('Realtime notification received:', payload);
-            fetchNotificationCount();
-            triggerNotificationAnimation();
-            
-            // Show toast for the new notification
-            toast({
-                title: payload.new.title,
-                description: payload.new.message,
-                variant: 'info'
-            });
-            
-            // If the bell is open, add it to the list immediately
-            if (isOpen) {
-                setNotifications(prev => [payload.new, ...prev]);
-            }
-        })
-        .subscribe();
+      .channel('realtime:notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for INSERT and UPDATE
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Sync global count on any change
+          fetchNotificationCount();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user, isOpen, fetchNotificationCount, triggerNotificationAnimation]);
+          if (payload.eventType === 'INSERT') {
+            const newNotif = payload.new;
+            
+            // Play sound
+            playNotificationSound();
+            triggerNotificationAnimation();
+
+            // Show Toast
+            toast({
+              title: newNotif.title,
+              description: newNotif.message,
+              variant: 'info',
+              duration: 4000,
+              onClick: () => {
+                  if (newNotif.data?.event_id) navigate(`/event/${newNotif.data.event_id}`);
+              }
+            });
+
+            // If popover is open, add to list
+            if (isOpen) {
+              setNotifications((prev) => [newNotif, ...prev]);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+             // If marked as read elsewhere, update local list if open
+             if (isOpen) {
+                 setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
+             }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isOpen, fetchNotificationCount, triggerNotificationAnimation, navigate]);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) return;
@@ -124,6 +169,7 @@ const NotificationBell = () => {
     }
   }, [user]);
 
+  // Fetch when popover opens
   useEffect(() => {
     if (isOpen) {
       fetchNotifications();
@@ -131,17 +177,29 @@ const NotificationBell = () => {
   }, [isOpen, fetchNotifications]);
 
   const handleNavigate = async (notification) => {
+    // Mark as read immediately in UI
+    setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
+    
     if (!notification.is_read) {
       try {
-        await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', notification.id);
+        const { error } = await supabase.from('notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', notification.id);
+        if (error) throw error;
+        // Global count refresh happens via realtime subscription usually, but we can force it
         fetchNotificationCount();
-        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
       } catch (error) {
         console.error("Failed to mark notification as read:", error);
       }
     }
-    if (notification.data?.event_id) navigate(`/event/${notification.data.event_id}`);
-    else if (notification.data?.link) navigate(notification.data.link);
+    
+    // Navigation logic
+    if (notification.data?.event_id) {
+        navigate(`/event/${notification.data.event_id}`);
+    } else if (notification.data?.link) {
+        navigate(notification.data.link);
+    } else if (notification.type === 'earning') {
+        navigate('/wallet');
+    }
+    
     setIsOpen(false);
   };
 
@@ -150,8 +208,7 @@ const NotificationBell = () => {
       const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
       if (error) throw error;
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      fetchNotificationCount();
-      toast({ title: "Notification supprimée", variant: "success" });
+      fetchNotificationCount(); // Realtime will also trigger this, but safe to call
     } catch (error) {
       toast({ title: "Erreur", description: "Impossible de supprimer la notification.", variant: "destructive" });
     }
@@ -163,61 +220,89 @@ const NotificationBell = () => {
       if (error) throw error;
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       fetchNotificationCount();
-      toast({ title: "Toutes les notifications ont été marquées comme lues", variant: "success" });
+      toast({ title: "Tout marqué comme lu", variant: "success" });
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de marquer les notifications comme lues.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Opération échouée.", variant: "destructive" });
     }
   };
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <motion.div
-          animate={notificationBellAnimation || notificationCount > 0 ? {
-            rotate: [0, -15, 10, -10, 5, -5, 0],
-            transition: { duration: 0.8, repeat: notificationBellAnimation ? 1 : 0, repeatDelay: 2, ease: "easeInOut" }
-          } : { rotate: 0 }}
-          className="relative"
-        >
-          <Button variant="ghost" size="icon">
-            <Bell className="h-6 w-6" />
-            {notificationCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0 bg-red-500 text-white text-xs border-2 border-background">
-                {notificationCount}
-              </Badge>
-            )}
-            <span className="sr-only">Notifications</span>
-          </Button>
-        </motion.div>
+        <div className="relative cursor-pointer group">
+            <motion.div
+            animate={notificationBellAnimation || notificationCount > 0 ? {
+                rotate: [0, -15, 10, -10, 5, -5, 0],
+                transition: { duration: 0.8, repeat: notificationBellAnimation ? 1 : 0, repeatDelay: 2, ease: "easeInOut" }
+            } : { rotate: 0 }}
+            >
+            <Button variant="ghost" size="icon" className="relative group-hover:bg-accent/50">
+                <Bell className={cn("h-6 w-6 transition-colors", notificationCount > 0 ? "text-foreground" : "text-muted-foreground")} />
+                <AnimatePresence>
+                    {notificationCount > 0 && (
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        className="absolute -top-1 -right-1"
+                    >
+                        <Badge className="h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-[10px] border-2 border-background shadow-sm">
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                        </Badge>
+                    </motion.div>
+                    )}
+                </AnimatePresence>
+                <span className="sr-only">Notifications</span>
+            </Button>
+            </motion.div>
+        </div>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="end">
-        <div className="flex items-center justify-between p-2">
-          <h3 className="font-semibold">Notifications</h3>
-          <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={handleMarkAllAsRead} disabled={notificationCount === 0}>
-            Marquer tout comme lu
+      
+      <PopoverContent className="w-80 sm:w-96 p-0 shadow-xl border-border/50 backdrop-blur-xl bg-background/95" align="end" sideOffset={8}>
+        <div className="flex items-center justify-between p-4 border-b border-border/10 bg-muted/20">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            Notifications 
+            {notificationCount > 0 && <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full">{notificationCount}</span>}
+          </h3>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs h-7 hover:text-primary hover:bg-primary/10" 
+            onClick={handleMarkAllAsRead} 
+            disabled={notificationCount === 0}
+          >
+            Tout lire
           </Button>
         </div>
-        <div className="max-h-96 overflow-y-auto space-y-1 pr-1">
+        
+        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
           {loading ? (
-            <div className="flex justify-center items-center h-24">
-              <p className="text-sm text-muted-foreground">Chargement...</p>
+            <div className="flex flex-col justify-center items-center h-40 gap-2 text-muted-foreground">
+              <span className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent"></span>
+              <p className="text-xs">Chargement...</p>
             </div>
           ) : notifications.length > 0 ? (
-            <AnimatePresence>
-              {notifications.map(notif => (
-                <NotificationItem key={notif.id} notification={notif} onNavigate={handleNavigate} onDelete={handleDelete} />
-              ))}
-            </AnimatePresence>
+            <div className="divide-y divide-border/10">
+              <AnimatePresence initial={false}>
+                {notifications.map(notif => (
+                  <NotificationItem key={notif.id} notification={notif} onNavigate={handleNavigate} onDelete={handleDelete} />
+                ))}
+              </AnimatePresence>
+            </div>
           ) : (
-            <div className="text-center py-8 px-4">
-              <Bell className="mx-auto h-10 w-10 text-muted-foreground/50" />
-              <p className="mt-2 text-sm text-muted-foreground">Vous n'avez aucune notification.</p>
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="bg-muted/30 p-4 rounded-full mb-3">
+                <Bell className="h-8 w-8 text-muted-foreground/30" />
+              </div>
+              <p className="text-sm font-medium">C'est calme par ici</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Vous n'avez aucune notification pour le moment.</p>
             </div>
           )}
         </div>
-        <div className="text-center border-t pt-2 mt-1">
-            <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => { navigate('/notifications'); setIsOpen(false); }}>
-                Voir toutes les notifications
+        
+        <div className="p-2 border-t border-border/10 bg-muted/20 text-center">
+            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground hover:text-primary" onClick={() => { navigate('/notifications'); setIsOpen(false); }}>
+                Voir l'historique complet
             </Button>
         </div>
       </PopoverContent>
