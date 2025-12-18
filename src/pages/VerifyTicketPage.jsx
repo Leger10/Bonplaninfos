@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Search, QrCode, Keyboard, Camera, X } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Search, QrCode, Keyboard, Camera, X, Calendar, Clock } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,7 @@ const VerifyTicketPage = () => {
     const [verificationResult, setVerificationResult] = useState(null);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('scan');
+    const [eventDateValid, setEventDateValid] = useState(null);
     
     // Refs for debouncing scans without re-renders
     const lastScanRef = useRef({ code: '', time: 0 });
@@ -45,6 +46,53 @@ const VerifyTicketPage = () => {
         };
     }, []);
     
+    const checkEventDate = async (eventId) => {
+        try {
+            const { data: eventData, error } = await supabase
+                .from('events')
+                .select('event_date, title')
+                .eq('id', eventId)
+                .single();
+            
+            if (error) throw error;
+            
+            if (!eventData || !eventData.event_date) {
+                return { isValid: false, reason: 'Événement non trouvé' };
+            }
+            
+            const eventDate = new Date(eventData.event_date);
+            const today = new Date();
+            
+            // Set time to midnight for date comparison
+            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const eventMidnight = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+            
+            // Check if event is today
+            if (eventMidnight.getTime() !== todayMidnight.getTime()) {
+                const daysDiff = Math.floor((eventMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+                return { 
+                    isValid: false, 
+                    reason: `Cet événement est prévu pour le ${eventDate.toLocaleDateString('fr-FR')}`,
+                    daysUntil: daysDiff,
+                    eventDate: eventDate,
+                    eventTitle: eventData.title
+                };
+            }
+            
+            // Check if event hasn't ended (if we have end time)
+            // For now, just check if it's today
+            return { 
+                isValid: true, 
+                eventDate: eventDate,
+                eventTitle: eventData.title
+            };
+            
+        } catch (error) {
+            console.error("Error checking event date:", error);
+            return { isValid: true, reason: null }; // Default to valid if we can't check
+        }
+    };
+    
     const handleVerification = async (codeToVerify, method = 'manual') => {
         const cleanCode = codeToVerify?.trim().toUpperCase();
         if (!cleanCode) return;
@@ -65,6 +113,7 @@ const VerifyTicketPage = () => {
         isProcessingRef.current = true;
         lastScanRef.current = { code: cleanCode, time: now };
         setLoading(true);
+        setEventDateValid(null);
 
         // Clear previous notifications to prevent stacking
         dismiss();
@@ -73,6 +122,56 @@ const VerifyTicketPage = () => {
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
 
         try {
+            // Step 1: Get ticket details
+            const { data: ticketData, error: ticketError } = await supabase
+                .from('event_tickets')
+                .select(`
+                    id,
+                    ticket_number,
+                    ticket_code_short,
+                    status,
+                    event_id,
+                    events:event_id (
+                        id,
+                        title,
+                        event_date
+                    )
+                `)
+                .or(`ticket_code_short.eq.${cleanCode},ticket_number.eq.${cleanCode}`)
+                .single();
+            
+            if (ticketError) throw new Error("Ticket non trouvé");
+            
+            // Step 2: Check if event is today
+            const dateCheck = await checkEventDate(ticketData.event_id);
+            setEventDateValid(dateCheck);
+            
+            if (!dateCheck.isValid) {
+                new Audio('/sounds/warning.mp3').play().catch(() => {});
+                
+                setVerificationResult({
+                    success: false,
+                    message: dateCheck.reason,
+                    status_code: 'wrong_date',
+                    event_title: dateCheck.eventTitle,
+                    event_date: dateCheck.eventDate
+                });
+                
+                toast({ 
+                    title: "Mauvais jour", 
+                    description: dateCheck.reason, 
+                    variant: "destructive" 
+                });
+                
+                resultTimeoutRef.current = setTimeout(() => {
+                    setVerificationResult(null);
+                    setTicketInput('');
+                }, 5000);
+                
+                return;
+            }
+            
+            // Step 3: Verify ticket using RPC
             const { data, error } = await supabase.rpc('verify_ticket', {
                 p_ticket_identifier: cleanCode,
                 p_verification_method: method
@@ -86,21 +185,21 @@ const VerifyTicketPage = () => {
             if (data.success) {
                 new Audio('/sounds/success.mp3').play().catch(() => {});
                 toast({ 
-                    title: "Billet Valide", 
+                    title: "✅ Billet Valide", 
                     description: `Bienvenue ${data.attendee_name || 'Participant'}`, 
                     className: "bg-green-600 text-white border-none" 
                 });
             } else if (data.status_code === 'already_scanned') {
                 new Audio('/sounds/warning.mp3').play().catch(() => {});
                 toast({ 
-                    title: "Déjà Scanné", 
+                    title: "⚠️ Déjà Scanné", 
                     description: `Validé le: ${new Date(data.last_verified_at || Date.now()).toLocaleTimeString()}`, 
                     variant: "destructive" 
                 });
             } else {
                 new Audio('/sounds/error.mp3').play().catch(() => {});
                 toast({ 
-                    title: "Invalide", 
+                    title: "❌ Invalide", 
                     description: data.message || "Billet non reconnu", 
                     variant: "destructive" 
                 });
@@ -152,6 +251,7 @@ const VerifyTicketPage = () => {
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
         setVerificationResult(null);
         setTicketInput('');
+        setEventDateValid(null);
         isProcessingRef.current = false;
     };
 
@@ -159,6 +259,7 @@ const VerifyTicketPage = () => {
         switch(code) {
             case 'valid': return 'bg-green-500';
             case 'already_scanned': return 'bg-yellow-500';
+            case 'wrong_date': return 'bg-orange-500';
             default: return 'bg-red-500';
         }
     };
@@ -167,8 +268,17 @@ const VerifyTicketPage = () => {
         switch(code) {
             case 'valid': return <CheckCircle className="w-24 h-24 text-green-500 mb-4 animate-in zoom-in duration-300" />;
             case 'already_scanned': return <AlertTriangle className="w-24 h-24 text-yellow-500 mb-4 animate-in shake duration-300" />;
+            case 'wrong_date': return <Calendar className="w-24 h-24 text-orange-500 mb-4 animate-in zoom-in duration-300" />;
             default: return <XCircle className="w-24 h-24 text-red-500 mb-4 animate-in zoom-in duration-300" />;
         }
+    };
+
+    const getDaysText = (days) => {
+        if (days === 0) return "aujourd'hui";
+        if (days === 1) return "demain";
+        if (days === -1) return "hier";
+        if (days > 0) return `dans ${days} jour${days > 1 ? 's' : ''}`;
+        return `il y a ${Math.abs(days)} jour${Math.abs(days) > 1 ? 's' : ''}`;
     };
 
     if (!user) {
@@ -190,8 +300,11 @@ const VerifyTicketPage = () => {
                 <div className="text-center mb-2">
                     <h1 className="text-xl font-bold flex items-center justify-center gap-2">
                         <QrCode className="w-5 h-5 text-primary" /> 
-                        Scanner
+                        Scanner Billets
                     </h1>
+                    <p className="text-sm text-gray-400 mt-1">
+                        Vérification pour le {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
                 </div>
 
                 <Card className="bg-gray-900 border-gray-800 shadow-2xl overflow-hidden min-h-[500px] flex flex-col">
@@ -212,7 +325,7 @@ const VerifyTicketPage = () => {
                                     <div className="absolute inset-0 z-0">
                                         <QrScanner 
                                             onScan={onScan} 
-                                            isScanning={activeTab === 'scan'} // Always scanning in this tab
+                                            isScanning={activeTab === 'scan'}
                                             onError={(err) => console.log(err)}
                                         />
                                     </div>
@@ -237,15 +350,37 @@ const VerifyTicketPage = () => {
                                                 
                                                 <h2 className={`text-3xl font-black mb-2 uppercase tracking-wide ${
                                                     verificationResult.success ? 'text-green-500' : 
-                                                    verificationResult.status_code === 'already_scanned' ? 'text-yellow-500' : 'text-red-500'
+                                                    verificationResult.status_code === 'already_scanned' ? 'text-yellow-500' : 
+                                                    verificationResult.status_code === 'wrong_date' ? 'text-orange-500' : 'text-red-500'
                                                 }`}>
                                                     {verificationResult.success ? "VALIDE" : 
-                                                     verificationResult.status_code === 'already_scanned' ? "DÉJÀ SCANNÉ" : "INVALIDE"}
+                                                     verificationResult.status_code === 'already_scanned' ? "DÉJÀ SCANNÉ" : 
+                                                     verificationResult.status_code === 'wrong_date' ? "MAUVAIS JOUR" : "INVALIDE"}
                                                 </h2>
                                                 
-                                                <p className="text-gray-300 mb-6 font-medium text-lg max-w-[80%]">
+                                                <p className="text-gray-300 mb-4 font-medium text-lg max-w-[90%]">
                                                     {verificationResult.message}
                                                 </p>
+
+                                                {verificationResult.status_code === 'wrong_date' && eventDateValid && (
+                                                    <div className="w-full bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Calendar className="w-5 h-5 text-orange-400" />
+                                                            <span className="font-bold text-orange-300">{eventDateValid.eventTitle}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Clock className="w-4 h-4 text-orange-400" />
+                                                            <span className="text-orange-200">
+                                                                {eventDateValid.eventDate.toLocaleDateString('fr-FR', {
+                                                                    weekday: 'long',
+                                                                    day: 'numeric',
+                                                                    month: 'long',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {(verificationResult.success || verificationResult.status_code === 'already_scanned') && (
                                                     <div className="w-full bg-white/5 rounded-xl p-4 text-left space-y-3 border border-white/10 relative overflow-hidden mb-6">
@@ -283,7 +418,12 @@ const VerifyTicketPage = () => {
                                         <div className="absolute inset-0 z-30 bg-black/60 flex items-center justify-center backdrop-blur-sm">
                                             <div className="bg-gray-900 p-6 rounded-2xl flex flex-col items-center">
                                                 <Loader2 className="w-10 h-10 text-primary animate-spin mb-2" />
-                                                <p className="text-white font-medium">Vérification...</p>
+                                                <p className="text-white font-medium">Vérification en cours...</p>
+                                                {eventDateValid && !eventDateValid.isValid && (
+                                                    <p className="text-orange-300 text-sm mt-2">
+                                                        Vérification de la date de l'événement
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -322,7 +462,7 @@ const VerifyTicketPage = () => {
                                         </Button>
                                     </div>
                                     
-                                    {/* Manual Mode Result Overlay (Same logic) */}
+                                    {/* Manual Mode Result Overlay */}
                                     <AnimatePresence>
                                         {verificationResult && activeTab === 'manual' && (
                                             <motion.div 
@@ -331,12 +471,20 @@ const VerifyTicketPage = () => {
                                                 exit={{ opacity: 0, y: 50 }}
                                                 className="absolute inset-0 z-20 bg-gray-900 flex flex-col items-center justify-center p-6 text-center"
                                             >
-                                                {/* Reusing the same result UI structure for consistency would be better, but keeping it simple here */}
                                                 {getStatusIcon(verificationResult.status_code)}
                                                 <h2 className="text-2xl font-bold mb-2 text-white">
-                                                    {verificationResult.success ? "VALIDE" : "ERREUR"}
+                                                    {verificationResult.success ? "VALIDE" : 
+                                                     verificationResult.status_code === 'already_scanned' ? "DÉJÀ SCANNÉ" :
+                                                     verificationResult.status_code === 'wrong_date' ? "MAUVAIS JOUR" : "ERREUR"}
                                                 </h2>
                                                 <p className="text-gray-400 mb-6">{verificationResult.message}</p>
+                                                {verificationResult.status_code === 'wrong_date' && eventDateValid && (
+                                                    <div className="w-full bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
+                                                        <p className="text-orange-300 font-medium">
+                                                            {eventDateValid.eventTitle} - {eventDateValid.eventDate.toLocaleDateString('fr-FR')}
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 <Button onClick={closeResult} className="w-full" variant="outline">Fermer</Button>
                                             </motion.div>
                                         )}
