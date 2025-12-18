@@ -7,11 +7,24 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, CheckCircle, XCircle, AlertTriangle, ShieldCheck, Search, QrCode, Keyboard, Camera, X, Calendar, Clock } from 'lucide-react';
+import { 
+    Loader2, CheckCircle, XCircle, AlertTriangle, ShieldCheck, 
+    Search, QrCode, Keyboard, Camera, X, Calendar, Clock,
+    DoorOpen, DoorClosed, User, History, ShieldAlert
+} from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import QrScanner from '@/components/event/QrScanner';
+import { 
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose
+} from '@/components/ui/dialog';
 
 const VerifyTicketPage = () => {
     const { user } = useAuth();
@@ -24,8 +37,11 @@ const VerifyTicketPage = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('scan');
     const [eventDateValid, setEventDateValid] = useState(null);
+    const [exitMode, setExitMode] = useState(false);
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
+    const [ticketHistory, setTicketHistory] = useState([]);
     
-    // Refs for debouncing scans without re-renders
+    // Refs
     const lastScanRef = useRef({ code: '', time: 0 });
     const isProcessingRef = useRef(false);
     const resultTimeoutRef = useRef(null);
@@ -50,7 +66,7 @@ const VerifyTicketPage = () => {
         try {
             const { data: eventData, error } = await supabase
                 .from('events')
-                .select('event_date, title')
+                .select('event_date, title, allows_reentry, max_reentry_interval')
                 .eq('id', eventId)
                 .single();
             
@@ -63,11 +79,9 @@ const VerifyTicketPage = () => {
             const eventDate = new Date(eventData.event_date);
             const today = new Date();
             
-            // Set time to midnight for date comparison
             const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const eventMidnight = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
             
-            // Check if event is today
             if (eventMidnight.getTime() !== todayMidnight.getTime()) {
                 const daysDiff = Math.floor((eventMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
                 return { 
@@ -79,70 +93,74 @@ const VerifyTicketPage = () => {
                 };
             }
             
-            // Check if event hasn't ended (if we have end time)
-            // For now, just check if it's today
             return { 
                 isValid: true, 
                 eventDate: eventDate,
-                eventTitle: eventData.title
+                eventTitle: eventData.title,
+                allowsReentry: eventData.allows_reentry,
+                maxReentryInterval: eventData.max_reentry_interval
             };
             
         } catch (error) {
             console.error("Error checking event date:", error);
-            return { isValid: true, reason: null }; // Default to valid if we can't check
+            return { isValid: true, reason: null };
         }
     };
-    
+
+    const fetchTicketHistory = async (ticketId) => {
+        try {
+            const { data, error } = await supabase
+                .from('ticket_verifications')
+                .select('*')
+                .eq('ticket_id', ticketId)
+                .order('verified_at', { ascending: false })
+                .limit(10);
+            
+            if (error) throw error;
+            setTicketHistory(data || []);
+        } catch (error) {
+            console.error("Error fetching ticket history:", error);
+        }
+    };
+
     const handleVerification = async (codeToVerify, method = 'manual') => {
         const cleanCode = codeToVerify?.trim().toUpperCase();
         if (!cleanCode) return;
 
         const now = Date.now();
 
-        // Prevent processing if already busy
         if (isProcessingRef.current) return;
 
-        // Debounce: Ignore same code if scanned within 3 seconds (prevent spam)
         if (method === 'qr_code' && 
             cleanCode === lastScanRef.current.code && 
             (now - lastScanRef.current.time < 3000)) {
             return;
         }
 
-        // Lock processing
         isProcessingRef.current = true;
         lastScanRef.current = { code: cleanCode, time: now };
         setLoading(true);
         setEventDateValid(null);
+        setTicketHistory([]);
 
-        // Clear previous notifications to prevent stacking
         dismiss();
         
-        // Clear previous timeout if exists
         if (resultTimeoutRef.current) clearTimeout(resultTimeoutRef.current);
 
         try {
-            // Step 1: Get ticket details
+            // Récupérer d'abord l'ID du ticket pour l'historique
             const { data: ticketData, error: ticketError } = await supabase
                 .from('event_tickets')
-                .select(`
-                    id,
-                    ticket_number,
-                    ticket_code_short,
-                    status,
-                    event_id,
-                    events:event_id (
-                        id,
-                        title,
-                        event_date
-                    )
-                `)
+                .select('id, event_id')
                 .or(`ticket_code_short.eq.${cleanCode},ticket_number.eq.${cleanCode}`)
                 .single();
             
             if (ticketError) throw new Error("Ticket non trouvé");
             
-            // Step 2: Check if event is today
+            // Charger l'historique
+            await fetchTicketHistory(ticketData.id);
+            
+            // Vérifier la date de l'événement
             const dateCheck = await checkEventDate(ticketData.event_id);
             setEventDateValid(dateCheck);
             
@@ -171,45 +189,79 @@ const VerifyTicketPage = () => {
                 return;
             }
             
-            // Step 3: Verify ticket using RPC
-            const { data, error } = await supabase.rpc('verify_ticket', {
+            // Appeler la fonction RPC avec ou sans mode sortie
+            const { data, error } = await supabase.rpc('verify_ticket_v2', {
                 p_ticket_identifier: cleanCode,
-                p_verification_method: method
+                p_verification_method: method,
+                p_exit_mode: exitMode
             });
             
             if (error) throw error;
             
             setVerificationResult(data);
             
+            // Mettre à jour l'historique après la vérification
+            await fetchTicketHistory(ticketData.id);
+            
             // Sound Effects & Toast
             if (data.success) {
-                new Audio('/sounds/success.mp3').play().catch(() => {});
-                toast({ 
-                    title: "✅ Billet Valide", 
-                    description: `Bienvenue ${data.attendee_name || 'Participant'}`, 
-                    className: "bg-green-600 text-white border-none" 
-                });
-            } else if (data.status_code === 'already_scanned') {
-                new Audio('/sounds/warning.mp3').play().catch(() => {});
-                toast({ 
-                    title: "⚠️ Déjà Scanné", 
-                    description: `Validé le: ${new Date(data.last_verified_at || Date.now()).toLocaleTimeString()}`, 
-                    variant: "destructive" 
-                });
+                if (data.status_code === 'exit_registered') {
+                    new Audio('/sounds/exit.mp3').play().catch(() => {});
+                    toast({ 
+                        title: "✅ Sortie enregistrée", 
+                        description: data.message,
+                        className: "bg-blue-600 text-white border-none" 
+                    });
+                } else {
+                    new Audio('/sounds/success.mp3').play().catch(() => {});
+                    toast({ 
+                        title: "✅ Billet Valide", 
+                        description: data.message, 
+                        className: "bg-green-600 text-white border-none" 
+                    });
+                }
             } else {
-                new Audio('/sounds/error.mp3').play().catch(() => {});
-                toast({ 
-                    title: "❌ Invalide", 
-                    description: data.message || "Billet non reconnu", 
-                    variant: "destructive" 
-                });
+                switch(data.status_code) {
+                    case 'already_inside':
+                    case 'already_inside_reentry':
+                        new Audio('/sounds/warning.mp3').play().catch(() => {});
+                        toast({ 
+                            title: "⚠️ Déjà à l'intérieur", 
+                            description: data.message, 
+                            variant: "warning" 
+                        });
+                        break;
+                    case 'reentry_expired':
+                        new Audio('/sounds/error.mp3').play().catch(() => {});
+                        toast({ 
+                            title: "⏰ Réentrée expirée", 
+                            description: data.message, 
+                            variant: "destructive" 
+                        });
+                        break;
+                    case 'not_inside':
+                        new Audio('/sounds/warning.mp3').play().catch(() => {});
+                        toast({ 
+                            title: "🚪 Pas à l'intérieur", 
+                            description: data.message, 
+                            variant: "warning" 
+                        });
+                        break;
+                    default:
+                        new Audio('/sounds/error.mp3').play().catch(() => {});
+                        toast({ 
+                            title: "❌ Erreur", 
+                            description: data.message, 
+                            variant: "destructive" 
+                        });
+                }
             }
 
-            // Auto-dismiss result overlay after 3 seconds to allow continuous scanning
+            // Auto-dismiss après 5 secondes
             resultTimeoutRef.current = setTimeout(() => {
                 setVerificationResult(null);
-                setTicketInput('');
-            }, 3000);
+                if (!exitMode) setTicketInput('');
+            }, 5000);
 
         } catch (error) {
             console.error("Verification failed:", error);
@@ -229,14 +281,12 @@ const VerifyTicketPage = () => {
                 variant: "destructive" 
             });
 
-            // Auto-dismiss error after 3s too
             resultTimeoutRef.current = setTimeout(() => {
                 setVerificationResult(null);
-            }, 3000);
+            }, 5000);
 
         } finally {
             setLoading(false);
-            // Small delay before allowing next scan to prevent double-trigger on slow devices
             setTimeout(() => {
                 isProcessingRef.current = false;
             }, 1000);
@@ -252,42 +302,81 @@ const VerifyTicketPage = () => {
         setVerificationResult(null);
         setTicketInput('');
         setEventDateValid(null);
+        setTicketHistory([]);
         isProcessingRef.current = false;
     };
 
-    const getStatusColor = (code) => {
-        switch(code) {
-            case 'valid': return 'bg-green-500';
-            case 'already_scanned': return 'bg-yellow-500';
-            case 'wrong_date': return 'bg-orange-500';
-            default: return 'bg-red-500';
-        }
+    const toggleExitMode = () => {
+        setExitMode(!exitMode);
+        setVerificationResult(null);
+        setTicketInput('');
+        setTicketHistory([]);
     };
 
     const getStatusIcon = (code) => {
         switch(code) {
-            case 'valid': return <CheckCircle className="w-24 h-24 text-green-500 mb-4 animate-in zoom-in duration-300" />;
-            case 'already_scanned': return <AlertTriangle className="w-24 h-24 text-yellow-500 mb-4 animate-in shake duration-300" />;
-            case 'wrong_date': return <Calendar className="w-24 h-24 text-orange-500 mb-4 animate-in zoom-in duration-300" />;
-            default: return <XCircle className="w-24 h-24 text-red-500 mb-4 animate-in zoom-in duration-300" />;
+            case 'checkin':
+            case 'reentry':
+                return <CheckCircle className="w-24 h-24 text-green-500 mb-4 animate-in zoom-in duration-300" />;
+            case 'exit_registered':
+                return <DoorOpen className="w-24 h-24 text-blue-500 mb-4 animate-in zoom-in duration-300" />;
+            case 'already_inside':
+            case 'already_inside_reentry':
+                return <DoorClosed className="w-24 h-24 text-yellow-500 mb-4 animate-in shake duration-300" />;
+            case 'reentry_expired':
+                return <Clock className="w-24 h-24 text-orange-500 mb-4 animate-in zoom-in duration-300" />;
+            case 'wrong_date':
+                return <Calendar className="w-24 h-24 text-orange-500 mb-4 animate-in zoom-in duration-300" />;
+            case 'not_inside':
+                return <ShieldAlert className="w-24 h-24 text-red-500 mb-4 animate-in zoom-in duration-300" />;
+            default:
+                return <XCircle className="w-24 h-24 text-red-500 mb-4 animate-in zoom-in duration-300" />;
         }
     };
 
-    const getDaysText = (days) => {
-        if (days === 0) return "aujourd'hui";
-        if (days === 1) return "demain";
-        if (days === -1) return "hier";
-        if (days > 0) return `dans ${days} jour${days > 1 ? 's' : ''}`;
-        return `il y a ${Math.abs(days)} jour${Math.abs(days) > 1 ? 's' : ''}`;
+    const getStatusTitle = (result) => {
+        if (!result) return "";
+        
+        switch(result.status_code) {
+            case 'checkin': return "ENTRÉE VALIDÉE";
+            case 'reentry': return "RÉENTRÉE AUTORISÉE";
+            case 'exit_registered': return "SORTIE ENREGISTRÉE";
+            case 'already_inside': return "DÉJÀ À L'INTÉRIEUR";
+            case 'already_inside_reentry': return "DÉJÀ RÉENTRÉ";
+            case 'reentry_expired': return "RÉENTRÉE EXPIRÉE";
+            case 'wrong_date': return "MAUVAIS JOUR";
+            case 'not_inside': return "NON À L'INTÉRIEUR";
+            default: return "INVALIDE";
+        }
+    };
+
+    const getStatusColor = (code) => {
+        switch(code) {
+            case 'checkin':
+            case 'reentry':
+                return 'text-green-500';
+            case 'exit_registered':
+                return 'text-blue-500';
+            case 'already_inside':
+            case 'already_inside_reentry':
+                return 'text-yellow-500';
+            case 'reentry_expired':
+            case 'wrong_date':
+                return 'text-orange-500';
+            default:
+                return 'text-red-500';
+        }
     };
 
     if (!user) {
         return (
-             <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
-                 <ShieldCheck className="w-16 h-16 text-primary mb-6" />
-                 <h1 className="text-3xl font-bold mb-4">Contrôle d'Accès</h1>
-                 <p className="text-gray-400 mb-8 max-w-md">Connectez-vous pour vérifier les billets.</p>
-                 <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8"><Link to="/auth">Se connecter</Link></Button>
+            <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6 text-center">
+                <ShieldCheck className="w-16 h-16 text-primary mb-6" />
+                <h1 className="text-3xl font-bold mb-4">Contrôle d'Accès</h1>
+                <p className="text-gray-400 mb-8 max-w-md">Connectez-vous pour vérifier les billets.</p>
+                <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8">
+                    <Link to="/auth">Se connecter</Link>
+                </Button>
             </div>
         );
     }
@@ -297,14 +386,38 @@ const VerifyTicketPage = () => {
             <Helmet><title>Vérification | BonPlanInfos</title></Helmet>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md space-y-4">
+                {/* Header avec toggle sortie/entrée */}
                 <div className="text-center mb-2">
-                    <h1 className="text-xl font-bold flex items-center justify-center gap-2">
-                        <QrCode className="w-5 h-5 text-primary" /> 
-                        Scanner Billets
-                    </h1>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="w-10"></div>
+                        <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+                            {exitMode ? (
+                                <DoorOpen className="w-5 h-5 text-blue-500" />
+                            ) : (
+                                <QrCode className="w-5 h-5 text-primary" />
+                            )}
+                            {exitMode ? "Scanner Sorties" : "Scanner Entrées"}
+                        </h1>
+                        <Button 
+                            onClick={toggleExitMode}
+                            variant="outline"
+                            size="sm"
+                            className={exitMode ? "bg-blue-500/20 border-blue-500 text-blue-300" : "bg-gray-800"}
+                        >
+                            {exitMode ? "Mode Sortie" : "Mode Entrée"}
+                        </Button>
+                    </div>
                     <p className="text-sm text-gray-400 mt-1">
-                        Vérification pour le {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        {exitMode 
+                            ? "Enregistrez les sorties temporaires" 
+                            : `Vérification pour le ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                        }
                     </p>
+                    {exitMode && (
+                        <p className="text-xs text-blue-400 mt-1">
+                            ⓘ Les participants ont 60 minutes pour revenir
+                        </p>
+                    )}
                 </div>
 
                 <Card className="bg-gray-900 border-gray-800 shadow-2xl overflow-hidden min-h-[500px] flex flex-col">
@@ -321,13 +434,22 @@ const VerifyTicketPage = () => {
                             
                             <div className="relative flex-1 bg-black flex flex-col">
                                 <TabsContent value="scan" className="absolute inset-0 mt-0">
-                                    {/* Scanner acts as background */}
+                                    {/* Scanner */}
                                     <div className="absolute inset-0 z-0">
                                         <QrScanner 
                                             onScan={onScan} 
                                             isScanning={activeTab === 'scan'}
                                             onError={(err) => console.log(err)}
                                         />
+                                    </div>
+
+                                    {/* Mode indicator */}
+                                    <div className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-xs font-bold ${
+                                        exitMode 
+                                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                                            : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                    }`}>
+                                        {exitMode ? 'SORTIE' : 'ENTRÉE'}
                                     </div>
 
                                     {/* Result Overlay */}
@@ -337,77 +459,101 @@ const VerifyTicketPage = () => {
                                                 initial={{ opacity: 0, scale: 0.9 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 exit={{ opacity: 0, scale: 0.9 }}
-                                                className="absolute inset-0 z-20 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center"
+                                                className="absolute inset-0 z-20 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center overflow-y-auto"
                                             >
                                                 <button 
                                                     onClick={closeResult}
-                                                    className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                                                    className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors z-30"
                                                 >
                                                     <X className="w-6 h-6 text-white" />
                                                 </button>
 
                                                 {getStatusIcon(verificationResult.status_code)}
                                                 
-                                                <h2 className={`text-3xl font-black mb-2 uppercase tracking-wide ${
-                                                    verificationResult.success ? 'text-green-500' : 
-                                                    verificationResult.status_code === 'already_scanned' ? 'text-yellow-500' : 
-                                                    verificationResult.status_code === 'wrong_date' ? 'text-orange-500' : 'text-red-500'
-                                                }`}>
-                                                    {verificationResult.success ? "VALIDE" : 
-                                                     verificationResult.status_code === 'already_scanned' ? "DÉJÀ SCANNÉ" : 
-                                                     verificationResult.status_code === 'wrong_date' ? "MAUVAIS JOUR" : "INVALIDE"}
+                                                <h2 className={`text-3xl font-black mb-2 uppercase tracking-wide ${getStatusColor(verificationResult.status_code)}`}>
+                                                    {getStatusTitle(verificationResult)}
                                                 </h2>
                                                 
                                                 <p className="text-gray-300 mb-4 font-medium text-lg max-w-[90%]">
                                                     {verificationResult.message}
                                                 </p>
 
-                                                {verificationResult.status_code === 'wrong_date' && eventDateValid && (
-                                                    <div className="w-full bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <Calendar className="w-5 h-5 text-orange-400" />
-                                                            <span className="font-bold text-orange-300">{eventDateValid.eventTitle}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="w-4 h-4 text-orange-400" />
-                                                            <span className="text-orange-200">
-                                                                {eventDateValid.eventDate.toLocaleDateString('fr-FR', {
-                                                                    weekday: 'long',
-                                                                    day: 'numeric',
-                                                                    month: 'long',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {(verificationResult.success || verificationResult.status_code === 'already_scanned') && (
-                                                    <div className="w-full bg-white/5 rounded-xl p-4 text-left space-y-3 border border-white/10 relative overflow-hidden mb-6">
-                                                        <div className={`absolute top-0 left-0 w-1.5 h-full ${getStatusColor(verificationResult.status_code)}`}></div>
+                                                {/* Informations détaillées */}
+                                                {(verificationResult.attendee_name || verificationResult.ticket_type) && (
+                                                    <div className="w-full bg-white/5 rounded-xl p-4 text-left space-y-3 border border-white/10 relative overflow-hidden mb-4">
+                                                        <div className={`absolute top-0 left-0 w-1.5 h-full ${
+                                                            verificationResult.success ? 'bg-green-500' : 
+                                                            verificationResult.status_code === 'already_inside' ? 'bg-yellow-500' : 
+                                                            verificationResult.status_code === 'reentry_expired' ? 'bg-orange-500' : 'bg-red-500'
+                                                        }`}></div>
                                                         
                                                         <div className="pl-3">
                                                             <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Participant</p>
-                                                            <p className="text-xl font-bold text-white truncate">{verificationResult.attendee_name}</p>
+                                                            <p className="text-xl font-bold text-white truncate">
+                                                                {verificationResult.attendee_name || 'Non spécifié'}
+                                                            </p>
                                                         </div>
                                                         
                                                         <div className="flex justify-between items-end pl-3">
                                                             <div>
                                                                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Type</p>
-                                                                <Badge variant="outline" className={`mt-1 text-sm border-white/20 text-white`}>
+                                                                <Badge variant="outline" className="mt-1 text-sm border-white/20 text-white">
                                                                     {verificationResult.ticket_type || 'Standard'}
                                                                 </Badge>
                                                             </div>
-                                                            <div className="text-right">
-                                                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Total Scans</p>
-                                                                <p className="text-xl font-mono text-white">{verificationResult.verification_count}</p>
-                                                            </div>
+                                                            {verificationResult.verification_count && (
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Total Scans</p>
+                                                                    <p className="text-xl font-mono text-white">
+                                                                        {verificationResult.verification_count}
+                                                                    </p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
 
-                                                <Button onClick={closeResult} size="lg" className="w-full font-bold text-lg rounded-xl bg-white text-black hover:bg-gray-200">
-                                                    {verificationResult.success ? 'Scanner le suivant (3s)' : 'Fermer (3s)'}
+                                                {/* Historique des scans */}
+                                                {ticketHistory.length > 0 && (
+                                                    <div className="w-full bg-black/50 rounded-xl p-4 mb-4 max-h-48 overflow-y-auto">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <History className="w-4 h-4 text-gray-400" />
+                                                            <h3 className="text-sm font-bold text-gray-300">Historique récent</h3>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {ticketHistory.map((scan, index) => (
+                                                                <div key={scan.id} className="flex items-center justify-between text-xs p-2 bg-white/5 rounded">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className={`w-2 h-2 rounded-full ${
+                                                                            scan.status === 'checkin' ? 'bg-green-500' :
+                                                                            scan.status === 'exit' ? 'bg-blue-500' :
+                                                                            scan.status === 'reentry' ? 'bg-green-400' : 'bg-gray-500'
+                                                                        }`}></div>
+                                                                        <span className="font-medium">
+                                                                            {scan.status === 'checkin' ? 'Entrée' :
+                                                                             scan.status === 'exit' ? 'Sortie' :
+                                                                             scan.status === 'reentry' ? 'Réentrée' : scan.status}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="text-gray-400">
+                                                                        {new Date(scan.verified_at).toLocaleTimeString('fr-FR', {
+                                                                            hour: '2-digit',
+                                                                            minute: '2-digit'
+                                                                        })}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Bouton suivant */}
+                                                <Button 
+                                                    onClick={closeResult} 
+                                                    size="lg" 
+                                                    className="w-full font-bold text-lg rounded-xl bg-white text-black hover:bg-gray-200"
+                                                >
+                                                    {verificationResult.success ? 'Scanner le suivant (5s)' : 'Fermer (5s)'}
                                                 </Button>
                                             </motion.div>
                                         )}
@@ -418,12 +564,9 @@ const VerifyTicketPage = () => {
                                         <div className="absolute inset-0 z-30 bg-black/60 flex items-center justify-center backdrop-blur-sm">
                                             <div className="bg-gray-900 p-6 rounded-2xl flex flex-col items-center">
                                                 <Loader2 className="w-10 h-10 text-primary animate-spin mb-2" />
-                                                <p className="text-white font-medium">Vérification en cours...</p>
-                                                {eventDateValid && !eventDateValid.isValid && (
-                                                    <p className="text-orange-300 text-sm mt-2">
-                                                        Vérification de la date de l'événement
-                                                    </p>
-                                                )}
+                                                <p className="text-white font-medium">
+                                                    {exitMode ? "Enregistrement de la sortie..." : "Vérification en cours..."}
+                                                </p>
                                             </div>
                                         </div>
                                     )}
@@ -436,7 +579,12 @@ const VerifyTicketPage = () => {
                                                 <Keyboard className="w-8 h-8 text-primary" />
                                             </div>
                                             <h3 className="text-lg font-medium text-white">Saisie Manuelle</h3>
-                                            <p className="text-sm text-gray-400">Entrez le code court (ex: A7B2X9)</p>
+                                            <p className="text-sm text-gray-400">
+                                                {exitMode 
+                                                    ? "Entrez le code pour enregistrer une sortie" 
+                                                    : "Entrez le code court (ex: A7B2X9)"
+                                                }
+                                            </p>
                                         </div>
 
                                         <div className="relative">
@@ -455,10 +603,39 @@ const VerifyTicketPage = () => {
                                         <Button 
                                             onClick={() => handleVerification(ticketInput, 'manual')} 
                                             size="lg" 
-                                            className="w-full h-14 font-bold text-lg rounded-xl" 
+                                            className={`w-full h-14 font-bold text-lg rounded-xl ${
+                                                exitMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-primary hover:bg-primary/90'
+                                            }`} 
                                             disabled={loading || !ticketInput}
                                         >
-                                            {loading ? <Loader2 className="animate-spin mr-2" /> : 'Vérifier ce code'}
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="animate-spin mr-2" />
+                                                    {exitMode ? "Enregistrement..." : "Vérification..."}
+                                                </>
+                                            ) : (
+                                                exitMode ? "Enregistrer la sortie" : "Vérifier ce code"
+                                            )}
+                                        </Button>
+
+                                        {/* Bouton de changement de mode */}
+                                        <Button 
+                                            onClick={toggleExitMode}
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full"
+                                        >
+                                            {exitMode ? (
+                                                <>
+                                                    <DoorClosed className="w-4 h-4 mr-2" />
+                                                    Passer en mode Entrée
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DoorOpen className="w-4 h-4 mr-2" />
+                                                    Passer en mode Sortie
+                                                </>
+                                            )}
                                         </Button>
                                     </div>
                                     
@@ -473,19 +650,12 @@ const VerifyTicketPage = () => {
                                             >
                                                 {getStatusIcon(verificationResult.status_code)}
                                                 <h2 className="text-2xl font-bold mb-2 text-white">
-                                                    {verificationResult.success ? "VALIDE" : 
-                                                     verificationResult.status_code === 'already_scanned' ? "DÉJÀ SCANNÉ" :
-                                                     verificationResult.status_code === 'wrong_date' ? "MAUVAIS JOUR" : "ERREUR"}
+                                                    {getStatusTitle(verificationResult)}
                                                 </h2>
                                                 <p className="text-gray-400 mb-6">{verificationResult.message}</p>
-                                                {verificationResult.status_code === 'wrong_date' && eventDateValid && (
-                                                    <div className="w-full bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
-                                                        <p className="text-orange-300 font-medium">
-                                                            {eventDateValid.eventTitle} - {eventDateValid.eventDate.toLocaleDateString('fr-FR')}
-                                                        </p>
-                                                    </div>
-                                                )}
-                                                <Button onClick={closeResult} className="w-full" variant="outline">Fermer</Button>
+                                                <Button onClick={closeResult} className="w-full" variant="outline">
+                                                    Fermer
+                                                </Button>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -495,6 +665,33 @@ const VerifyTicketPage = () => {
                     </CardContent>
                 </Card>
             </motion.div>
+
+            {/* Dialog de confirmation pour la sortie */}
+            <Dialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Confirmer la sortie</DialogTitle>
+                        <DialogDescription>
+                            Voulez-vous vraiment enregistrer une sortie pour ce ticket ?
+                            Le participant aura 60 minutes pour revenir.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <DialogClose asChild>
+                            <Button variant="outline">Annuler</Button>
+                        </DialogClose>
+                        <Button 
+                            onClick={() => {
+                                setShowExitConfirm(false);
+                                setExitMode(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            Confirmer la sortie
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

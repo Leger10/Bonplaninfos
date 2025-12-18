@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, CheckCircle2, Crown, Star, Bell, Trash2, X } from 'lucide-react';
+import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, CheckCircle2, Crown, Star, Bell, Trash2, X, Wallet, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -40,6 +40,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [showNotification, setShowNotification] = useState(false);
     const [showCartDetails, setShowCartDetails] = useState(false);
+    const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
+    const [userBalance, setUserBalance] = useState(0);
+    const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
     // Save cart to localStorage whenever it changes
     useEffect(() => {
@@ -47,6 +50,34 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             localStorage.setItem(`cart_${event.id}`, JSON.stringify(cart));
         }
     }, [cart, event?.id]);
+
+    // Fetch user balance when checkout modal is opened
+    useEffect(() => {
+        const fetchUserBalance = async () => {
+            if (!user) return;
+            
+            setIsCheckingBalance(true);
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('balance')
+                    .eq('id', user.id)
+                    .single();
+
+                if (error) throw error;
+                
+                setUserBalance(data.balance || 0);
+            } catch (error) {
+                console.error('Error fetching user balance:', error);
+            } finally {
+                setIsCheckingBalance(false);
+            }
+        };
+
+        if (showCheckoutModal || showCartDetails) {
+            fetchUserBalance();
+        }
+    }, [user, showCheckoutModal, showCartDetails]);
 
     const isPresale = useMemo(() => {
         if (!event || !event.event_date) return false;
@@ -218,6 +249,23 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
         return cartItems.reduce((sum, item) => sum + item.quantity, 0);
     }, [cartItems]);
 
+    // Check if user has sufficient balance
+    const hasSufficientBalance = useMemo(() => {
+        return userBalance >= cartTotal;
+    }, [userBalance, cartTotal]);
+
+    // Calculate how much more pi needed
+    const balanceDeficit = useMemo(() => {
+        return Math.max(0, cartTotal - userBalance);
+    }, [userBalance, cartTotal]);
+
+    // Alternative simple avec window.location
+    const redirectToPacks = () => {
+        setShowInsufficientBalanceModal(false);
+        setShowCheckoutModal(false);
+        window.location.href = '/packs';
+    };
+
     const handlePurchase = async () => {
         if (!user) {
             toast({ 
@@ -235,6 +283,12 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 description: "Veuillez ajouter des billets à votre panier",
                 variant: "destructive"
             });
+            return;
+        }
+
+        // Vérifier le solde avant de procéder
+        if (!hasSufficientBalance) {
+            setShowInsufficientBalanceModal(true);
             return;
         }
 
@@ -364,13 +418,22 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     </h2>
                     <p className="text-muted-foreground text-sm">Sélectionnez vos billets ci-dessous</p>
                 </div>
-                {isPresale ? (
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse">
-                        🌟 Prévente
-                    </Badge>
-                ) : (
-                    <Badge variant="outline">Tarif Normal</Badge>
-                )}
+                <div className="flex items-center gap-4">
+                    {isPresale ? (
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse">
+                            🌟 Prévente
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline">Tarif Normal</Badge>
+                    )}
+                    {/* User Balance Display */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                        <Wallet className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">
+                            Solde: <span className="font-bold">{userBalance.toFixed(2)} π</span>
+                        </span>
+                    </div>
+                </div>
             </div>
 
             {/* Ticket Grid */}
@@ -501,15 +564,22 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-bold text-lg">Votre panier ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''})</h3>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={clearCart}
-                                                className="text-destructive hover:text-destructive"
-                                            >
-                                                <Trash2 className="w-4 h-4 mr-1" />
-                                                Vider
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                {/* Balance display in cart */}
+                                                <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded text-sm">
+                                                    <Wallet className="w-3 h-3" />
+                                                    <span className="font-medium">{userBalance.toFixed(2)} π</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={clearCart}
+                                                    className="text-destructive hover:text-destructive"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-1" />
+                                                    Vider
+                                                </Button>
+                                            </div>
                                         </div>
                                         
                                         <ScrollArea className="h-64 pr-4">
@@ -542,8 +612,23 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                         </ScrollArea>
                                         
                                         <div className="mt-4 pt-4 border-t">
+                                            {/* Balance check */}
+                                            {!hasSufficientBalance && (
+                                                <Alert variant="destructive" className="mb-3">
+                                                    <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
+                                                    <AlertDescription className="text-xs">
+                                                        Il vous manque {balanceDeficit.toFixed(2)} π
+                                                    </AlertDescription>
+                                                </Alert>
+                                            )}
+                                            
                                             <div className="flex justify-between items-center mb-3">
-                                                <span className="font-bold">Total</span>
+                                                <div>
+                                                    <span className="font-bold">Total</span>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        Solde disponible: {userBalance.toFixed(2)} π
+                                                    </div>
+                                                </div>
                                                 <div className="text-right">
                                                     <div className="text-2xl font-bold text-primary">{cartTotal.toFixed(2)} π</div>
                                                     <div className="text-sm text-muted-foreground">
@@ -554,13 +639,32 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             <Button 
                                                 onClick={() => {
                                                     setShowCartDetails(false);
-                                                    setShowCheckoutModal(true);
+                                                    if (!hasSufficientBalance) {
+                                                        setShowInsufficientBalanceModal(true);
+                                                    } else {
+                                                        setShowCheckoutModal(true);
+                                                    }
                                                 }}
                                                 className="w-full"
                                                 size="lg"
+                                                disabled={isCheckingBalance}
                                             >
-                                                <ShoppingCart className="w-5 h-5 mr-2" />
-                                                Commander maintenant
+                                                {isCheckingBalance ? (
+                                                    <>
+                                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                        Vérification...
+                                                    </>
+                                                ) : !hasSufficientBalance ? (
+                                                    <>
+                                                        <Package className="w-5 h-5 mr-2" />
+                                                        Recharger mon solde
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <ShoppingCart className="w-5 h-5 mr-2" />
+                                                        Commander maintenant
+                                                    </>
+                                                )}
                                             </Button>
                                         </div>
                                     </CardContent>
@@ -583,7 +687,14 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 </div>
                                 <div className="text-left">
                                     <p className="text-sm font-medium">{totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''}</p>
-                                    <p className="text-xs text-muted-foreground">{cartTotal.toFixed(2)} π</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs font-bold text-primary">{cartTotal.toFixed(2)} π</p>
+                                        {!hasSufficientBalance && (
+                                            <Badge variant="destructive" className="h-4 px-1 text-[10px]">
+                                                Solde insuffisant
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             
@@ -598,10 +709,16 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 </Button>
                                 <Button
                                     size="lg"
-                                    onClick={() => setShowCheckoutModal(true)}
-                                    className="rounded-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                                    onClick={() => {
+                                        if (!hasSufficientBalance) {
+                                            setShowInsufficientBalanceModal(true);
+                                        } else {
+                                            setShowCheckoutModal(true);
+                                        }
+                                    }}
+                                    className={`rounded-full ${!hasSufficientBalance ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'}`}
                                 >
-                                    Commander
+                                    {!hasSufficientBalance ? 'Recharger' : 'Commander'}
                                 </Button>
                             </div>
                         </div>
@@ -640,7 +757,34 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         </DialogDescription>
                     </DialogHeader>
                     
-                    <ScrollArea className="max-h-[60vh] pr-4">
+                    {/* User Balance Summary */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Wallet className="w-5 h-5 text-primary" />
+                                <div>
+                                    <p className="text-sm font-medium">Votre solde</p>
+                                    <p className="text-2xl font-bold text-primary">{userBalance.toFixed(2)} π</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-medium">Total panier</p>
+                                <p className={`text-2xl font-bold ${hasSufficientBalance ? 'text-green-600' : 'text-destructive'}`}>
+                                    {cartTotal.toFixed(2)} π
+                                </p>
+                            </div>
+                        </div>
+                        {!hasSufficientBalance && (
+                            <Alert variant="destructive" className="mt-3">
+                                <AlertTitle>Solde insuffisant</AlertTitle>
+                                <AlertDescription>
+                                    Il vous manque {balanceDeficit.toFixed(2)} π pour valider cette commande.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </div>
+                    
+                    <ScrollArea className="max-h-[50vh] pr-4">
                         <div className="space-y-4 py-2">
                             {cartItems.length === 0 ? (
                                 <div className="text-center py-8">
@@ -720,6 +864,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     </div>
                                 </div>
                                 
+                                {!hasSufficientBalance && (
+                                    <Alert className="bg-amber-50 border-amber-200">
+                                        <AlertDescription className="text-sm text-amber-800">
+                                            <Package className="w-4 h-4 inline mr-2" />
+                                            Votre solde est insuffisant. <strong>Rechargez vos π pour continuer.</strong>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                                
                                 <Alert className="bg-blue-50 border-blue-200">
                                     <AlertDescription className="text-sm text-blue-700">
                                         <Bell className="w-4 h-4 inline mr-2" />
@@ -748,9 +901,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     </Button>
                                 </div>
                                 <Button
-                                    onClick={handlePurchase}
-                                    disabled={loading || cartItems.length === 0}
-                                    className="bg-green-600 hover:bg-green-700 w-full sm:w-48"
+                                    onClick={hasSufficientBalance ? handlePurchase : () => setShowInsufficientBalanceModal(true)}
+                                    disabled={loading || cartItems.length === 0 || !hasSufficientBalance}
+                                    className={`w-full sm:w-48 ${hasSufficientBalance ? 'bg-green-600 hover:bg-green-700' : 'bg-amber-600 hover:bg-amber-700'}`}
                                     size="lg"
                                 >
                                     {loading ? (
@@ -758,16 +911,75 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             <Loader2 className="animate-spin mr-2 w-5 h-5" />
                                             Traitement...
                                         </>
-                                    ) : (
+                                    ) : hasSufficientBalance ? (
                                         <>
                                             <Check className="mr-2 w-5 h-5" />
                                             Payer {cartTotal.toFixed(2)} π
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Package className="mr-2 w-5 h-5" />
+                                            Recharger mon solde
                                         </>
                                     )}
                                 </Button>
                             </DialogFooter>
                         </>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Insufficient Balance Modal */}
+            <Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
+                            <Wallet className="w-10 h-10 text-amber-600" />
+                        </div>
+                        <DialogTitle className="text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
+                        <DialogDescription className="text-center text-base">
+                            Votre solde actuel de <strong>{userBalance.toFixed(2)} π</strong> ne permet pas d'acheter
+                            le panier de <strong>{cartTotal.toFixed(2)} π</strong>.
+                            <br />
+                            <br />
+                            Il vous manque <strong className="text-destructive">{balanceDeficit.toFixed(2)} π</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                        <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+                            <AlertTitle className="text-amber-800">💡 Solution rapide</AlertTitle>
+                            <AlertDescription className="text-amber-700">
+                                Rechargez votre compte avec un pack de π pour finaliser votre achat et profiter de l'événement !
+                            </AlertDescription>
+                        </Alert>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button
+                                variant="outline"
+                                className="h-16 flex-col gap-1"
+                                onClick={() => setShowInsufficientBalanceModal(false)}
+                            >
+                                <X className="w-5 h-5" />
+                                <span className="text-xs">Annuler</span>
+                            </Button>
+                            <Button
+                                onClick={redirectToPacks}
+                                className="h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1"
+                            >
+                                <Package className="w-5 h-5" />
+                                <span className="text-xs font-bold">Voir les packs</span>
+                            </Button>
+                        </div>
+                        
+                        <div className="text-xs text-muted-foreground text-center pt-4 border-t">
+                            <p>
+                                💎 Les packs π vous permettent d'acheter des billets et de participer à tous les événements.
+                                <br />
+                                🎁 Profitez de promotions exclusives sur les gros packs !
+                            </p>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
