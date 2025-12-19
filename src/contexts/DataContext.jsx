@@ -246,24 +246,37 @@ export const DataProvider = ({ children }) => {
     fetchNotificationCount();
   }, [fetchUserProfile, fetchNotificationCount]);
 
-  // Realtime Subscription for Profile
+  // Realtime Subscription for Profile and Notifications
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
+    // Profile updates
+    const profileChannel = supabase
       .channel('public:profiles')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, (payload) => {
         console.log('Profile updated via realtime:', payload);
-        // Invalidate cache on realtime update
         profileCache.current = { ...profileCache.current, timestamp: 0 };
         fetchUserProfile();
       })
       .subscribe();
 
+    // Notification updates (New events, etc.)
+    const notificationChannel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, (payload) => {
+        console.log('New notification received:', payload);
+        fetchNotificationCount();
+        setNotificationBellAnimation(true);
+        setTimeout(() => setNotificationBellAnimation(false), 1000);
+        triggerSoundEffect('notification'); // Play sound in app
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(profileChannel);
+      supabase.removeChannel(notificationChannel);
     };
-  }, [user, fetchUserProfile]);
+  }, [user, fetchUserProfile, fetchNotificationCount, triggerSoundEffect]);
 
   const forceRefreshUserProfile = useCallback(() => {
     // Invalidate cache and trigger refresh

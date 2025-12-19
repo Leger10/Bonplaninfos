@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Lock, Coins, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, Store, TrendingUp, PieChart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Lock, Coins, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { extractStoragePath } from '@/lib/utils';
 import { CoinService } from '@/services/CoinService';
 
-// Component for Verification Stats
+// Component for Verification Stats (Organizer Only)
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -152,7 +152,7 @@ const EventDetailPage = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
-  const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, cost: 0, costFcfa: 0, breakdown: null, action: null });
+  const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, cost: 0, breakdown: null, action: null });
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -173,8 +173,8 @@ const EventDetailPage = () => {
   const fetchEventData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    console.log("Fetching event data for ID:", id);
     try {
-      // Use maybeSingle() to avoid PGRST116 error when event is not found
       const { data: fetchedEvent, error: eventError } = await fetchWithRetry(() => 
         supabase.from('events')
           .select('*, organizer:organizer_id(full_name), category:category_id(name, slug)')
@@ -185,6 +185,7 @@ const EventDetailPage = () => {
       if (eventError) throw eventError;
       
       if (!fetchedEvent) {
+        console.error("Event not found");
         setEvent(null);
         return;
       }
@@ -206,14 +207,16 @@ const EventDetailPage = () => {
       }
       setEventData(specificEventData);
 
+      // Access Control Logic
       const isOwner = userId && fetchedEvent.organizer_id === userId;
       const isAdmin = userType && ['super_admin', 'admin', 'secretary'].includes(userType);
 
       if (isOwner || isAdmin || fetchedEvent.event_type !== 'protected') {
+        console.log("Access granted: Owner/Admin/Public");
         setIsUnlocked(true);
       } else if (userId) {
-        // Safe check for unlock
-        const { data: accessData } = await supabase
+        console.log("Checking protected access for user:", userId);
+        const { data: accessData, error: accessError } = await supabase
             .from('protected_event_access')
             .select('status, expires_at')
             .eq('event_id', id)
@@ -222,8 +225,14 @@ const EventDetailPage = () => {
             .gt('expires_at', new Date().toISOString())
             .maybeSingle();
             
+        if (accessError && accessError.code !== 'PGRST116') {
+            console.error("Error checking access:", accessError);
+        }
+        
+        console.log("Access data found:", accessData);
         setIsUnlocked(!!accessData);
       } else {
+        console.log("Access denied: User not logged in or no access");
         setIsUnlocked(false);
       }
     } catch (error) {
@@ -236,20 +245,17 @@ const EventDetailPage = () => {
 
   const isOwner = user && event?.organizer_id === user.id;
 
-  // --- Fetch Stand Stats for Organizer ---
   useEffect(() => {
     if (isOwner && event?.event_type === 'stand_rental') {
       const fetchStandStats = async () => {
         setStandStats(prev => ({ ...prev, loading: true }));
         try {
-          // Get basic count
           const { count } = await supabase
             .from('stand_rentals')
             .select('*', { count: 'exact', head: true })
             .in('stand_event_id', (await supabase.from('stand_events').select('id').eq('event_id', event.id)).data.map(e => e.id))
             .eq('status', 'confirmed');
 
-          // Get Earnings from organizer_earnings table
           const { data: earnings } = await supabase
             .from('organizer_earnings')
             .select('earnings_coins, platform_commission, amount_pi')
@@ -280,20 +286,42 @@ const EventDetailPage = () => {
 
   const executeUnlock = async () => {
     if (!user || !event) return;
+    
+    if (actionLoading) return;
+    
+    console.log("Executing unlock for event:", event.id);
     setActionLoading(true);
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id });
-      if (rpcError) throw rpcError;
+      const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { 
+        p_event_id: event.id, 
+        p_user_id: user.id 
+      });
+      
+      if (rpcError) {
+          console.error("RPC Error:", rpcError);
+          throw rpcError;
+      }
+      
+      console.log("RPC Success:", rpcData);
       if (!rpcData.success) throw new Error(rpcData.message);
       
-      toast({ title: "Accès accordé !", description: `L'événement a été débloqué avec succès.`, className: "bg-green-600 text-white" });
+      toast({ 
+        title: "Succès !", 
+        description: "L'événement a été débloqué. Bonne visite !", 
+        className: "bg-green-600 text-white" 
+      });
+      
       setIsUnlocked(true);
       handleDataRefresh();
     } catch (error) {
-      if (error.message.includes('Solde insuffisant')) setShowWalletInfoModal(true);
-      else toast({ title: "Erreur", description: error.message, variant: "destructive" });
+      console.error("Unlock failed:", error);
+      if (error.message && error.message.includes('Solde insuffisant')) {
+        setShowWalletInfoModal(true);
+      } else {
+        toast({ title: "Erreur", description: error.message || "Une erreur est survenue lors du déblocage.", variant: "destructive" });
+      }
     } finally {
-      setConfirmation({ isOpen: false, type: null, cost: 0, costFcfa: 0, breakdown: null, action: null });
+      setConfirmation({ isOpen: false, type: null, cost: 0, breakdown: null, action: null });
       setActionLoading(false);
     }
   };
@@ -301,28 +329,21 @@ const EventDetailPage = () => {
   const handleDeleteEvent = async () => {
     if (!event) return;
     setIsDeleting(true);
-    console.log(`EventDetailPage: Deleting event ${event.id}`);
     try {
-      // 1. Delete image from storage if exists
       if (event.cover_image) {
         const storageInfo = extractStoragePath(event.cover_image);
         if (storageInfo) {
-          const { error: storageError } = await supabase.storage
-            .from(storageInfo.bucket)
-            .remove([storageInfo.path]);
-          if (storageError) console.warn("Image delete warning:", storageError);
+          await supabase.storage.from(storageInfo.bucket).remove([storageInfo.path]);
         }
       }
 
-      // 2. Delete event from DB
       const { error } = await supabase.rpc('delete_event_completely', { p_event_id: event.id });
       if (error) throw error;
 
       toast({ title: "Succès", description: "Événement supprimé avec succès." });
-      navigate('/events'); // Redirect to events list
+      navigate('/events');
     } catch (error) {
-      console.error("Delete error:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer l'événement. " + error.message, variant: "destructive" });
+      toast({ title: "Erreur", description: "Impossible de supprimer l'événement.", variant: "destructive" });
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -332,19 +353,24 @@ const EventDetailPage = () => {
   const handleUnlockClick = async () => {
     if (!user) { navigate('/auth'); return; }
     
-    // Fetch fresh balances
+    console.log("Unlock button clicked for event:", event.id);
+    const cost = 2; // Unlock cost is 2 coins
+    
+    // Check balance before proceeding
     const balances = await CoinService.getWalletBalances(user.id);
-    const cost = 2; // Hardcoded cost for now as per RPC default
+    console.log("User balances:", balances);
     
     if (balances.total < cost) {
+        console.log("Insufficient balance");
         setShowWalletInfoModal(true);
         return;
     }
     
-    // Calculate Breakdown
+    // Calculate Breakdown for UI
     const freeUsed = Math.min(balances.free_coin_balance, cost);
     const paidUsed = cost - freeUsed;
     
+    console.log("Opening confirmation dialog");
     setConfirmation({ 
         isOpen: true, 
         type: "Débloquer cet événement", 
@@ -354,25 +380,30 @@ const EventDetailPage = () => {
     });
   };
 
+  const handleConfirmAction = async (e) => {
+      e.preventDefault();
+      if (confirmation.action) {
+          await confirmation.action();
+      }
+  };
+
   const handleScanClick = () => {
     navigate('/verify-ticket');
   };
 
   const handleShare = async () => {
     if (!event) return;
-    
     const shareData = {
       title: event.title,
-      text: event.description ? event.description.substring(0, 100) + '...' : `Découvrez ${event.title} sur BonPlanInfos`,
+      text: event.description ? event.description.substring(0, 100) + '...' : `Découvrez ${event.title}`,
       url: window.location.href,
     };
-
     try {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        toast({ title: "Lien copié", description: "Le lien a été copié dans le presse-papier." });
+        toast({ title: "Lien copié", description: "Lien copié dans le presse-papier." });
       }
     } catch (err) {
       console.log('Error sharing:', err);
@@ -407,7 +438,6 @@ const EventDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* Main Image Card */}
             <div className="relative rounded-lg overflow-hidden shadow-lg group">
               <img className="w-full h-64 md:h-96 object-cover transition-transform duration-700 group-hover:scale-105" alt={event.title} src={optimizedImageUrl} />
 
@@ -415,15 +445,14 @@ const EventDetailPage = () => {
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-sm p-6 text-center">
                   <Lock className="w-16 h-16 text-primary mb-4 animate-bounce" />
                   <h3 className="text-2xl font-bold text-white mb-2">Contenu Verrouillé</h3>
-                  <p className="text-gray-200 mb-6 max-w-md">Cet événement est protégé. Accédez à tous les détails et fonctionnalités exclusives.</p>
+                  <p className="text-gray-200 mb-6 max-w-md">Cet événement est protégé. Débloquez-le pour accéder aux détails.</p>
                   <Button onClick={handleUnlockClick} size="lg" className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold shadow-lg transform hover:scale-105 transition-all"><Coins className="mr-2 h-5 w-5" /> Débloquer (2π)</Button>
                 </div>
               )}
             </div>
             
-            {/* Event Countdown moved below the cover image */}
             {isUnlocked && event.event_date && (
-                <div className="flex justify-center mt-4"> {/* Added margin-top for spacing */}
+                <div className="flex justify-center mt-4">
                   <EventCountdown
                     eventDate={event.event_date}
                     showMotivation={true}
@@ -473,12 +502,11 @@ const EventDetailPage = () => {
                 )}
               </div>
             ) : (
-              <Card className="border-dashed border-2 border-muted"><CardContent className="p-12 text-center text-muted-foreground"><p>Débloquez l'événement pour voir le programme, acheter des billets ou participer.</p></CardContent></Card>
+              <Card className="border-dashed border-2 border-muted"><CardContent className="p-12 text-center text-muted-foreground"><p>Débloquez l'événement pour voir le programme complet.</p></CardContent></Card>
             )}
           </div>
 
           <div className="space-y-6">
-            {/* ORGANIZER DASHBOARD PANEL - ONLY FOR TICKETING EVENTS */}
             {isOwner && event.event_type === 'ticketing' && (
               <Card className="border-primary/50 bg-primary/5 shadow-lg overflow-hidden">
                 <div className="bg-primary/10 p-3 border-b border-primary/20 flex items-center justify-between">
@@ -486,11 +514,9 @@ const EventDetailPage = () => {
                 </div>
                 <CardContent className="p-4 space-y-3">
                   <p className="text-sm text-muted-foreground mb-2">Gérez les entrées pour cet événement.</p>
-
                   <Button onClick={handleScanClick} className="w-full font-bold" size="lg">
                     <QrCode className="w-5 h-5 mr-2" /> Scanner Billets
                   </Button>
-
                   <Button onClick={() => setShowStatsModal(true)} variant="outline" className="w-full">
                     <BarChart className="w-4 h-4 mr-2" /> Statistiques Entrées
                   </Button>
@@ -498,7 +524,6 @@ const EventDetailPage = () => {
               </Card>
             )}
 
-            {/* ORGANIZER PANEL - ONLY FOR STAND RENTAL EVENTS */}
             {isOwner && event.event_type === 'stand_rental' && (
               <Card className="border-blue-500/50 bg-blue-50/10 shadow-lg overflow-hidden animate-in fade-in">
                 <div className="bg-blue-500/10 p-3 border-b border-blue-500/20">
@@ -515,7 +540,6 @@ const EventDetailPage = () => {
                           {standStats.total_rented}
                         </Badge>
                       </div>
-                      
                       <div className="space-y-2 pt-2 border-t border-blue-100">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600">Revenus Bruts</span>
@@ -530,10 +554,6 @@ const EventDetailPage = () => {
                           <span className="font-bold text-xl text-green-700">{standStats.organizer_net} π</span>
                         </div>
                       </div>
-                      
-                      <div className="bg-blue-50 p-3 rounded text-xs text-blue-700 mt-2">
-                        Les gains sont automatiquement crédités sur votre compte organisateur après chaque réservation.
-                      </div>
                     </>
                   )}
                 </CardContent>
@@ -542,7 +562,6 @@ const EventDetailPage = () => {
 
             <SocialInteractions event={event} isUnlocked={isUnlocked} />
 
-            {/* Organizer Info */}
             {event.organizer && (
               <Card>
                 <CardContent className="p-6">
@@ -579,7 +598,7 @@ const EventDetailPage = () => {
                     <ul className="space-y-1">
                       {confirmation.breakdown.free > 0 && (
                         <li className="flex justify-between text-green-600 font-medium">
-                          <span>• Pièces gratuites (Bonus/Parrainage) :</span>
+                          <span>• Pièces gratuites :</span>
                           <span>-{confirmation.breakdown.free}π</span>
                         </li>
                       )}
@@ -593,14 +612,14 @@ const EventDetailPage = () => {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <Coins className="w-3 h-3" /> Les pièces gratuites sont utilisées en priorité.
+                  <Coins className="w-3 h-3" /> Le déblocage est définitif pour cet événement.
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmation.action} disabled={actionLoading} className="bg-primary">
+            <AlertDialogAction onClick={handleConfirmAction} disabled={actionLoading} className="bg-primary">
               {actionLoading ? <Loader2 className="animate-spin mr-2" /> : 'Confirmer'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -612,7 +631,7 @@ const EventDetailPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">Supprimer définitivement ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible et effacera toutes les données associées (billets, participants, statistiques).
+              Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -625,7 +644,6 @@ const EventDetailPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Verification Stats Modal */}
       <VerificationStatsDialog
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
