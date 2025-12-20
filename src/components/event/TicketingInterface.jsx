@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CoinService } from '@/services/CoinService';
 
 // Ticket Colors constant
 const TICKET_COLORS = {
@@ -25,6 +27,7 @@ const TICKET_COLORS = {
 
 const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh }) => {
     const { user } = useAuth();
+    const { userProfile } = useData();
     
     // Initialize cart from localStorage
     const [cart, setCart] = useState(() => {
@@ -58,17 +61,16 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             
             setIsCheckingBalance(true);
             try {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('balance')
-                    .eq('id', user.id)
-                    .single();
-
-                if (error) throw error;
-                
-                setUserBalance(data.balance || 0);
+                // Use CoinService to get correct balances
+                const balances = await CoinService.getWalletBalances(user.id);
+                // For tickets, we strictly use PAID COINS (coin_balance)
+                setUserBalance(balances.coin_balance); 
             } catch (error) {
                 console.error('Error fetching user balance:', error);
+                // Fallback to userProfile if fetch fails
+                if (userProfile?.coin_balance !== undefined) {
+                    setUserBalance(userProfile.coin_balance);
+                }
             } finally {
                 setIsCheckingBalance(false);
             }
@@ -76,8 +78,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
         if (showCheckoutModal || showCartDetails) {
             fetchUserBalance();
+        } else if (userProfile?.coin_balance !== undefined) {
+            // Initial load from context if modal not open
+            setUserBalance(userProfile.coin_balance);
         }
-    }, [user, showCheckoutModal, showCartDetails]);
+    }, [user, showCheckoutModal, showCartDetails, userProfile]);
 
     const isPresale = useMemo(() => {
         if (!event || !event.event_date) return false;
@@ -249,17 +254,16 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
         return cartItems.reduce((sum, item) => sum + item.quantity, 0);
     }, [cartItems]);
 
-    // Check if user has sufficient balance
+    // Check if user has sufficient balance (checking PAID balance)
     const hasSufficientBalance = useMemo(() => {
-        return userBalance >= cartTotal;
+        return (userBalance || 0) >= cartTotal;
     }, [userBalance, cartTotal]);
 
     // Calculate how much more pi needed
     const balanceDeficit = useMemo(() => {
-        return Math.max(0, cartTotal - userBalance);
+        return Math.max(0, cartTotal - (userBalance || 0));
     }, [userBalance, cartTotal]);
 
-    // Alternative simple avec window.location
     const redirectToPacks = () => {
         setShowInsufficientBalanceModal(false);
         setShowCheckoutModal(false);

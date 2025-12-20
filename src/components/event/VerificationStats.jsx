@@ -10,11 +10,11 @@ const VerificationStats = ({ eventId, organizerId }) => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const { data, error } = await supabase.rpc('get_verification_stats', { 
-                    p_event_id: eventId, 
-                    p_organizer_id: organizerId 
+                const { data, error } = await supabase.rpc('get_verification_stats', {
+                    p_event_id: eventId,
+                    p_organizer_id: organizerId
                 });
-                
+
                 if (error) throw error;
                 setStats(data?.stats);
             } catch (err) {
@@ -47,7 +47,7 @@ const VerificationStats = ({ eventId, organizerId }) => {
                     <p className="text-xs text-muted-foreground">vendus pour cet événement</p>
                 </CardContent>
             </Card>
-            
+
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Validés / Entrés</CardTitle>
