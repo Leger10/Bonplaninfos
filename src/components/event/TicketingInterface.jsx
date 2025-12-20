@@ -400,11 +400,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     if (!isUnlocked) return null;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 relative">
+        <div className="space-y-6 animate-in fade-in duration-500 relative px-2 sm:px-0">
             {/* Notification flottante */}
             {showNotification && (
-                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-500">
-                    <Alert className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl max-w-md">
+                <div className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-500 w-[90vw] sm:w-auto">
+                    <Alert className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl max-w-md mx-auto">
                         <CheckCircle2 className="h-5 w-5" />
                         <AlertTitle className="text-white">Commande confirmée !</AlertTitle>
                         <AlertDescription className="text-white/90">
@@ -415,25 +415,25 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between bg-gradient-to-r from-primary/10 to-purple-500/10 p-6 rounded-xl border border-primary/20">
-                <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-2 text-foreground">
-                        <Ticket className="text-primary h-6 w-6" /> Billetterie
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gradient-to-r from-primary/10 to-purple-500/10 p-4 sm:p-6 rounded-xl border border-primary/20 gap-3 sm:gap-0">
+                <div className="w-full sm:w-auto">
+                    <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-foreground">
+                        <Ticket className="text-primary h-5 w-5 sm:h-6 sm:w-6" /> Billetterie
                     </h2>
                     <p className="text-muted-foreground text-sm">Sélectionnez vos billets ci-dessous</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     {isPresale ? (
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse">
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse text-xs sm:text-sm">
                             🌟 Prévente
                         </Badge>
                     ) : (
-                        <Badge variant="outline">Tarif Normal</Badge>
+                        <Badge variant="outline" className="text-xs sm:text-sm">Tarif Normal</Badge>
                     )}
                     {/* User Balance Display */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                    <div className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-primary/10 rounded-lg">
                         <Wallet className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">
+                        <span className="text-sm font-medium whitespace-nowrap">
                             Solde: <span className="font-bold">{userBalance.toFixed(2)} π</span>
                         </span>
                     </div>
@@ -447,7 +447,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     <AlertDescription>La billetterie est fermée ou les billets sont épuisés.</AlertDescription>
                 </Alert>
             ) : (
-                <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                     {ticketTypes.map(type => {
                         const price = getActivePrice(type);
                         const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
@@ -457,24 +457,24 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
                         return (
                             <Card key={type.id} className={`relative overflow-hidden transition-all hover:shadow-xl ${style.bg} ${style.border} ${isSoldOut ? 'opacity-80 grayscale' : 'hover:scale-[1.02]'} group`}>
-                                <CardContent className="p-6 flex flex-col h-full justify-between gap-4">
-                                    <div className="flex justify-between items-start">
+                                <CardContent className="p-4 sm:p-6 flex flex-col h-full justify-between gap-3 sm:gap-4">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-2 sm:gap-0">
                                         <div className="flex items-center gap-2">
                                             {getTicketIcon(type.color)}
-                                            <h3 className={`font-bold text-xl ${style.text}`}>{type.name}</h3>
+                                            <h3 className={`font-bold text-lg sm:text-xl ${style.text} break-words`}>{type.name}</h3>
                                         </div>
-                                        <div className="text-right">
-                                            <div className={`font-bold text-2xl ${style.text} flex items-center justify-end`}>
-                                                {price.toFixed(2)} <Coins className="w-5 h-5 ml-1 text-yellow-300" />
+                                        <div className="text-right w-full sm:w-auto">
+                                            <div className={`font-bold text-xl sm:text-2xl ${style.text} flex items-center justify-end sm:justify-end`}>
+                                                {price.toFixed(2)} <Coins className="w-4 h-4 sm:w-5 sm:h-5 ml-1 text-yellow-300" />
                                             </div>
-                                            <div className={`text-sm ${style.text} opacity-80`}>
+                                            <div className={`text-xs sm:text-sm ${style.text} opacity-80`}>
                                                 {(price * 10).toLocaleString()} FCFA
                                             </div>
                                         </div>
                                     </div>
                                     
                                     {type.description && (
-                                        <p className={`text-sm ${style.text} opacity-90 mt-2`}>
+                                        <p className={`text-xs sm:text-sm ${style.text} opacity-90 mt-2 line-clamp-2`}>
                                             {type.description}
                                         </p>
                                     )}
@@ -482,11 +482,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     <div className="space-y-3">
                                         {/* Stock info */}
                                         <div className="flex items-center justify-between">
-                                            <span className={`text-xs ${style.text} font-medium ${isSoldOut ? 'text-red-200' : ''}`}>
-                                                {isSoldOut ? '🚫 Épuisé' : `🎟️ ${available} places disponibles`}
+                                            <span className={`text-xs ${style.text} font-medium ${isSoldOut ? 'text-red-200' : ''} truncate`}>
+                                                {isSoldOut ? '🚫 Épuisé' : `🎟️ ${available} places`}
                                             </span>
                                             {inCart > 0 && (
-                                                <Badge variant="secondary" className={`${style.badge} text-xs`}>
+                                                <Badge variant="secondary" className={`${style.badge} text-xs px-2`}>
                                                     {inCart} dans le panier
                                                 </Badge>
                                             )}
@@ -500,7 +500,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                         key={qty}
                                                         size="sm"
                                                         variant="outline"
-                                                        className={`h-7 px-2 text-xs ${style.text} border-white/30 hover:bg-white/20`}
+                                                        className={`h-6 sm:h-7 px-2 text-xs ${style.text} border-white/30 hover:bg-white/20`}
                                                         onClick={() => handleAddMultiple(type.id, qty)}
                                                         disabled={available < (inCart + qty)}
                                                     >
@@ -511,16 +511,16 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                         )}
                                         
                                         {/* Quantity controls */}
-                                        <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                                            <div className="flex items-center gap-3 bg-black/20 p-1 rounded-lg backdrop-blur-sm">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 border-t border-white/20 gap-3 sm:gap-0">
+                                            <div className="flex items-center gap-2 sm:gap-3 bg-black/20 p-1 rounded-lg backdrop-blur-sm w-full sm:w-auto justify-center">
                                                 <Button 
                                                     size="icon" 
                                                     variant="ghost" 
-                                                    className="h-8 w-8 text-white hover:bg-white/20 transition-colors" 
+                                                    className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
                                                     onClick={() => handleQuantityChange(type.id, -1)} 
                                                     disabled={!inCart || isSoldOut}
                                                 >
-                                                    <Minus className="w-3 h-3" />
+                                                    <Minus className="w-3 h-3 sm:w-3 sm:h-3" />
                                                 </Button>
                                                 <span className={`w-8 text-center font-bold ${style.text} text-lg`}>
                                                     {inCart || 0}
@@ -528,11 +528,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 <Button 
                                                     size="icon" 
                                                     variant="ghost" 
-                                                    className="h-8 w-8 text-white hover:bg-white/20 transition-colors" 
+                                                    className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
                                                     onClick={() => handleQuantityChange(type.id, 1)} 
                                                     disabled={available <= inCart || isSoldOut}
                                                 >
-                                                    <Plus className="w-3 h-3" />
+                                                    <Plus className="w-3 h-3 sm:w-3 sm:h-3" />
                                                 </Button>
                                             </div>
                                             
@@ -541,7 +541,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20`}
+                                                    className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20 w-full sm:w-auto mt-2 sm:mt-0`}
                                                     onClick={() => removeFromCart(type.id)}
                                                 >
                                                     <X className="w-3 h-3 mr-1" />
@@ -563,9 +563,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     {/* Cart Details Panel */}
                     {showCartDetails && (
                         <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setShowCartDetails(false)}>
-                            <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-                                <Card className="bg-card shadow-2xl border-t-4 border-t-primary">
-                                    <CardContent className="p-4">
+                            <div className="fixed bottom-0 left-0 right-0 sm:bottom-24 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-full sm:max-w-md max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                                <Card className="bg-card shadow-2xl border-t-4 border-t-primary rounded-t-2xl sm:rounded-xl h-full overflow-hidden">
+                                    <CardContent className="p-4 h-full flex flex-col">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-bold text-lg">Votre panier ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''})</h3>
                                             <div className="flex items-center gap-2">
@@ -578,26 +578,26 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={clearCart}
-                                                    className="text-destructive hover:text-destructive"
+                                                    className="text-destructive hover:text-destructive p-2"
                                                 >
-                                                    <Trash2 className="w-4 h-4 mr-1" />
-                                                    Vider
+                                                    <Trash2 className="w-4 h-4" />
+                                                    <span className="sr-only sm:not-sr-only sm:ml-1">Vider</span>
                                                 </Button>
                                             </div>
                                         </div>
                                         
-                                        <ScrollArea className="h-64 pr-4">
+                                        <ScrollArea className="flex-1 pr-2 sm:pr-4">
                                             {cartItems.map(item => (
                                                 <div key={item.id} className="flex items-center justify-between p-3 mb-2 bg-muted/30 rounded-lg">
-                                                    <div className="flex-1">
-                                                        <div className="font-medium">{item.type.name}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-medium truncate">{item.type.name}</div>
                                                         <div className="text-sm text-muted-foreground">
                                                             {item.unitPrice.toFixed(2)} π × {item.quantity}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-2 sm:gap-3 ml-2">
                                                         <div className="text-right">
-                                                            <div className="font-bold">{item.total.toFixed(2)} π</div>
+                                                            <div className="font-bold text-sm sm:text-base">{item.total.toFixed(2)} π</div>
                                                             <div className="text-xs text-muted-foreground">
                                                                 {item.totalFcfa.toLocaleString()} FCFA
                                                             </div>
@@ -605,10 +605,10 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
-                                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                                            className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive flex-shrink-0"
                                                             onClick={() => removeFromCart(item.id)}
                                                         >
-                                                            <X className="w-4 h-4" />
+                                                            <X className="w-3 h-3 sm:w-4 sm:h-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -627,15 +627,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             )}
                                             
                                             <div className="flex justify-between items-center mb-3">
-                                                <div>
-                                                    <span className="font-bold">Total</span>
-                                                    <div className="text-sm text-muted-foreground">
+                                                <div className="min-w-0">
+                                                    <span className="font-bold text-sm sm:text-base">Total</span>
+                                                    <div className="text-xs sm:text-sm text-muted-foreground truncate">
                                                         Solde disponible: {userBalance.toFixed(2)} π
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold text-primary">{cartTotal.toFixed(2)} π</div>
-                                                    <div className="text-sm text-muted-foreground">
+                                                <div className="text-right ml-2">
+                                                    <div className="text-xl sm:text-2xl font-bold text-primary">{cartTotal.toFixed(2)} π</div>
+                                                    <div className="text-xs sm:text-sm text-muted-foreground">
                                                         {cartTotalFcfa.toLocaleString()} FCFA
                                                     </div>
                                                 </div>
@@ -656,17 +656,17 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 {isCheckingBalance ? (
                                                     <>
                                                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                                        Vérification...
+                                                        <span className="truncate">Vérification...</span>
                                                     </>
                                                 ) : !hasSufficientBalance ? (
                                                     <>
                                                         <Package className="w-5 h-5 mr-2" />
-                                                        Recharger mon solde
+                                                        <span className="truncate">Recharger mon solde</span>
                                                     </>
                                                 ) : (
                                                     <>
                                                         <ShoppingCart className="w-5 h-5 mr-2" />
-                                                        Commander maintenant
+                                                        <span className="truncate">Commander maintenant</span>
                                                     </>
                                                 )}
                                             </Button>
@@ -678,36 +678,38 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     )}
 
                     {/* Floating Cart Button */}
-                    <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 animate-in slide-in-from-bottom duration-500">
-                        <div className="flex items-center gap-2 bg-card/95 backdrop-blur-md rounded-full shadow-2xl border-t-4 border-t-primary p-2 pl-4">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <ShoppingCart className="w-6 h-6 text-primary" />
-                                    {totalTicketsInCart > 0 && (
-                                        <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
-                                            {totalTicketsInCart}
-                                        </Badge>
-                                    )}
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-sm font-medium">{totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''}</p>
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-xs font-bold text-primary">{cartTotal.toFixed(2)} π</p>
-                                        {!hasSufficientBalance && (
-                                            <Badge variant="destructive" className="h-4 px-1 text-[10px]">
-                                                Solde insuffisant
+                    <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4 animate-in slide-in-from-bottom duration-500">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl sm:rounded-full shadow-2xl border-t-4 border-t-primary p-3 sm:p-2 sm:pl-4 w-full max-w-md sm:max-w-none">
+                            <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto justify-between sm:justify-start">
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <ShoppingCart className="w-6 h-6 text-primary" />
+                                        {totalTicketsInCart > 0 && (
+                                            <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
+                                                {totalTicketsInCart}
                                             </Badge>
                                         )}
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="text-sm font-medium whitespace-nowrap">{totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-bold text-primary whitespace-nowrap">{cartTotal.toFixed(2)} π</p>
+                                            {!hasSufficientBalance && (
+                                                <Badge variant="destructive" className="h-4 px-1 text-[10px] whitespace-nowrap">
+                                                    Solde insuffisant
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowCartDetails(true)}
-                                    className="h-9 rounded-full"
+                                    className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm"
                                 >
                                     Voir détails
                                 </Button>
@@ -720,7 +722,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             setShowCheckoutModal(true);
                                         }
                                     }}
-                                    className={`rounded-full ${!hasSufficientBalance ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'}`}
+                                    className={`rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? 'bg-destructive hover:bg-destructive/90' : 'bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'}`}
                                 >
                                     {!hasSufficientBalance ? 'Recharger' : 'Commander'}
                                 </Button>
@@ -732,8 +734,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
             {/* Empty Cart State */}
             {totalTicketsInCart === 0 && (
-                <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4">
-                    <Card className="bg-card/95 backdrop-blur-md border-t-4 border-t-primary shadow-lg">
+                <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4">
+                    <Card className="bg-card/95 backdrop-blur-md border-t-4 border-t-primary shadow-lg w-full max-w-md">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-center gap-3">
                                 <ShoppingCart className="w-6 h-6 text-muted-foreground" />
@@ -742,6 +744,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     variant="outline"
                                     size="sm"
                                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                    className="whitespace-nowrap"
                                 >
                                     Ajouter des billets
                                 </Button>
@@ -753,43 +756,43 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
             {/* Checkout Modal */}
             <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="w-[95vw] max-w-lg mx-auto p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle className="text-xl">Validation de commande</DialogTitle>
+                        <DialogTitle className="text-lg sm:text-xl">Validation de commande</DialogTitle>
                         <DialogDescription>
                             Vérifiez et modifiez votre commande avant de finaliser
                         </DialogDescription>
                     </DialogHeader>
                     
                     {/* User Balance Summary */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                        <div className="flex items-center justify-between">
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                             <div className="flex items-center gap-3">
                                 <Wallet className="w-5 h-5 text-primary" />
                                 <div>
                                     <p className="text-sm font-medium">Votre solde</p>
-                                    <p className="text-2xl font-bold text-primary">{userBalance.toFixed(2)} π</p>
+                                    <p className="text-xl sm:text-2xl font-bold text-primary">{userBalance.toFixed(2)} π</p>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-sm font-medium">Total panier</p>
-                                <p className={`text-2xl font-bold ${hasSufficientBalance ? 'text-green-600' : 'text-destructive'}`}>
+                                <p className={`text-xl sm:text-2xl font-bold ${hasSufficientBalance ? 'text-green-600' : 'text-destructive'}`}>
                                     {cartTotal.toFixed(2)} π
                                 </p>
                             </div>
                         </div>
                         {!hasSufficientBalance && (
                             <Alert variant="destructive" className="mt-3">
-                                <AlertTitle>Solde insuffisant</AlertTitle>
-                                <AlertDescription>
+                                <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
+                                <AlertDescription className="text-xs">
                                     Il vous manque {balanceDeficit.toFixed(2)} π pour valider cette commande.
                                 </AlertDescription>
                             </Alert>
                         )}
                     </div>
                     
-                    <ScrollArea className="max-h-[50vh] pr-4">
-                        <div className="space-y-4 py-2">
+                    <ScrollArea className="max-h-[40vh] sm:max-h-[50vh] pr-2 sm:pr-4">
+                        <div className="space-y-3 sm:space-y-4 py-2">
                             {cartItems.length === 0 ? (
                                 <div className="text-center py-8">
                                     <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -797,28 +800,28 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 </div>
                             ) : (
                                 cartItems.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                                        <div className="flex-1">
-                                            <div className="font-bold text-lg">{item.type.name}</div>
-                                            <div className="text-sm text-muted-foreground mb-2">
+                                    <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-base sm:text-lg truncate">{item.type.name}</div>
+                                            <div className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-1">
                                                 {item.type.description || 'Billet standard'}
                                             </div>
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-2 sm:gap-4">
                                                 <div className="flex items-center gap-2">
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        className="h-8 w-8"
+                                                        className="h-7 w-7 sm:h-8 sm:w-8"
                                                         onClick={() => handleQuantityChange(item.id, -1)}
                                                         disabled={item.quantity <= 1}
                                                     >
                                                         <Minus className="w-3 h-3" />
                                                     </Button>
-                                                    <span className="font-bold w-8 text-center">{item.quantity}</span>
+                                                    <span className="font-bold w-6 sm:w-8 text-center text-sm sm:text-base">{item.quantity}</span>
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        className="h-8 w-8"
+                                                        className="h-7 w-7 sm:h-8 sm:w-8"
                                                         onClick={() => handleQuantityChange(item.id, 1)}
                                                         disabled={((item.type.quantity_available || 0) - (item.type.quantity_sold || 0)) <= item.quantity}
                                                     >
@@ -828,16 +831,17 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 <Button
                                                     size="sm"
                                                     variant="destructive"
-                                                    className="h-8"
+                                                    className="h-7 sm:h-8 px-2"
                                                     onClick={() => removeFromCart(item.id)}
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    <span className="sr-only sm:not-sr-only sm:ml-1">Supprimer</span>
                                                 </Button>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold">{item.total.toFixed(2)} π</div>
-                                            <div className="text-sm text-muted-foreground">
+                                        <div className="text-right ml-2">
+                                            <div className="text-base sm:text-lg font-bold">{item.total.toFixed(2)} π</div>
+                                            <div className="text-xs sm:text-sm text-muted-foreground">
                                                 {item.totalFcfa.toLocaleString()} FCFA
                                             </div>
                                             <div className="text-xs text-muted-foreground mt-1">
@@ -854,15 +858,15 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         <>
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center pt-4 border-t">
-                                    <div>
-                                        <span className="text-lg font-bold">Total ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''})</span>
-                                        <div className="text-sm text-muted-foreground">
+                                    <div className="min-w-0">
+                                        <span className="text-base sm:text-lg font-bold">Total ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''})</span>
+                                        <div className="text-xs sm:text-sm text-muted-foreground truncate">
                                             {cartItems.length} type{cartItems.length > 1 ? 's' : ''} de billet
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} π</span>
-                                        <span className="text-sm text-muted-foreground">
+                                    <div className="text-right ml-2">
+                                        <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} π</span>
+                                        <span className="text-xs sm:text-sm text-muted-foreground">
                                             {cartTotalFcfa.toLocaleString()} FCFA
                                         </span>
                                     </div>
@@ -870,7 +874,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 
                                 {!hasSufficientBalance && (
                                     <Alert className="bg-amber-50 border-amber-200">
-                                        <AlertDescription className="text-sm text-amber-800">
+                                        <AlertDescription className="text-xs sm:text-sm text-amber-800">
                                             <Package className="w-4 h-4 inline mr-2" />
                                             Votre solde est insuffisant. <strong>Rechargez vos π pour continuer.</strong>
                                         </AlertDescription>
@@ -878,7 +882,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 )}
                                 
                                 <Alert className="bg-blue-50 border-blue-200">
-                                    <AlertDescription className="text-sm text-blue-700">
+                                    <AlertDescription className="text-xs sm:text-sm text-blue-700">
                                         <Bell className="w-4 h-4 inline mr-2" />
                                         Après paiement, vos billets seront disponibles dans votre profil.
                                     </AlertDescription>
@@ -886,11 +890,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             </div>
                             
                             <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
-                                <div className="flex gap-2 w-full">
+                                <div className="flex flex-col sm:flex-row gap-2 w-full">
                                     <Button
                                         variant="destructive"
                                         onClick={clearCart}
-                                        className="flex-1"
+                                        className="w-full sm:flex-1"
                                         disabled={cartItems.length === 0}
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />
@@ -899,7 +903,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     <Button
                                         variant="outline"
                                         onClick={() => setShowCheckoutModal(false)}
-                                        className="flex-1"
+                                        className="w-full sm:flex-1"
                                     >
                                         Continuer mes achats
                                     </Button>
@@ -913,17 +917,17 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     {loading ? (
                                         <>
                                             <Loader2 className="animate-spin mr-2 w-5 h-5" />
-                                            Traitement...
+                                            <span className="truncate">Traitement...</span>
                                         </>
                                     ) : hasSufficientBalance ? (
                                         <>
                                             <Check className="mr-2 w-5 h-5" />
-                                            Payer {cartTotal.toFixed(2)} π
+                                            <span className="truncate">Payer {cartTotal.toFixed(2)} π</span>
                                         </>
                                     ) : (
                                         <>
                                             <Package className="mr-2 w-5 h-5" />
-                                            Recharger mon solde
+                                            <span className="truncate">Recharger mon solde</span>
                                         </>
                                     )}
                                 </Button>
@@ -935,13 +939,13 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
             {/* Insufficient Balance Modal */}
             <Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
                     <DialogHeader>
-                        <div className="mx-auto w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
-                            <Wallet className="w-10 h-10 text-amber-600" />
+                        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
+                            <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
                         </div>
-                        <DialogTitle className="text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
-                        <DialogDescription className="text-center text-base">
+                        <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
+                        <DialogDescription className="text-center text-sm sm:text-base">
                             Votre solde actuel de <strong>{userBalance.toFixed(2)} π</strong> ne permet pas d'acheter
                             le panier de <strong>{cartTotal.toFixed(2)} π</strong>.
                             <br />
@@ -952,8 +956,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     
                     <div className="space-y-4 py-4">
                         <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-                            <AlertTitle className="text-amber-800">💡 Solution rapide</AlertTitle>
-                            <AlertDescription className="text-amber-700">
+                            <AlertTitle className="text-amber-800 text-sm sm:text-base">💡 Solution rapide</AlertTitle>
+                            <AlertDescription className="text-amber-700 text-xs sm:text-sm">
                                 Rechargez votre compte avec un pack de π pour finaliser votre achat et profiter de l'événement !
                             </AlertDescription>
                         </Alert>
@@ -961,7 +965,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         <div className="grid grid-cols-2 gap-3">
                             <Button
                                 variant="outline"
-                                className="h-16 flex-col gap-1"
+                                className="h-14 sm:h-16 flex-col gap-1"
                                 onClick={() => setShowInsufficientBalanceModal(false)}
                             >
                                 <X className="w-5 h-5" />
@@ -969,7 +973,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             </Button>
                             <Button
                                 onClick={redirectToPacks}
-                                className="h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1"
+                                className="h-14 sm:h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1"
                             >
                                 <Package className="w-5 h-5" />
                                 <span className="text-xs font-bold">Voir les packs</span>
@@ -989,13 +993,13 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
             {/* Success Modal */}
             <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
-                <DialogContent className="sm:max-w-md text-center">
+                <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6 text-center">
                     <DialogHeader>
-                        <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-500">
-                            <CheckCircle2 className="w-10 h-10 text-green-600" />
+                        <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-500">
+                            <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
                         </div>
-                        <DialogTitle className="text-2xl text-green-700">🎉 Félicitations !</DialogTitle>
-                        <DialogDescription className="text-base">
+                        <DialogTitle className="text-xl sm:text-2xl text-green-700">🎉 Félicitations !</DialogTitle>
+                        <DialogDescription className="text-sm sm:text-base">
                             Votre commande a été effectuée avec succès !
                             <br />
                             <strong className="text-primary font-semibold">
@@ -1003,13 +1007,13 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             </strong> pour un téléchargement ultérieur.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-6 space-y-3">
+                    <div className="py-4 sm:py-6 space-y-3">
                         <Button
                             onClick={handleDownloadPDF}
-                            className="w-full h-14 text-lg font-bold shadow-lg bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                            className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold shadow-lg bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
                         >
-                            <Download className="mr-2 h-6 w-6" />
-                            Télécharger les Billets (PDF)
+                            <Download className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                            <span className="truncate">Télécharger les Billets (PDF)</span>
                         </Button>
                         <Button
                             variant="outline"
