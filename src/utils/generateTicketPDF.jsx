@@ -144,16 +144,18 @@ const formatPurchaseDate = (dateString) => {
   }
 };
 
-export const generateTicketPDF = async (event, tickets, user) => {
+export const generateTicketPDF = async (event, tickets, user, toast) => {
   try {
     // Vérification des données essentielles
     if (!event || !tickets || tickets.length === 0) {
       console.error("Missing required data for PDF generation");
-      toast({
-        title: "Erreur",
-        description: "Données manquantes pour générer le billet",
-        variant: "destructive",
-      });
+      if (toast) {
+        toast({
+          title: "Erreur",
+          description: "Données manquantes pour générer le billet",
+          variant: "destructive",
+        });
+      }
       return false;
     }
 
@@ -169,6 +171,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
     const pageHeight = doc.internal.pageSize.getHeight(); // 148mm
     const margin = 5;
     const contentWidth = pageWidth - margin * 2; // 95mm
+    const bottomMargin = 15; // Augmenté de 10 à 15mm pour plus d'espace en bas
 
     // Charger le logo une seule fois
     const logoUrl = "https://res.cloudinary.com/dprp6vxv6/image/upload/v1722428610/bpi/logo-BPI-v2-transparent_pmsz7v.png";
@@ -325,10 +328,10 @@ export const generateTicketPDF = async (event, tickets, user) => {
       
       doc.text(displayName, pageWidth - margin - 4, cursorY + 8, { align: "right" });
 
-      cursorY += 18;
+      cursorY += 15; // Réduit de 18 à 15 pour gagner de l'espace
 
       // --- 6. ZONE QR CODE (réduite pour faire de la place) ---
-      const qrSize = 50; // Réduit de 55 à 50mm pour faire de la place
+      const qrSize = 45; // Réduit de 50 à 45mm pour gagner encore plus d'espace
       const qrX = (pageWidth - qrSize) / 2;
 
       // Ajouter les bordures d'angle pour le QR
@@ -365,7 +368,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
         }
       }
 
-      cursorY += qrSize + 8;
+      cursorY += qrSize + 8; // Réduit de 8 à 5mm
 
       // --- 7. CODE DU BILLET ET ID ---
       doc.setFont("courier", "bold");
@@ -373,12 +376,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
       doc.setTextColor(0, 0, 0);
       doc.text(ticketCode.split("").join(" "), pageWidth / 2, cursorY, { align: "center" });
       
-      cursorY += 7;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`ID: ${ticketNum}`, pageWidth / 2, cursorY, { align: "center" });
-
       // --- 8. DATE D'ACHAT (si disponible) ---
       if (purchaseDateDisplay) {
         cursorY += 7;
@@ -389,28 +386,27 @@ export const generateTicketPDF = async (event, tickets, user) => {
       }
 
       // --- 9. LIEN DU SITE ---
-      cursorY += 7;
+      cursorY += (9);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(...ticketColor); // Même couleur que le ticket pour cohérence
       doc.text("www.bonplaninfos.net", pageWidth / 2, cursorY, { align: "center" });
 
       // --- 10. FOOTER (Repositionné avec plus d'espace) ---
-      cursorY += 10; // Espace avant le footer
+      // Calculer la position du footer pour qu'il soit toujours à 15mm du bas
+      const footerY = pageHeight - bottomMargin + 5; // 5mm au-dessus de la marge inférieure
       
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(150, 150, 150);
       
-      // Première ligne du footer (seulement la phrase maintenant)
-      doc.text("Valable une seule fois • scannez à l'entrée", pageWidth / 2, cursorY, { align: "center" });
-      
-      // --- 11. MARGE DE SÉCURITÉ EN BAS ---
-      // Ajouter un espace en bas pour éviter toute superposition
-      if (cursorY > pageHeight - 8) {
-        console.warn("Le contenu risque de déborder, ajustement automatique...");
-        // Si le contenu est trop proche du bas, on réduit l'espacement
-        cursorY = pageHeight - 12;
+      // Placer le footer à la position calculée
+      doc.text("Valable une seule fois • scannez à l'entrée et à la sortie ", pageWidth / 2, footerY, { align: "center" });
+
+      // --- 11. VÉRIFICATION D'ESPACE ---
+      // Vérifier si le contenu dépasse la zone de sécurité
+      if (cursorY > footerY - 10) {
+        console.warn(`Le contenu du ticket ${i+1} est trop proche du footer. Considérer réduire encore les espacements.`);
       }
     }
 
@@ -431,7 +427,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
     console.error("Error generating PDF:", error);
     
     // Afficher un message d'erreur à l'utilisateur
-    if (typeof toast !== "undefined") {
+    if (toast) {
       toast({
         title: "Erreur",
         description: "Impossible de générer le PDF. Veuillez réessayer.",

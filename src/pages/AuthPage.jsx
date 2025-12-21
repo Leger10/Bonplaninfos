@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff, MailCheck, Lock, RefreshCw } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MailCheck, Lock, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '@/constants/countries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -111,12 +111,24 @@ const AuthPage = () => {
     const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
     const [showDeactivatedForm, setShowDeactivatedForm] = useState(false);
     const [showResendLink, setShowResendLink] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
     
     const { signIn, signUp, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useTranslation();
     const { toast } = useToast();
+
+    // Cooldown timer effect
+    useEffect(() => {
+        let interval;
+        if (cooldown > 0) {
+            interval = setInterval(() => {
+                setCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [cooldown]);
 
     useEffect(() => {
         if (user) {
@@ -147,7 +159,7 @@ const AuthPage = () => {
     }, [country]);
 
     const handleResendConfirmation = async () => {
-        if (!email) return;
+        if (!email || cooldown > 0) return;
         setLoading(true);
         try {
             const { error } = await supabase.auth.resend({
@@ -163,15 +175,22 @@ const AuthPage = () => {
             toast({
                 title: "Email envoyé",
                 description: "Un nouveau lien de confirmation a été envoyé à " + email,
-                variant: "default"
+                variant: "default",
+                className: "bg-green-600 text-white"
             });
+            
+            setCooldown(60); // 60s cooldown
             setShowResendLink(false);
             setError("");
             setShowConfirmationMessage(true);
         } catch (err) {
+            console.error("Resend error", err);
+            let msg = err.message || "Impossible de renvoyer l'email.";
+            if (msg.includes("rate limit")) msg = "Veuillez patienter avant de renvoyer un email.";
+            
             toast({
                 title: "Erreur",
-                description: err.message || "Impossible de renvoyer l'email.",
+                description: msg,
                 variant: "destructive"
             });
         } finally {
@@ -196,7 +215,7 @@ const AuthPage = () => {
                 if (errorMessage === 'ACCOUNT_DEACTIVATED') {
                     setShowDeactivatedForm(true);
                 } else if (errorMessage.includes('Email not confirmed') || errorMessage.includes('email_not_confirmed')) {
-                    setError("Votre adresse email n'a pas encore été confirmée. Veuillez vérifier votre boîte de réception (et vos spams).");
+                    setError("Votre adresse email n'a pas encore été confirmée.");
                     setShowResendLink(true);
                 } else if (errorMessage.includes('Invalid login credentials')) {
                     setError(t('auth.login.error_invalid_credentials'));
@@ -252,6 +271,7 @@ const AuthPage = () => {
         setReferralCode('');
         setRole('user');
         setAgreedToTerms(false);
+        setCooldown(0);
     };
 
     const containerVariants = {
@@ -285,17 +305,38 @@ const AuthPage = () => {
                                 key="confirmation"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="text-center"
+                                className="text-center space-y-4"
                             >
-                                <MailCheck className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                                <MailCheck className="w-16 h-16 text-green-500 mx-auto mb-4 animate-in zoom-in duration-300" />
                                 <h1 className="text-2xl font-bold font-heading text-primary">{t('auth.register.confirmation_email_title')}</h1>
-                                <p className="text-muted-foreground mt-2 mb-6">{t('auth.register.confirmation_email_description')}</p>
-                                <Button onClick={() => {
-                                    setShowConfirmationMessage(false);
-                                    setIsLogin(true);
-                                }}>
-                                    {t('auth.login.title')}
-                                </Button>
+                                <Alert className="bg-blue-50 border-blue-200 text-left">
+                                    <AlertDescription className="text-blue-800">
+                                        Un email de confirmation a été envoyé à <strong>{email}</strong>. 
+                                        Veuillez cliquer sur le lien pour activer votre compte.
+                                    </AlertDescription>
+                                </Alert>
+                                <p className="text-sm text-muted-foreground mt-4">
+                                    Vous ne trouvez pas l'email ? Vérifiez vos spams.
+                                </p>
+                                
+                                <div className="pt-4 flex flex-col gap-3">
+                                    <Button 
+                                        variant="outline"
+                                        onClick={handleResendConfirmation}
+                                        disabled={loading || cooldown > 0}
+                                        className="w-full"
+                                    >
+                                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                                        {cooldown > 0 ? `Renvoyer dans ${cooldown}s` : "Renvoyer l'email"}
+                                    </Button>
+                                    
+                                    <Button variant="ghost" onClick={() => {
+                                        setShowConfirmationMessage(false);
+                                        setIsLogin(true);
+                                    }}>
+                                        Retour à la connexion
+                                    </Button>
+                                </div>
                             </motion.div>
                         ) : (
                         <motion.div
@@ -311,20 +352,21 @@ const AuthPage = () => {
                             </div>
 
                             {error && (
-                                <Alert variant="destructive" className="mb-4">
+                                <Alert variant="destructive" className="mb-4 animate-in shake">
+                                    <AlertTriangle className="h-4 w-4" />
                                     <AlertTitle>{t('common.error_title')}</AlertTitle>
                                     <AlertDescription className="flex flex-col gap-2">
                                         <span>{error}</span>
                                         {showResendLink && (
                                             <Button 
-                                                variant="outline" 
+                                                variant="secondary" 
                                                 size="sm" 
                                                 onClick={handleResendConfirmation}
-                                                disabled={loading}
-                                                className="mt-2 border-red-200 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 dark:border-red-800"
+                                                disabled={loading || cooldown > 0}
+                                                className="mt-2 w-full"
                                             >
                                                 {loading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <RefreshCw className="w-3 h-3 mr-2" />}
-                                                Renvoyer l'email de confirmation
+                                                {cooldown > 0 ? `Attendre ${cooldown}s` : "Renvoyer confirmation"}
                                             </Button>
                                         )}
                                     </AlertDescription>
