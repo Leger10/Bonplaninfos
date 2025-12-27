@@ -1,339 +1,300 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Eye, Heart, MessageSquare, Share2, Loader2, Trash2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Heart, MessageCircle, Share2, Send, Loader2, Copy, Twitter, Facebook, Link as LinkIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
-const SocialInteractions = ({ event, isUnlocked, handleShare }) => {
+const SocialInteractions = ({ event, onInteraction, variant = 'horizontal' }) => {
   const { user } = useAuth();
-  const { userProfile, forceRefreshUserProfile } = useData();
-  const [interactions, setInteractions] = useState({
-    views: event.views_count || 0,
-    likes: 0,
-    comments: 0,
-    shares: 0,
-  });
-  const [userInteractions, setUserInteractions] = useState({
-    liked: false,
-  });
-  const [commentsList, setCommentsList] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState({ like: false, comment: false, action: null });
-  const [deleteId, setDeleteId] = useState(null);
-
-  // Only Organizer and Super Admin can delete comments
-  const isOrganizer = user && event.organizer_id === user.id;
-  const isSuperAdmin = userProfile?.user_type === 'super_admin';
-  const canDelete = isOrganizer || isSuperAdmin;
-
-  // Determine if event is protected
-  const isProtectedEvent = event.event_type === 'protected';
+  const [likesCount, setLikesCount] = useState(0);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [loadingLike, setLoadingLike] = useState(false);
+  
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComment, setLoadingComment] = useState(false);
+  const [loadingCommentsList, setLoadingCommentsList] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
-    const fetchInteractions = async () => {
-      if (!event?.id) return;
+    if (event) {
+      fetchInteractionCounts();
+      if (user) checkUserLike();
+    }
+  }, [event, user]);
 
-      // Fetch Likes
-      const { count: likesCount, error: likesError } = await supabase
-        .from('user_interactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', event.id)
-        .eq('interaction_type', 'like');
-      
-      // Fetch ALL Comments (No approval filtering)
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('event_comments')
-        .select('*, user:profiles(full_name, avatar_url, username)')
-        .eq('event_id', event.id)
-        .order('created_at', { ascending: false });
+  const fetchInteractionCounts = async () => {
+    if (!event?.id) return;
+    
+    const { count: likes } = await supabase
+      .from('user_interactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event.id)
+      .eq('interaction_type', 'like');
+    
+    const { count: comments } = await supabase
+      .from('event_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event.id);
 
-      if (likesError || commentsError) {
-        console.error('Error fetching interactions:', likesError || commentsError);
+    setLikesCount(likes || 0);
+    setCommentsCount(comments || 0);
+  };
+
+  const checkUserLike = async () => {
+    if (!event?.id || !user?.id) return;
+    
+    const { data } = await supabase
+      .from('user_interactions')
+      .select('id')
+      .eq('event_id', event.id)
+      .eq('user_id', user.id)
+      .eq('interaction_type', 'like')
+      .maybeSingle();
+    
+    setIsLiked(!!data);
+  };
+
+  const fetchComments = async () => {
+    if (!event?.id) return;
+    setLoadingCommentsList(true);
+    const { data, error } = await supabase
+      .from('event_comments')
+      .select('*, profiles(full_name, avatar_url)')
+      .eq('event_id', event.id)
+      .order('created_at', { ascending: false });
+    
+    if (!error && data) setComments(data);
+    setLoadingCommentsList(false);
+  };
+
+  const handleLike = async () => {
+    if (!user) {
+      toast({ title: "Connexion requise", description: "Connectez-vous pour aimer cet événement.", variant: "destructive" });
+      return;
+    }
+
+    setLoadingLike(true);
+    try {
+      if (isLiked) {
+        await supabase.from('user_interactions').delete().eq('event_id', event.id).eq('user_id', user.id).eq('interaction_type', 'like');
+        setIsLiked(false);
+        setLikesCount(prev => Math.max(0, prev - 1));
       } else {
-        setInteractions(prev => ({
-          ...prev,
-          likes: likesCount || 0,
-          comments: commentsData?.length || 0,
-        }));
-        setCommentsList(commentsData || []);
+        const { error } = await supabase.rpc('protected_event_interaction', {
+            p_event_id: event.id, p_user_id: user.id, p_interaction_type: 'like'
+        });
+        if (error) throw error;
+        setIsLiked(true);
+        setLikesCount(prev => prev + 1);
       }
+      if (onInteraction) onInteraction();
+    } catch (error) {
+      toast({ title: "Erreur", description: "Action impossible.", variant: "destructive" });
+    } finally {
+      setLoadingLike(false);
+    }
+  };
 
-      if (user) {
-        const { data: userLike, error: userLikeError } = await supabase
-          .from('user_interactions')
-          .select('id')
-          .eq('event_id', event.id)
-          .eq('user_id', user.id)
-          .eq('interaction_type', 'like')
-          .maybeSingle();
-        
-        if (!userLikeError) {
-          setUserInteractions(prev => ({ ...prev, liked: !!userLike }));
-        }
-      }
+  const handlePostComment = async () => {
+    if (!newComment.trim() || !user) return;
+    setLoadingComment(true);
+    try {
+      await supabase.from('event_comments').insert({
+          event_id: event.id, user_id: user.id, comment_text: newComment.trim(), is_approved: true
+      });
+      setNewComment("");
+      setCommentsCount(prev => prev + 1);
+      fetchComments();
+      toast({ title: "Envoyé", description: "Commentaire publié.", variant: "success" });
+      if (onInteraction) onInteraction();
+    } catch (error) {
+      toast({ title: "Erreur", description: "Erreur d'envoi.", variant: "destructive" });
+    } finally {
+      setLoadingComment(false);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    const shareData = {
+      title: event.title,
+      text: `Découvrez cet événement : ${event.title}`,
+      url: window.location.href,
     };
 
-    fetchInteractions();
-  }, [event.id, user]);
-
-  const handleLikeInteraction = async () => {
-    if (!user) {
-      toast({ title: "Connexion requise", description: "Vous devez être connecté pour aimer.", variant: "destructive" });
-      return;
-    }
-    // If it's a protected event and locked, prevent interaction
-    if (!isUnlocked && isProtectedEvent) {
-      toast({ title: "Contenu verrouillé", description: "Débloquez l'événement pour interagir.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(prev => ({ ...prev, like: true }));
-
-    try {
-      const { data, error } = await supabase.rpc('protected_event_interaction', {
-        p_event_id: event.id,
-        p_user_id: user.id,
-        p_interaction_type: 'like',
-      });
-
-      if (error) throw error;
-
-      if (data.success) {
-        const isLiked = data.message.includes('retirée');
-        setInteractions(prev => ({ ...prev, likes: isLiked ? Math.max(0, prev.likes - 1) : prev.likes + 1 }));
-        setUserInteractions(prev => ({ ...prev, liked: !isLiked }));
-        forceRefreshUserProfile();
-      } else {
-        toast({ title: "Erreur", description: data.message, variant: "destructive" });
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        // Track share
+        if (user) supabase.from('event_shares').insert({ event_id: event.id, user_id: user.id, share_platform: 'native' });
+      } catch (err) {
+        setShareOpen(true); // Fallback to modal if native share is cancelled/fails
       }
-    } catch (error) {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(prev => ({ ...prev, like: false }));
+    } else {
+      setShareOpen(true); // Fallback to modal
     }
   };
 
-  const handleCommentSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Lien copié", description: "URL copiée dans le presse-papier." });
+    setShareOpen(false);
+  };
+
+  const shareToSocial = (platform) => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Découvrez cet événement : ${event.title}`);
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'whatsapp': shareUrl = `https://wa.me/?text=${text}%20${url}`; break;
+      case 'facebook': shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`; break;
+      case 'twitter': shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`; break;
+    }
     
-    if (!user) {
-      toast({ title: "Connexion requise", description: "Vous devez être connecté pour commenter.", variant: "destructive" });
-      return;
+    if (shareUrl) {
+      window.open(shareUrl, '_blank');
+      if (user) supabase.from('event_shares').insert({ event_id: event.id, user_id: user.id, share_platform: platform });
     }
-
-    // Allow organizers/admins to comment even if locked, otherwise check lock
-    if (!isUnlocked && isProtectedEvent && !canDelete) {
-      toast({ title: "Contenu verrouillé", description: "Débloquez l'événement pour commenter.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(prev => ({ ...prev, comment: true }));
-
-    try {
-      const { data, error } = await supabase
-        .from('event_comments')
-        .insert({
-          event_id: event.id,
-          user_id: user.id,
-          comment_text: newComment.trim(),
-          is_approved: true, // Always visible immediately
-          rating: 5
-        })
-        .select('*, user:profiles(full_name, avatar_url, username)')
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setCommentsList(prev => [data, ...prev]);
-        setInteractions(prev => ({ ...prev, comments: prev.comments + 1 }));
-        
-        toast({ title: "Succès", description: "Commentaire ajouté !" });
-        setNewComment('');
-        forceRefreshUserProfile();
-      }
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Erreur", description: "Impossible d'ajouter le commentaire.", variant: "destructive" });
-    } finally {
-      setLoading(prev => ({ ...prev, comment: false }));
-    }
+    setShareOpen(false);
   };
 
-  const confirmDeleteComment = async () => {
-    if (!deleteId) return;
-    
-    setLoading(prev => ({ ...prev, action: deleteId }));
-    console.log("Action: Suppression du commentaire par l'utilisateur role:", userProfile?.user_type);
+  // Styles based on variant
+  const containerClass = variant === 'vertical' 
+    ? "flex flex-col gap-4 items-center" 
+    : "flex items-center justify-between py-2 border-t border-b bg-card/50 px-4 rounded-lg";
 
-    try {
-      const { error } = await supabase
-        .from('event_comments')
-        .delete()
-        .eq('id', deleteId);
+  const buttonClass = (active) => cn(
+    "flex items-center justify-center transition-all",
+    variant === 'vertical' 
+      ? `w-12 h-12 rounded-full shadow-lg backdrop-blur-md ${active ? 'bg-white text-red-500' : 'bg-black/40 text-white hover:bg-black/60'}`
+      : "gap-2 variant-ghost size-sm"
+  );
 
-      if (error) throw error;
+  const iconSize = variant === 'vertical' ? "w-6 h-6" : "w-5 h-5";
+  const textSize = variant === 'vertical' ? "text-xs font-bold text-white drop-shadow-md mt-1" : "text-sm font-medium";
 
-      setCommentsList(prev => prev.filter(c => c.id !== deleteId));
-      setInteractions(prev => ({ ...prev, comments: Math.max(0, prev.comments - 1) }));
-      toast({ title: "Succès", description: "Commentaire supprimé" });
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le commentaire.", variant: "destructive" });
-    } finally {
-      setLoading(prev => ({ ...prev, action: null }));
-      setDeleteId(null);
-    }
-  };
+  const VerticalButton = ({ icon: Icon, label, count, active, onClick, loading }) => (
+    <div className="flex flex-col items-center">
+      <button 
+        onClick={onClick}
+        disabled={loading}
+        className={buttonClass(active)}
+      >
+        {loading ? <Loader2 className={`${iconSize} animate-spin`} /> : <Icon className={`${iconSize} ${active ? 'fill-current' : ''}`} />}
+      </button>
+      <span className={textSize}>{count}</span>
+    </div>
+  );
+
+  if (!event) return null;
 
   return (
-    <div className="flex items-center justify-around">
-      {/* Views Count */}
-      <div className="text-center">
-        <Button variant="ghost" className="flex items-center space-x-2 text-muted-foreground cursor-default hover:bg-transparent">
-          <Eye className="w-5 h-5" />
-          <span>{interactions.views}</span>
-        </Button>
-      </div>
+    <>
+      <div className={containerClass}>
+        {/* Like */}
+        {variant === 'vertical' ? (
+          <VerticalButton icon={Heart} label="J'aime" count={likesCount} active={isLiked} onClick={handleLike} loading={loadingLike} />
+        ) : (
+          <Button variant="ghost" size="sm" className={cn("flex gap-2", isLiked ? 'text-red-500' : 'text-muted-foreground')} onClick={handleLike}>
+            <Heart className={cn("w-5 h-5", isLiked && "fill-current")} />
+            <span>{likesCount || "J'aime"}</span>
+          </Button>
+        )}
 
-      {/* Like Button */}
-      <div className="text-center">
-        <Button 
-          variant="ghost" 
-          onClick={handleLikeInteraction} 
-          disabled={loading.like} 
-          className={`flex items-center space-x-2 transition-colors ${userInteractions.liked ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-primary'}`}
-        >
-          {loading.like ? <Loader2 className="w-5 h-5 animate-spin" /> : <Heart className={`w-5 h-5 ${userInteractions.liked ? 'fill-current' : ''}`} />}
-          <span>{interactions.likes}</span>
-        </Button>
-      </div>
-
-      {/* Comments Dialog */}
-      <Dialog>
-        <DialogTrigger asChild>
-          <div className="text-center">
-            <Button variant="ghost" className="flex items-center space-x-2 text-muted-foreground hover:text-primary">
-              <MessageSquare className="w-5 h-5" />
-              <span>{interactions.comments}</span>
-            </Button>
-          </div>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Commentaires {commentsList.length > 0 && `(${commentsList.length})`}</DialogTitle>
-            <DialogDescription className="hidden">Espace de discussion</DialogDescription>
-          </DialogHeader>
-          
-          <ScrollArea className="h-[300px] pr-4 mt-2">
-            {commentsList.length > 0 ? (
-              <div className="space-y-4">
-                {commentsList.map(comment => (
-                  <div key={comment.id} className="p-3 rounded-lg bg-muted/50 group relative">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                        {comment.user?.full_name?.charAt(0) || comment.user?.username?.charAt(0) || 'U'}
-                      </div>
-                      <div className="flex-grow min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold truncate">
-                            {comment.user?.full_name || comment.user?.username || 'Anonyme'}
-                          </p>
-                          {/* Delete button visible only to organizer/super_admin */}
-                          {canDelete && (
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-6 w-6 text-muted-foreground hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
-                              onClick={() => setDeleteId(comment.id)}
-                              disabled={loading.action === comment.id}
-                            >
-                              {loading.action === comment.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-sm text-foreground mt-1 break-words pr-6">{comment.comment_text}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+        {/* Comment */}
+        <Dialog onOpenChange={(open) => { if(open) fetchComments(); }}>
+          <DialogTrigger asChild>
+            {variant === 'vertical' ? (
+              <div className="flex flex-col items-center cursor-pointer">
+                <div className={buttonClass(false)}>
+                  <MessageCircle className={iconSize} />
+                </div>
+                <span className={textSize}>{commentsCount}</span>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <MessageSquare className="w-12 h-12 mb-2 opacity-20" />
-                <p>Aucun commentaire pour le moment.</p>
-                <p className="text-sm opacity-70">Soyez le premier à donner votre avis !</p>
-              </div>
-            )}
-          </ScrollArea>
-
-          <DialogFooter className="mt-4">
-            <form onSubmit={handleCommentSubmit} className="w-full flex items-center space-x-2">
-              <Textarea 
-                value={newComment} 
-                onChange={(e) => setNewComment(e.target.value)} 
-                placeholder="Ajouter un commentaire..." 
-                className="flex-grow min-h-[40px] max-h-[100px]" 
-                rows={1}
-              />
-              <Button type="submit" disabled={loading.comment} className="shrink-0">
-                {loading.comment ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Envoyer'}
+              <Button variant="ghost" size="sm" className="flex gap-2 text-muted-foreground">
+                <MessageCircle className="w-5 h-5" />
+                <span>{commentsCount || "Commenter"}</span>
               </Button>
-            </form>
-          </DialogFooter>
+            )}
+          </DialogTrigger>
+          
+          <DialogContent className="sm:max-w-[500px] h-[80vh] flex flex-col">
+            <DialogHeader><DialogTitle>Commentaires ({commentsCount})</DialogTitle></DialogHeader>
+            <ScrollArea className="flex-1 pr-4 -mr-4">
+              {loadingCommentsList ? (
+                <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground"><p>Aucun commentaire.</p></div>
+              ) : (
+                <div className="space-y-4 py-4">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-3">
+                      <Avatar className="w-8 h-8"><AvatarImage src={comment.profiles?.avatar_url} /><AvatarFallback>U</AvatarFallback></Avatar>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between"><span className="font-semibold">{comment.profiles?.full_name}</span><span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: fr })}</span></div>
+                        <p className="text-sm bg-muted/50 p-2 rounded-lg">{comment.comment_text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <div className="mt-4 pt-4 border-t flex gap-2">
+              <Textarea placeholder="Votre commentaire..." value={newComment} onChange={(e) => setNewComment(e.target.value)} className="min-h-[40px] resize-none" />
+              <Button size="icon" onClick={handlePostComment} disabled={loadingComment || !newComment.trim()}>{loadingComment ? <Loader2 className="animate-spin" /> : <Send />}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Share */}
+        {variant === 'vertical' ? (
+          <VerticalButton icon={Share2} label="Partager" count="Partager" active={false} onClick={handleNativeShare} />
+        ) : (
+          <Button variant="ghost" size="sm" className="flex gap-2 text-muted-foreground" onClick={handleNativeShare}>
+            <Share2 className="w-5 h-5" />
+            <span>Partager</span>
+          </Button>
+        )}
+      </div>
+
+      {/* Share Modal Fallback */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Partager cet événement</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <Button variant="outline" className="flex flex-col h-20 gap-2 hover:bg-green-50 hover:text-green-600 hover:border-green-200" onClick={() => shareToSocial('whatsapp')}>
+              <MessageCircle className="w-8 h-8" /> WhatsApp
+            </Button>
+            <Button variant="outline" className="flex flex-col h-20 gap-2 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200" onClick={() => shareToSocial('facebook')}>
+              <Facebook className="w-8 h-8" /> Facebook
+            </Button>
+            <Button variant="outline" className="flex flex-col h-20 gap-2 hover:bg-slate-50 hover:text-black hover:border-slate-300" onClick={() => shareToSocial('twitter')}>
+              <Twitter className="w-8 h-8" /> X (Twitter)
+            </Button>
+            <Button variant="outline" className="flex flex-col h-20 gap-2" onClick={copyLink}>
+              <Copy className="w-8 h-8" /> Copier le lien
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce commentaire ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteComment} className="bg-red-600 hover:bg-red-700 text-white">
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Share Button */}
-      <div className="text-center">
-        <Button variant="ghost" onClick={handleShare} className="flex items-center space-x-2 text-muted-foreground hover:text-primary">
-          <Share2 className="w-5 h-5" />
-          <span>{interactions.shares}</span>
-        </Button>
-      </div>
-    </div>
+    </>
   );
 };
 

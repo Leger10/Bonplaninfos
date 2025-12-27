@@ -14,7 +14,7 @@ const ProfileStats = ({ userProfile, eventCount }) => {
     },
     {
       icon: Sparkles,
-      label: 'Pièces Bonus',
+      label: 'Cadeaux de Bienvenue',
       value: userProfile.free_coin_balance || 0,
       color: 'text-green-400',
     },

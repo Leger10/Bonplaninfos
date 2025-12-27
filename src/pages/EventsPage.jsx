@@ -10,16 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
     Sheet,
     SheetContent,
     SheetHeader,
@@ -27,14 +17,10 @@ import {
     SheetTrigger,
     SheetFooter
 } from "@/components/ui/sheet";
-import { Loader2, Search, SlidersHorizontal, AlertTriangle, Coins, Info, RefreshCcw } from 'lucide-react';
+import { Loader2, Search, SlidersHorizontal, AlertTriangle, RefreshCcw } from 'lucide-react';
 import EventCard from '@/components/EventCard';
 import { useData } from '@/contexts/DataContext';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import WalletInfoModal from '@/components/WalletInfoModal';
-import { CoinService } from '@/services/CoinService';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '@/constants/countries';
-import PaymentModal from '@/components/PaymentModal';
 import { fetchWithRetry } from '@/lib/utils';
 
 const EventsPage = () => {
@@ -54,12 +40,7 @@ const EventsPage = () => {
 
     const location = useLocation();
     const navigate = useNavigate();
-    const { userProfile, adminConfig, forceRefreshUserProfile, hasFetchError } = useData();
-    const { user } = useAuth();
-    const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
-    const [unlockedEvents, setUnlockedEvents] = useState(new Set());
-    const [confirmation, setConfirmation] = useState({ isOpen: false, event: null, cost: 0, costFcfa: 0, breakdown: null, onConfirm: null });
+    const { hasFetchError } = useData();
 
     const QUICK_FILTERS = useMemo(() => [
         { label: t("events_page.quick_filters.trending"), value: "trending" },
@@ -67,19 +48,6 @@ const EventsPage = () => {
         { label: t("events_page.quick_filters.free_weekend"), value: "free_weekend" },
         { label: t("events_page.quick_filters.ending_soon"), value: "ending_soon", icon: AlertTriangle },
     ], [t]);
-
-
-    const fetchUnlockedEvents = useCallback(async () => {
-        if (!user) return;
-        try {
-            const { data, error } = await fetchWithRetry(() => supabase.from('protected_event_access').select('event_id').eq('user_id', user.id).eq('status', 'active'));
-            if (error) throw error;
-            const unlockedSet = new Set(data.map(item => item.event_id));
-            setUnlockedEvents(unlockedSet);
-        } catch (err) {
-            console.error('Error fetching unlocked events:', err);
-        }
-    }, [user]);
 
     const fetchInitialData = useCallback(async () => {
         if (hasFetchError) {
@@ -105,8 +73,7 @@ const EventsPage = () => {
 
     useEffect(() => {
         fetchInitialData();
-        fetchUnlockedEvents();
-    }, [fetchInitialData, fetchUnlockedEvents]);
+    }, [fetchInitialData]);
 
     useEffect(() => {
         if (location.state?.preselectedEventTypes) {
@@ -133,17 +100,10 @@ const EventsPage = () => {
             return searchTermMatch && categoryMatch && countryMatch && cityMatch && typeMatch;
         });
 
-        if (filters.quickFilter) { /* Quick filter logic here */ }
-
         const oneDayAgo = new Date();
         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
 
         return filtered.sort((a, b) => {
-            const isAUnlocked = unlockedEvents.has(a.id);
-            const isBUnlocked = unlockedEvents.has(b.id);
-            if (isAUnlocked && !isBUnlocked) return 1;
-            if (!isAUnlocked && isBUnlocked) return -1;
-            
             const isANew = new Date(a.created_at) > oneDayAgo;
             const isBNew = new Date(b.created_at) > oneDayAgo;
             if (isANew && !isBNew) return -1;
@@ -151,62 +111,10 @@ const EventsPage = () => {
 
             return new Date(a.event_date) - new Date(b.event_date);
         });
-    }, [events, searchTerm, filters, unlockedEvents]);
-
-    const executeUnlock = async (event) => {
-        try {
-            const { data: rpcData, error: rpcError } = await fetchWithRetry(() => supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'}));
-            if (rpcError) throw rpcError;
-            if (!rpcData.success) throw new Error(rpcData.message);
-            setUnlockedEvents(prev => new Set(prev).add(event.id));
-            await forceRefreshUserProfile();
-            toast({ title: t('events_page.unlock_modal.success_title'), description: t('events_page.unlock_modal.success_desc', { title: event.title }), className: "bg-green-600 text-white" });
-            navigate(`/event/${event.id}`);
-        } catch (error) {
-            if (error.message.includes('Solde insuffisant')) setShowWalletInfoModal(true);
-            else toast({ title: t("common.error_title"), description: error.message, variant: "destructive" });
-        }
-    };
+    }, [events, searchTerm, filters]);
 
     const handleEventClick = async (event) => {
-        if (!user) { navigate('/auth'); return; }
-
-        if (!unlockedEvents.has(event.id) && event.event_type !== 'protected') {
-            try {
-                await supabase.from('user_interactions').insert({ user_id: user.id, event_id: event.id, interaction_type: 'view' });
-            } catch (error) { console.error("Failed to log view interaction:", error); }
-        }
-
-        const isAdmin = userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type);
-        const isOwner = user && event.organizer_id === user.id;
-        const isUnlocked = unlockedEvents.has(event.id) || isOwner || isAdmin || event.event_type !== 'protected';
-
-        if (!isUnlocked) {
-            const cost = 2;
-            const costFcfa = cost * (adminConfig?.coin_to_fcfa_rate || 10);
-            
-            // Get user balances for breakdown
-            const balances = await CoinService.getWalletBalances(user.id);
-            
-            if (balances.total < cost) {
-                setShowWalletInfoModal(true);
-                return;
-            }
-            
-            const freeUsed = Math.min(balances.free_coin_balance, cost);
-            const paidUsed = cost - freeUsed;
-
-            setConfirmation({ 
-                isOpen: true, 
-                event, 
-                cost, 
-                costFcfa, 
-                breakdown: { free: freeUsed, paid: paidUsed },
-                onConfirm: () => executeUnlock(event) 
-            });
-        } else {
-            navigate(`/event/${event.id}`);
-        }
+        navigate(`/event/${event.id}`);
     };
 
     const availableCities = useMemo(() => {
@@ -262,50 +170,9 @@ const EventsPage = () => {
                 </motion.div>
 
                 {loading ? (<div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>) : hasFetchError ? (<div className="text-center py-16 flex flex-col items-center"><AlertTriangle className="w-16 h-16 text-destructive mb-4" /><h3 className="text-xl font-semibold mb-2 text-destructive">{t('home_page.loading_error.title')}</h3><p className="text-muted-foreground mb-6 max-w-md mx-auto">{t('home_page.loading_error.description')}</p><Button onClick={() => window.location.reload()}><RefreshCcw className="w-4 h-4 mr-2" />{t('common.retry')}</Button></div>) : filteredAndSortedEvents.length > 0 ? (<motion.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ staggerChildren: 0.05 }}>
-                    {filteredAndSortedEvents.map(event => (<EventCard key={event.id} event={event} onClick={() => handleEventClick(event)} isUnlocked={unlockedEvents.has(event.id) || (user && event.organizer_id === user.id) || (userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type))} />))}
+                    {filteredAndSortedEvents.map(event => (<EventCard key={event.id} event={event} onClick={() => handleEventClick(event)} />))}
                 </motion.div>) : (<div className="text-center py-16 flex flex-col items-center"><AlertTriangle className="w-16 h-16 text-muted-foreground/50 mb-4" /><h3 className="text-xl font-semibold mb-2">{t('events_page.no_events_found.title')}</h3><p className="text-muted-foreground mb-6">{t('events_page.no_events_found.description')}</p><Button onClick={resetFilters}><RefreshCcw className="w-4 h-4 mr-2" />{t('events_page.no_events_found.reset_button')}</Button></div>)}
             </main>
-            <WalletInfoModal isOpen={showWalletInfoModal} onClose={() => setShowWalletInfoModal(false)} onProceed={() => {setShowWalletInfoModal(false); setShowPaymentModal(true);}} />
-            <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
-            <AlertDialog open={confirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, event: null, cost: 0, costFcfa: 0, breakdown: null, onConfirm: null })}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('events_page.unlock_modal.title')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            <div className="flex flex-col items-center justify-center text-center p-4">
-                                <Coins className="w-12 h-12 text-primary mb-4" />
-                                <p className="text-lg font-bold mb-2">{t('events_page.unlock_modal.description', { title: confirmation.event?.title, cost: confirmation.cost, costFcfa: confirmation.costFcfa?.toLocaleString('fr-FR') })}</p>
-                                
-                                {confirmation.breakdown && (
-                                    <div className="w-full text-sm bg-muted/50 p-3 rounded border border-border mt-2 mb-2 text-left">
-                                        <p className="font-semibold mb-2 text-xs text-muted-foreground uppercase">Détail du paiement :</p>
-                                        <ul className="space-y-1">
-                                            {confirmation.breakdown.free > 0 && (
-                                                <li className="flex justify-between text-green-600 font-medium">
-                                                    <span>• Pièces gratuites :</span>
-                                                    <span>-{confirmation.breakdown.free}π</span>
-                                                </li>
-                                            )}
-                                            {confirmation.breakdown.paid > 0 && (
-                                                <li className="flex justify-between text-blue-600 font-medium">
-                                                    <span>• Pièces achetées :</span>
-                                                    <span>-{confirmation.breakdown.paid}π</span>
-                                                </li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
-                                
-                                <div className="text-xs text-muted-foreground flex items-start gap-2 mt-2">
-                                    <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                    <span>{t('events_page.unlock_modal.info')}</span>
-                                </div>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel><AlertDialogAction onClick={confirmation.onConfirm} className="bg-primary">{t('common.confirm')}</AlertDialogAction></AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 };

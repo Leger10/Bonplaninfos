@@ -7,14 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, DollarSign, History, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, DollarSign, History, RefreshCw, AlertCircle, TrendingDown, ArrowRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const WithdrawalTab = () => {
   const { user } = useAuth();
-  // Correctly use appSettings instead of adminConfig
   const { userProfile, forceRefreshUserProfile, appSettings, loading: globalLoading } = useData();
   
   const [amount, setAmount] = useState('');
@@ -24,12 +24,18 @@ const WithdrawalTab = () => {
   const [withdrawalHistory, setWithdrawalHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  // Use appSettings with fallbacks
+  // Constants
   const minWithdrawal = appSettings?.min_withdrawal_pi || 50;
   const rate = appSettings?.coin_to_fcfa_rate || 10;
+  const PLATFORM_FEE_PERCENT = 0.05;
   
-  // Safe access to earnings
   const availableEarnings = userProfile?.available_earnings || 0;
+
+  // Calculated values
+  const withdrawalAmount = parseInt(amount) || 0;
+  const feeAmount = Math.floor(withdrawalAmount * PLATFORM_FEE_PERCENT);
+  const netAmountPi = withdrawalAmount - feeAmount;
+  const netAmountFcfa = netAmountPi * rate;
 
   const fetchHistory = useCallback(async () => {
     if (!user) return;
@@ -65,10 +71,7 @@ const WithdrawalTab = () => {
 
     if (!user) return;
 
-    const withdrawalAmount = parseInt(amount);
-
-    // Validation Rules
-    if (isNaN(withdrawalAmount) || withdrawalAmount <= 0) {
+    if (withdrawalAmount <= 0) {
       toast({ title: "Montant invalide", description: "Veuillez entrer un montant positif.", variant: "destructive" });
       return;
     }
@@ -95,7 +98,10 @@ const WithdrawalTab = () => {
         p_amount_pi: withdrawalAmount,
         p_payment_details: {
           method: paymentMethod,
-          number: accountNumber.trim()
+          number: accountNumber.trim(),
+          gross_amount_pi: withdrawalAmount,
+          fee_amount_pi: feeAmount,
+          net_amount_pi: netAmountPi
         }
       });
 
@@ -104,16 +110,14 @@ const WithdrawalTab = () => {
 
       toast({
         title: "Demande envoyée !",
-        description: "Votre demande de retrait est en cours de traitement.",
-        variant: "success" // Using custom variant if available, else default
+        description: `Retrait de ${netAmountPi}π (${netAmountFcfa.toLocaleString()} FCFA) confirmé.`,
+        variant: "success"
       });
 
-      // Reset Form
       setAmount('');
       setPaymentMethod('');
       setAccountNumber('');
 
-      // Refresh Data
       if (forceRefreshUserProfile) await forceRefreshUserProfile();
       await fetchHistory();
 
@@ -147,7 +151,7 @@ const WithdrawalTab = () => {
             <DollarSign className="h-5 w-5 text-primary" />
             Gains Disponibles
           </CardTitle>
-          <CardDescription>Convertibles en FCFA selon le taux en vigueur</CardDescription>
+          <CardDescription>Solde actuel avant déduction des frais de retrait</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row items-start md:items-end gap-4 md:gap-8">
@@ -156,7 +160,7 @@ const WithdrawalTab = () => {
                 {availableEarnings.toLocaleString('fr-FR')} <span className="text-2xl">π</span>
               </p>
               <p className="text-muted-foreground font-medium mt-1">
-                ≈ {(availableEarnings * rate).toLocaleString('fr-FR')} FCFA
+                ≈ {(availableEarnings * rate).toLocaleString('fr-FR')} FCFA (Brut)
               </p>
             </div>
             {availableEarnings < minWithdrawal && (
@@ -171,13 +175,13 @@ const WithdrawalTab = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Withdrawal Form */}
-        <Card className="shadow-sm h-full">
+        <Card className="shadow-sm h-full flex flex-col">
           <CardHeader>
             <CardTitle>Nouvelle Demande</CardTitle>
             <CardDescription>Initiez un transfert vers votre compte</CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-5">
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+            <CardContent className="space-y-5 flex-1">
               <div className="space-y-2">
                 <Label htmlFor="amount">Montant à retirer (π)</Label>
                 <div className="relative">
@@ -194,16 +198,36 @@ const WithdrawalTab = () => {
                   <div className="absolute left-3 top-2.5 text-muted-foreground text-sm">π</div>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Correspondance: {amount ? (parseInt(amount) * rate).toLocaleString() : 0} FCFA</span>
                   <button 
                     type="button" 
                     onClick={() => setAmount(availableEarnings)}
-                    className="text-primary hover:underline font-medium"
+                    className="text-primary hover:underline font-medium ml-auto"
                   >
-                    Max: {availableEarnings}
+                    Utiliser tout le solde ({availableEarnings})
                   </button>
                 </div>
               </div>
+
+              {withdrawalAmount > 0 && (
+                <div className="bg-muted/50 p-4 rounded-lg space-y-3 text-sm border border-border/50">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Montant demandé</span>
+                    <span>{withdrawalAmount} π</span>
+                  </div>
+                  <div className="flex justify-between text-red-500">
+                    <span className="flex items-center gap-1"><TrendingDown className="w-3 h-3" /> Frais plateforme (5%)</span>
+                    <span>- {feeAmount} π</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-foreground items-center">
+                    <span>Net à recevoir</span>
+                    <div className="text-right">
+                      <div className="text-lg text-primary">{netAmountFcfa.toLocaleString()} FCFA</div>
+                      <div className="text-xs text-muted-foreground font-normal">({netAmountPi} π)</div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="paymentMethod">Méthode de paiement</Label>
@@ -231,14 +255,14 @@ const WithdrawalTab = () => {
                 />
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pt-2">
               <Button
                 type="submit"
                 className="w-full font-bold"
                 disabled={loading || availableEarnings < minWithdrawal || !amount || !paymentMethod}
               >
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DollarSign className="mr-2 h-4 w-4" />}
-                Confirmer le retrait
+                {withdrawalAmount > 0 ? `Confirmer retrait (${netAmountFcfa.toLocaleString()} FCFA)` : "Confirmer le retrait"}
               </Button>
             </CardFooter>
           </form>
@@ -255,41 +279,58 @@ const WithdrawalTab = () => {
               <RefreshCw className={`h-4 w-4 ${loadingHistory ? 'animate-spin' : ''}`} />
             </Button>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto max-h-[400px] pr-2">
+          <CardContent className="flex-1 overflow-auto max-h-[500px] pr-2">
             {loadingHistory && withdrawalHistory.length === 0 ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : withdrawalHistory.length > 0 ? (
               <div className="space-y-3">
                 {withdrawalHistory.map((req) => (
-                  <div key={req.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-primary">{req.amount_pi} π</span>
-                        <span className="text-xs text-muted-foreground">({(req.amount_pi * rate).toLocaleString()} FCFA)</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <History className="h-3 w-3" />
-                        {new Date(req.requested_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </div>
-                      <div className="text-xs font-medium text-foreground/80">
-                        {req.payment_details?.method} • {req.payment_details?.number}
-                      </div>
+                  <div key={req.id} className="flex flex-col p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors gap-3">
+                    <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <History className="h-3 w-3" />
+                                {new Date(req.requested_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute:'2-digit' })}
+                            </div>
+                            <div className="text-sm font-medium text-foreground/80">
+                                {req.payment_details?.method} • {req.payment_details?.number}
+                            </div>
+                        </div>
+                        <Badge variant={
+                            req.status === 'approved' || req.status === 'paid' ? 'success' : 
+                            req.status === 'rejected' ? 'destructive' : 'secondary'
+                        }>
+                            {req.status === 'approved' ? 'Validé' : 
+                            req.status === 'paid' ? 'Payé' : 
+                            req.status === 'rejected' ? 'Rejeté' : 'En attente'}
+                        </Badge>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge variant={
-                        req.status === 'approved' || req.status === 'paid' ? 'success' : 
-                        req.status === 'rejected' ? 'destructive' : 'secondary'
-                      }>
-                        {req.status === 'approved' ? 'Validé' : 
-                         req.status === 'paid' ? 'Payé' : 
-                         req.status === 'rejected' ? 'Rejeté' : 'En attente'}
-                      </Badge>
-                      {req.rejection_reason && (
-                        <span className="text-[10px] text-red-500 max-w-[100px] truncate" title={req.rejection_reason}>
-                          {req.rejection_reason}
-                        </span>
-                      )}
+                    
+                    <div className="bg-muted/30 p-2 rounded text-xs grid grid-cols-3 gap-2 border border-border/30">
+                        <div>
+                            <span className="text-muted-foreground block text-[10px]">Demandé</span>
+                            <span className="font-semibold">{req.amount_pi} π</span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block text-[10px]">Frais 5%</span>
+                            <span className="font-semibold text-red-500">
+                                -{req.payment_details?.fee_pi || Math.floor(req.amount_pi * 0.05)} π
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-muted-foreground block text-[10px]">Net Reçu</span>
+                            <span className="font-bold text-green-600">
+                                {req.amount_fcfa?.toLocaleString()} FCFA
+                            </span>
+                        </div>
                     </div>
+
+                    {req.rejection_reason && (
+                        <div className="text-xs text-red-500 bg-red-50 p-2 rounded flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>{req.rejection_reason}</span>
+                        </div>
+                    )}
                   </div>
                 ))}
               </div>

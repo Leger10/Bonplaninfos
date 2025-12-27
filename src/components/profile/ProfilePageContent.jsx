@@ -4,18 +4,17 @@ import { useSearchParams } from 'react-router-dom';
 import MyEventsTab from '@/components/profile/MyEventsTab';
 import TransactionsTab from '@/components/profile/TransactionsTab';
 import ReferralTab from '@/components/profile/ReferralTab';
-import OrganizerDashboardTab from '@/components/profile/OrganizerDashboardTab';
+import CreatorDashboardTab from '@/components/profile/CreatorDashboardTab';
 import MyTicketsTab from '@/components/profile/MyTicketsTab';
 import WithdrawalTab from '@/components/profile/WithdrawalTab';
-import { Ticket, Calendar, History, Users, Wallet, LayoutDashboard } from 'lucide-react';
+import { Ticket, Calendar, History, Users, Wallet, Sparkles } from 'lucide-react';
 
 const ProfilePageContent = ({ 
   userProfile, 
   userEvents, 
   userTransactions, 
   loadingEvents, 
-  referralData, 
-  loadingOrganizerStats 
+  referralData
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'events';
@@ -28,12 +27,20 @@ const ProfilePageContent = ({
 
   return (
     <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 lg:grid-cols-5 mb-8 h-auto p-1 bg-muted/50 rounded-xl gap-1">
+      <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 lg:grid-cols-6 mb-8 h-auto p-1 bg-muted/50 rounded-xl gap-1">
         <TabsTrigger value="events" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
           <Calendar className="w-4 h-4 mr-2" />
           <span className="hidden sm:inline">Événements</span>
           <span className="sm:hidden">Events</span>
         </TabsTrigger>
+        
+        {isOrganizer && (
+          <TabsTrigger value="creator" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
+            <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
+            <span className="hidden sm:inline">Créateur</span>
+            <span className="sm:hidden">Créateur</span>
+          </TabsTrigger>
+        )}
         
         <TabsTrigger value="tickets" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
           <Ticket className="w-4 h-4 mr-2" />
@@ -69,6 +76,12 @@ const ProfilePageContent = ({
           loadingEvents={loadingEvents} 
         />
       </TabsContent>
+
+      {isOrganizer && (
+        <TabsContent value="creator" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <CreatorDashboardTab />
+        </TabsContent>
+      )}
 
       <TabsContent value="tickets" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <MyTicketsTab />

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Lock, Coins, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,8 +9,6 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import PaymentModal from '@/components/PaymentModal';
-import WalletInfoModal from '@/components/WalletInfoModal';
 import MultilingualSeoHead from '@/components/MultilingualSeoHead';
 import SocialInteractions from '@/components/social/SocialInteractions';
 import RaffleInterface from '@/components/event/RaffleInterface';
@@ -18,9 +16,9 @@ import StandRentalInterface from '@/components/event/StandRentalInterface';
 import TicketingInterface from '@/components/event/TicketingInterface';
 import VotingInterface from '@/components/event/VotingInterface';
 import EventCountdown from '@/components/EventCountdown';
+import BookmarkButton from '@/components/common/BookmarkButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { extractStoragePath } from '@/lib/utils';
-import { CoinService } from '@/services/CoinService';
 
 // Component for Verification Stats (Organizer Only)
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
@@ -95,6 +93,121 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   );
 };
 
+// TikTok-like Action Buttons Component
+const TikTokActionButtons = ({ event, onRefresh, user }) => {
+  const [likes, setLikes] = useState(event?.likes_count || 0);
+  const [comments, setComments] = useState(event?.comments_count || 0);
+  const [isLiked, setIsLiked] = useState(false);
+
+  useEffect(() => {
+    if (event) {
+      setLikes(event.likes_count || 0);
+      setComments(event.comments_count || 0);
+    }
+  }, [event]);
+
+  const handleLike = async () => {
+    if (!user) {
+      toast({ 
+        title: "Connexion requise", 
+        description: "Veuillez vous connecter pour interagir.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      const newLikedState = !isLiked;
+      const likeChange = newLikedState ? 1 : -1;
+      
+      setLikes(prev => prev + likeChange);
+      setIsLiked(newLikedState);
+
+      await supabase.rpc('toggle_event_like', {
+        p_event_id: event.id,
+        p_user_id: user.id
+      });
+
+      if (onRefresh) onRefresh();
+    } catch (error) {
+      console.error("Error toggling like:", error);
+      setLikes(prev => prev - (isLiked ? 1 : -1));
+      setIsLiked(!isLiked);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!event) return;
+    const shareData = {
+      title: event.title,
+      text: event.description ? event.description.substring(0, 100) + '...' : `Découvrez ${event.title}`,
+      url: window.location.href,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast({ title: "Lien copié", description: "Lien copié dans le presse-papier." });
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
+    }
+  };
+
+  return (
+    <div className="absolute right-4 bottom-20 md:bottom-24 flex flex-col items-center gap-4 z-30">
+      {/* Vue Count */}
+      <div className="flex flex-col items-center gap-1">
+        <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
+          <Eye className="w-5 h-5 text-white" />
+        </div>
+        <span className="text-white font-bold text-sm drop-shadow-lg">{event?.views_count || 0}</span>
+      </div>
+
+      {/* Favorite Button (Heart Icon for Bookmark as requested) */}
+      <div className="flex flex-col items-center gap-1">
+        <div className="w-12 h-12 flex items-center justify-center">
+            <BookmarkButton 
+                eventId={event?.id} 
+                variant="ghost"
+                className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50 text-white p-0"
+            />
+        </div>
+        <span className="text-white font-bold text-sm drop-shadow-lg">Favoris</span>
+      </div>
+
+      {/* Comment Button */}
+      <div className="flex flex-col items-center gap-1">
+        <Button
+          onClick={() => {
+            document.getElementById('comments-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          variant="ghost"
+          size="icon"
+          className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50"
+        >
+          <MessageCircle className="w-6 h-6 text-white" />
+        </Button>
+        <span className="text-white font-bold text-sm drop-shadow-lg">{comments}</span>
+      </div>
+
+      {/* Share Button */}
+      <div className="flex flex-col items-center gap-1">
+        <Button
+          onClick={handleShare}
+          variant="ghost"
+          size="icon"
+          className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50"
+        >
+          <Share2 className="w-6 h-6 text-white" />
+        </Button>
+        <span className="text-white font-bold text-sm drop-shadow-lg">Partager</span>
+      </div>
+    </div>
+  );
+};
+
 // Expandable Description Component
 const ExpandableDescription = ({ description }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -149,11 +262,6 @@ const EventDetailPage = () => {
   const [eventData, setEventData] = useState(null);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
-  const [confirmation, setConfirmation] = useState({ isOpen: false, type: null, cost: 0, breakdown: null, action: null });
-  const [actionLoading, setActionLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -168,7 +276,6 @@ const EventDetailPage = () => {
   });
 
   const userId = user?.id;
-  const userType = userProfile?.user_type;
 
   const fetchEventData = useCallback(async () => {
     if (!id) return;
@@ -207,41 +314,52 @@ const EventDetailPage = () => {
       }
       setEventData(specificEventData);
 
-      // Access Control Logic
-      const isOwner = userId && fetchedEvent.organizer_id === userId;
-      const isAdmin = userType && ['super_admin', 'admin', 'secretary'].includes(userType);
-
-      if (isOwner || isAdmin || fetchedEvent.event_type !== 'protected') {
-        console.log("Access granted: Owner/Admin/Public");
-        setIsUnlocked(true);
-      } else if (userId) {
-        console.log("Checking protected access for user:", userId);
-        const { data: accessData, error: accessError } = await supabase
-            .from('protected_event_access')
-            .select('status, expires_at')
-            .eq('event_id', id)
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .gt('expires_at', new Date().toISOString())
-            .maybeSingle();
-            
-        if (accessError && accessError.code !== 'PGRST116') {
-            console.error("Error checking access:", accessError);
-        }
-        
-        console.log("Access data found:", accessData);
-        setIsUnlocked(!!accessData);
-      } else {
-        console.log("Access denied: User not logged in or no access");
-        setIsUnlocked(false);
-      }
     } catch (error) {
       console.error("Error fetching event:", error);
       setEvent(null);
     } finally { setLoading(false); }
-  }, [id, userId, userType]);
+  }, [id]);
 
   useEffect(() => { fetchEventData(); }, [fetchEventData]);
+
+  // Track view when component mounts
+  useEffect(() => {
+    if (!id || !event) return;
+
+    const trackView = async () => {
+      try {
+        const { data, error } = await supabase.rpc('track_event_view', {
+          p_event_id: id,
+          p_user_id: userId || null
+        });
+
+        if (error) {
+          console.error("Error tracking view:", error);
+          return;
+        }
+
+        if (data && data.new_views_count !== undefined) {
+          const { data: updatedEvent } = await supabase
+            .from('events')
+            .select('views_count')
+            .eq('id', id)
+            .single();
+            
+          if (updatedEvent) {
+            setEvent(prev => prev ? {
+              ...prev,
+              views_count: updatedEvent.views_count
+            } : prev);
+          }
+        }
+      } catch (error) {
+        console.error("Exception while tracking view:", error);
+      }
+    };
+
+    const timeoutId = setTimeout(trackView, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [id, event, userId]);
 
   const isOwner = user && event?.organizer_id === user.id;
 
@@ -284,48 +402,6 @@ const EventDetailPage = () => {
 
   const handleDataRefresh = () => { fetchEventData(); if (forceRefreshUserProfile) forceRefreshUserProfile(); };
 
-  const executeUnlock = async () => {
-    if (!user || !event) return;
-    
-    if (actionLoading) return;
-    
-    console.log("Executing unlock for event:", event.id);
-    setActionLoading(true);
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { 
-        p_event_id: event.id, 
-        p_user_id: user.id 
-      });
-      
-      if (rpcError) {
-          console.error("RPC Error:", rpcError);
-          throw rpcError;
-      }
-      
-      console.log("RPC Success:", rpcData);
-      if (!rpcData.success) throw new Error(rpcData.message);
-      
-      toast({ 
-        title: "Succès !", 
-        description: "L'événement a été débloqué. Bonne visite !", 
-        className: "bg-green-600 text-white" 
-      });
-      
-      setIsUnlocked(true);
-      handleDataRefresh();
-    } catch (error) {
-      console.error("Unlock failed:", error);
-      if (error.message && error.message.includes('Solde insuffisant')) {
-        setShowWalletInfoModal(true);
-      } else {
-        toast({ title: "Erreur", description: error.message || "Une erreur est survenue lors du déblocage.", variant: "destructive" });
-      }
-    } finally {
-      setConfirmation({ isOpen: false, type: null, cost: 0, breakdown: null, action: null });
-      setActionLoading(false);
-    }
-  };
-
   const handleDeleteEvent = async () => {
     if (!event) return;
     setIsDeleting(true);
@@ -350,64 +426,8 @@ const EventDetailPage = () => {
     }
   };
 
-  const handleUnlockClick = async () => {
-    if (!user) { navigate('/auth'); return; }
-    
-    console.log("Unlock button clicked for event:", event.id);
-    const cost = 2; // Unlock cost is 2 coins
-    
-    // Check balance before proceeding
-    const balances = await CoinService.getWalletBalances(user.id);
-    console.log("User balances:", balances);
-    
-    if (balances.total < cost) {
-        console.log("Insufficient balance");
-        setShowWalletInfoModal(true);
-        return;
-    }
-    
-    // Calculate Breakdown for UI
-    const freeUsed = Math.min(balances.free_coin_balance, cost);
-    const paidUsed = cost - freeUsed;
-    
-    console.log("Opening confirmation dialog");
-    setConfirmation({ 
-        isOpen: true, 
-        type: "Débloquer cet événement", 
-        cost: cost,
-        breakdown: { free: freeUsed, paid: paidUsed },
-        action: executeUnlock 
-    });
-  };
-
-  const handleConfirmAction = async (e) => {
-      e.preventDefault();
-      if (confirmation.action) {
-          await confirmation.action();
-      }
-  };
-
   const handleScanClick = () => {
     navigate('/verify-ticket');
-  };
-
-  const handleShare = async () => {
-    if (!event) return;
-    const shareData = {
-      title: event.title,
-      text: event.description ? event.description.substring(0, 100) + '...' : `Découvrez ${event.title}`,
-      url: window.location.href,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({ title: "Lien copié", description: "Lien copié dans le presse-papier." });
-      }
-    } catch (err) {
-      console.log('Error sharing:', err);
-    }
   };
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>;
@@ -423,10 +443,6 @@ const EventDetailPage = () => {
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Retour</Button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              Partager
-            </Button>
             {canDelete && (
               <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -440,18 +456,29 @@ const EventDetailPage = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="relative rounded-lg overflow-hidden shadow-lg group">
               <img className="w-full h-64 md:h-96 object-cover transition-transform duration-700 group-hover:scale-105" alt={event.title} src={optimizedImageUrl} />
+              
+              {/* Gradient overlay for better visibility */}
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              
+              {/* TikTok Action Buttons */}
+              <TikTokActionButtons 
+                event={event} 
+                onRefresh={handleDataRefresh}
+                user={user}
+              />
 
-              {!isUnlocked && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center backdrop-blur-sm p-6 text-center">
-                  <Lock className="w-16 h-16 text-primary mb-4 animate-bounce" />
-                  <h3 className="text-2xl font-bold text-white mb-2">Contenu Verrouillé</h3>
-                  <p className="text-gray-200 mb-6 max-w-md">Cet événement est protégé. Débloquez-le pour accéder aux détails.</p>
-                  <Button onClick={handleUnlockClick} size="lg" className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold shadow-lg transform hover:scale-105 transition-all"><Coins className="mr-2 h-5 w-5" /> Débloquer (2π)</Button>
-                </div>
-              )}
+              {/* Mobile title overlay */}
+              <div className="absolute bottom-4 left-4 right-20 z-20">
+                <Badge className="bg-black/40 backdrop-blur-sm text-white border-0 mb-2">
+                  {event.category?.name || event.event_type}
+                </Badge>
+                <h1 className="text-xl md:text-2xl font-bold text-white drop-shadow-lg">
+                  {event.title}
+                </h1>
+              </div>
             </div>
             
-            {isUnlocked && event.event_date && (
+            {event.event_date && (
                 <div className="flex justify-center mt-4">
                   <EventCountdown
                     eventDate={event.event_date}
@@ -462,48 +489,71 @@ const EventDetailPage = () => {
                 </div>
               )}
 
-            {isUnlocked ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="border-none shadow-md overflow-hidden">
-                  <CardContent className="p-8">
-                    <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                      <div>
-                        <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">{event.title}</h1>
-                        <div className="flex flex-wrap gap-3 text-muted-foreground mt-3">
-                          <Badge variant="secondary" className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(event.event_date).toLocaleDateString()}</Badge>
-                          <Badge variant="secondary" className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {event.city}, {event.country}</Badge>
-                        </div>
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="border-none shadow-md overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
+                    <div>
+                      <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">{event.title}</h1>
+                      <div className="flex flex-wrap gap-3 text-muted-foreground mt-3">
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> 
+                          {new Date(event.event_date).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Badge>
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> 
+                          {event.city}, {event.country}
+                        </Badge>
                       </div>
                     </div>
-                    <ExpandableDescription description={event.description} />
+                    {/* Desktop Bookmark Button */}
+                    <div className="hidden md:block">
+                        <BookmarkButton eventId={event.id} />
+                    </div>
+                  </div>
+                  <ExpandableDescription description={event.description} />
+                </CardContent>
+              </Card>
+
+              {event.event_type === 'voting' && <VotingInterface event={event} isUnlocked={true} onRefresh={handleDataRefresh} />}
+              {event.event_type === 'raffle' && (
+                <RaffleInterface
+                  raffleData={eventData}
+                  eventId={event.id}
+                  isUnlocked={true}
+                  onPurchaseSuccess={handleDataRefresh}
+                />
+              )}
+              {event.event_type === 'stand_rental' && <StandRentalInterface event={event} isUnlocked={true} onRefresh={handleDataRefresh} />}
+              {event.event_type === 'ticketing' && (
+                <div id="tickets-section" className="scroll-mt-20">
+                  <TicketingInterface
+                    event={event}
+                    ticketingData={eventData}
+                    ticketTypes={ticketTypes}
+                    isUnlocked={true}
+                    onRefresh={handleDataRefresh}
+                  />
+                </div>
+              )}
+
+              {/* Comments Section */}
+              <div id="comments-section" className="scroll-mt-20">
+                <Card>
+                  <CardContent className="p-6">
+                    <h2 className="text-2xl font-bold mb-4">Commentaires</h2>
+                    <SocialInteractions event={event} isUnlocked={true} variant="horizontal" />
                   </CardContent>
                 </Card>
-
-                {event.event_type === 'voting' && <VotingInterface event={event} isUnlocked={isUnlocked} onRefresh={handleDataRefresh} />}
-                {event.event_type === 'raffle' && (
-                  <RaffleInterface
-                    raffleData={eventData}
-                    eventId={event.id}
-                    isUnlocked={isUnlocked}
-                    onPurchaseSuccess={handleDataRefresh}
-                  />
-                )}
-                {event.event_type === 'stand_rental' && <StandRentalInterface event={event} isUnlocked={isUnlocked} onRefresh={handleDataRefresh} />}
-                {event.event_type === 'ticketing' && (
-                  <div id="tickets-section" className="scroll-mt-20">
-                    <TicketingInterface
-                      event={event}
-                      ticketingData={eventData}
-                      ticketTypes={ticketTypes}
-                      isUnlocked={isUnlocked}
-                      onRefresh={handleDataRefresh}
-                    />
-                  </div>
-                )}
               </div>
-            ) : (
-              <Card className="border-dashed border-2 border-muted"><CardContent className="p-12 text-center text-muted-foreground"><p>Débloquez l'événement pour voir le programme complet.</p></CardContent></Card>
-            )}
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -560,8 +610,6 @@ const EventDetailPage = () => {
               </Card>
             )}
 
-            <SocialInteractions event={event} isUnlocked={isUnlocked} />
-
             {event.organizer && (
               <Card>
                 <CardContent className="p-6">
@@ -581,50 +629,6 @@ const EventDetailPage = () => {
           </div>
         </div>
       </main>
-
-      <WalletInfoModal isOpen={showWalletInfoModal} onClose={() => setShowWalletInfoModal(false)} onProceed={() => { setShowWalletInfoModal(false); setShowPaymentModal(true); }} />
-      <PaymentModal isOpen={showPaymentModal} onClose={() => setShowPaymentModal(false)} />
-
-      <AlertDialog open={confirmation.isOpen} onOpenChange={(o) => !o && setConfirmation({ isOpen: false, action: null })}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmation.type}</AlertDialogTitle>
-            <AlertDialogDescription>
-              <div className="space-y-3">
-                <p>Coût total : <span className="font-bold text-primary text-lg">{confirmation.cost}π</span></p>
-                {confirmation.breakdown && (
-                  <div className="text-sm bg-muted p-3 rounded-md border border-border/50">
-                    <p className="font-semibold mb-2">Détail du paiement :</p>
-                    <ul className="space-y-1">
-                      {confirmation.breakdown.free > 0 && (
-                        <li className="flex justify-between text-green-600 font-medium">
-                          <span>• Pièces gratuites :</span>
-                          <span>-{confirmation.breakdown.free}π</span>
-                        </li>
-                      )}
-                      {confirmation.breakdown.paid > 0 && (
-                        <li className="flex justify-between text-blue-600 font-medium">
-                          <span>• Pièces achetées :</span>
-                          <span>-{confirmation.breakdown.paid}π</span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                  <Coins className="w-3 h-3" /> Le déblocage est définitif pour cet événement.
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAction} disabled={actionLoading} className="bg-primary">
-              {actionLoading ? <Loader2 className="animate-spin mr-2" /> : 'Confirmer'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

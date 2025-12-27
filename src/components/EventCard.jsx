@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, Sparkles, Lock, Zap, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import EventCountdown from '@/components/EventCountdown';
@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { differenceInDays, differenceInHours, formatDistanceToNowStrict } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-const EventCard = ({ event, onClick, isUnlocked }) => {
+const EventCard = ({ event, onClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isOwner = user && event.organizer_id === user.id;
@@ -54,9 +54,6 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
   
   const promotionTimeLeft = getPromotionTimeLeft(event.promotion_end || event.promoted_until);
 
-
-  const isProtectedAndLocked = event.event_type === 'protected' && !isUnlocked;
-
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -70,7 +67,7 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
         <div className="relative">
           <div className="w-full h-48 bg-muted-foreground/20">
              <img  
-                className={`w-full h-48 object-cover transition-all duration-300 ${isProtectedAndLocked ? 'blur-sm group-hover:blur-none' : ''}`}
+                className="w-full h-48 object-cover transition-all duration-300"
                 alt={`Image de l'événement ${event.title}`}
                 src={event.cover_image || "https://images.unsplash.com/photo-1703269074563-938cdd3a40e5"} 
               />
@@ -99,16 +96,6 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
               </Badge>
             )}
           </div>
-
-
-          {isProtectedAndLocked && (
-            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4 backdrop-blur-sm group-hover:backdrop-blur-0 transition-all duration-300">
-                <Lock className="w-10 h-10 text-primary mb-2"/>
-                <h3 className="font-bold text-lg text-white">Événement Protégé</h3>
-                <p className="text-sm text-amber-300">Cliquez pour débloquer</p>
-            </div>
-          )}
-          
         </div>
 
         <CardContent className="p-4 flex-grow flex flex-col justify-between">
@@ -127,7 +114,7 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
               
               <div className="flex items-center text-gray-300 text-sm">
                 <MapPin className="w-4 h-4 mr-2 text-[#C9A227]" />
-                 {isProtectedAndLocked ? `${event.city}, ${event.country}` : (event.location || `${event.city}, ${event.country}`)}
+                 {event.location || `${event.city}, ${event.country}`}
               </div>
             </div>
           </div>
@@ -140,9 +127,15 @@ const EventCard = ({ event, onClick, isUnlocked }) => {
                   {event.category_name || event.event_type}
               </Badge>
 
-              <div className="flex items-center text-xs text-gray-400">
-                <Users className="w-3 h-3 mr-1" />
-                {event.interactions_count || 0} intéressés
+              <div className="flex items-center gap-3">
+                <div className="flex items-center text-xs text-gray-400" title="Vues">
+                    <Eye className="w-3 h-3 mr-1" />
+                    {event.views_count || 0}
+                </div>
+                <div className="flex items-center text-xs text-gray-400" title="Interactions">
+                    <Users className="w-3 h-3 mr-1" />
+                    {event.interactions_count || 0}
+                </div>
               </div>
             </div>
         </CardContent>

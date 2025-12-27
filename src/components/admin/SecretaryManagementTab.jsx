@@ -45,7 +45,28 @@ const SecretaryManagementTab = ({ users, onRefresh }) => {
     return [];
   }, [users, isSuperAdmin, isAdmin, userProfile]);
 
-  const potentialSecretaries = useMemo(() => users.filter(u => (u.user_type === 'user' || u.user_type === 'organizer') && u.country === userProfile.country), [users, userProfile]);
+  const potentialSecretaries = useMemo(() => {
+    if (isSuperAdmin) {
+      // SuperAdmin peut promouvoir n'importe quel utilisateur non-admin et non-secrétaire
+      return users.filter(u => 
+        u.user_type !== 'super_admin' && 
+        u.user_type !== 'admin' && 
+        u.user_type !== 'secretary'
+      );
+    }
+    if (isAdmin) {
+      // Admin peut promouvoir les utilisateurs de son pays qui ne sont pas déjà secrétaires
+      if (!userProfile?.country) {
+        // Si l'admin n'a pas de pays, on ne peut pas filtrer par pays, donc on retourne un tableau vide
+        return [];
+      }
+      return users.filter(u => 
+        (u.user_type === 'user' || u.user_type === 'organizer') && 
+        u.country === userProfile.country
+      );
+    }
+    return [];
+  }, [users, userProfile, isSuperAdmin, isAdmin]);
 
   const logAction = async (action_type, target_id) => {
     await supabase.from('admin_logs').insert({
@@ -175,7 +196,10 @@ const SecretaryManagementTab = ({ users, onRefresh }) => {
           <DialogHeader>
             <DialogTitle>Nommer un nouveau secrétaire</DialogTitle>
             <DialogDescription>
-              Sélectionnez un utilisateur de votre zone pour lui attribuer le rôle de secrétaire.
+              {isSuperAdmin 
+                ? "Sélectionnez un utilisateur pour lui attribuer le rôle de secrétaire." 
+                : `Sélectionnez un utilisateur de votre zone (${userProfile?.country || 'Pays non défini'}) pour lui attribuer le rôle de secrétaire.`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -184,11 +208,20 @@ const SecretaryManagementTab = ({ users, onRefresh }) => {
                 <SelectValue placeholder="Sélectionnez un utilisateur..." />
               </SelectTrigger>
               <SelectContent>
-                {potentialSecretaries.map(user => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.full_name} ({user.email})
-                  </SelectItem>
-                ))}
+                {potentialSecretaries.length > 0 ? (
+                  potentialSecretaries.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.full_name} ({user.email}) - {user.user_type} - {user.country}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    Aucun utilisateur disponible.
+                    {isAdmin && !userProfile?.country && (
+                      <p className="text-sm mt-1">Votre profil n'a pas de pays défini.</p>
+                    )}
+                  </div>
+                )}
               </SelectContent>
             </Select>
           </div>

@@ -36,6 +36,7 @@ import ContestsPage from '@/pages/ContestsPage';
 import ContestDetailPage from '@/pages/ContestDetailPage';
 import DiscoverPage from '@/pages/DiscoverPage';
 import CoinPacksPage from '@/pages/CoinPacksPage';
+import CreditPacksPage from '@/pages/CreditPacksPage'; // New Import
 import PaymentRedirectPage from '@/pages/PaymentRedirectPage';
 import CreateRaffleEventPage from '@/pages/CreateRaffleEventPage';
 import CreateVotingEventPage from '@/pages/CreateVotingEventPage';
@@ -115,6 +116,7 @@ function App() {
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/packs" element={<CoinPacksPage />} />
+                  <Route path="/credit-packs" element={<CreditPacksPage />} />
                   <Route path="/buy/:packSlug" element={<PaymentRedirectPage />} />
                   <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />
                   <Route path="/paiement/success" element={<PaymentSuccessPage />} />

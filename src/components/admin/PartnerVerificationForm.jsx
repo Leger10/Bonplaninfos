@@ -11,9 +11,9 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const licensePacks = [
-  { id: 'starter', name: 'Licence Starter', price: 100000 },
-  { id: 'business', name: 'Licence Business', price: 300000 },
-  { id: 'premium', name: 'Licence Premium', price: 500000 },
+  { id: 'starter', name: 'Concession Starter (Ville)', price: 10000000, duration_years: 2, commission_rate: 20 },
+  { id: 'business', name: 'Concession Business (Région)', price: 30000000, duration_years: 3, commission_rate: 30 },
+  { id: 'premium', name: 'Concession Premium (Pays)', price: 50000000, duration_years: 5, commission_rate: 40 },
 ];
 
 const FileInput = ({ label, onFileChange, isUploading, helpText, required, currentFileUrl }) => (

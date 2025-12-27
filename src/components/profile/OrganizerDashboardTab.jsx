@@ -1,211 +1,213 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, TrendingUp, Users, Eye, DollarSign, Calendar, Zap, ArrowUpRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { Loader2, DollarSign, Wallet, TrendingUp, AlertCircle, Eye, Users, Info, ArrowUpRight, FileDown } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
 import { toast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import WithdrawalModal from '@/components/common/WithdrawalModal';
+import { generateEarningsSlip } from '@/utils/pdfGenerator';
 
-const OrganizerDashboardTab = ({ stats: initialStats, loading: initialLoading }) => {
+const OrganizerDashboardTab = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(initialStats);
-  const [loading, setLoading] = useState(initialLoading);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [withdrawalConfig, setWithdrawalConfig] = useState({ withdrawal_dates: [5] });
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [isWithdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const refreshTimeout = useRef(null);
 
   useEffect(() => {
-    setStats(initialStats);
-  }, [initialStats]);
-  
-  useEffect(() => {
-    setLoading(initialLoading);
-  }, [initialLoading]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">Aucune donnée disponible pour le tableau de bord.</p>
-      </div>
-    );
-  }
-
-  const statCards = [
-    {
-      title: "Solde Total",
-      value: `${(stats.available_balance || 0).toLocaleString()} π`,
-      subValue: `${(stats.total_balance_fcfa || 0).toLocaleString('fr-FR')} FCFA`,
-      icon: DollarSign,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10"
-    },
-    {
-      title: "Événements Actifs",
-      value: stats.totalEvents,
-      subValue: `${stats.promotedEvents} promus`,
-      icon: Calendar,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10"
-    },
-    {
-      title: "Vues Totales",
-      value: (stats.totalViews || 0).toLocaleString('fr-FR'),
-      icon: Eye,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10"
-    },
-    {
-      title: "Interactions",
-      value: (stats.totalInteractions || 0).toLocaleString('fr-FR'),
-      icon: Users,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10"
+    if (user) {
+      fetchData();
+      const channel = supabase.channel('creator-realtime-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events', filter: `organizer_id=eq.${user.id}` }, handleRealtimeUpdate)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'organizer_earnings', filter: `organizer_id=eq.${user.id}` }, handleRealtimeUpdate)
+        .subscribe();
+      return () => { supabase.removeChannel(channel); if (refreshTimeout.current) clearTimeout(refreshTimeout.current); };
     }
-  ];
+  }, [user]);
 
-  const balanceBreakdown = [
-    { label: "Interactions", value: stats.interaction_earnings, color: "bg-blue-500" },
-    { label: "Billets", value: stats.event_revenues, color: "bg-green-500" },
-    { label: "Abonnements", value: stats.subscription_earnings, color: "bg-purple-500" },
-  ].filter(item => item.value > 0);
+  const handleRealtimeUpdate = () => {
+    if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+    refreshTimeout.current = setTimeout(() => fetchData(false), 2000);
+  };
+
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const { data: configData } = await supabase.from('admin_withdrawal_config').select('*').limit(1).maybeSingle();
+      const config = configData || { withdrawal_dates: [5] };
+      setWithdrawalConfig(config);
+
+      const { data: statsData } = await supabase.rpc('get_organizer_earnings_summary', { p_organizer_id: user.id });
+      setStats(statsData?.data || {});
+
+      const { data: history } = await supabase.from('organizer_withdrawal_requests').select('*').eq('organizer_id', user.id).order('requested_at', { ascending: false });
+      setWithdrawals(history || []);
+    } catch (error) {
+      console.error("Error fetching creator stats:", error);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
+  const availableBalanceCoins = stats?.wallet?.available_balance_coins || 0;
+  const availableBalanceFcfa = availableBalanceCoins * 10;
+  
+  const handleDownloadSlip = () => {
+      const totalEarned = stats?.summary?.total_earned || 0;
+      // Approximation for PDF
+      const grossEst = Math.floor(totalEarned / 0.95); 
+      
+      generateEarningsSlip({
+          organizerName: user?.email || "Retrait",
+          period: format(new Date(), 'MMMM yyyy', { locale: fr }),
+          totalRevenue: grossEst * 10, // FCFA
+          fees: (grossEst - totalEarned) * 10,
+          netEarnings: totalEarned * 10,
+          date: new Date()
+      });
+      toast({ title: "Document généré", description: "Le relevé de gains a été téléchargé." });
+  };
+
+  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Tableau de bord Organisateur</h2>
-          <p className="text-muted-foreground">Vue d'ensemble de vos performances</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => navigate('/create-event')} variant="default">
-            <Zap className="w-4 h-4 mr-2" />
-            Créer un événement
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => (
-          <Card key={index} className="glass-effect">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-                {index === 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    Actif
-                  </Badge>
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                {stat.subValue && (
-                  <p className="text-xs text-muted-foreground mt-1">{stat.subValue}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {balanceBreakdown.length > 0 && (
-        <Card className="glass-effect">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Répartition du Solde
+    <div className="space-y-6 animate-in fade-in">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Available Balance Card */}
+        <Card className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border-0 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet className="w-24 h-24" /></div>
+          <CardHeader className="pb-2 relative z-10">
+            <CardTitle className="text-lg font-medium opacity-90 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" /> Solde Disponible
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {balanceBreakdown.map((item, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{item.label}</span>
-                    <span className="text-sm font-bold">{item.value} π</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className={`${item.color} h-2 rounded-full transition-all`}
-                      style={{ width: `${(item.value / stats.totalBalance) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+          <CardContent className="relative z-10">
+            <div className="text-4xl font-bold mb-1">
+              {availableBalanceFcfa.toLocaleString()} <span className="text-lg opacity-80">FCFA</span>
+            </div>
+            <p className="text-sm opacity-80 mb-6 font-mono">
+              ({availableBalanceCoins.toLocaleString()} π)
+            </p>
+            <div className="flex gap-2">
+                <Button 
+                    onClick={() => setWithdrawalModalOpen(true)} 
+                    className="flex-1 bg-white text-emerald-800 hover:bg-emerald-50 font-bold shadow-sm"
+                    disabled={availableBalanceFcfa < 500} 
+                >
+                    <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer
+                </Button>
+                <Button 
+                    variant="outline"
+                    className="bg-emerald-700/50 border-emerald-500 text-white hover:bg-emerald-600"
+                    onClick={handleDownloadSlip}
+                    title="Télécharger Relevé"
+                >
+                    <FileDown className="h-4 w-4" />
+                </Button>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      <Card className="glass-effect">
+        {/* Pending Balance Card */}
+        <Card className="border-blue-100 bg-blue-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium text-blue-600 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Gains en attente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-800">
+              {((stats?.pending?.total_net || 0) * 10).toLocaleString()} <span className="text-lg text-gray-500">FCFA</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Ces gains doivent être transférés vers votre solde disponible.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Total Stats */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium text-gray-600 flex items-center gap-2">
+              <Eye className="w-5 h-5" /> Vue d'ensemble
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="flex justify-between items-center border-b pb-2">
+                 <span className="text-sm text-gray-500">Vues Totales</span>
+                 <span className="font-bold">{stats?.creator_stats?.views_count || 0}</span>
+             </div>
+             <div className="flex justify-between items-center">
+                 <span className="text-sm text-gray-500">Total Retiré</span>
+                 <span className="font-bold text-green-600">{(stats?.summary?.total_earned * 10 || 0).toLocaleString()} F</span>
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transactions Table */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Résumé Financier
-          </CardTitle>
+          <CardTitle>Historique des retraits</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-1">Total Gagné</p>
-              <p className="text-xl font-bold text-green-600">{(stats.total_earnings || 0).toLocaleString()} π</p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-1">Total Retiré</p>
-              <p className="text-xl font-bold text-orange-600">{(stats.total_withdrawn || 0).toLocaleString()} π</p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-1">Disponible</p>
-              <p className="text-xl font-bold text-blue-600">{(stats.available_balance || 0).toLocaleString()} π</p>
-            </div>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Montant Net</TableHead>
+                <TableHead>Frais (5%)</TableHead>
+                <TableHead>Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {withdrawals.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    Aucun retrait effectué.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                withdrawals.map((req) => (
+                  <TableRow key={req.id}>
+                    <TableCell>{format(new Date(req.requested_at), 'dd MMM yyyy', { locale: fr })}</TableCell>
+                    <TableCell className="font-bold text-emerald-600">{(req.net_amount || req.amount_fcfa).toLocaleString()} FCFA</TableCell>
+                    <TableCell className="text-red-500">-{req.fees?.toLocaleString()} FCFA</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        req.status === 'paid' || req.status === 'approved' ? 'success' : 
+                        req.status === 'rejected' ? 'destructive' : 'secondary'
+                      }>
+                        {req.status === 'paid' ? 'Payé' : 
+                         req.status === 'approved' ? 'Validé' : 
+                         req.status === 'rejected' ? 'Rejeté' : 'En attente'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Card className="glass-effect">
-        <CardHeader>
-          <CardTitle>Actions Rapides</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <Button 
-              variant="outline" 
-              className="justify-start"
-              onClick={() => navigate('/create-event')}
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Créer un événement
-            </Button>
-            <Button 
-              variant="outline" 
-              className="justify-start"
-              onClick={() => navigate('/boost')}
-            >
-              <Zap className="w-4 h-4 mr-2" />
-              Promouvoir un événement
-            </Button>
-            <Button 
-              variant="outline" 
-              className="justify-start"
-              onClick={() => navigate('/profile?tab=withdrawals')}
-            >
-              <ArrowUpRight className="w-4 h-4 mr-2" />
-              Demander un retrait
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <WithdrawalModal 
+        open={isWithdrawalModalOpen} 
+        onOpenChange={setWithdrawalModalOpen}
+        availableBalance={availableBalanceFcfa}
+        userType="organizer"
+        userId={user?.id}
+        onSuccess={() => fetchData(false)}
+      />
     </div>
   );
 };

@@ -13,85 +13,79 @@ const PaymentCheckoutPage = () => {
     const { user } = useAuth();
 
     const amount = searchParams.get('amount');
-    const packId = searchParams.get('packId');
-    const type = searchParams.get('type');
-    const from = searchParams.get('from') || '/packs';
+    const intentId = searchParams.get('intentId');
+    const from = searchParams.get('from') || '/credit-packs';
 
-    const moneyFusionUrl = "https://www.pay.moneyfusion.net/acheter-votre-pack-ici_1760809319837/";
-    const qrCodeImageUrl = "https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/596514675056f152f9b271c249be25a8.jpg";
-
+    // Base URL for general payment - falling back to the custom link if no specific pack link
+    const moneyFusionUrl = "https://my.moneyfusion.net/694dfabb98fe6dbde0fc014f"; 
+    
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text);
         toast({
             title: "Copié !",
-            description: "Le lien de paiement a été copié dans le presse-papiers.",
+            description: "Le lien de paiement a été copié.",
         });
     };
 
     if (!amount) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-4">
-                <h1 className="text-2xl font-bold text-destructive mb-4">Informations de paiement manquantes</h1>
-                <p className="text-muted-foreground mb-6">Impossible de générer la page de paiement.</p>
+                <h1 className="text-2xl font-bold text-destructive mb-4">Erreur</h1>
+                <p className="text-muted-foreground mb-6">Informations de paiement manquantes.</p>
                 <Button onClick={() => navigate(from)}>Retour</Button>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-muted/50 to-background flex items-center justify-center p-4">
-            <Card className="w-full max-w-md shadow-2xl glass-effect">
-                <CardHeader className="text-center relative">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md shadow-xl border-t-4 border-t-indigo-600">
+                <CardHeader className="text-center relative pb-2">
                     <Button variant="ghost" size="icon" className="absolute top-4 left-4" onClick={() => navigate(from)}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <CardTitle className="text-2xl font-bold pt-8">Finalisez votre paiement</CardTitle>
-                    <CardDescription>Scannez le QR code ou utilisez le lien ci-dessous.</CardDescription>
+                    <CardTitle className="text-2xl font-bold pt-6">Confirmation de Commande</CardTitle>
+                    <CardDescription>Finalisez votre achat de crédits</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col items-center gap-6">
-                    <div className="p-2 bg-white rounded-lg shadow-inner">
-                        <img src={qrCodeImageUrl} alt="Scannez pour payer avec MoneyFusion" className="w-64 h-64" />
-                    </div>
-                    <div className="text-center">
-                        <p className="text-lg font-semibold">Montant à payer</p>
-                        <p className="text-3xl font-bold text-primary">{Number(amount).toLocaleString()} FCFA</p>
+                <CardContent className="flex flex-col items-center gap-6 pt-6">
+                    <div className="text-center bg-white p-6 rounded-xl border border-slate-100 shadow-sm w-full">
+                        <p className="text-sm text-slate-500 mb-1">Montant à régler</p>
+                        <p className="text-4xl font-black text-indigo-600">{Number(amount).toLocaleString()} FCFA</p>
+                        {intentId && <p className="text-xs text-slate-400 mt-2 font-mono">Ref: {intentId.slice(0,8)}</p>}
                     </div>
 
-                    <div className="instructions text-left w-full mt-2">
-                        <h4 className="text-lg font-semibold mb-2 text-center">📝 Remplissez le formulaire sur MoneyFusion avec:</h4>
-                        <ul className="list-none space-y-2 text-muted-foreground bg-secondary/30 p-4 rounded-md">
-                            <li><strong>Montant:</strong> {Number(amount).toLocaleString()} FCFA</li>
-                            <li><strong>Nom & Prénoms:</strong> Votre nom complet</li>
-                            <li><strong>Numéro Mobile Money:</strong> Votre numéro de paiement</li>
-                            <li><strong>Email:</strong> L'email de votre compte Bonplaninfos</li>
-                        </ul>
-                    </div>
-                    
-                    <div className="w-full flex flex-col gap-3">
+                    <div className="w-full space-y-4">
+                        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-sm text-yellow-800">
+                            <strong>Instructions :</strong>
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                                <li>Cliquez sur le bouton ci-dessous</li>
+                                <li>Sur la page de paiement, entrez le montant exact : <strong>{amount}</strong></li>
+                                <li>Utilisez l'email de votre compte : <strong>{user?.email}</strong></li>
+                            </ul>
+                        </div>
+
                          <a
                             href={moneyFusionUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full"
+                            className="w-full block"
                         >
-                        <Button className="w-full gradient-green text-primary-foreground shadow-lg">
-                            🚀 Aller sur MoneyFusion pour payer <ExternalLink className="w-4 h-4 ml-2" />
-                        </Button>
+                            <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg shadow-lg shadow-indigo-200">
+                                Payer Maintenant <ExternalLink className="w-5 h-5 ml-2" />
+                            </Button>
                         </a>
-                        <Button variant="outline" onClick={() => copyToClipboard(moneyFusionUrl)}>
-                            Copier le lien de paiement <Copy className="w-4 h-4 ml-2" />
-                        </Button>
+                        
+                        <div className="text-center">
+                            <span className="text-xs text-slate-400 block mb-2">Ou copiez le lien</span>
+                            <Button variant="outline" size="sm" onClick={() => copyToClipboard(moneyFusionUrl)} className="text-xs">
+                                <Copy className="w-3 h-3 mr-2" /> {moneyFusionUrl.slice(0, 30)}...
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="important-notice text-xs text-center bg-destructive/10 text-destructive-foreground p-3 rounded-md border border-destructive/20 w-full">
-                        <strong>⚠️ Important:</strong> Utilisez l'email de votre compte Bonplaninfos pour que vos pièces soient créditées automatiquement ou votre licence soit activée.
+                    <div className="text-xs text-center text-slate-400 mt-4">
+                        Une fois le paiement effectué, vos crédits seront ajoutés automatiquement.
                     </div>
-
-                     <Link to={from}>
-                        <Button variant="link" className="mt-4 text-muted-foreground">
-                            Retour à la boutique
-                        </Button>
-                    </Link>
                 </CardContent>
             </Card>
         </div>

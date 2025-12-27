@@ -732,65 +732,115 @@ africa_compliance: "Nos pratiques de protection des données respectent les rég
         feature_not_implemented:
           "🚧 Cette fonctionnalité n'est pas encore implémentée—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochain prompt ! 🚀",
       },
-
-partner_signup: {
-  meta_title: "Devenir Partenaire - BonPlanInfos",
-  meta_description: "Devenez partenaire officiel BonPlanInfos et générez des revenus mensuels stables. Programme de partenariat avec licences avantageuses.",
+"partner_signup": {
+  "meta_title": "Devenir Partenaire - BonPlanInfos",
+  "meta_description": "Devenez partenaire officiel BonPlanInfos et générez des revenus mensuels stables. Programme de concession territoriale avec commission plateforme de 5%.",
   
-  unauthorized_title: "Accès non autorisé",
-  unauthorized_desc: "Vous devez être connecté pour accéder à la page partenaire.",
-  unauthorized_cta: "Se connecter",
+  "unauthorized_title": "Accès non autorisé",
+  "unauthorized_desc": "Vous devez être connecté pour accéder à l'espace partenaire.",
+  "unauthorized_cta": "Se connecter",
   
-  loading_licenses: "Chargement des licences...",
-  error_loading_licenses: "Erreur lors du chargement des licences",
+  "loading_licenses": "Chargement des concessions...",
+  "error_loading_licenses": "Erreur lors du chargement des concessions",
   
-  your_licenses_title: "Vos Licences Actives",
-  available_licenses_title: "Licences Disponibles",
-  available_licenses_subtitle: "Choisissez la licence qui correspond à vos ambitions et commencez à générer des revenus",
+  "your_licenses_title": "Vos Concessions Actives",
+  "available_licenses_title": "Concessions Disponibles",
+  "available_licenses_subtitle": "Choisissez le niveau de concession correspondant à vos ambitions et commencez à générer des revenus sur les commissions plateforme",
   
-  license_card: {
-    active: "Active",
-    expired: "Expirée",
-    revenue_share: "Part de revenus : {{percent}}%",
-    purchased_on: "Achetée le",
-    expires_on: "Expire le",
-    days_remaining: "{{count}} jour(s) restant(s)"
+  "license_features": {
+    "premium": {
+      "type": "CONCESSION NATIONALE",
+      "territory": "Pays entier",
+      "duration": "Contrat de 5 ans",
+      "entry_fee": "5 000 000 - 10 000 000 FCFA",
+      "revenue_share": "40% sur les 5% de commission plateforme",
+      "features": [
+        "Exclusivité nationale",
+        "Siège national requis",
+        "Minimum 3-5 employés",
+        "Représentation officielle",
+        "Supervision régions et villes",
+        "Gestion conformité légale"
+      ]
+    },
+    "business": {
+      "type": "CONCESSION RÉGIONALE",
+      "territory": "Région entière",
+      "duration": "Contrat de 3 ans",
+      "entry_fee": "3 000 000 FCFA",
+      "revenue_share": "30% sur les 5% de commission plateforme",
+      "features": [
+        "Exclusivité régionale",
+        "Bureau régional requis",
+        "Minimum 2 agents",
+        "Supervision concessions villes",
+        "Développement partenariats régionaux",
+        "Promotion active"
+      ]
+    },
+    "starter": {
+      "type": "CONCESSION VILLE",
+      "territory": "Ville unique",
+      "duration": "Contrat de 2 ans",
+      "entry_fee": "1 000 000 FCFA",
+      "revenue_share": "20% sur les 5% de commission plateforme",
+      "features": [
+        "Exclusivité urbaine",
+        "Point de représentation physique",
+        "Désignation responsable local",
+        "Promotion active plateforme",
+        "Respect standards marque",
+        "Rapports mensuels"
+      ]
+    },
+    
+    "commission_explanation": "Les partenaires perçoivent un pourcentage des 5% de commission plateforme générés sur leur territoire provenant des : participations aux événements, votes, tirages au sort, billeterie et locations de stands.",
+    "revenue_share_based": "Part des revenus basée sur les 5% de commission plateforme"
   },
   
-  per_month: "/mois",
-  revenue_label: "Part des revenus",
-  duration_label: "{{months}} mois ({{days}} jours)",
+  "license_card": {
+    "active": "Active",
+    "expired": "Expirée",
+    "revenue_share": "Part de revenus : {{percent}}% sur les 5% commission plateforme",
+    "territory": "Territoire : {{location}}",
+    "purchased_on": "Contraté le",
+    "expires_on": "Expire le",
+    "days_remaining": "{{count}} jour(s) restant(s)",
+    "entry_fee": "Droit d'entrée : {{amount}} FCFA",
+    "contract_duration": "Contrat : {{years}} ans"
+  },
   
-  purchase_cta: "Acheter maintenant",
+  "per_month": "/mois",
+  "revenue_label": "Part des revenus (sur 5% commission)",
+  "duration_label": "Contrat de {{years}} ans",
+  "entry_fee_label": "Droit d'entrée",
   
-  error_toast: {
-    title: "Erreur",
-    login_required: "Vous devez être connecté pour acheter une licence",
-    purchase_failed: "Erreur lors de l'achat de la licence"
+  "purchase_cta": "Demander Concession",
+  "download_contract": "Télécharger Formulaire Contrat",
+  "submit_contract": "Soumettre Contrat Rempli",
+  "days_remaining_suffix": "jour(s)",
+  "commission_explanation_title": "Comment fonctionnent les commissions",
+  "commission_explanation_desc": "En tant que partenaire, vous gagnez une part des 5% de commission plateforme générés sur votre territoire. Par exemple, si un événement génère 100 000 FCFA de ventes de billets avec une commission de 5%, soit 5 000 FCFA, et que vous avez une part de revenus de 20%, vous recevrez 1 000 FCFA.",
+  
+  "confirm_purchase_title": "Confirmer la Demande de Concession",
+  "confirm_purchase_desc": "Une fois la demande soumise, notre équipe examinera votre candidature et vous contactera pour finaliser le contrat.",
+  "purchase_success_title": "Demande Soumise",
+  "purchase_success_desc": "Votre demande de concession a été soumise avec succès. Nous vous contacterons sous peu.",
+  "error_toast": {
+    "title": "Erreur",
+    "login_required": "Vous devez être connecté pour demander une concession",
+    "purchase_failed": "Erreur lors du traitement de la demande"
+  },
+  
+  "contract_forms": {
+    "title": "Télécharger les Contrats",
+    "starter_form": "CONTRAT N°1 - CONCESSION STARTER (VILLE)",
+    "business_form": "CONTRAT N°2 - CONCESSION BUSINESS (RÉGION)",
+    "premium_form": "CONTRAT N°3 - CONCESSION PREMIUM (PAYS)",
+    "download": "Télécharger PDF",
+    "instructions": "Téléchargez le contrat, remplissez-le et soumettez-le au super admin pour approbation",
+    "submit_to_admin": "Soumettre au Super Admin"
   }
-},
-license_features: {
-  // Pour la licence Premium/Pro
-  feature1: "Zone maximale",
-  feature2: "Dashboard avancé", 
-  feature3: "Support 24/7",
-  feature4: "Formation avancée",
-  feature5: "Accès early",
-  
-  // Pour la licence Standard
-  feature6: "Gestion de zone",
-  feature7: "Rapports mensuels", 
-  feature8: "Support basic",
-  
-  // Pour la licence Basique
-  feature9: "Zone étendue",
-  feature10: "Analyses détaillées",
-  feature11: "Support prioritaire",
-  feature12: "Formation",
-  
-  // Descriptions des revenus
-  revenue_description_40: "40% de gain sur chiffre d'affaires de sa zone",
-  revenue_description_20: "20% de gain sur chiffre d'affaires de sa zone"
 },
       // ===== CREATE EVENT PAGE =====
 create_event_page: {
@@ -1837,74 +1887,118 @@ testimonials: {
       copyright: "© 2025 BonPlanInfos. All rights reserved."
     }
   },
-partner_signup: {
-  meta_title: "Become a Partner - BonPlanInfos",
-  meta_description: "Become an official BonPlanInfos partner and generate stable monthly income. Partnership program with advantageous licenses.",
+"partner_signup": {
+  "meta_title": "Become a Partner - BonPlanInfos",
+  "meta_description": "Become an official BonPlanInfos partner and earn stable monthly income. Territorial concession program with 5% platform commission.",
   
-  unauthorized_title: "Unauthorized Access",
-  unauthorized_desc: "You must be logged in to access the partner page.",
-  unauthorized_cta: "Login",
+  "unauthorized_title": "Unauthorized Access",
+  "unauthorized_desc": "You must be logged in to access the partner area.",
+  "unauthorized_cta": "Login",
   
-  loading_licenses: "Loading licenses...",
-  error_loading_licenses: "Error loading licenses",
+  "loading_licenses": "Loading concessions...",
+  "error_loading_licenses": "Error loading concessions",
   
-  your_licenses_title: "Your Active Licenses",
-  available_licenses_title: "Available Licenses",
-  available_licenses_subtitle: "Choose the license that matches your ambitions and start generating income",
-
-  license_features: {
-    // Premium license features
-    premium: {
-      feature1: "Maximum zone",
-      feature2: "Advanced dashboard", 
-      feature3: "24/7 support",
-      feature4: "Advanced training",
-      feature5: "Early access"
+  "your_licenses_title": "Your Active Concessions",
+  "available_licenses_title": "Available Concessions",
+  "available_licenses_subtitle": "Choose the concession level that matches your ambitions and start generating revenue from platform commissions",
+  
+  "license_features": {
+    "premium": {
+      "type": "NATIONAL CONCESSION",
+      "territory": "Entire country",
+      "duration": "5 years contract",
+      "entry_fee": "5,000,000 - 10,000,000 FCFA",
+      "revenue_share": "40% of platform's 5% commission",
+      "features": [
+        "National exclusivity",
+        "National headquarters required",
+        "Minimum 3-5 employees",
+        "Official representation",
+        "Regional and city supervision",
+        "Legal compliance management"
+      ]
     },
-    standard: {
-      feature1: "Extended zone",
-      feature2: "Detailed analytics",
-      feature3: "Priority support", 
-      feature4: "Training"
+    "business": {
+      "type": "REGIONAL CONCESSION",
+      "territory": "Entire region",
+      "duration": "3 years contract",
+      "entry_fee": "3,000,000 FCFA",
+      "revenue_share": "30% of platform's 5% commission",
+      "features": [
+        "Regional exclusivity",
+        "Regional office required",
+        "Minimum 2 agents",
+        "City concession supervision",
+        "Regional partnership development",
+        "Active promotion"
+      ]
     },
-    basic: {
-      feature1: "Zone management",
-      feature2: "Monthly reports",
-      feature3: "Basic support",
-      message: "We use cookies to enhance your experience. By continuing to visit this site you agree to our use of cookies. ",
-    learn_more: "Privacy Policy",
-    reject: "Reject",
-    accept: "Accept",
-
+    "starter": {
+      "type": "CITY CONCESSION",
+      "territory": "Single city",
+      "duration": "2 years contract",
+      "entry_fee": "1,000,000 FCFA",
+      "revenue_share": "20% of platform's 5% commission",
+      "features": [
+        "City exclusivity",
+        "Physical representation point",
+        "Local manager designation",
+        "Active platform promotion",
+        "Brand standards compliance",
+        "Monthly reporting"
+      ]
     },
-
     
-    
-    // Revenue descriptions
-    revenue_description_40: "40% revenue share from your zone's turnover",
-    revenue_description_30: "30% revenue share from your zone's turnover",
-    revenue_description_20: "20% revenue share from your zone's turnover"
+    "commission_explanation": "Partners earn a percentage of the 5% platform commission generated in their territory from: event participations, votes, lotteries, ticketing, and stand rentals.",
+    "revenue_share_based": "Revenue share based on 5% platform commission"
   },
   
-  license_card: {
-    active: "Active",
-    expired: "Expired",
-    revenue_share: "Revenue share: {{percent}}%",
-    purchased_on: "Purchased on",
-    expires_on: "Expires on",
-    days_remaining: "{{count}} day(s) remaining"
+  "license_card": {
+    "active": "Active",
+    "expired": "Expired",
+    "revenue_share": "Revenue share: {{percent}}% of 5% platform commission",
+    "territory": "Territory: {{location}}",
+    "purchased_on": "Contracted on",
+    "expires_on": "Expires on",
+    "days_remaining": "{{count}} day(s) remaining",
+    "entry_fee": "Entry fee: {{amount}} FCFA",
+    "contract_duration": "Contract: {{years}} years"
   },
   
-  per_month: "/month",
-  revenue_label: "Revenue share",
-  duration_label: "{{months}} months ({{days}} days)",
+  "per_month": "/month",
+  "revenue_label": "Revenue share (from 5% commission)",
+  "duration_label": "{{years}}-year contract",
+  "entry_fee_label": "Entry fee",
   
-  purchase_cta: "Buy Now",
+  "purchase_cta": "Request Concession",
+  "download_contract": "Download Contract Form",
+  "submit_contract": "Submit Completed Contract",
   
-  error_toast: {
-    title: "Error",
-    login_required: "You must be logged in to purchase a license",
-    purchase_failed: "Error purchasing license"
+  "purchase_modal": {
+    "title": "Confirm Concession Request",
+    "description": "By requesting this concession, you agree to pay the entry fee of {{amount}} FCFA and abide by the terms outlined in the contract form.",
+    "cancel": "Cancel",
+    "confirm": "Confirm Request"
+  },
+  
+  "success_toast": {
+    "title": "Request Sent",
+    "description": "Your concession request has been sent successfully. Please download, complete, and submit the contract form to the super admin for approval."
+  },
+  "error_toast": {
+    "title": "Error",
+    "login_required": "You must be logged in to request a concession",
+    "purchase_failed": "Error processing concession request"
+  },
+  
+  "contract_forms": {
+    "title": "Download Contract Forms",
+    "starter_form": "CONTRACT No. 1 - STARTER CONCESSION (CITY)",
+    "business_form": "CONTRACT No. 2 - BUSINESS CONCESSION (REGION)", 
+    "premium_form": "CONTRACT No. 3 - PREMIUM CONCESSION (COUNTRY)",
+    "download": "Download PDF",
+    "instructions": "Download the contract, fill it out, and submit it to the super admin for approval",
+    "submit_to_admin": "Submit to Super Admin"
   }
 },
       // ===== DASHBOARDS =====
