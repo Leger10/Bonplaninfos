@@ -7,11 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Zap, Star, Crown, Sparkles, Coins, Check, Calculator, ArrowRight, AlertCircle, Flame, TrendingUp, Rocket, Target, Gift, Shield } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import MultilingualSeoHead from '@/components/MultilingualSeoHead';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import '@/components/LicensePurchase.css';
 
-// Configuration des packs avec liens MoneyFusion spécifiques
+// Configuration des packs avec liens MoneyFusion spécifiques UNIQUES pour chaque pack
 const CREDIT_PACKS = [
     { 
         id: 'pack_debutant', 
@@ -91,60 +89,55 @@ const CREDIT_PACKS = [
     },
 ];
 
-// Lien de base pour le paiement personnalisé (sans montant pré-défini)
-const BASE_CUSTOM_PAYMENT_LINK = "https://my.moneyfusion.net/694dfabb98fe6dbde0fc014f";
+// Lien UNIQUEMENT pour le paiement personnalisé
+const CUSTOM_PAYMENT_LINK = "https://my.moneyfusion.net/694dfabb98fe6dbde0fc014f";
 
 const CreditPacksPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
     const [customAmount, setCustomAmount] = useState('');
-    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-    const [selectedPack, setSelectedPack] = useState(null);
 
-    const handlePurchaseClick = (pack) => {
+    // Fonction pour les packs STANDARDS
+    const handlePurchase = (pack) => {
         if (!user) {
-            toast({ title: "Connexion requise", description: "Veuillez vous connecter pour acheter des crédits.", variant: "warning" });
+            toast({ 
+                title: "Connexion requise", 
+                description: "Veuillez vous connecter pour acheter des crédits.", 
+                variant: "warning" 
+            });
             navigate('/auth?redirect=/credit-packs');
             return;
         }
-        
-        setSelectedPack(pack);
-        console.log(`Initiating purchase for ${pack.name}: ${pack.paymentLink}`);
-        window.location.href = pack.paymentLink;
+
+        // CORRECTION IMPORTANTE : Utiliser le lien SPÉCIFIQUE du pack
+        console.log(`Achat pack ${pack.name} - Redirection vers: ${pack.paymentLink}`);
+        window.location.href = pack.paymentLink; // Lien UNIQUE pour chaque pack
     };
 
+    // Fonction UNIQUEMENT pour le paiement personnalisé
     const handleCustomAmountPurchase = () => {
         if (!user) {
-            toast({ title: "Connexion requise", description: "Veuillez vous connecter pour acheter des crédits.", variant: "warning" });
+            toast({ 
+                title: "Connexion requise", 
+                description: "Veuillez vous connecter pour acheter des crédits.", 
+                variant: "warning" 
+            });
             navigate('/auth?redirect=/credit-packs');
             return;
         }
-
-        const amount = parseInt(customAmount, 10);
-        if (isNaN(amount) || amount < 50000) {
-            toast({ 
-                title: "Montant invalide", 
-                description: "Le montant minimum est de 50000 FCFA.", 
-                variant: "destructive" 
-            });
-            return;
-        }
-
-        setShowConfirmDialog(true);
-    };
-
-    const proceedWithCustomPayment = () => {
-        const amount = parseInt(customAmount, 10);
-        const dynamicLink = `${BASE_CUSTOM_PAYMENT_LINK}?amount=${amount}`;
         
-        console.log(`Initiating custom purchase: ${amount} FCFA via ${dynamicLink}`);
-        window.location.href = dynamicLink;
+        // CORRECTION : Utiliser CUSTOM_PAYMENT_LINK pour le paiement personnalisé
+        console.log(`Paiement personnalisé - Redirection vers: ${CUSTOM_PAYMENT_LINK}`);
+        window.location.href = CUSTOM_PAYMENT_LINK;
     };
 
     return (
         <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
-            <MultilingualSeoHead pageData={{ title: "Acheter des Crédits - BonPlanInfos", description: "Rechargez votre compte en crédits avec nos packs exclusifs." }} />
+            <MultilingualSeoHead pageData={{ 
+                title: "Acheter des Crédits - BonPlanInfos", 
+                description: "Rechargez votre compte en crédits avec nos packs exclusifs." 
+            }} />
             
             <div className="max-w-7xl mx-auto space-y-16">
                 {/* Header */}
@@ -258,7 +251,7 @@ const CreditPacksPage = () => {
                                             ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-purple-500/30' 
                                             : 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black hover:shadow-yellow-500/30'
                                         }`}
-                                        onClick={() => handlePurchaseClick(pack)}
+                                        onClick={() => handlePurchase(pack)}
                                     >
                                         <span className="relative z-10 flex items-center justify-center">
                                             Acheter maintenant
@@ -302,17 +295,16 @@ const CreditPacksPage = () => {
                                     <div className="relative w-full">
                                         <Input 
                                             type="number" 
-                                            placeholder="Montant minimum : 50 000 FCFA" 
+                                            placeholder="Montant en FCFA" 
                                             value={customAmount}
                                             onChange={(e) => setCustomAmount(e.target.value)}
-                                            min="50000"
-                                            className="pr-20 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-yellow-500 focus:ring-yellow-500/20 h-12 text-base"
+                                            className="pr-16 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-yellow-500 focus:ring-yellow-500/20 h-12 text-base"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">FCFA</span>
                                     </div>
                                     
                                     <Button 
-                                        className="w-full sm:w-auto h-12 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 text-gray-300 hover:text-white hover:border-yellow-500 hover:bg-gray-800 whitespace-nowrap font-medium shadow-lg"
+                                        className="w-full sm:w-auto h-12 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 text-white hover:text-white hover:border-yellow-500 hover:bg-gray-800 whitespace-nowrap font-medium shadow-lg"
                                         onClick={handleCustomAmountPurchase}
                                     >
                                         <Target className="mr-2 w-4 h-4" />
@@ -325,14 +317,8 @@ const CreditPacksPage = () => {
                                         <p className="text-sm font-medium text-gray-300">
                                             Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} Crédits</span>
                                         </p>
-                                        <p className="text-xs text-gray-400 mt-1">Bonus supplémentaire possible selon le montant</p>
                                     </div>
                                 )}
-                                
-                                <div className="mt-6 flex items-center text-xs text-gray-500">
-                                    <AlertCircle className="w-3 h-3 mr-2" />
-                                    Montant minimum : 50 000 FCFA pour les paiements personnalisés
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -368,55 +354,6 @@ const CreditPacksPage = () => {
                     </div>
                 </motion.div>
             </div>
-
-            {/* Confirmation Dialog for Custom Amount */}
-            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                <DialogContent className="bg-gray-900 border-gray-800 text-white">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-white">Confirmer le paiement personnalisé</DialogTitle>
-                        <DialogDescription className="text-gray-400">
-                            Vous êtes sur le point d'acheter des crédits pour un montant personnalisé.
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="py-4 space-y-4">
-                        <div className="flex justify-between items-center p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                            <span className="text-sm font-medium text-gray-300">Montant à payer</span>
-                            <span className="text-xl font-bold text-yellow-300">{parseInt(customAmount || 0).toLocaleString()} FCFA</span>
-                        </div>
-                        <div className="flex justify-between items-center p-4 bg-gradient-to-r from-gray-800 to-gray-900 rounded-lg border border-yellow-500/20">
-                            <span className="text-sm font-medium text-yellow-300">Crédits reçus (estimé)</span>
-                            <span className="text-xl font-bold text-white">{Math.floor((parseInt(customAmount || 0)) / 10).toLocaleString()} Crédits</span>
-                        </div>
-                        
-                        <Alert className="bg-yellow-500/10 border-yellow-500/20">
-                            <AlertCircle className="h-4 w-4 text-yellow-400" />
-                            <AlertTitle className="text-yellow-300">Sécurité garantie</AlertTitle>
-                            <AlertDescription className="text-yellow-400/80 text-xs">
-                                Vous serez redirigé vers notre partenaire de paiement sécurisé MoneyFusion.
-                                Toutes les transactions sont cryptées et protégées.
-                            </AlertDescription>
-                        </Alert>
-                    </div>
-
-                    <DialogFooter>
-                        <Button 
-                            variant="outline" 
-                            onClick={() => setShowConfirmDialog(false)}
-                            className="border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
-                        >
-                            Annuler
-                        </Button>
-                        <Button 
-                            onClick={proceedWithCustomPayment} 
-                            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold"
-                        >
-                            <Zap className="mr-2 w-4 h-4" />
-                            Procéder au paiement
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 };
