@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock, Clock, Scan } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,9 @@ import EventCountdown from '@/components/EventCountdown';
 import BookmarkButton from '@/components/common/BookmarkButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { extractStoragePath } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import CommunityVerification from '@/components/event/CommunityVerification';
+import TicketScannerDialog from '@/components/event/TicketScannerDialog';
 
 // Component for Verification Stats (Organizer Only)
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
@@ -48,45 +51,54 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-black border-gray-800 text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><BarChart className="w-5 h-5 text-primary" /> Statistiques de Validation</DialogTitle>
-          <DialogDescription>État des entrées en temps réel</DialogDescription>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <BarChart className="w-5 h-5 text-blue-400" /> Statistiques de Validation
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            État des entrées en temps réel
+          </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+          <div className="flex justify-center p-8">
+            <Loader2 className="animate-spin text-blue-400" />
+          </div>
         ) : stats ? (
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-muted p-4 rounded-lg text-center">
-                <p className="text-xs text-muted-foreground uppercase font-bold">Billets Vendus</p>
-                <p className="text-2xl font-bold">{stats.total_tickets}</p>
+              <div className="bg-gray-900 p-4 rounded-lg text-center border border-gray-800">
+                <p className="text-xs text-gray-400 uppercase font-bold">Billets Vendus</p>
+                <p className="text-2xl font-bold text-white">{stats.total_tickets}</p>
               </div>
-              <div className="bg-primary/10 p-4 rounded-lg text-center border border-primary/20">
-                <p className="text-xs text-primary uppercase font-bold">Validés / Entrés</p>
-                <p className="text-2xl font-bold text-primary">{stats.verified_tickets}</p>
+              <div className="bg-blue-900/20 p-4 rounded-lg text-center border border-blue-800/50">
+                <p className="text-xs text-blue-400 uppercase font-bold">Validés / Entrés</p>
+                <p className="text-2xl font-bold text-blue-400">{stats.verified_tickets}</p>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>Taux de présence</span>
-                <span className="font-bold">{stats.verification_rate}%</span>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-300">Taux de présence</span>
+                <span className="font-bold text-white">{stats.verification_rate}%</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${stats.verification_rate}%` }}></div>
+              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" 
+                  style={{ width: `${stats.verification_rate}%` }}
+                ></div>
               </div>
             </div>
 
             {stats.duplicate_scans > 0 && (
-              <div className="flex items-center gap-2 text-sm text-yellow-600 bg-yellow-50 p-2 rounded border border-yellow-200">
+              <div className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/30">
                 <AlertTriangle className="w-4 h-4" />
                 <span>{stats.duplicate_scans} tentatives de doublons détectées</span>
               </div>
             )}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground">Aucune donnée disponible</p>
+          <p className="text-center text-gray-500">Aucune donnée disponible</p>
         )}
       </DialogContent>
     </Dialog>
@@ -156,25 +168,25 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
   };
 
   return (
-    <div className="absolute right-4 bottom-20 md:bottom-24 flex flex-col items-center gap-4 z-30">
+    <div className="absolute right-4 bottom-4 flex flex-col items-center gap-4 z-30">
       {/* Vue Count */}
       <div className="flex flex-col items-center gap-1">
-        <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
-          <Eye className="w-5 h-5 text-white" />
+        <div className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/20">
+          <Eye className="w-4 h-4 text-white" />
         </div>
-        <span className="text-white font-bold text-sm drop-shadow-lg">{event?.views_count || 0}</span>
+        <span className="text-white font-bold text-xs drop-shadow-md">{event?.views_count || 0}</span>
       </div>
 
-      {/* Favorite Button (Heart Icon for Bookmark as requested) */}
+      {/* Favorite Button */}
       <div className="flex flex-col items-center gap-1">
-        <div className="w-12 h-12 flex items-center justify-center">
-            <BookmarkButton 
-                eventId={event?.id} 
-                variant="ghost"
-                className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50 text-white p-0"
-            />
+        <div className="w-10 h-10 flex items-center justify-center">
+          <BookmarkButton 
+            eventId={event?.id} 
+            variant="ghost"
+            className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm hover:bg-black/80 border border-white/20 hover:border-white/40 text-white p-0"
+          />
         </div>
-        <span className="text-white font-bold text-sm drop-shadow-lg">Favoris</span>
+        <span className="text-white font-bold text-xs drop-shadow-md">Favoris</span>
       </div>
 
       {/* Comment Button */}
@@ -185,11 +197,11 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
           }}
           variant="ghost"
           size="icon"
-          className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50"
+          className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm hover:bg-black/80 border border-white/20 hover:border-white/40"
         >
-          <MessageCircle className="w-6 h-6 text-white" />
+          <MessageCircle className="w-5 h-5 text-white" />
         </Button>
-        <span className="text-white font-bold text-sm drop-shadow-lg">{comments}</span>
+        <span className="text-white font-bold text-xs drop-shadow-md">{comments}</span>
       </div>
 
       {/* Share Button */}
@@ -198,11 +210,11 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
           onClick={handleShare}
           variant="ghost"
           size="icon"
-          className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 border-2 border-white/30 hover:border-white/50"
+          className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm hover:bg-black/80 border border-white/20 hover:border-white/40"
         >
-          <Share2 className="w-6 h-6 text-white" />
+          <Share2 className="w-5 h-5 text-white" />
         </Button>
-        <span className="text-white font-bold text-sm drop-shadow-lg">Partager</span>
+        <span className="text-white font-bold text-xs drop-shadow-md">Partager</span>
       </div>
     </div>
   );
@@ -219,8 +231,8 @@ const ExpandableDescription = ({ description }) => {
   const content = isExpanded ? description : description.slice(0, maxLength);
 
   return (
-    <div className="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">
-      <p className="whitespace-pre-line">
+    <div className="prose prose-invert max-w-none">
+      <p className="whitespace-pre-line leading-relaxed text-gray-300">
         {content}
         {!isExpanded && shouldTruncate && "..."}
       </p>
@@ -228,7 +240,7 @@ const ExpandableDescription = ({ description }) => {
         <Button 
           variant="ghost" 
           onClick={() => setIsExpanded(!isExpanded)} 
-          className="mt-2 p-0 h-auto font-semibold text-primary hover:text-primary/80 hover:bg-transparent flex items-center"
+          className="mt-2 p-0 h-auto font-semibold text-blue-400 hover:text-blue-300 hover:bg-transparent flex items-center"
         >
           {isExpanded ? (
             <>Voir moins <ChevronUp className="ml-1 w-4 h-4" /></>
@@ -267,6 +279,7 @@ const EventDetailPage = () => {
 
   // Organizer specific states
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const [standStats, setStandStats] = useState({
     total_rented: 0,
     gross_revenue: 0,
@@ -426,25 +439,36 @@ const EventDetailPage = () => {
     }
   };
 
-  const handleScanClick = () => {
-    navigate('/verify-ticket');
-  };
-
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>;
-  if (!event) return <div className="min-h-screen bg-background text-center p-8"><h1 className="text-2xl text-red-500">Événement non trouvé</h1></div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-blue-400" /></div>;
+  if (!event) return <div className="min-h-screen bg-black text-center p-8"><h1 className="text-2xl text-red-400">Événement non trouvé</h1></div>;
 
   const optimizedImageUrl = event.cover_image || "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
   const canDelete = isOwner || (userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type));
 
+  // Determine if event is closed
+  const eventDateObj = new Date(event.event_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  eventDateObj.setHours(0, 0, 0, 0);
+  
+  const isEventClosed = eventDateObj < today;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-black">
       <MultilingualSeoHead pageData={{ title: event.title, description: event.description, ogImage: optimizedImageUrl }} />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <Button variant="ghost" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4 mr-2" />Retour</Button>
+          <Button variant="ghost" onClick={() => navigate(-1)} className="text-gray-300 hover:text-white hover:bg-gray-900">
+            <ArrowLeft className="w-4 h-4 mr-2" />Retour
+          </Button>
           <div className="flex gap-2">
             {canDelete && (
-              <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={() => setDeleteDialogOpen(true)}
+                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0"
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Supprimer
               </Button>
@@ -454,84 +478,132 @@ const EventDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="relative rounded-lg overflow-hidden shadow-lg group">
-              <img className="w-full h-64 md:h-96 object-cover transition-transform duration-700 group-hover:scale-105" alt={event.title} src={optimizedImageUrl} />
+            
+            {/* Image Section */}
+            <div className="relative rounded-xl overflow-hidden shadow-2xl group aspect-video md:aspect-[2/1]">
+              <img className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={event.title} src={optimizedImageUrl} />
               
-              {/* Gradient overlay for better visibility */}
-              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              {/* Subtle gradient at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
               
-              {/* TikTok Action Buttons */}
+              {/* Action Buttons Overlay */}
               <TikTokActionButtons 
                 event={event} 
                 onRefresh={handleDataRefresh}
                 user={user}
               />
+            </div>
 
-              {/* Mobile title overlay */}
-              <div className="absolute bottom-4 left-4 right-20 z-20">
-                <Badge className="bg-black/40 backdrop-blur-sm text-white border-0 mb-2">
-                  {event.category?.name || event.event_type}
-                </Badge>
-                <h1 className="text-xl md:text-2xl font-bold text-white drop-shadow-lg">
-                  {event.title}
-                </h1>
-              </div>
+            {/* Title & Category Section */}
+            <div className="flex flex-col gap-4 px-1">
+               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="space-y-3 flex-1">
+                     <Badge className="bg-blue-900/40 text-blue-300 hover:bg-blue-800/40 border-blue-700/50 text-sm px-3 py-1 w-fit">
+                        {event.category?.name || event.event_type}
+                     </Badge>
+                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight">
+                        {event.title}
+                     </h1>
+                  </div>
+                  <div className="flex items-center gap-3 md:pt-2">
+                     <div className="hidden md:block">
+                        <BookmarkButton eventId={event.id} />
+                     </div>
+                  </div>
+               </div>
             </div>
             
+            {/* Countdown Timer */}
             {event.event_date && (
-                <div className="flex justify-center mt-4">
+                <div className="flex justify-center w-full py-2">
                   <EventCountdown
                     eventDate={event.event_date}
                     showMotivation={true}
                     size="large"
-                    className="justify-center"
+                    className="w-full justify-center"
                   />
                 </div>
               )}
 
+            {/* Main Content Card */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <Card className="border-none shadow-md overflow-hidden">
-                <CardContent className="p-8">
-                  <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-                    <div>
-                      <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-600">{event.title}</h1>
-                      <div className="flex flex-wrap gap-3 text-muted-foreground mt-3">
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> 
-                          {new Date(event.event_date).toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </Badge>
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> 
-                          {event.city}, {event.country}
-                        </Badge>
-                      </div>
-                    </div>
-                    {/* Desktop Bookmark Button */}
-                    <div className="hidden md:block">
-                        <BookmarkButton eventId={event.id} />
-                    </div>
+              <Card className="bg-gray-900/50 backdrop-blur-sm border-gray-800 shadow-xl">
+                <CardContent className="p-6 md:p-8">
+                  {/* Metadata Section */}
+                  <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b border-gray-800">
+                     <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
+                        <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
+                           <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                           <p className="text-xs text-gray-400 font-medium">Date</p>
+                           <p className="font-semibold text-sm text-white">
+                              {new Date(event.event_date).toLocaleDateString('fr-FR', {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                           </p>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
+                        <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
+                           <MapPin className="w-5 h-5" />
+                        </div>
+                        <div>
+                           <p className="text-xs text-gray-400 font-medium">Lieu</p>
+                           <p className="font-semibold text-sm text-white">{event.city}, {event.country}</p>
+                        </div>
+                     </div>
                   </div>
+
+                  <h3 className="font-bold text-xl mb-3 text-white">À propos</h3>
                   <ExpandableDescription description={event.description} />
                 </CardContent>
               </Card>
 
-              {event.event_type === 'voting' && <VotingInterface event={event} isUnlocked={true} onRefresh={handleDataRefresh} />}
+              {/* Post-Event Status Message */}
+              {isEventClosed && (
+                <Alert className="bg-amber-950/50 border-amber-800/50 text-amber-300">
+                  <Clock className="h-4 w-4" />
+                  <AlertTitle className="text-amber-200">Événement Terminé</AlertTitle>
+                  <AlertDescription className="text-amber-400">
+                    Cet événement est terminé. Vous pouvez consulter les informations et statistiques, mais les participations payantes (billets, votes, etc.) ne sont plus possibles.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Community Verification */}
+              <CommunityVerification eventId={event.id} eventDate={event.event_date} />
+
+              {event.event_type === 'voting' && (
+                <VotingInterface 
+                  event={event} 
+                  isUnlocked={true} 
+                  onRefresh={handleDataRefresh} 
+                  isClosed={isEventClosed}
+                />
+              )}
               {event.event_type === 'raffle' && (
                 <RaffleInterface
                   raffleData={eventData}
                   eventId={event.id}
                   isUnlocked={true}
                   onPurchaseSuccess={handleDataRefresh}
+                  isClosed={isEventClosed}
                 />
               )}
-              {event.event_type === 'stand_rental' && <StandRentalInterface event={event} isUnlocked={true} onRefresh={handleDataRefresh} />}
+              {event.event_type === 'stand_rental' && (
+                <StandRentalInterface 
+                  event={event} 
+                  isUnlocked={true} 
+                  onRefresh={handleDataRefresh} 
+                  isClosed={isEventClosed}
+                />
+              )}
               {event.event_type === 'ticketing' && (
                 <div id="tickets-section" className="scroll-mt-20">
                   <TicketingInterface
@@ -540,15 +612,16 @@ const EventDetailPage = () => {
                     ticketTypes={ticketTypes}
                     isUnlocked={true}
                     onRefresh={handleDataRefresh}
+                    isClosed={isEventClosed}
                   />
                 </div>
               )}
 
               {/* Comments Section */}
               <div id="comments-section" className="scroll-mt-20">
-                <Card>
+                <Card className="bg-gray-900/50 border-gray-800">
                   <CardContent className="p-6">
-                    <h2 className="text-2xl font-bold mb-4">Commentaires</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-white">Commentaires</h2>
                     <SocialInteractions event={event} isUnlocked={true} variant="horizontal" />
                   </CardContent>
                 </Card>
@@ -556,52 +629,89 @@ const EventDetailPage = () => {
             </div>
           </div>
 
+          {/* Sidebar */}
           <div className="space-y-6">
             {isOwner && event.event_type === 'ticketing' && (
-              <Card className="border-primary/50 bg-primary/5 shadow-lg overflow-hidden">
-                <div className="bg-primary/10 p-3 border-b border-primary/20 flex items-center justify-between">
-                  <h3 className="font-bold text-primary flex items-center gap-2"><Lock className="w-4 h-4" /> Espace Organisateur</h3>
+              <Card className="bg-gray-900/80 backdrop-blur-sm border-blue-800/50 shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-3 border-b border-blue-800/30">
+                  <h3 className="font-bold text-blue-300 flex items-center gap-2">
+                    <Lock className="w-4 h-4" /> Espace Organisateur
+                  </h3>
                 </div>
                 <CardContent className="p-4 space-y-3">
-                  <p className="text-sm text-muted-foreground mb-2">Gérez les entrées pour cet événement.</p>
-                  <Button onClick={handleScanClick} className="w-full font-bold" size="lg">
-                    <QrCode className="w-5 h-5 mr-2" /> Scanner Billets
+                  <p className="text-sm text-gray-400 mb-2">Gérez les entrées pour cet événement.</p>
+                  
+                  <Button 
+                    onClick={() => setShowScannerModal(true)} 
+                    className="w-full font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
+                    size="lg"
+                  >
+                    <Scan className="w-5 h-5 mr-2" /> Vérifier Billets
                   </Button>
-                  <Button onClick={() => setShowStatsModal(true)} variant="outline" className="w-full">
+                  
+                  <Button 
+                    onClick={() => setShowStatsModal(true)} 
+                    variant="outline" 
+                    className="w-full border-blue-800/50 text-blue-400 hover:bg-blue-900/30 hover:text-blue-300"
+                  >
                     <BarChart className="w-4 h-4 mr-2" /> Statistiques Entrées
                   </Button>
+                  
+                  <div className="pt-4 mt-4 border-t border-gray-800">
+                    <p className="text-xs text-gray-400 mb-2">Options de vérification:</p>
+                    <ul className="text-xs space-y-1 text-gray-300">
+                      <li className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span>Scan QR Code automatique</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                        <span>Saisie manuelle du code</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Mode entrée/sortie</span>
+                      </li>
+                    </ul>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
             {isOwner && event.event_type === 'stand_rental' && (
-              <Card className="border-blue-500/50 bg-blue-50/10 shadow-lg overflow-hidden animate-in fade-in">
-                <div className="bg-blue-500/10 p-3 border-b border-blue-500/20">
-                  <h3 className="font-bold text-blue-700 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Tableau de bord Stands</h3>
+              <Card className="bg-gray-900/80 backdrop-blur-sm border-blue-800/50 shadow-xl overflow-hidden animate-in fade-in">
+                <div className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 p-3 border-b border-blue-800/30">
+                  <h3 className="font-bold text-blue-300 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" /> Tableau de bord Stands
+                  </h3>
                 </div>
                 <CardContent className="p-4 space-y-4">
                   {standStats.loading ? (
-                    <div className="flex justify-center py-4"><Loader2 className="animate-spin text-blue-500" /></div>
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="animate-spin text-blue-400" />
+                    </div>
                   ) : (
                     <>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Stands Loués</span>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-lg px-3">
+                        <span className="text-sm text-gray-400">Stands Loués</span>
+                        <Badge variant="outline" className="bg-blue-900/30 text-blue-300 border-blue-700/50 text-lg px-3">
                           {standStats.total_rented}
                         </Badge>
                       </div>
-                      <div className="space-y-2 pt-2 border-t border-blue-100">
+                      <div className="space-y-2 pt-2 border-t border-gray-800">
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-600">Revenus Bruts</span>
-                          <span className="font-medium">{standStats.gross_revenue} π</span>
+                          <span className="text-gray-300">Revenus Bruts</span>
+                          <span className="font-medium text-white">{standStats.gross_revenue} π</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-red-500 flex items-center gap-1"><PieChart className="w-3 h-3"/> Frais (5%)</span>
-                          <span className="text-red-500">-{standStats.platform_fee} π</span>
+                          <span className="text-red-400 flex items-center gap-1">
+                            <PieChart className="w-3 h-3"/> Frais (5%)
+                          </span>
+                          <span className="text-red-400">-{standStats.platform_fee} π</span>
                         </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200">
-                          <span className="font-bold text-green-700">Vos Gains Nets (95%)</span>
-                          <span className="font-bold text-xl text-green-700">{standStats.organizer_net} π</span>
+                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-700">
+                          <span className="font-bold text-green-400">Vos Gains Nets (95%)</span>
+                          <span className="font-bold text-xl text-green-400">{standStats.organizer_net} π</span>
                         </div>
                       </div>
                     </>
@@ -611,16 +721,20 @@ const EventDetailPage = () => {
             )}
 
             {event.organizer && (
-              <Card>
+              <Card className="bg-gray-900/50 border-gray-800">
                 <CardContent className="p-6">
-                  <h3 className="font-bold text-lg mb-2">Organisé par</h3>
+                  <h3 className="font-bold text-lg mb-2 text-white">Organisé par</h3>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">
                       {event.organizer.full_name.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-medium">{event.organizer.full_name}</p>
-                      {event.contact_phone && <p className="text-xs text-muted-foreground flex items-center gap-1"><Phone className="w-3 h-3" /> {event.contact_phone}</p>}
+                      <p className="font-medium text-white">{event.organizer.full_name}</p>
+                      {event.contact_phone && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                          <Phone className="w-3 h-3" /> {event.contact_phone}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -630,17 +744,24 @@ const EventDetailPage = () => {
         </div>
       </main>
 
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-black border-gray-800 text-white">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">Supprimer définitivement ?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-red-400">Supprimer définitivement ?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
               Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteEvent} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+            <AlertDialogCancel className="bg-gray-900 text-gray-300 border-gray-700 hover:bg-gray-800">
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteEvent} 
+              className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0" 
+              disabled={isDeleting}
+            >
               {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Supprimer
             </AlertDialogAction>
@@ -648,11 +769,19 @@ const EventDetailPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Stats Dialog */}
       <VerificationStatsDialog
         isOpen={showStatsModal}
         onClose={() => setShowStatsModal(false)}
         eventId={event?.id}
         organizerId={user?.id}
+      />
+
+      {/* Ticket Scanner Dialog */}
+      <TicketScannerDialog
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+        eventId={event?.id}
       />
     </div>
   );

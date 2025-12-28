@@ -5,7 +5,7 @@ import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, CheckCircle2, Crown, Star, Bell, Trash2, X, Wallet, Package } from 'lucide-react';
+import { Loader2, Ticket, Coins, Plus, Minus, ShoppingCart, Check, Download, CheckCircle2, Crown, Star, Bell, Trash2, X, Wallet, Package, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -25,7 +25,7 @@ const TICKET_COLORS = {
     black: { bg: 'bg-gradient-to-br from-slate-800 to-slate-900', border: 'border-slate-900', hover: 'hover:from-slate-900 hover:to-black', text: 'text-white', badge: 'bg-slate-700 text-white' },
 };
 
-const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh }) => {
+const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onRefresh, isClosed }) => {
     const { user } = useAuth();
     const { userProfile } = useData();
     
@@ -47,12 +47,20 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     const [userBalance, setUserBalance] = useState(0);
     const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
+    // Clear cart if event is closed
+    useEffect(() => {
+        if (isClosed) {
+            setCart({});
+            localStorage.removeItem(`cart_${event?.id}`);
+        }
+    }, [isClosed, event?.id]);
+
     // Save cart to localStorage whenever it changes
     useEffect(() => {
-        if (event?.id) {
+        if (event?.id && !isClosed) {
             localStorage.setItem(`cart_${event.id}`, JSON.stringify(cart));
         }
-    }, [cart, event?.id]);
+    }, [cart, event?.id, isClosed]);
 
     // Fetch user balance when checkout modal is opened
     useEffect(() => {
@@ -90,6 +98,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     }, [event]);
 
     const handleQuantityChange = (typeId, delta) => {
+        if (isClosed) return;
         setCart(prev => {
             const current = prev[typeId] || 0;
             const type = ticketTypes?.find(t => t.id === typeId);
@@ -140,6 +149,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
 
     // Add multiple tickets at once
     const handleAddMultiple = (typeId, quantity) => {
+        if (isClosed) return;
         const type = ticketTypes?.find(t => t.id === typeId);
         if (!type) return;
         
@@ -271,6 +281,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     };
 
     const handlePurchase = async () => {
+        if (isClosed) return;
         if (!user) {
             toast({ 
                 title: "Connexion requise", 
@@ -456,7 +467,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         const style = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
 
                         return (
-                            <Card key={type.id} className={`relative overflow-hidden transition-all hover:shadow-xl ${style.bg} ${style.border} ${isSoldOut ? 'opacity-80 grayscale' : 'hover:scale-[1.02]'} group`}>
+                            <Card key={type.id} className={`relative overflow-hidden transition-all hover:shadow-xl ${style.bg} ${style.border} ${isSoldOut || isClosed ? 'opacity-80 grayscale' : 'hover:scale-[1.02]'} group`}>
                                 <CardContent className="p-4 sm:p-6 flex flex-col h-full justify-between gap-3 sm:gap-4">
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-2 sm:gap-0">
                                         <div className="flex items-center gap-2">
@@ -483,17 +494,17 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                         {/* Stock info */}
                                         <div className="flex items-center justify-between">
                                             <span className={`text-xs ${style.text} font-medium ${isSoldOut ? 'text-red-200' : ''} truncate`}>
-                                                {isSoldOut ? '🚫 Épuisé' : `🎟️ ${available} places`}
+                                                {isClosed ? '🚫 Terminé' : isSoldOut ? '🚫 Épuisé' : `🎟️ ${available} places`}
                                             </span>
-                                            {inCart > 0 && (
+                                            {inCart > 0 && !isClosed && (
                                                 <Badge variant="secondary" className={`${style.badge} text-xs px-2`}>
                                                     {inCart} dans le panier
                                                 </Badge>
                                             )}
                                         </div>
 
-                                        {/* Quick add buttons */}
-                                        {!isSoldOut && (
+                                        {/* Quick add buttons - Disabled if Closed */}
+                                        {!isSoldOut && !isClosed && (
                                             <div className="flex flex-wrap gap-1">
                                                 {quickAddOptions.map(qty => (
                                                     <Button
@@ -512,41 +523,49 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                         
                                         {/* Quantity controls */}
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 border-t border-white/20 gap-3 sm:gap-0">
-                                            <div className="flex items-center gap-2 sm:gap-3 bg-black/20 p-1 rounded-lg backdrop-blur-sm w-full sm:w-auto justify-center">
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="ghost" 
-                                                    className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
-                                                    onClick={() => handleQuantityChange(type.id, -1)} 
-                                                    disabled={!inCart || isSoldOut}
-                                                >
-                                                    <Minus className="w-3 h-3 sm:w-3 sm:h-3" />
-                                                </Button>
-                                                <span className={`w-8 text-center font-bold ${style.text} text-lg`}>
-                                                    {inCart || 0}
-                                                </span>
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="ghost" 
-                                                    className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
-                                                    onClick={() => handleQuantityChange(type.id, 1)} 
-                                                    disabled={available <= inCart || isSoldOut}
-                                                >
-                                                    <Plus className="w-3 h-3 sm:w-3 sm:h-3" />
-                                                </Button>
-                                            </div>
-                                            
-                                            {/* Remove all button */}
-                                            {inCart > 0 && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20 w-full sm:w-auto mt-2 sm:mt-0`}
-                                                    onClick={() => removeFromCart(type.id)}
-                                                >
-                                                    <X className="w-3 h-3 mr-1" />
-                                                    Retirer
-                                                </Button>
+                                            {isClosed ? (
+                                                <div className="w-full text-center py-2 bg-black/20 rounded-lg text-white font-medium text-sm">
+                                                    Billetterie fermée
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center gap-2 sm:gap-3 bg-black/20 p-1 rounded-lg backdrop-blur-sm w-full sm:w-auto justify-center">
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
+                                                            onClick={() => handleQuantityChange(type.id, -1)} 
+                                                            disabled={!inCart || isSoldOut}
+                                                        >
+                                                            <Minus className="w-3 h-3 sm:w-3 sm:h-3" />
+                                                        </Button>
+                                                        <span className={`w-8 text-center font-bold ${style.text} text-lg`}>
+                                                            {inCart || 0}
+                                                        </span>
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" 
+                                                            onClick={() => handleQuantityChange(type.id, 1)} 
+                                                            disabled={available <= inCart || isSoldOut}
+                                                        >
+                                                            <Plus className="w-3 h-3 sm:w-3 sm:h-3" />
+                                                        </Button>
+                                                    </div>
+                                                    
+                                                    {/* Remove all button */}
+                                                    {inCart > 0 && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20 w-full sm:w-auto mt-2 sm:mt-0`}
+                                                            onClick={() => removeFromCart(type.id)}
+                                                        >
+                                                            <X className="w-3 h-3 mr-1" />
+                                                            Retirer
+                                                        </Button>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -557,8 +576,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 </div>
             )}
 
-            {/* Floating Cart */}
-            {totalTicketsInCart > 0 && (
+            {/* Floating Cart - Hidden if Closed */}
+            {totalTicketsInCart > 0 && !isClosed && (
                 <>
                     {/* Cart Details Panel */}
                     {showCartDetails && (
@@ -732,8 +751,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                 </>
             )}
 
-            {/* Empty Cart State */}
-            {totalTicketsInCart === 0 && (
+            {/* Empty Cart State - Only if Not Closed */}
+            {totalTicketsInCart === 0 && !isClosed && (
                 <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4">
                     <Card className="bg-card/95 backdrop-blur-md border-t-4 border-t-primary shadow-lg w-full max-w-md">
                         <CardContent className="p-4">

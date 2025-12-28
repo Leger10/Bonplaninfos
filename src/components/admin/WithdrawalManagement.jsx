@@ -11,12 +11,15 @@ import {
     DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
-    Loader2, Check, X, RefreshCw, Search, Download, Eye
+    Loader2, Check, X, RefreshCw, Search, Download, Eye, AlertTriangle, Calculator
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import * as XLSX from 'xlsx';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const WithdrawalManagement = () => {
     const { user } = useAuth();
@@ -24,6 +27,7 @@ const WithdrawalManagement = () => {
 
     const [requests, setRequests] = useState([]);
     const [filtered, setFiltered] = useState([]);
+    const [feeStats, setFeeStats] = useState({ total_fees: 0, pending_fees: 0 });
 
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
@@ -36,109 +40,76 @@ const WithdrawalManagement = () => {
     const [rejectionReason, setRejectionReason] = useState('');
 
     const isSuperAdmin = userProfile?.user_type === 'super_admin';
-    const isAdmin = isSuperAdmin || userProfile?.user_type === 'admin';
-    // Secretaries also have access but "view only" logic applies to everyone except Super Admin based on the request
-    // However, checking the prompt: "Restrict admin and secretary views... (view only, no actions)".
-    // This implies ONLY Super Admin can act.
     const canPerformActions = isSuperAdmin; 
 
-    // -------------------------------------------------------------
-    // 🔥 1. Chargement des données
-    // -------------------------------------------------------------
+    // Fetch Requests
     const fetchWithdrawalRequests = useCallback(async () => {
-        // Allowed roles check
-        const allowedRoles = ['super_admin', 'admin', 'secretary'];
-        if (!allowedRoles.includes(userProfile?.user_type)) return;
-
         setLoading(true);
-
         try {
-            // Build query
             let query = supabase
                 .from('organizer_withdrawal_requests')
                 .select(`
                   *,
-                  organizer:organizer_id (full_name, email, country, phone),
-                  reviewer:reviewed_by_admin (full_name)
+                  organizer:organizer_id (full_name, email, country, phone)
                 `)
                 .order('requested_at', { ascending: false });
 
-            // Restrict to zone if not super admin
+            // Admin zone restriction
             if (!isSuperAdmin && userProfile?.country) {
-                // Filter requests where the organizer's country matches the admin's country
-                // Note: We can't filter joined tables directly with .eq('organizer.country') easily in basic supabase-js without inner join implied
-                // But Supabase PostgREST syntax supports filtering on joined resource:
                 query = query.eq('organizer.country', userProfile.country);
             }
 
             const { data, error } = await query;
-
             if (error) throw error;
 
-            // Client-side double check for zone restriction (safety net)
-            const filteredData = isSuperAdmin 
+            // Safety filter
+            const safeData = isSuperAdmin 
                 ? data 
                 : data.filter(req => req.organizer?.country === userProfile?.country);
 
-            setRequests(filteredData || []);
-            setFiltered(filteredData || []);
+            setRequests(safeData || []);
+            setFiltered(safeData || []);
+            
+            // Calculate fees stats
+            const totalFees = safeData.filter(r => r.status === 'paid' || r.status === 'approved').reduce((acc, curr) => acc + (curr.fees || 0), 0);
+            const pendingFees = safeData.filter(r => r.status === 'pending').reduce((acc, curr) => acc + (curr.fees || 0), 0);
+            setFeeStats({ total_fees: totalFees, pending_fees: pendingFees });
+
         } catch (error) {
             console.error('Erreur chargement:', error);
-            toast({
-                title: 'Erreur',
-                description: 'Impossible de charger les demandes.',
-                variant: 'destructive'
-            });
+            toast({ title: 'Erreur', description: 'Impossible de charger les demandes.', variant: 'destructive' });
         } finally {
             setLoading(false);
         }
     }, [isSuperAdmin, userProfile]);
 
     useEffect(() => {
-        if (userProfile) fetchWithdrawalRequests();
-    }, [userProfile, fetchWithdrawalRequests]);
+        fetchWithdrawalRequests();
+    }, [fetchWithdrawalRequests]);
 
-    // -------------------------------------------------------------
-    // 🔎 2. Recherche multicritères
-    // -------------------------------------------------------------
+    // Filtering
     useEffect(() => {
         let result = [...requests];
-
         if (search.trim().length > 0) {
             const s = search.toLowerCase();
             result = result.filter(req =>
                 req.organizer?.full_name?.toLowerCase().includes(s) ||
-                req.organizer?.email?.toLowerCase().includes(s) ||
-                req.organizer?.phone?.toLowerCase().includes(s)
+                req.organizer?.email?.toLowerCase().includes(s)
             );
         }
-
         if (statusFilter !== 'all') {
             result = result.filter(req => req.status === statusFilter);
         }
-
         setFiltered(result);
     }, [search, statusFilter, requests]);
 
-    const resetFilters = () => {
-        setSearch('');
-        setStatusFilter('all');
-        setFiltered(requests);
-    };
-
-    // -------------------------------------------------------------
-    // 💵 3. Traitement des demandes
-    // -------------------------------------------------------------
+    // Actions
     const handleProcessRequest = async (requestId, status, reason = null) => {
-        if (!canPerformActions) {
-            toast({ title: "Non autorisé", description: "Vous n'avez pas les droits pour effectuer cette action.", variant: "destructive" });
-            return;
-        }
-
+        if (!canPerformActions) return;
         setProcessingId(requestId);
 
         try {
-            const { data, error } = await supabase.rpc('process_organizer_withdrawal', {
+            const { error } = await supabase.rpc('process_organizer_withdrawal', {
                 p_request_id: requestId,
                 p_status: status,
                 p_notes: reason
@@ -146,287 +117,218 @@ const WithdrawalManagement = () => {
 
             if (error) throw error;
 
-            if (data && !data.success) throw new Error(data.message);
-
             toast({
-                title: 'Succès',
-                description: `Demande ${status === 'approved' ? 'approuvée' : 'rejetée'}.`
+                title: status === 'approved' ? 'Demande approuvée' : 'Demande rejetée',
+                description: status === 'approved' ? 'Paiement marqué comme validé.' : 'Fonds remboursés à l\'organisateur.',
+                variant: status === 'approved' ? 'success' : 'default'
             });
 
             await fetchWithdrawalRequests();
-
         } catch (error) {
-            toast({
-                title: 'Erreur',
-                description: error.message,
-                variant: 'destructive'
-            });
+            toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
         } finally {
             setProcessingId(null);
             setIsRejectionDialogOpen(false);
             setRejectionReason('');
-            setSelectedRequest(null);
         }
     };
 
-    const openRejectionDialog = (req) => {
-        setSelectedRequest(req);
-        setIsRejectionDialogOpen(true);
-    };
-
-    // -------------------------------------------------------------
-    // 📤 4. Export Excel
-    // -------------------------------------------------------------
     const exportToExcel = () => {
         const rows = filtered.map(r => ({
+            ID: r.id,
             Organisateur: r.organizer?.full_name,
-            Email: r.organizer?.email,
-            Téléphone: r.organizer?.phone,
-            Pays: r.organizer?.country,
-            Montant_PI: r.amount_pi,
-            Montant_FCFA: r.amount_fcfa,
-            Moyen: r.payment_details?.method,
-            Identifiant: r.payment_details?.number,
+            Montant_Brut: r.amount_fcfa,
+            Frais_5_Pourcent: r.fees,
+            Montant_Net: r.net_amount || (r.amount_fcfa - (r.fees || 0)),
+            Méthode: r.payment_details?.method,
+            Compte: r.payment_details?.number,
             Statut: r.status,
-            Date: new Date(r.requested_at).toLocaleString('fr-FR')
+            Date: new Date(r.requested_at).toLocaleDateString()
         }));
-
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Retraits');
-
-        XLSX.writeFile(wb, 'withdrawals.xlsx');
-        toast({ title: "Export réussi", description: "Le fichier Excel a été généré." });
-    };
-
-    // -------------------------------------------------------------
-    // UI
-    // -------------------------------------------------------------
-    const getStatusBadge = (status) => {
-        const mapping = {
-            pending: 'bg-yellow-500/20 text-yellow-600 border-yellow-200',
-            approved: 'bg-green-500/20 text-green-600 border-green-200',
-            rejected: 'bg-red-500/20 text-red-600 border-red-200',
-            paid: 'bg-blue-500/20 text-blue-600 border-blue-200',
-        };
-        const label = {
-            pending: 'En attente',
-            approved: 'Approuvé',
-            rejected: 'Rejeté',
-            paid: 'Payé'
-        };
-        return (
-            <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${mapping[status] || ''}`}>
-                {label[status] || status}
-            </span>
-        );
+        XLSX.writeFile(wb, 'Retraits_Organisateurs.xlsx');
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
+            
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-blue-50 border-blue-100">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                            <Calculator className="w-4 h-4" /> Frais Collectés (5%)
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-blue-900">{feeStats.total_fees.toLocaleString()} FCFA</div>
+                        <p className="text-xs text-blue-600 mt-1">Sur retraits validés</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-orange-50 border-orange-100">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-orange-700 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4" /> Frais en Attente
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-orange-900">{feeStats.pending_fees.toLocaleString()} FCFA</div>
+                        <p className="text-xs text-orange-600 mt-1">Sur demandes en cours</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-            {/* 🔎 Barre de recherche & filtres */}
-            <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
-                <div className="relative w-full md:w-72">
-                    <input
-                        className="w-full px-3 py-2 border rounded-md pl-9 bg-background"
-                        placeholder="Rechercher un organisateur..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <Search className="w-4 h-4 absolute left-2 top-3 text-muted-foreground" />
-                </div>
-
-                <select
-                    className="px-3 py-2 border rounded-md bg-background w-full md:w-auto"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                    <option value="all">Tous les statuts</option>
-                    <option value="pending">En attente</option>
-                    <option value="approved">Approuvé</option>
-                    <option value="rejected">Rejeté</option>
-                    <option value="paid">Payé</option>
-                </select>
-
-                <Button variant="outline" onClick={resetFilters} className="w-full md:w-auto">Réinitialiser</Button>
-
-                <div className="flex gap-2 ml-auto w-full md:w-auto">
-                    <Button onClick={exportToExcel} className="flex items-center gap-2 flex-1 md:flex-none" variant="secondary">
-                        <Download className="w-4 h-4" /> Excel
-                    </Button>
-
-                    <Button
-                        onClick={fetchWithdrawalRequests}
-                        variant="outline"
-                        disabled={loading}
-                        className="flex items-center gap-2 flex-1 md:flex-none"
+            <div className="flex flex-col md:flex-row gap-3 justify-between items-center bg-muted/30 p-4 rounded-lg border">
+                <div className="flex gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <input
+                            className="w-full bg-background border rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Rechercher..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <select
+                        className="bg-background border rounded-md px-3 py-2 text-sm"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
                     >
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        <option value="all">Tout</option>
+                        <option value="pending">En attente</option>
+                        <option value="approved">Approuvé</option>
+                        <option value="rejected">Rejeté</option>
+                    </select>
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={exportToExcel}>
+                        <Download className="w-4 h-4 mr-2" /> Excel
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={fetchWithdrawalRequests} disabled={loading}>
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
             </div>
 
-            {!canPerformActions && (
-                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-md text-sm border border-blue-200 flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    Mode lecture seule : Seul le Super Admin peut traiter les demandes de retrait.
-                </div>
-            )}
-
-            {/* 🧾 Tableau */}
             <div className="rounded-md border bg-card">
-                {loading ? (
-                    <div className="flex justify-center items-center p-8">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Organisateur</TableHead>
-                                    <TableHead>Montant (π)</TableHead>
-                                    <TableHead>Montant (FCFA)</TableHead>
-                                    <TableHead>Paiement</TableHead>
-                                    <TableHead>Statut</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    {canPerformActions && <TableHead className="text-right">Actions</TableHead>}
-                                </TableRow>
-                            </TableHeader>
-
-                            <TableBody>
-                                {filtered.length > 0 ? (
-                                    filtered.map((req) => (
-                                        <TableRow key={req.id}>
-                                            <TableCell>
-                                                <div className="font-medium">{req.organizer?.full_name}</div>
-                                                <div className="text-sm text-muted-foreground">{req.organizer?.email}</div>
-                                                <div className="text-xs text-blue-600 dark:text-blue-400">{req.organizer?.phone}</div>
-                                                {(isSuperAdmin || userProfile.user_type === 'admin') && (
-                                                    <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">{req.organizer?.country}</div>
-                                                )}
-                                            </TableCell>
-
-                                            <TableCell className="font-mono">{req.amount_pi.toLocaleString('fr-FR')} π</TableCell>
-                                            <TableCell className="font-bold">{req.amount_fcfa.toLocaleString('fr-FR')} FCFA</TableCell>
-
-                                            <TableCell>
-                                                <div className="font-medium">
-                                                    {req.payment_details?.method || 'N/A'}
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Demandeur</TableHead>
+                            <TableHead>Montant Brut</TableHead>
+                            <TableHead className="text-red-500">Frais (5%)</TableHead>
+                            <TableHead className="text-emerald-600">Net à Payer</TableHead>
+                            <TableHead>Info Paiement</TableHead>
+                            <TableHead>Statut</TableHead>
+                            <TableHead>Date</TableHead>
+                            {canPerformActions && <TableHead className="text-right">Actions</TableHead>}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell>
+                            </TableRow>
+                        ) : filtered.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">Aucune demande trouvée.</TableCell>
+                            </TableRow>
+                        ) : (
+                            filtered.map(req => (
+                                <TableRow key={req.id}>
+                                    <TableCell>
+                                        <div className="font-medium">{req.organizer?.full_name || 'Inconnu'}</div>
+                                        <div className="text-xs text-muted-foreground">{req.organizer?.email}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{req.amount_fcfa?.toLocaleString()} FCFA</div>
+                                        <div className="text-xs text-muted-foreground">{req.amount_pi} π</div>
+                                    </TableCell>
+                                    <TableCell className="text-red-500 font-medium">
+                                        -{req.fees?.toLocaleString()} FCFA
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-bold text-emerald-600">
+                                            {(req.net_amount || (req.amount_fcfa - (req.fees||0))).toLocaleString()} FCFA
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm font-medium">{req.payment_details?.method}</div>
+                                        <div className="text-xs font-mono bg-muted px-1 rounded w-fit">{req.payment_details?.number}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                                            req.status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' :
+                                            req.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                                            'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                        }`}>
+                                            {req.status === 'approved' ? 'Validé' : req.status === 'rejected' ? 'Rejeté' : 'En attente'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                        {format(new Date(req.requested_at), 'dd MMM yyyy HH:mm', { locale: fr })}
+                                    </TableCell>
+                                    {canPerformActions && (
+                                        <TableCell className="text-right">
+                                            {req.status === 'pending' && (
+                                                <div className="flex justify-end gap-2">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="bg-green-600 hover:bg-green-700 h-8 px-2"
+                                                        onClick={() => handleProcessRequest(req.id, 'approved')}
+                                                        disabled={processingId === req.id}
+                                                        title="Approuver"
+                                                    >
+                                                        {processingId === req.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="destructive"
+                                                        className="h-8 px-2"
+                                                        onClick={() => { setSelectedRequest(req); setIsRejectionDialogOpen(true); }}
+                                                        disabled={processingId === req.id}
+                                                        title="Rejeter"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground font-mono">
-                                                    {req.payment_details?.number || req.payment_details?.account_number || '—'}
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell>{getStatusBadge(req.status)}</TableCell>
-
-                                            <TableCell>
-                                                {new Date(req.requested_at).toLocaleDateString('fr-FR')}
-                                                <div className="text-xs text-muted-foreground">
-                                                    {new Date(req.requested_at).toLocaleTimeString('fr-FR')}
-                                                </div>
-                                            </TableCell>
-
-                                            {canPerformActions && (
-                                                <TableCell className="text-right space-x-2">
-                                                    {req.status === 'pending' && (
-                                                        <>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleProcessRequest(req.id, 'approved')}
-                                                                disabled={processingId === req.id}
-                                                                className="hover:bg-green-100 dark:hover:bg-green-900/20"
-                                                                title="Approuver"
-                                                            >
-                                                                {processingId === req.id ?
-                                                                    <Loader2 className="h-4 w-4 animate-spin" /> :
-                                                                    <Check className="h-4 w-4 text-green-600" />
-                                                                }
-                                                            </Button>
-
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => openRejectionDialog(req)}
-                                                                disabled={processingId === req.id}
-                                                                className="hover:bg-red-100 dark:hover:bg-red-900/20"
-                                                                title="Rejeter"
-                                                            >
-                                                                <X className="h-4 w-4 text-red-600" />
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </TableCell>
                                             )}
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={canPerformActions ? 7 : 6} className="text-center py-8">
-                                            Aucun résultat trouvé.
                                         </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
+                                    )}
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </div>
 
-            {/* ❌ Dialog rejet */}
             <Dialog open={isRejectionDialogOpen} onOpenChange={setIsRejectionDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Rejeter la demande</DialogTitle>
-                        <DialogDescription>
-                            Une raison est obligatoire et sera visible par l’organisateur.
-                        </DialogDescription>
+                        <DialogDescription>Indiquez la raison du rejet. Les fonds seront remboursés intégralement à l'utilisateur.</DialogDescription>
                     </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        {selectedRequest && (
-                            <div className="p-3 bg-muted rounded-lg text-sm border">
-                                <p><strong>Organisateur:</strong> {selectedRequest.organizer?.full_name}</p>
-                                <p><strong>Montant:</strong> {selectedRequest.amount_pi} π</p>
-                                <p><strong>Paiement:</strong> {selectedRequest.payment_details?.method}</p>
-                            </div>
-                        )}
-
-                        <Textarea
-                            rows={4}
-                            placeholder="Ex: Numéro mobile money incorrect..."
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                        />
-                    </div>
-
+                    <Textarea 
+                        value={rejectionReason} 
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Ex: Numéro incorrect, Compte inactif..."
+                        rows={3}
+                    />
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsRejectionDialogOpen(false)}
-                        >
-                            Annuler
-                        </Button>
-
-                        <Button
-                            variant="destructive"
-                            onClick={() =>
-                                handleProcessRequest(selectedRequest?.id, 'rejected', rejectionReason)
-                            }
+                        <Button variant="outline" onClick={() => setIsRejectionDialogOpen(false)}>Annuler</Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => handleProcessRequest(selectedRequest.id, 'rejected', rejectionReason)}
                             disabled={!rejectionReason.trim() || processingId === selectedRequest?.id}
                         >
-                            {processingId === selectedRequest?.id &&
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            }
-                            Confirmer
+                            {processingId === selectedRequest?.id && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Confirmer Rejet
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
         </div>
     );
 };

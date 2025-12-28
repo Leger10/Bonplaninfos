@@ -11,9 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft, Coins, Shield } from 'lucide-react';
+import { Loader2, ArrowLeft, Globe, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { CoinService } from '@/services/CoinService';
 import {
   Select,
   SelectContent,
@@ -22,6 +21,47 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from 'uuid';
+import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+
+// Helper function to convert images to JPG
+const convertImageToJpg = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill white background for transparent images (PNG/WebP)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error('Conversion failed'));
+            return;
+          }
+          // Force .jpg extension
+          const newName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+          const newFile = new File([blob], newName, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+          resolve(newFile);
+        }, 'image/jpeg', 0.85); // 0.85 quality
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = event.target.result;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
 
 const CreateSimpleEventPage = () => {
   const [formData, setFormData] = useState({
@@ -32,13 +72,14 @@ const CreateSimpleEventPage = () => {
     location: '',
     city: '',
     country: '',
-    price_fcfa: 0,
-    is_protected: false,
+    is_public_to_all: true,
     cover_image_file: null,
   });
   const [loading, setLoading] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [categories, setCategories] = useState([]);
   const [imagePreview, setImagePreview] = useState('');
+  const [showContractModal, setShowContractModal] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { userProfile } = useData();
@@ -68,38 +109,66 @@ const CreateSimpleEventPage = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        toast({ title: "Fichier trop volumineux", description: "L'image ne doit pas dépasser 2MB.", variant: "destructive" });
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        toast({ title: "Format invalide", description: "Veuillez sélectionner une image (JPG, PNG, WebP).", variant: "destructive" });
+        e.target.value = null; 
         return;
-      }
-      handleInputChange('cover_image_file', file);
-      setImagePreview(URL.createObjectURL(file));
+    }
+
+    if (file.size > 2 * 1024 * 1024) { 
+        toast({ title: "Fichier trop volumineux", description: "L'image ne doit pas dépasser 2MB.", variant: "destructive" });
+        e.target.value = null; 
+        return;
+    }
+
+    setIsProcessingImage(true);
+    try {
+        const jpgFile = await convertImageToJpg(file);
+        handleInputChange('cover_image_file', jpgFile);
+        setImagePreview(URL.createObjectURL(jpgFile));
+        toast({ title: "Image prête", description: "Image optimisée et convertie en JPG.", className: "bg-green-50 text-green-900 border-green-200" });
+    } catch (error) {
+        console.error("Image conversion error:", error);
+        toast({ title: "Erreur", description: "Impossible de traiter l'image. Veuillez essayer un autre fichier.", variant: "destructive" });
+        e.target.value = null; 
+    } finally {
+        setIsProcessingImage(false);
     }
   };
   
-  const pricePi = CoinService.convertFcfaToCoins(formData.price_fcfa);
-  
-  const canSubmit = formData.title && formData.event_date && formData.location && formData.city && formData.country && formData.category_id;
+  const canSubmit = formData.title && formData.event_date && formData.location && formData.city && formData.country && formData.category_id && !isProcessingImage;
 
-  const handleSubmit = async (e) => {
+  // New handler that opens modal instead of submitting directly
+  const initiateSubmit = (e) => {
     e.preventDefault();
     if (!canSubmit) {
       toast({ title: 'Champs requis', description: 'Veuillez remplir tous les champs obligatoires.', variant: 'destructive' });
       return;
     }
+    setShowContractModal(true);
+  };
+
+  // Actual submission after contract acceptance
+  const performSubmission = async () => {
     setLoading(true);
 
     try {
       let cover_image_url = null;
       if (formData.cover_image_file) {
         const cleanFileName = formData.cover_image_file.name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
-        const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
+        const finalFileName = cleanFileName.endsWith('.jpg') ? cleanFileName : `${cleanFileName}.jpg`;
+        const filePath = `events/${user.id}/${uuidv4()}-${finalFileName}`;
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('media')
-          .upload(filePath, formData.cover_image_file);
+          .upload(filePath, formData.cover_image_file, {
+            contentType: 'image/jpeg',
+            upsert: false
+          });
 
         if (uploadError) throw uploadError;
         
@@ -111,27 +180,39 @@ const CreateSimpleEventPage = () => {
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
-        event_type: formData.is_protected ? 'protected' : 'standard',
+        event_type: 'standard', 
         event_date: formData.event_date,
         location: formData.location,
         address: formData.location,
         city: formData.city,
         country: formData.country,
-        price_fcfa: formData.is_protected ? 0 : formData.price_fcfa,
-        price_pi: formData.is_protected ? 2 : pricePi,
+        price_fcfa: 0,
+        price_pi: 0,
         organizer_id: user.id,
         status: 'active',
+        is_active: true,
+        is_public: true, 
         cover_image: cover_image_url,
+        tags: formData.is_public_to_all ? ['global'] : ['zone_only'],
+        // Contract metadata
+        contract_accepted_at: new Date().toISOString(),
+        contract_version: 'v1.0'
       };
 
       const { data, error } = await supabase.from('events').insert(eventPayload).select().single();
       if (error) throw error;
       
-      toast({ title: 'Événement créé!', description: 'Votre événement a été publié avec succès.' });
+      toast({ 
+        title: 'Événement publié !', 
+        description: formData.is_public_to_all 
+          ? 'Votre événement est maintenant visible par toute la communauté.' 
+          : 'Votre événement est visible dans votre zone.'
+      });
       navigate(`/event/${data.id}`);
 
     } catch (error) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      console.error(error);
+      toast({ title: 'Erreur', description: error.message || "Une erreur est survenue.", variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -139,44 +220,92 @@ const CreateSimpleEventPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Helmet><title>Créer un Événement Standard</title></Helmet>
-      <main className="container mx-auto max-w-2xl px-4 py-8">
+      <Helmet><title>Créer un Événement</title></Helmet>
+      <main className="container mx-auto max-w-3xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" /> Retour
           </Button>
-          <Card>
-            <CardHeader>
-              <CardTitle>Créer un Événement Standard</CardTitle>
-              <CardDescription>Remplissez les informations de base de votre événement.</CardDescription>
+          <Card className="border-none shadow-lg">
+            <CardHeader className="bg-primary/5 rounded-t-xl pb-8">
+              <CardTitle className="text-2xl text-primary">Publier une annonce ou un événement</CardTitle>
+              <CardDescription className="text-base text-foreground/80">
+                Créez un événement d'information ou un événement exclusif et nous le montrons à tous les utilisateurs.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titre de l'événement *</Label>
-                  <Input 
-                    id="title" 
-                    value={formData.title} 
-                    onChange={e => handleInputChange('title', e.target.value)} 
-                    required 
-                    className="text-lg font-bold p-4 bg-transparent border-0 border-b-2 border-input focus:ring-0 focus:border-primary transition-all duration-300 ease-in-out placeholder-muted-foreground/50 bg-gradient-to-r from-primary/5 to-accent/5"
-                    placeholder="Un titre qui claque !"
-                  />
+            <CardContent className="pt-8">
+              <form onSubmit={initiateSubmit} className="space-y-8">
+                
+                {/* Image Upload Section */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-semibold">Image de couverture</Label>
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 hover:bg-muted/20 transition-colors bg-muted/5 relative">
+                    {isProcessingImage && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin mb-2" />
+                            <span className="text-sm font-medium text-primary">Traitement et conversion en cours...</span>
+                        </div>
+                    )}
+                    
+                    {imagePreview ? (
+                      <div className="relative w-full">
+                        <img 
+                          src={imagePreview} 
+                          alt="Aperçu" 
+                          className="w-full h-64 object-cover rounded-lg shadow-md" 
+                        />
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm"
+                          onClick={() => {
+                            setImagePreview('');
+                            handleInputChange('cover_image_file', null);
+                          }}
+                          disabled={isProcessingImage}
+                        >
+                          Changer
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className={`cursor-pointer flex flex-col items-center w-full h-full ${isProcessingImage ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                          <ImageIcon className="w-8 h-8 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium text-foreground">Cliquez pour ajouter une image</span>
+                        <span className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP jusqu'à 2MB (Sera converti en JPG)</span>
+                        <Input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleFileChange} 
+                          disabled={isProcessingImage}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" value={formData.description} onChange={e => handleInputChange('description', e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                  <Label>Image de couverture</Label>
-                  {imagePreview && <img className="w-full h-auto rounded-lg max-h-60 object-cover" alt="Aperçu de l'événement"  src={imagePreview} />}
-                  <Input type="file" accept="image/*" onChange={handleFileChange} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div className="grid gap-6">
+                  {/* Basic Info */}
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-base">Titre de l'événement *</Label>
+                    <Input 
+                      id="title" 
+                      value={formData.title} 
+                      onChange={e => handleInputChange('title', e.target.value)} 
+                      required 
+                      className="h-12 text-lg"
+                      placeholder="Ex: Soirée Networking, Vente Privée..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="category">Catégorie *</Label>
                         <Select value={formData.category_id || ''} onValueChange={value => handleInputChange('category_id', value)}>
-                            <SelectTrigger><SelectValue placeholder="Choisir une catégorie..." /></SelectTrigger>
+                            <SelectTrigger className="h-12"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
                             <SelectContent>
                                 {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
                             </SelectContent>
@@ -184,48 +313,97 @@ const CreateSimpleEventPage = () => {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="event_date">Date et Heure *</Label>
-                        <Input id="event_date" type="datetime-local" value={formData.event_date} onChange={e => handleInputChange('event_date', e.target.value)} required />
+                        <Input 
+                          id="event_date" 
+                          type="datetime-local" 
+                          value={formData.event_date} 
+                          onChange={e => handleInputChange('event_date', e.target.value)} 
+                          required 
+                          className="h-12"
+                        />
                     </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location">Lieu (Adresse) *</Label>
-                  <Input id="location" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} required />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Ville *</Label>
-                    <Input id="city" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} required />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Pays *</Label>
-                    <Input id="country" value={formData.country} onChange={e => handleInputChange('country', e.target.value)} disabled />
-                  </div>
-                </div>
 
-                <div className="p-4 border rounded-lg space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <Label htmlFor="is_protected" className="flex items-center gap-2"><Shield className="w-5 h-5 text-primary"/> Rendre l'événement "protégé"</Label>
-                            <p className="text-xs text-muted-foreground">Les utilisateurs paieront 2π pour chaque interaction. Vous gagnez 1π par interaction payante.</p>
-                        </div>
-                        <Switch id="is_protected" checked={formData.is_protected} onCheckedChange={checked => handleInputChange('is_protected', checked)} />
-                    </div>
-                    {!formData.is_protected && (
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-base">Description</Label>
+                    <Textarea 
+                      id="description" 
+                      value={formData.description} 
+                      onChange={e => handleInputChange('description', e.target.value)} 
+                      className="min-h-[120px] resize-y"
+                      placeholder="Dites-nous en plus sur votre événement..."
+                    />
+                  </div>
+
+                  {/* Location Info */}
+                  <div className="bg-muted/10 p-6 rounded-xl space-y-4 border border-border/50">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <MapPin className="w-4 h-4" /> Localisation
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="location">Adresse précise *</Label>
+                        <Input id="location" value={formData.location} onChange={e => handleInputChange('location', e.target.value)} required placeholder="Ex: Hôtel Président, Salle A" />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="price_fcfa">Prix d'entrée (FCFA)</Label>
-                            <Input id="price_fcfa" type="number" value={formData.price_fcfa} onChange={e => handleInputChange('price_fcfa', parseInt(e.target.value) || 0)} />
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3"/> {pricePi} Pièces</p>
+                          <Label htmlFor="city">Ville *</Label>
+                          <Input id="city" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} required />
                         </div>
-                    )}
+                        <div className="space-y-2">
+                          <Label htmlFor="country">Pays *</Label>
+                          <Input id="country" value={formData.country} onChange={e => handleInputChange('country', e.target.value)} disabled className="bg-muted" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visibility Toggle */}
+                  <div className="p-6 border-2 border-primary/10 bg-primary/5 rounded-xl space-y-4">
+                      <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                              <Label htmlFor="visibility-toggle" className="text-base font-semibold flex items-center gap-2">
+                                <Globe className="w-4 h-4 text-primary" /> 
+                                Portée de la publication
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                {formData.is_public_to_all 
+                                  ? "Votre événement sera visible par tous les utilisateurs de la plateforme." 
+                                  : "Votre événement sera visible uniquement par les utilisateurs de votre ville."}
+                              </p>
+                          </div>
+                          <Switch 
+                            id="visibility-toggle" 
+                            checked={formData.is_public_to_all} 
+                            onCheckedChange={checked => handleInputChange('is_public_to_all', checked)} 
+                          />
+                      </div>
+                      <div className="flex justify-end">
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${formData.is_public_to_all ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {formData.is_public_to_all ? 'Public : Tous les utilisateurs' : 'Public : Ville uniquement'}
+                        </span>
+                      </div>
+                  </div>
                 </div>
 
-                <Button type="submit" disabled={loading || !canSubmit} className="w-full">
-                  {loading ? <Loader2 className="animate-spin mr-2" /> : 'Créer l\'événement'}
-                </Button>
+                <div className="pt-4">
+                  <Button type="submit" disabled={loading || !canSubmit || isProcessingImage} className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    {loading ? <Loader2 className="animate-spin mr-2" /> : 'Publier l\'événement'}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground mt-4">
+                    En cliquant sur "Publier", vous devrez accepter le contrat Organisateur.
+                  </p>
+                </div>
               </form>
             </CardContent>
           </Card>
         </motion.div>
+        
+        <OrganizerContractModal 
+          open={showContractModal} 
+          onOpenChange={setShowContractModal} 
+          onAccept={performSubmission} 
+        />
       </main>
     </div>
   );

@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
   Settings, 
-  Share2, 
   Camera, 
   MapPin, 
   ShieldCheck, 
@@ -18,26 +17,17 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import WhatsAppCommunityButton from '@/components/WhatsAppCommunityButton';
+
 const ProfileHeader = () => {
   const { user, signOut } = useAuth();
   const { userProfile } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleShareProfile = () => {
-    const url = `${window.location.origin}/profile/${user?.id}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Lien copié !",
-      description: "Le lien de votre profil a été copié dans le presse-papier.",
-    });
-  };
-
   const isSuperAdmin = userProfile?.user_type === 'super_admin';
   const isAdmin = userProfile?.user_type === 'admin';
   const isSecretary = userProfile?.user_type === 'secretary';
   
-  // Check if user has any administrative privileges
   const hasAdminAccess = isSuperAdmin || isAdmin || isSecretary;
 
   const handleAdminNavigation = () => {
@@ -57,10 +47,10 @@ const ProfileHeader = () => {
 
       {/* Profile Info Card */}
       <div className="bg-black rounded-b-2xl shadow-sm border-x border-b border-gray-800 px-4 pb-6 md:px-8 relative">
-        <div className="flex flex-col md:flex-row items-start md:items-end -mt-12 md:-mt-16 mb-4 gap-4">
+        <div className="flex flex-col md:flex-row items-center md:items-end -mt-12 md:-mt-16 mb-4 gap-4 text-center md:text-left">
           
           {/* Avatar */}
-          <div className="relative group">
+          <div className="relative group shrink-0">
             <div className="rounded-full p-1 bg-black shadow-sm">
               <Avatar className="h-24 w-24 md:h-32 md:w-32 border-2 border-gray-800 shadow-md">
                 <AvatarImage src={userProfile?.avatar_url} alt={userProfile?.full_name} className="object-cover" />
@@ -80,31 +70,32 @@ const ProfileHeader = () => {
           </div>
 
           {/* User Details */}
-          <div className="flex-1 space-y-1 mt-2 md:mb-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white">
+          <div className="flex-1 space-y-1 mt-2 md:mb-2 w-full">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 justify-center md:justify-start">
+              <h1 className="text-2xl font-bold text-white truncate max-w-[250px] md:max-w-none">
                 {userProfile?.full_name || 'Utilisateur'}
               </h1>
-              {userProfile?.is_verified && (
-                <ShieldCheck className="h-5 w-5 text-blue-500" />
-              )}
-              {isSuperAdmin && (
-                <Badge variant="outline" className="bg-purple-900 text-purple-300 border-purple-700 gap-1">
-                  <Crown className="h-3 w-3" /> Super Admin
-                </Badge>
-              )}
-              {isSecretary && (
-                <Badge variant="outline" className="bg-blue-900 text-blue-300 border-blue-700 gap-1">
-                  <Briefcase className="h-3 w-3" /> Secrétaire
-                </Badge>
-              )}
-              
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {userProfile?.is_verified && (
+                  <ShieldCheck className="h-5 w-5 text-blue-500" />
+                )}
+                {isSuperAdmin && (
+                  <Badge variant="outline" className="bg-purple-900 text-purple-300 border-purple-700 gap-1 whitespace-nowrap">
+                    <Crown className="h-3 w-3" /> Super Admin
+                  </Badge>
+                )}
+                {isSecretary && (
+                  <Badge variant="outline" className="bg-blue-900 text-blue-300 border-blue-700 gap-1 whitespace-nowrap">
+                    <Briefcase className="h-3 w-3" /> Secrétaire
+                  </Badge>
+                )}
+              </div>
             </div>
             
             <p className="text-gray-300 font-medium">@{userProfile?.username || user?.email?.split('@')[0]}</p>
             
             {(userProfile?.city || userProfile?.country) && (
-              <div className="flex items-center text-sm text-gray-400 mt-1">
+              <div className="flex items-center justify-center md:justify-start text-sm text-gray-400 mt-1">
                 <MapPin className="h-3 w-3 mr-1" />
                 {userProfile?.city}{userProfile?.city && userProfile?.country ? ', ' : ''}{userProfile?.country}
               </div>
@@ -112,25 +103,26 @@ const ProfileHeader = () => {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 w-full md:w-auto mt-4 md:mt-0 bg-gray-900 p-4 rounded-lg">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto mt-4 md:mt-0 justify-center">
             {hasAdminAccess && (
               <Button 
                 onClick={handleAdminNavigation}
-                className="bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-md hover:shadow-lg transition-all hover:from-gray-700 hover:to-gray-800"
+                className="bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-md hover:shadow-lg transition-all hover:from-gray-700 hover:to-gray-800 w-full sm:w-auto"
               >
                 <LayoutDashboard className="h-4 w-4 mr-2" />
-                {isSecretary ? 'Accéder à mon Administration' : "Administration"}
+                {isSecretary ? 'Admin' : "Admin"}
               </Button>
             )}
             
-            <div className="mt-6">
-        <WhatsAppCommunityButton />
-      </div>
+            <div className="hidden md:block">
+               <WhatsAppCommunityButton />
+            </div>
+            
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => navigate('/settings')}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+              className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white w-full sm:w-auto"
             >
               <Settings className="h-4 w-4 mr-2" />
               Paramètres
@@ -139,20 +131,34 @@ const ProfileHeader = () => {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="text-red-400 hover:text-red-300 hover:bg-gray-800" 
+              className="text-red-400 hover:text-red-300 hover:bg-gray-800 hidden sm:inline-flex" 
               onClick={signOut}
             >
               <LogOut className="h-5 w-5" />
+            </Button>
+            
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="sm:hidden w-full" 
+              onClick={signOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" /> Déconnexion
             </Button>
           </div>
         </div>
 
         {/* Bio */}
         {userProfile?.bio && (
-          <p className="text-sm text-gray-400 mt-4 max-w-2xl">
+          <p className="text-sm text-gray-400 mt-4 max-w-2xl mx-auto md:mx-0 text-center md:text-left px-2">
             {userProfile.bio}
           </p>
         )}
+        
+        {/* Mobile WhatsApp Button */}
+        <div className="mt-4 flex justify-center md:hidden">
+           <WhatsAppCommunityButton />
+        </div>
       </div>
     </div>
   );

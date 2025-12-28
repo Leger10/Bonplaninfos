@@ -27,49 +27,45 @@ const ProfilePageContent = ({
 
   return (
     <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 lg:grid-cols-6 mb-8 h-auto p-1 bg-muted/50 rounded-xl gap-1">
-        <TabsTrigger value="events" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-          <Calendar className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Événements</span>
-          <span className="sm:hidden">Events</span>
-        </TabsTrigger>
-        
-        {isOrganizer && (
-          <TabsTrigger value="creator" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-            <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
-            <span className="hidden sm:inline">Créateur</span>
-            <span className="sm:hidden">Créateur</span>
+      <div className="w-full overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+        <TabsList className="inline-flex w-auto min-w-full md:w-full md:grid md:grid-cols-6 mb-4 h-auto p-1 bg-muted/50 rounded-xl gap-1">
+          <TabsTrigger value="events" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+            <Calendar className="w-4 h-4 mr-2" />
+            <span>Events</span>
           </TabsTrigger>
-        )}
-        
-        <TabsTrigger value="tickets" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-          <Ticket className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Mes Billets</span>
-          <span className="sm:hidden">Billets</span>
-        </TabsTrigger>
-
-        <TabsTrigger value="transactions" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-          <History className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Historique</span>
-          <span className="sm:hidden">Hist.</span>
-        </TabsTrigger>
-
-        <TabsTrigger value="referral" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-          <Users className="w-4 h-4 mr-2" />
-          <span className="hidden sm:inline">Parrainage</span>
-          <span className="sm:hidden">Parrain.</span>
-        </TabsTrigger>
-
-        {isOrganizer && (
-          <TabsTrigger value="withdrawals" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-3">
-            <Wallet className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Retraits</span>
-            <span className="sm:hidden">Retraits</span>
+          
+          {isOrganizer && (
+            <TabsTrigger value="creator" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+              <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
+              <span>Retraits</span>
+            </TabsTrigger>
+          )}
+          
+          <TabsTrigger value="tickets" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+            <Ticket className="w-4 h-4 mr-2" />
+            <span>Billets</span>
           </TabsTrigger>
-        )}
-      </TabsList>
 
-      <TabsContent value="events" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsTrigger value="transactions" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+            <History className="w-4 h-4 mr-2" />
+            <span>Historique</span>
+          </TabsTrigger>
+
+          <TabsTrigger value="referral" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+            <Users className="w-4 h-4 mr-2" />
+            <span>Parrainage</span>
+          </TabsTrigger>
+
+          {isOrganizer && (
+            <TabsTrigger value="withdrawals" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
+              <Wallet className="w-4 h-4 mr-2" />
+              <span>Créateur</span>
+            </TabsTrigger>
+          )}
+        </TabsList>
+      </div>
+
+      <TabsContent value="events" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
         <MyEventsTab 
           userProfile={userProfile} 
           userEvents={userEvents} 
@@ -78,25 +74,25 @@ const ProfilePageContent = ({
       </TabsContent>
 
       {isOrganizer && (
-        <TabsContent value="creator" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="creator" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
           <CreatorDashboardTab />
         </TabsContent>
       )}
 
-      <TabsContent value="tickets" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <TabsContent value="tickets" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
         <MyTicketsTab />
       </TabsContent>
 
-      <TabsContent value="transactions" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <TabsContent value="transactions" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
         <TransactionsTab transactions={userTransactions} />
       </TabsContent>
 
-      <TabsContent value="referral" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <TabsContent value="referral" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
         <ReferralTab userProfile={userProfile} referralData={referralData} />
       </TabsContent>
 
       {isOrganizer && (
-        <TabsContent value="withdrawals" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="withdrawals" className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-0">
           <WithdrawalTab userProfile={userProfile} />
         </TabsContent>
       )}

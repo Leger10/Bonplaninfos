@@ -3,7 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
-import { Ticket, Loader2, List, Users, BarChart3 } from 'lucide-react';
+import { Ticket, Loader2, List, Users, BarChart3, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 
-const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, isOwner }) => {
+const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, isOwner, isClosed }) => {
     const { user } = useAuth();
     const { forceRefreshUserProfile, userProfile } = useData();
     const [quantity, setQuantity] = useState(1);
@@ -141,6 +141,7 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, i
     }, [user, eventId, raffleData, isOrganizer]);
 
     const handlePurchase = async () => {
+        if (isClosed) return;
         if (!user) { 
             navigate('/auth'); 
             return; 
@@ -333,7 +334,7 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, i
             {(!isOrganizer || raffleData.status === 'active') && raffleData.status !== 'completed' && (
                 <div className="grid gap-6 md:grid-cols-2">
                     {/* Buy Card */}
-                    {raffleData.status === 'active' && (
+                    {raffleData.status === 'active' && !isClosed && (
                         <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 shadow-xl">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-3">
@@ -419,6 +420,22 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, i
                         </Card>
                     )}
 
+                    {/* Closed State for Raffle */}
+                    {isClosed && (
+                        <Card className="border-2 border-amber-500/30 bg-amber-950/10">
+                            <CardHeader>
+                                <CardTitle className="text-amber-500 flex items-center gap-2">
+                                    <Lock className="w-5 h-5" /> Tombola Terminée
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-amber-200/80">
+                                    Les achats de tickets sont fermés. Le tirage au sort aura lieu bientôt ou a déjà été effectué.
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* My Tickets List */}
                     <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-900/10 via-transparent to-blue-900/10">
                         <CardHeader>
@@ -455,7 +472,9 @@ const RaffleInterface = ({ raffleData, eventId, onPurchaseSuccess, isUnlocked, i
                                 <div className="text-center py-12">
                                     <Ticket className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                                     <p className="text-gray-500 mb-2">Vous n'avez pas encore de tickets.</p>
-                                    <p className="text-gray-400 text-sm">Achetez vos premiers tickets pour participer au tirage !</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {isClosed ? "Les ventes sont fermées." : "Achetez vos premiers tickets pour participer au tirage !"}
+                                    </p>
                                 </div>
                             )}
                             

@@ -1,3 +1,4 @@
+// Dans pdfGenerator.js - version corrigée avec espacement
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,30 +29,30 @@ export const generateSalarySlip = (data) => {
   
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text("BULLETIN DE SALAIRE ADMIN", 105, 20, null, null, "center");
+  doc.text("BULLETIN DE SALAIRE ADMIN", 105, 35, null, null, "center"); // Changé de y=20 à y=35
 
   // Info Box
   doc.setDrawColor(200, 200, 200);
   doc.setFillColor(248, 250, 252);
-  doc.rect(20, 35, 170, 40, 'FD');
+  doc.rect(20, 50, 170, 40, 'FD'); // Changé de y=35 à y=50
 
   doc.setFontSize(10);
   doc.setTextColor(...secondaryColor);
-  doc.text("ADMINISTRATEUR:", 25, 45);
-  doc.text("ZONE:", 25, 55);
-  doc.text("PÉRIODE:", 25, 65);
-  doc.text("DATE D'ÉMISSION:", 110, 45);
+  doc.text("ADMINISTRATEUR:", 25, 60); // Ajuster les positions y
+  doc.text("ZONE:", 25, 70);
+  doc.text("PÉRIODE:", 25, 80);
+  doc.text("DATE D'ÉMISSION:", 110, 60); // Ajuster la position y
 
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
-  doc.text(adminName || "N/A", 60, 45);
-  doc.text(zone || "N/A", 60, 55);
-  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 65);
-  doc.text(format(new Date(date), 'dd MMMM yyyy', { locale: fr }), 150, 45);
+  doc.text(adminName || "N/A", 60, 60);
+  doc.text(zone || "N/A", 60, 70);
+  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 80);
+  doc.text(format(new Date(date), 'dd MMMM yyyy', { locale: fr }), 150, 60);
 
   // Table Header
-  let y = 90;
+  let y = 105; // Changé de 90 à 105
   doc.setFillColor(...primaryColor);
   doc.rect(20, y, 170, 10, 'F');
   doc.setTextColor(255, 255, 255);
@@ -131,43 +132,43 @@ export const generateEarningsSlip = (data) => {
   
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text("RELEVÉ DE GAINS", 105, 20, null, null, "center");
+  doc.text("RELEVÉ DE GAINS", 105, 35, null, null, "center"); // Changé de y=20 à y=35
 
   // Info
   doc.setFontSize(10);
-  doc.text("ORGANISATEUR:", 20, 40);
+  doc.text("ORGANISATEUR:", 20, 50); // Changé de 40 à 50
   doc.setFont("helvetica", "bold");
-  doc.text(organizerName || "Client", 60, 40);
+  doc.text(organizerName || "Client", 60, 50); // Changé de 40 à 50
   
   doc.setFont("helvetica", "normal");
-  doc.text("PÉRIODE:", 20, 50);
+  doc.text("PÉRIODE:", 20, 60); // Changé de 50 à 60
   doc.setFont("helvetica", "bold");
-  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 50);
+  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 60); // Changé de 50 à 60
 
   // Stats Box
   doc.setDrawColor(200, 200, 200);
   doc.setFillColor(245, 247, 255);
-  doc.roundedRect(20, 60, 170, 50, 3, 3, 'FD');
+  doc.roundedRect(20, 75, 170, 50, 3, 3, 'FD'); // Changé de y=60 à y=75
 
   doc.setFontSize(12);
   doc.setTextColor(0,0,0);
-  doc.text("Détail des revenus", 30, 75);
+  doc.text("Détail des revenus", 30, 90); // Ajusté
 
   doc.setFontSize(10);
-  doc.text("Revenus Bruts Générés:", 30, 90);
-  doc.text(`${totalRevenue.toLocaleString('fr-FR')} FCFA`, 150, 90);
+  doc.text("Revenus Bruts Générés:", 30, 105); // Ajusté
+  doc.text(`${totalRevenue.toLocaleString('fr-FR')} FCFA`, 150, 105); // Ajusté
 
-  doc.text("Frais de Service (5%):", 30, 100);
+  doc.text("Frais de Service (5%):", 30, 115); // Ajusté
   doc.setTextColor(220, 38, 38); // Red
-  doc.text(`- ${fees.toLocaleString('fr-FR')} FCFA`, 150, 100);
+  doc.text(`- ${fees.toLocaleString('fr-FR')} FCFA`, 150, 115); // Ajusté
 
   // Net
   doc.setTextColor(0,0,0);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("GAINS NETS DISPONIBLES", 30, 130);
+  doc.text("GAINS NETS DISPONIBLES", 30, 145); // Ajusté
   doc.setTextColor(...primaryColor);
-  doc.text(`${netEarnings.toLocaleString('fr-FR')} FCFA`, 150, 130);
+  doc.text(`${netEarnings.toLocaleString('fr-FR')} FCFA`, 150, 145); // Ajusté
 
   // Footer
   doc.setFontSize(8);

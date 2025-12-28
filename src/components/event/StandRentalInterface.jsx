@@ -8,11 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Store, CheckCircle, Info, DollarSign, Layout, Users, MapPin } from 'lucide-react';
+import { Loader2, Store, CheckCircle, Info, DollarSign, Layout, Users, MapPin, Lock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
 
-const StandRentalInterface = ({ event, isUnlocked, onRefresh }) => {
+const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const { user } = useAuth();
   const [standTypes, setStandTypes] = useState([]);
   const [myRental, setMyRental] = useState(null);
@@ -68,6 +68,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh }) => {
   };
 
   const handleRentStand = async () => {
+    if (isClosed) return;
     if (!user) {
       toast({ title: "Connexion requise", description: "Veuillez vous connecter pour louer un stand.", variant: "destructive" });
       return;
@@ -209,7 +210,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh }) => {
             const isSoldOut = available <= 0;
 
             return (
-              <Card key={type.id} className={`flex flex-col ${isSoldOut ? 'opacity-70 grayscale' : 'hover:border-primary/50 transition-colors'}`}>
+              <Card key={type.id} className={`flex flex-col ${isSoldOut || isClosed ? 'opacity-70 grayscale' : 'hover:border-primary/50 transition-colors'}`}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
@@ -218,8 +219,8 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh }) => {
                         <Layout className="w-3 h-3" /> {type.size}
                       </CardDescription>
                     </div>
-                    <Badge variant={isSoldOut ? "destructive" : "secondary"}>
-                      {isSoldOut ? 'COMPLET' : `${available} dispo.`}
+                    <Badge variant={isClosed ? "outline" : isSoldOut ? "destructive" : "secondary"}>
+                      {isClosed ? 'TERMINÉ' : isSoldOut ? 'COMPLET' : `${available} dispo.`}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -242,83 +243,89 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh }) => {
                     <span className="text-xl font-bold text-primary">{type.calculated_price_pi} π</span>
                   </div>
                   
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button disabled={isSoldOut} onClick={() => setRentingType(type)}>
-                        {isSoldOut ? 'Indisponible' : 'Réserver'}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>Réserver le stand : {type.name}</DialogTitle>
-                        <DialogDescription>
-                          Remplissez les informations de votre entreprise pour valider la location.
-                          <br/>
-                          <strong>Coût : {type.calculated_price_pi} π</strong>
-                        </DialogDescription>
-                      </DialogHeader>
-                      
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="company">Nom de l'entreprise / Marque *</Label>
-                          <Input 
-                            id="company" 
-                            value={formData.companyName}
-                            onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                            placeholder="Ex: Ma Boutique Bio"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="contact">Personne à contacter *</Label>
-                            <Input 
-                              id="contact" 
-                              value={formData.contactPerson}
-                              onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-                            />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="phone">Téléphone *</Label>
-                            <Input 
-                              id="phone" 
-                              value={formData.phone}
-                              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                              placeholder="+225..."
-                            />
-                          </div>
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="email">Email *</Label>
-                          <Input 
-                            id="email" 
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="desc">Activité / Produits exposés</Label>
-                          <Textarea 
-                            id="desc" 
-                            value={formData.description}
-                            onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            placeholder="Décrivez brièvement ce que vous allez vendre ou exposer..."
-                          />
-                        </div>
-                      </div>
-
-                      <DialogFooter>
-                        <Button 
-                          onClick={handleRentStand} 
-                          disabled={isRenting || !formData.companyName || !formData.contactPerson || !formData.phone}
-                          className="w-full"
-                        >
-                          {isRenting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                          Confirmer la réservation ({type.calculated_price_pi} π)
+                  {isClosed ? (
+                    <Button disabled variant="outline">
+                      <Lock className="w-4 h-4 mr-2" /> Événement Terminé
+                    </Button>
+                  ) : (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button disabled={isSoldOut} onClick={() => setRentingType(type)}>
+                          {isSoldOut ? 'Indisponible' : 'Réserver'}
                         </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Réserver le stand : {type.name}</DialogTitle>
+                          <DialogDescription>
+                            Remplissez les informations de votre entreprise pour valider la location.
+                            <br/>
+                            <strong>Coût : {type.calculated_price_pi} π</strong>
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="company">Nom de l'entreprise / Marque *</Label>
+                            <Input 
+                              id="company" 
+                              value={formData.companyName}
+                              onChange={(e) => setFormData({...formData, companyName: e.target.value})}
+                              placeholder="Ex: Ma Boutique Bio"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="contact">Personne à contacter *</Label>
+                              <Input 
+                                id="contact" 
+                                value={formData.contactPerson}
+                                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="phone">Téléphone *</Label>
+                              <Input 
+                                id="phone" 
+                                value={formData.phone}
+                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                placeholder="+225..."
+                              />
+                            </div>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="email">Email *</Label>
+                            <Input 
+                              id="email" 
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="desc">Activité / Produits exposés</Label>
+                            <Textarea 
+                              id="desc" 
+                              value={formData.description}
+                              onChange={(e) => setFormData({...formData, description: e.target.value})}
+                              placeholder="Décrivez brièvement ce que vous allez vendre ou exposer..."
+                            />
+                          </div>
+                        </div>
+
+                        <DialogFooter>
+                          <Button 
+                            onClick={handleRentStand} 
+                            disabled={isRenting || !formData.companyName || !formData.contactPerson || !formData.phone}
+                            className="w-full"
+                          >
+                            {isRenting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Confirmer la réservation ({type.calculated_price_pi} π)
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
                 </CardFooter>
               </Card>
             );

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Vote, Coins, Plus, Minus, ShoppingCart, Trophy, Crown, Eye, CheckCircle, BarChart3, UserCircle, Target, Share2, RefreshCw, Download, FileText, Filter, File } from 'lucide-react';
+import { Loader2, Vote, Coins, Plus, Minus, ShoppingCart, Trophy, Crown, Eye, CheckCircle, BarChart3, UserCircle, Target, Share2, RefreshCw, Download, FileText, Filter, File, Lock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -14,50 +14,50 @@ import WalletInfoModal from '@/components/WalletInfoModal';
 import jsPDF from 'jspdf';
 
 const Separator = ({ className = "", orientation = "horizontal", ...props }) => (
-  <div className={`${orientation === "horizontal" ? "w-full h-[1px]" : "h-full w-[1px]"} bg-gray-700 ${className}`} {...props} />
+    <div className={`${orientation === "horizontal" ? "w-full h-[1px]" : "h-full w-[1px]"} bg-gray-700 ${className}`} {...props} />
 );
 
 const CountdownTimer = ({ endDate, onTimerEnd }) => {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: false });
 
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      const end = new Date(endDate).getTime();
-      const distance = end - now;
-      if (distance < 0) {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
-        if (onTimerEnd) onTimerEnd();
-        return;
-      }
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000),
-        expired: false
-      });
-    };
-    calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 1000);
-    return () => clearInterval(timer);
-  }, [endDate, onTimerEnd]);
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const now = new Date().getTime();
+            const end = new Date(endDate).getTime();
+            const distance = end - now;
+            if (distance < 0) {
+                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, expired: true });
+                if (onTimerEnd) onTimerEnd();
+                return;
+            }
+            setTimeLeft({
+                days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+                seconds: Math.floor((distance % (1000 * 60)) / 1000),
+                expired: false
+            });
+        };
+        calculateTimeLeft();
+        const timer = setInterval(calculateTimeLeft, 1000);
+        return () => clearInterval(timer);
+    }, [endDate, onTimerEnd]);
 
-  if (timeLeft.expired) return <div className="text-center py-4 bg-gradient-to-r from-red-900/50 to-red-800/30 border border-red-700/50 rounded-xl"><p className="text-red-300 font-bold text-lg">🎉 Le vote est terminé !</p></div>;
+    if (timeLeft.expired) return <div className="text-center py-4 bg-gradient-to-r from-red-900/50 to-red-800/30 border border-red-700/50 rounded-xl"><p className="text-red-300 font-bold text-lg">🎉 Le vote est terminé !</p></div>;
 
-  return (
-    <div className="text-center py-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border border-blue-700/30 rounded-xl">
-      <h3 className="font-bold text-lg mb-3 flex items-center justify-center gap-2 text-blue-300"><Target className="w-5 h-5 text-blue-400" /> Temps restant</h3>
-      <div className="flex justify-center gap-2">
-        {[{v: timeLeft.days, l: 'J'}, {v: timeLeft.hours, l: 'H'}, {v: timeLeft.minutes, l: 'M'}, {v: timeLeft.seconds, l: 'S'}].map((i, idx) => (
-          <div key={idx} className="bg-gradient-to-b from-blue-600 to-cyan-500 p-3 rounded-xl shadow-lg min-w-[60px]"><div className="text-2xl font-bold text-white">{i.v}</div><div className="text-xs text-white/80">{i.l}</div></div>
-        ))}
-      </div>
-    </div>
-  );
+    return (
+        <div className="text-center py-4 bg-gradient-to-r from-blue-900/30 to-indigo-900/20 border border-blue-700/30 rounded-xl">
+            <h3 className="font-bold text-lg mb-3 flex items-center justify-center gap-2 text-blue-300"><Target className="w-5 h-5 text-blue-400" /> Temps restant</h3>
+            <div className="flex justify-center gap-2">
+                {[{ v: timeLeft.days, l: 'J' }, { v: timeLeft.hours, l: 'H' }, { v: timeLeft.minutes, l: 'M' }, { v: timeLeft.seconds, l: 'S' }].map((i, idx) => (
+                    <div key={idx} className="bg-gradient-to-b from-blue-600 to-cyan-500 p-3 rounded-xl shadow-lg min-w-[60px]"><div className="text-2xl font-bold text-white">{i.v}</div><div className="text-xs text-white/80">{i.l}</div></div>
+                ))}
+            </div>
+        </div>
+    );
 };
 
-const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isFinished, index, isSelected, onSelect, event, rank }) => {
+const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isFinished, index, isSelected, onSelect, event, rank, isClosed }) => {
     const [voteCount, setVoteCount] = useState(1);
     const [loading, setLoading] = useState(false);
     const [showWalletInfo, setShowWalletInfo] = useState(false);
@@ -73,6 +73,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
     useEffect(() => { setCandidateVoteCount(candidate.vote_count || 0); }, [candidate.vote_count]);
 
     const handleVote = async () => {
+        if (isClosed) return;
         setConfirmation({ isOpen: false, onConfirm: null });
         if (!user) { navigate('/auth'); return; }
         setLoading(true);
@@ -117,11 +118,11 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                 console.log('Error sharing', error);
             }
         } else {
-             navigator.clipboard.writeText(window.location.href);
-             toast({ title: "Lien copié", description: "Le lien a été copié dans le presse-papier." });
+            navigator.clipboard.writeText(window.location.href);
+            toast({ title: "Lien copié", description: "Le lien a été copié dans le presse-papier." });
         }
     };
-    
+
     return (
         <>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-4 ${isSelected ? 'ring-2 ring-emerald-500' : ''} relative overflow-hidden`}>
@@ -159,7 +160,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                         </div>
                     </div>
                 </div>
-                {!isFinished && (
+                {!isFinished && !isClosed ? (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between bg-gray-800 p-1.5 rounded-lg border border-gray-700/50">
                             <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-emerald-400" onClick={() => setVoteCount(v => Math.max(1, v - 1))}>
@@ -182,9 +183,15 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                             </Button>
                         </div>
                     </div>
+                ) : (
+                    <div className="bg-gray-800/50 p-2 rounded text-center border border-gray-700/50">
+                        <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
+                            <Lock className="w-3 h-3" /> Votes terminés
+                        </p>
+                    </div>
                 )}
             </motion.div>
-            
+
             {/* Candidate Detail Modal */}
             <AlertDialog open={showDetails} onOpenChange={setShowDetails}>
                 <AlertDialogContent className="bg-gradient-to-b from-gray-900 to-gray-950 border-gray-700 max-w-sm">
@@ -202,7 +209,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                         <AlertDialogTitle className="text-2xl font-bold text-white text-center mb-1">
                             {candidate.name}
                         </AlertDialogTitle>
-                        
+
                         {candidate.category && (
                             <div className="flex justify-center mb-2">
                                 <Badge variant="outline" className="border-emerald-500 text-emerald-400 bg-emerald-950/30">
@@ -215,7 +222,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                             <div className="text-gray-400 text-sm line-clamp-3">
                                 {candidate.description || "Aucune description disponible pour ce candidat."}
                             </div>
-                            
+
                             <div className="grid grid-cols-3 gap-3 my-4">
                                 <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
                                     <div className="text-emerald-400 font-bold text-xl">{candidateVoteCount}</div>
@@ -231,11 +238,13 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-emerald-900/20 border border-emerald-800/30 rounded-xl">
-                                <p className="text-emerald-200 font-medium italic">
-                                    "Votez pour moi et aidez-moi à atteindre la première place ! Chaque voix compte."
-                                </p>
-                            </div>
+                            {!isClosed && (
+                                <div className="p-4 bg-emerald-900/20 border border-emerald-800/30 rounded-xl">
+                                    <p className="text-emerald-200 font-medium italic">
+                                        "Votez pour moi et aidez-moi à atteindre la première place ! Chaque voix compte."
+                                    </p>
+                                </div>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-col sm:flex-row gap-2">
@@ -260,14 +269,14 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, settings, isF
     );
 };
 
-const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
+const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     const [candidates, setCandidates] = useState([]);
     const [settings, setSettings] = useState(null);
     const { user } = useAuth();
     const [userPaidBalance, setUserPaidBalance] = useState(0);
     const [cartItems, setCartItems] = useState([]);
     const [activeTab, setActiveTab] = useState('candidates');
-    
+
     // Filtering State for Main List
     const [selectedCategory, setSelectedCategory] = useState('Tous');
     const [availableCategories, setAvailableCategories] = useState(['Tous']);
@@ -282,7 +291,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
             const { data: uData } = await supabase.from('profiles').select('coin_balance').eq('id', user.id).single();
             setUserPaidBalance(uData?.coin_balance || 0);
         }
-        
+
         if (cData) {
             setCandidates(cData);
             const cats = [...new Set(cData.map(c => c.category).filter(Boolean))];
@@ -292,11 +301,11 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
         }
         setSettings(sData || { vote_price_pi: 1, end_date: new Date(Date.now() + 86400000).toISOString() });
     }, [event.id, user]);
-    
+
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const handleCheckout = async () => {
-        if (!user) return;
+        if (!user || isClosed) return;
         try {
             for (const item of cartItems) {
                 await supabase.rpc('cast_vote', { p_user_id: user.id, p_candidate_id: item.candidate.id, p_vote_count: item.quantity });
@@ -309,7 +318,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
     };
 
     const totalVotes = candidates.reduce((sum, c) => sum + (c.vote_count || 0), 0);
-    
+
     const filteredCandidates = useMemo(() => {
         if (selectedCategory === 'Tous') return candidates;
         return candidates.filter(c => c.category === selectedCategory);
@@ -330,13 +339,13 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
 
     const generateRankingPDF = () => {
         const doc = new jsPDF();
-        
+
         // Filter list based on current ranking filter
         const listToExport = rankedCandidatesFiltered;
-        
+
         doc.setFillColor(16, 185, 129); // Emerald 500
         doc.rect(0, 0, 210, 40, 'F');
-        
+
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
@@ -344,7 +353,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
         doc.text(event.title.toUpperCase() + (rankingFilter !== 'Tous' ? ` - CATÉGORIE: ${rankingFilter.toUpperCase()}` : ''), 105, 30, { align: 'center' });
-        
+
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(10);
         doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })} à ${new Date().toLocaleTimeString('fr-FR')}`, 105, 50, { align: 'center' });
@@ -353,7 +362,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
         doc.setFillColor(240, 240, 240);
         doc.setDrawColor(200, 200, 200);
         doc.rect(15, y, 180, 10, 'FD');
-        
+
         doc.setTextColor(50, 50, 50);
         doc.setFont('helvetica', 'bold');
         doc.text("RANG", 25, y + 7);
@@ -361,11 +370,11 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
         doc.text("CATÉGORIE", 110, y + 7);
         doc.text("VOTES", 160, y + 7, { align: 'right' });
         doc.text("SCORE", 190, y + 7, { align: 'right' });
-        
+
         y += 10;
 
         doc.setFont('helvetica', 'normal');
-        
+
         listToExport.forEach((candidate, index) => {
             // For percentages, we can use total votes of the filtered list or total global. 
             // Usually global context is preferred but if "Ranking by Category", percentages should likely be relative to that category total or global? 
@@ -373,46 +382,46 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
             // Here using Global Total for percentage to show overall impact.
             const percentage = totalVotes > 0 ? ((candidate.vote_count || 0) / totalVotes * 100).toFixed(1) : "0.0";
             const rank = index + 1;
-            
+
             if (index % 2 === 1) {
                 doc.setFillColor(250, 250, 250);
                 doc.rect(15, y, 180, 12, 'F');
             }
-            
+
             if (y > 270) {
                 doc.addPage();
                 y = 20;
             }
 
             doc.setFont('helvetica', 'bold');
-            if (rank === 1) doc.setTextColor(212, 175, 55); 
-            else if (rank === 2) doc.setTextColor(120, 120, 120); 
-            else if (rank === 3) doc.setTextColor(165, 80, 30); 
+            if (rank === 1) doc.setTextColor(212, 175, 55);
+            else if (rank === 2) doc.setTextColor(120, 120, 120);
+            else if (rank === 3) doc.setTextColor(165, 80, 30);
             else doc.setTextColor(50, 50, 50);
-            
+
             doc.text(`#${rank}`, 25, y + 8);
-            
+
             doc.setTextColor(0, 0, 0);
             doc.setFont('helvetica', 'bold');
             doc.text(candidate.name, 60, y + 8);
-            
+
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(100, 100, 100);
             doc.text(candidate.category || '-', 110, y + 8);
 
             doc.setTextColor(80, 80, 80);
             doc.text(`${candidate.vote_count || 0}`, 160, y + 8, { align: 'right' });
-            
+
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(16, 185, 129);
             doc.text(`${percentage}%`, 190, y + 8, { align: 'right' });
-            
+
             doc.setDrawColor(230, 230, 230);
             doc.line(15, y + 12, 195, y + 12);
-            
+
             y += 12;
         });
-        
+
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
         doc.text("Document généré par BonPlanInfos - Système de Vote Sécurisé", 105, 290, { align: 'center' });
@@ -427,9 +436,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
         <div className="mt-8 space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-white">Vote</h2>
-                {user && <Badge variant="outline" className="text-amber-400 border-amber-400"><Coins className="w-3 h-3 mr-1"/> Solde Acheté: {userPaidBalance}π</Badge>}
+                {user && <Badge variant="outline" className="text-amber-400 border-amber-400"><Coins className="w-3 h-3 mr-1" /> Solde Acheté: {userPaidBalance}π</Badge>}
             </div>
-            
+
             {settings && <CountdownTimer endDate={settings.end_date} />}
 
             {/* Categories for Candidate List Filtering */}
@@ -440,11 +449,10 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                             <button
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                                    selectedCategory === cat 
-                                    ? 'bg-emerald-600 text-white' 
-                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                }`}
+                                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === cat
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                    }`}
                             >
                                 {cat}
                             </button>
@@ -464,24 +472,25 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                                 <BarChart3 className="w-4 h-4 mr-2" /> Classement
                             </TabsTrigger>
                         </TabsList>
-                        
+
                         <TabsContent value="candidates">
                             {filteredCandidates.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {filteredCandidates.map((c, idx) => (
-                                        <CandidateCard 
-                                            key={c.id} 
-                                            candidate={c} 
-                                            totalVotes={totalVotes} 
-                                            votePrice={settings?.vote_price_pi || 1} 
-                                            onVote={() => { fetchData(); if(onRefresh) onRefresh(); }} 
-                                            settings={settings} 
-                                            isFinished={false} 
-                                            index={idx} 
-                                            isSelected={cartItems.some(i => i.candidate.id === c.id)} 
-                                            onSelect={(cand, qty) => setCartItems(p => [...p, {candidate: cand, quantity: qty, price: settings?.vote_price_pi}])} 
+                                        <CandidateCard
+                                            key={c.id}
+                                            candidate={c}
+                                            totalVotes={totalVotes}
+                                            votePrice={settings?.vote_price_pi || 1}
+                                            onVote={() => { fetchData(); if (onRefresh) onRefresh(); }}
+                                            settings={settings}
+                                            isFinished={false}
+                                            index={idx}
+                                            isSelected={cartItems.some(i => i.candidate.id === c.id)}
+                                            onSelect={(cand, qty) => setCartItems(p => [...p, { candidate: cand, quantity: qty, price: settings?.vote_price_pi }])}
                                             event={event}
                                             rank={getRank(c.id)}
+                                            isClosed={isClosed}
                                         />
                                     ))}
                                 </div>
@@ -492,7 +501,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                                 </div>
                             )}
                         </TabsContent>
-                        
+
                         <TabsContent value="ranking">
                             <Card className="bg-gray-800 border-gray-700">
                                 <CardHeader>
@@ -500,17 +509,16 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                                         <CardTitle className="text-white flex items-center gap-2">
                                             <Trophy className="text-yellow-500 w-5 h-5" /> Leaderboard
                                         </CardTitle>
-                                        
+
                                         <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
                                             {availableCategories.length > 1 && availableCategories.map(cat => (
                                                 <button
                                                     key={cat}
                                                     onClick={() => setRankingFilter(cat)}
-                                                    className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors border ${
-                                                        rankingFilter === cat 
-                                                        ? 'bg-emerald-600 text-white border-emerald-600' 
-                                                        : 'bg-transparent text-gray-400 border-gray-600 hover:border-gray-400'
-                                                    }`}
+                                                    className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors border ${rankingFilter === cat
+                                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                                            : 'bg-transparent text-gray-400 border-gray-600 hover:border-gray-400'
+                                                        }`}
                                                 >
                                                     {cat === 'Tous' ? 'Général' : cat}
                                                 </button>
@@ -528,7 +536,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                                             rankedCandidatesFiltered.map((c, i) => {
                                                 const rank = i + 1;
                                                 const percentage = totalVotes > 0 ? ((c.vote_count || 0) / totalVotes * 100).toFixed(1) : 0;
-                                                
+
                                                 let rankBadge;
                                                 if (rank === 1) rankBadge = <div className="bg-yellow-500/20 text-yellow-500 p-2 rounded-full border border-yellow-500/50"><Crown className="w-5 h-5" /></div>;
                                                 else if (rank === 2) rankBadge = <div className="bg-gray-400/20 text-gray-400 p-2 rounded-full border border-gray-400/50"><span className="font-bold w-5 h-5 flex items-center justify-center">2</span></div>;
@@ -575,9 +583,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                 </div>
                 <div className="lg:col-span-1">
                     <Card className="bg-gray-800 border-gray-700 sticky top-4">
-                        <CardHeader><CardTitle className="text-white text-lg flex items-center"><ShoppingCart className="mr-2"/> Panier ({cartItems.length})</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="text-white text-lg flex items-center"><ShoppingCart className="mr-2" /> Panier ({cartItems.length})</CardTitle></CardHeader>
                         <CardContent>
-                            {cartItems.length > 0 ? (
+                            {cartItems.length > 0 && !isClosed ? (
                                 <div className="space-y-3">
                                     {cartItems.map((i, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-sm bg-gray-900/50 p-2 rounded border border-gray-700">
@@ -605,7 +613,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh }) => {
                             ) : (
                                 <div className="text-center py-8 text-gray-500">
                                     <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                                    <p className="text-sm">Votre panier est vide</p>
+                                    <p className="text-sm">
+                                        {isClosed ? 'Les votes sont clos' : 'Votre panier est vide'}
+                                    </p>
                                 </div>
                             )}
                         </CardContent>

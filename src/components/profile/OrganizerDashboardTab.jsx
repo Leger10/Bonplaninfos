@@ -12,7 +12,7 @@ import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
 import { toast } from '@/components/ui/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import WithdrawalModal from '@/components/common/WithdrawalModal';
-import { generateEarningsSlip } from '@/utils/pdfGenerator';
+import { generateEarningsSlip } from '@/utils/pdfGenerator'; // ← IMPORT AJOUTÉ ICI
 
 const OrganizerDashboardTab = () => {
   const { user } = useAuth();
@@ -67,7 +67,7 @@ const OrganizerDashboardTab = () => {
       const grossEst = Math.floor(totalEarned / 0.95); 
       
       generateEarningsSlip({
-          organizerName: user?.email || "Retrait",
+          organizerName: user?.email || "Organisateur",
           period: format(new Date(), 'MMMM yyyy', { locale: fr }),
           totalRevenue: grossEst * 10, // FCFA
           fees: (grossEst - totalEarned) * 10,

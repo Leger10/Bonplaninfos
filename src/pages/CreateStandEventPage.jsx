@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Store, Plus, Trash, Coins, Calendar, MapPin, CheckCircle2, ArrowRight, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import ImageUpload from '@/components/ImageUpload';
+import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
 
 // --- Utility Functions ---
 const convertToCoins = (amount, currency) => {
@@ -35,8 +36,6 @@ const formatCurrency = (amount, currency) => {
     maximumFractionDigits: 0
   }).format(safeAmount);
 };
-
-// --- Sub-components for Optimization ---
 
 // Memoized Stand Type Row to prevent full list re-render on single input change
 const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
@@ -142,6 +141,7 @@ const CreateStandEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState(1);
+  const [showContractModal, setShowContractModal] = useState(false);
 
   // --- Step 1: Event Details ---
   const [title, setTitle] = useState('');
@@ -249,7 +249,7 @@ const CreateStandEventPage = () => {
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
   // --- Submission ---
-  const handleSubmit = async (e) => {
+  const initiateSubmit = (e) => {
     e.preventDefault();
     if (!user) {
       toast({ title: 'Erreur', description: 'Session expirée. Veuillez vous reconnecter.', variant: 'destructive' });
@@ -257,7 +257,11 @@ const CreateStandEventPage = () => {
       return;
     }
     if (!validateStep1() || !validateStep2()) return;
+    
+    setShowContractModal(true);
+  };
 
+  const performSubmission = async () => {
     setLoading(true);
 
     try {
@@ -279,7 +283,9 @@ const CreateStandEventPage = () => {
           max_participants: maxParticipants,
           is_public: isPublic,
           cover_image: coverImage, 
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          contract_accepted_at: new Date().toISOString(),
+          contract_version: 'v1.0'
         }).select().single();
 
       if (eventError) throw eventError;
@@ -337,8 +343,6 @@ const CreateStandEventPage = () => {
       setLoading(false);
     }
   };
-
-  // --- Step Content Components ---
 
   const Step1Details = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -553,7 +557,7 @@ const CreateStandEventPage = () => {
                 Suivant <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-lg min-w-[200px]">
+              <Button onClick={initiateSubmit} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-lg min-w-[200px]">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 Publier l'événement
               </Button>
@@ -561,6 +565,8 @@ const CreateStandEventPage = () => {
           </CardFooter>
         </Card>
       </main>
+      
+      <OrganizerContractModal open={showContractModal} onOpenChange={setShowContractModal} onAccept={performSubmission} />
     </div>
   );
 };
