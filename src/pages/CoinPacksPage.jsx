@@ -1,187 +1,358 @@
-import React, { useState, useEffect } from 'react';
-import { PurchaseService } from '@/services/purchaseService';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Zap, Star, Gem, Crown, Sparkles, ChevronsRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from 'react-router-dom';
-import MultilingualSeoHead from '@/components/MultilingualSeoHead';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Zap, Star, Crown, Sparkles, Coins, Check, Calculator, ArrowRight, AlertCircle, Flame, TrendingUp, Rocket, Target, Gift, Shield } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import MultilingualSeoHead from '@/components/MultilingualSeoHead';
+import '@/components/LicensePurchase.css';
 
-const packIcons = {
-    'Pack Débutant': <Zap className="w-8 h-8 text-yellow-400" />,
-    'Pack Intermediaire': <Sparkles className="w-8 h-8 text-blue-400" />,
-    'Pack Standard': <Star className="w-8 h-8 text-orange-400" />,
-    'Pack Premium': <Gem className="w-8 h-8 text-purple-400" />,
-    'Pack VIP': <Crown className="w-8 h-8 text-red-400" />,
-    'Pack King': <img src="/king-icon.png" alt="King" className="w-10 h-10" />,
-};
+// Configuration des packs avec liens MoneyFusion spécifiques UNIQUES pour chaque pack
+const CREDIT_PACKS = [
+    { 
+        id: 'pack_debutant', 
+        name: 'Pack Débutant',
+        amount: 500, 
+        coins: 50, 
+        bonus: 0, 
+        features: ['50 Crédits', 'Idéal pour tester', 'Validité illimitée'],
+        icon: Coins, 
+        color: 'text-yellow-400',
+        actionTags: ['Démarrer', 'Essentiel'],
+        paymentLink: 'https://my.moneyfusion.net/694df16698fe6dbde0fbf5c8' 
+    },
+    { 
+        id: 'pack_intermediaire', 
+        name: 'Pack Intermédiaire',
+        amount: 1000, 
+        coins: 100, 
+        bonus: 0, 
+        features: ['100 Crédits', 'Participation simple', 'Support standard'],
+        icon: Zap, 
+        color: 'text-blue-400',
+        actionTags: ['Populaire', 'Sans risque'],
+        paymentLink: 'https://my.moneyfusion.net/694df3b298fe6dbde0fbf9b5' 
+    },
+    { 
+        id: 'pack_standard', 
+        name: 'Pack Standard',
+        amount: 5000, 
+        coins: 500, 
+        bonus: 0, 
+        features: ['500 Crédits', 'Création d\'événements', 'Boost léger'],
+        icon: Star, 
+        color: 'text-indigo-400',
+        actionTags: ['Recommandé', 'Meilleur rapport'],
+        badge: '🔥 Choix intelligent',
+        paymentLink: 'https://my.moneyfusion.net/694df44f98fe6dbde0fbfaa8'
+    },
+    { 
+        id: 'pack_premium', 
+        name: 'Pack Premium',
+        amount: 10000, 
+        coins: 1000, 
+        bonus: 50, 
+        features: ['1000 Crédits', '+50 Crédits Bonus', 'Visibilité accrue', 'Support prioritaire'],
+        icon: Sparkles, 
+        color: 'text-purple-400',
+        actionTags: ['Boost +50%', 'Prioritaire'],
+        badge: '🚀 Le plus acheté',
+        paymentLink: 'https://my.moneyfusion.net/694df92d98fe6dbde0fbff97'
+    },
+    { 
+        id: 'pack_vip', 
+        name: 'Pack VIP',
+        amount: 25000, 
+        coins: 2500, 
+        bonus: 250, 
+        features: ['2500 Crédits', '+250 Crédits Bonus', 'Statut VIP', 'Support dédié'],
+        icon: Crown, 
+        color: 'text-red-400',
+        actionTags: ['Exclusif', '+250 Bonus'],
+        badge: '👑 Élite',
+        paymentLink: 'https://my.moneyfusion.net/694df7e598fe6dbde0fbfe80'
+    },
+    { 
+        id: 'pack_king', 
+        name: 'Pack King',
+        amount: 50000, 
+        coins: 5000, 
+        bonus: 500, 
+        features: ['5000 Crédits', '+500 Crédits Bonus', 'Boost Maximum', 'Partenariat exclusif'],
+        icon: Crown, 
+        color: 'text-orange-400',
+        actionTags: ['Maximum', '+500 Bonus'],
+        badge: '🏆 Ultime',
+        paymentLink: 'https://my.moneyfusion.net/694df57e98fe6dbde0fbfc78'
+    },
+];
+
+// Lien UNIQUEMENT pour le paiement personnalisé
+const CUSTOM_PAYMENT_LINK = "https://my.moneyfusion.net/694dfabb98fe6dbde0fc014f";
 
 const CoinPacksPage = () => {
     const { user } = useAuth();
-    const [packs, setPacks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [customAmount, setCustomAmount] = useState(1000);
-    const [customCoins, setCustomCoins] = useState(100);
-    const { toast } = useToast();
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const [customAmount, setCustomAmount] = useState('');
 
-    useEffect(() => {
-        const fetchPacks = async () => {
-            try {
-                const data = await PurchaseService.getCoinPacks();
-                setPacks(data);
-            } catch (error) {
-                toast({
-                    title: "Erreur",
-                    description: "Impossible de charger les packs de pièces.",
-                    variant: "destructive",
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchPacks();
-    }, [toast]);
-
-    useEffect(() => {
-        const coins = Math.floor(customAmount / 10) + PurchaseService.calculateCustomBonus(customAmount);
-        setCustomCoins(coins);
-    }, [customAmount]);
-
+    // Fonction pour les packs STANDARDS
     const handlePurchase = (pack) => {
         if (!user) {
-            toast({ title: "Connexion requise", description: "Veuillez vous connecter pour acheter des pièces.", variant: "destructive" });
-            navigate('/auth');
-            return;
-        }
-        navigate(`/payment/checkout?amount=${pack.fcfa_price}&packId=${pack.id}&type=coin_pack`);
-    };
-
-    const handleCustomPurchase = () => {
-        if (!user) {
-            toast({ title: "Connexion requise", description: "Veuillez vous connecter pour acheter des pièces.", variant: "destructive" });
-            navigate('/auth');
-            return;
-        }
-        if (customAmount < 500) {
-            toast({
-                title: "Montant invalide",
-                description: "Le montant minimum est de 500 FCFA.",
-                variant: "destructive",
+            toast({ 
+                title: "Connexion requise", 
+                description: "Veuillez vous connecter pour acheter des crédits.", 
+                variant: "warning" 
             });
+            navigate('/auth?redirect=/credit-packs');
             return;
         }
-        navigate(`/payment/checkout?amount=${customAmount}&type=custom_coins`);
+
+        // CORRECTION IMPORTANTE : Utiliser le lien SPÉCIFIQUE du pack
+        console.log(`Achat pack ${pack.name} - Redirection vers: ${pack.paymentLink}`);
+        window.location.href = pack.paymentLink; // Lien UNIQUE pour chaque pack
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin text-primary" />
-            </div>
-        );
-    }
+    // Fonction UNIQUEMENT pour le paiement personnalisé
+    const handleCustomAmountPurchase = () => {
+        if (!user) {
+            toast({ 
+                title: "Connexion requise", 
+                description: "Veuillez vous connecter pour acheter des crédits.", 
+                variant: "warning" 
+            });
+            navigate('/auth?redirect=/credit-packs');
+            return;
+        }
+        
+        // CORRECTION : Utiliser CUSTOM_PAYMENT_LINK pour le paiement personnalisé
+        console.log(`Paiement personnalisé - Redirection vers: ${CUSTOM_PAYMENT_LINK}`);
+        window.location.href = CUSTOM_PAYMENT_LINK;
+    };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-muted/50 text-foreground">
-            <MultilingualSeoHead pageData={{
-                title: "Acheter des Pièces - BonPlanInfos",
-                description: "Rechargez votre compte en pièces pour interagir avec les événements, voter, et plus encore. Packs avantageux et bonus disponibles.",
+        <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
+            <MultilingualSeoHead pageData={{ 
+                title: "Acheter des Crédits - BonPlanInfos", 
+                description: "Rechargez votre compte en crédits avec nos packs exclusifs." 
             }} />
-            <div className="container mx-auto px-4 py-12 md:py-20">
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-12"
+            
+            <div className="max-w-7xl mx-auto space-y-16">
+                {/* Header */}
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }} 
+                    animate={{ opacity: 1, y: 0 }} 
+                    className="text-center space-y-4"
                 >
-                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary via-red-500 to-secondary">
-                        Boutique de Pièces
+                    <h1 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500">
+                        Boutique de Crédits
                     </h1>
-                    <p className="max-w-2xl mx-auto mt-4 text-lg text-muted-foreground">
-                        Rechargez votre portefeuille et débloquez tout le potentiel de BonPlanInfos.
+                    <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                        Choisissez le pack qui correspond à vos besoins et débloquez instantanément des fonctionnalités premium.
                     </p>
+                    
+                    {/* Stats Banner */}
+                    <div className="max-w-3xl mx-auto mt-8">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Shield className="w-4 h-4 text-green-400" />
+                                    <span className="text-sm font-medium text-gray-300">Paiement sécurisé</span>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Zap className="w-4 h-4 text-yellow-400" />
+                                    <span className="text-sm font-medium text-gray-300">Recharge instantanée</span>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Gift className="w-4 h-4 text-purple-400" />
+                                    <span className="text-sm font-medium text-gray-300">Bonus exclusifs</span>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <Target className="w-4 h-4 text-red-400" />
+                                    <span className="text-sm font-medium text-gray-300">Crédits illimités</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </motion.div>
 
+                {/* Packs Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {packs.filter(p => !p.is_custom).map((pack, index) => (
-                        <motion.div
-                            key={pack.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                        >
-                            <Card className={`h-full flex flex-col glass-effect hover:border-primary/50 transition-all duration-300 relative overflow-hidden ${pack.badge ? 'border-primary' : ''}`}>
+                    {CREDIT_PACKS.map((pack, index) => {
+                        const Icon = pack.icon;
+                        return (
+                            <motion.div 
+                                key={pack.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="relative group bg-gray-900 rounded-2xl shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 overflow-hidden border border-gray-800 flex flex-col hover:border-yellow-500/50 hover:scale-[1.02]"
+                            >
+                                {/* Action Tags */}
+                                <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                                    {pack.actionTags?.map((tag, idx) => (
+                                        <span 
+                                            key={idx}
+                                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-black shadow-lg shadow-yellow-500/20"
+                                        >
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                                
                                 {pack.badge && (
-                                    <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full">{pack.badge}</div>
+                                    <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-4 py-1.5 rounded-bl-xl shadow-lg">
+                                        {pack.badge}
+                                    </div>
                                 )}
-                                <CardHeader className="items-center text-center">
-                                    {packIcons[pack.name] || <Zap className="w-8 h-8 text-gray-400" />}
-                                    <CardTitle className="text-2xl">{pack.name}</CardTitle>
-                                    <CardDescription>{pack.description}</CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex-grow flex flex-col text-center">
-                                    <div className="my-4">
-                                        <span className="text-5xl font-bold">{pack.total_coins.toLocaleString()}</span>
-                                        <span className="text-xl text-muted-foreground"> pièces</span>
+                                
+                                <div className="p-8 text-center border-b border-gray-800 bg-gradient-to-b from-gray-900 to-gray-950 flex-grow">
+                                    <div className={`w-20 h-20 mx-auto bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300 ${pack.color} shadow-current/20`}>
+                                        <Icon className="w-10 h-10" />
                                     </div>
-                                    {pack.bonus_coins > 0 && (
-                                        <p className="text-green-500 font-semibold mb-4">
-                                            +{pack.bonus_coins} pièces bonus incluses !
-                                        </p>
-                                    )}
-                                    <div className="text-2xl font-semibold text-primary mb-6">
-                                        {pack.fcfa_price.toLocaleString()} FCFA
+                                    <h3 className="text-2xl font-bold text-white mb-4">{pack.name}</h3>
+                                    <div className="flex items-baseline justify-center mb-2">
+                                        <span className="text-5xl font-extrabold text-white">{pack.amount.toLocaleString()}</span>
+                                        <span className="text-lg font-medium text-gray-400 ml-2">FCFA</span>
                                     </div>
-                                    <Button onClick={() => handlePurchase(pack)} size="lg" className="w-full mt-auto gradient-red text-primary-foreground">
-                                        Acheter ce pack <ChevronsRight className="w-4 h-4 ml-2" />
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    ))}
+                                    <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-4 py-2 rounded-full text-sm font-bold mt-2">
+                                        <Coins className="w-4 h-4 mr-2" />
+                                        {pack.coins.toLocaleString()} Crédits
+                                    </div>
+                                </div>
 
-                    {/* Custom Amount Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: packs.length * 0.1 }}
-                        className="md:col-span-2 lg:col-span-1"
-                    >
-                        <Card className="h-full flex flex-col glass-effect border-dashed border-2 hover:border-primary transition-all">
-                            <CardHeader className="items-center text-center">
-                                <Sparkles className="w-8 h-8 text-green-400" />
-                                <CardTitle className="text-2xl">Montant Personnalisé</CardTitle>
-                                <CardDescription>Choisissez exactement combien vous voulez dépenser.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="flex-grow flex flex-col text-center justify-center">
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="custom-amount" className="text-muted-foreground">Montant en FCFA</Label>
-                                        <Input
-                                            id="custom-amount"
-                                            type="number"
-                                            value={customAmount}
-                                            onChange={(e) => setCustomAmount(parseInt(e.target.value) || 0)}
-                                            className="text-center text-2xl font-bold h-14"
-                                            min="500"
-                                        />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-muted-foreground">Vous recevrez</p>
-                                        <p className="text-3xl font-bold text-green-500">{customCoins.toLocaleString()} pièces</p>
-                                    </div>
-                                    <Button onClick={handleCustomPurchase} size="lg" className="w-full gradient-green text-primary-foreground">
-                                        Procéder au paiement <ChevronsRight className="w-4 h-4 ml-2" />
+                                <div className="p-8 bg-gray-900 flex flex-col justify-between flex-grow">
+                                    <ul className="space-y-4 mb-8">
+                                        {pack.features.map((feature, i) => (
+                                            <li key={i} className="flex items-start text-sm text-gray-300 hover:text-white transition-colors">
+                                                <Check className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                        {pack.bonus > 0 && (
+                                            <li className="flex items-start text-sm font-bold text-green-400 bg-gray-800/50 p-3 rounded-lg border border-green-500/20">
+                                                <Sparkles className="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+                                                <span>+{pack.bonus} Crédits Bonus Offerts</span>
+                                            </li>
+                                        )}
+                                    </ul>
+
+                                    <Button 
+                                        className={`w-full h-14 text-base font-bold shadow-lg transition-all duration-300 group relative overflow-hidden ${
+                                            pack.badge 
+                                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-purple-500/30' 
+                                            : 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black hover:shadow-yellow-500/30'
+                                        }`}
+                                        onClick={() => handlePurchase(pack)}
+                                    >
+                                        <span className="relative z-10 flex items-center justify-center">
+                                            Acheter maintenant
+                                            <Rocket className="ml-2 w-4 h-4" />
+                                        </span>
+                                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                                     </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
+                            </motion.div>
+                        );
+                    })}
                 </div>
+
+                {/* Custom Amount Section */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="max-w-2xl mx-auto"
+                >
+                    <div className="bg-gradient-to-br from-gray-900 to-black rounded-2xl shadow-2xl border border-gray-800 p-8 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500"></div>
+                        <div className="absolute -right-20 -top-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
+                        
+                        <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+                            <div className="flex-shrink-0 bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-full border border-gray-700 shadow-lg">
+                                <Calculator className="w-10 h-10 text-yellow-400" />
+                            </div>
+                            
+                            <div className="flex-grow text-center md:text-left">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Flame className="w-5 h-5 text-orange-400" />
+                                    <h3 className="text-xl font-bold text-white">Montant Personnalisé</h3>
+                                    <span className="ml-2 px-2 py-1 text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-black rounded-full">Flexible</span>
+                                </div>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    Vous avez un budget spécifique ? Créez votre propre pack de crédits !
+                                </p>
+                                
+                                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                    <div className="relative w-full">
+                                        <Input 
+                                            type="number" 
+                                            placeholder="Montant en FCFA" 
+                                            value={customAmount}
+                                            onChange={(e) => setCustomAmount(e.target.value)}
+                                            className="pr-16 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-yellow-500 focus:ring-yellow-500/20 h-12 text-base"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">FCFA</span>
+                                    </div>
+                                    
+                                    <Button 
+                                        className="w-full sm:w-auto h-12 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 text-white hover:text-white hover:border-yellow-500 hover:bg-gray-800 whitespace-nowrap font-medium shadow-lg"
+                                        onClick={handleCustomAmountPurchase}
+                                    >
+                                        <Target className="mr-2 w-4 h-4" />
+                                        Payer personnalisé
+                                    </Button>
+                                </div>
+                                
+                                {customAmount > 0 && (
+                                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                                        <p className="text-sm font-medium text-gray-300">
+                                            Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} Crédits</span>
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Call to Action Banner */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-gray-900 via-black to-gray-900 border border-gray-800"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-purple-500/10"></div>
+                    <div className="relative p-8 text-center">
+                        <div className="inline-flex items-center gap-3 mb-4">
+                            <TrendingUp className="w-6 h-6 text-green-400" />
+                            <h3 className="text-xl font-bold text-white">Pourquoi choisir nos packs ?</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                            <div className="space-y-2">
+                                <div className="text-yellow-400 font-bold">📈 Boost d'activité</div>
+                                <p className="text-sm text-gray-400">Augmentez votre visibilité instantanément</p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-yellow-400 font-bold">⚡ Crédits immédiats</div>
+                                <p className="text-sm text-gray-400">Rechargez et utilisez vos crédits sans délai</p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-yellow-400 font-bold">🎁 Bonus exclusifs</div>
+                                <p className="text-sm text-gray-400">Plus vous achetez, plus vous économisez</p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
             </div>
         </div>
     );

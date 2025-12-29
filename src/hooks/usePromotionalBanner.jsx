@@ -11,7 +11,7 @@ export const usePromotionalBanner = (userProfile) => {
   
   // Pages où la bannière est pertinente
   const relevantPages = [
-    '/', '/create-event', '/boost', '/wallet', 
+    '/', '/create-event', '/boost', '/wallet', '/packs',
     '/marketing', '/partner-signup'
   ];
 

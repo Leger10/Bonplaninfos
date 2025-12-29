@@ -32,6 +32,9 @@ const WalletInfoModal = ({ isOpen, onClose, onProceed }) => {
           <p>
             Veuillez recharger votre compte pour continuer. C'est simple et rapide !
           </p>
+           <p> cliquer sur Recharger mon compte 
+          </p>
+           
         </div>
         <DialogFooter className="flex-col sm:flex-col sm:space-y-2">
           <Button onClick={handleRecharge} className="w-full gradient-gold text-background">

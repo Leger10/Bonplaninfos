@@ -208,14 +208,14 @@ export const promotionalMessages = {
   ],
 
   // Page du portefeuille
-  '/wallet': [
+  '/packs': [
     {
       icon: <Gift className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎁 Pièces gratuites !",
       description: "Gagnez des pièces en regardant des vidéos. Actions simples !",
       button: "Gagner",
       color: "from-red-500 to-pink-500",
-      action: () => window.location.href = '/wallet',
+      action: () => window.location.href = '/packs',
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {

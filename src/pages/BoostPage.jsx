@@ -156,7 +156,7 @@ const BoostPage = () => {
   
   const handleWalletModalProceed = () => { 
     setShowWalletInfoModal(false); 
-    navigate('/wallet'); 
+    navigate('/packs'); 
   };
 
   // Fonction pour formater les features
