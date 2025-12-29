@@ -1,178 +1,227 @@
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
-import { writeFileSync } from 'fs';
-import path from 'path';
+import 'dotenv/config'
+import { createClient } from '@supabase/supabase-js'
+import { writeFileSync } from 'fs'
+import path from 'path'
 
-const SUPABASE_URL = 'https://jdeuwvaauerzjdtpwjjz.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkZXV3dmFhdWVycmpkdHB3amp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzMTkxNTksImV4cCI6MjA3NDg5NTE1OX0.ktxs6yjuy3hRXCjsDzK1x6lJg0e5yEEnzl554nx28Kc';
+// ===============================
+// 🔐 SUPABASE (SERVER ONLY)
+// ===============================
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ Missing Supabase env variables')
+  process.exit(1)
+}
 
-const BASE_URL = 'https://bonplaninfos.net';
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false } }
+)
+
+// ===============================
+// 🌍 CONFIG
+// ===============================
+const BASE_URL = 'https://bonplaninfos.net'
+
+const languages = ['fr', 'en']
 
 const africanCountries = [
-    'ci', 'sn', 'cm', 'ml', 'bf', 'bj', 'tg', 'ga', 'cg', 'cd', 'gn', 'ne', 'td', 'cf', 'mg', 'gh', 'ng', 'ke'
-];
-const languages = ['fr', 'en'];
+  'ci','sn','cm','ml','bf','bj','tg','ga','cg','cd',
+  'gn','ne','td','cf','mg','gh','ng','ke'
+]
+
+// ===============================
+// 📄 STATIC ROUTES (SEO OK)
+// ===============================
 const staticPages = [
-    '/', '/discover', '/events', '/promotions', '/news', '/sponsors',
-    '/about', '/how-it-works', '/pricing', '/help-center',
-    '/terms', '/privacy-policy', '/legal-mentions'
-];
+  '/',
+  '/discover',
+  '/events',
+  '/promotions',
+  '/news',
+  '/contests',
+  '/sponsors',
+  '/about',
+  '/how-it-works',
+  '/pricing',
+  '/packs',
+    '/wallet',
+    '/create-event',
+    '/boost',
+    '/discover',
+  '/help-center',
+  '/faq',
+  '/terms',
+  '/privacy-policy',
+  '/legal-mentions',
+  '/partner-signup',
+  '/marketing'
+]
 
+// ===============================
+// 🖼️ IMAGE & VIDEO XML (EVENTS)
+// ===============================
+function generateMediaXml(event) {
+  let xml = ''
+
+  if (event.cover_image) {
+    xml += `
+    <image:image>
+      <image:loc>${event.cover_image}</image:loc>
+      <image:title><![CDATA[${event.title || 'Event'}]]></image:title>
+    </image:image>`
+  }
+
+  if (Array.isArray(event.images)) {
+    event.images.forEach(img => {
+      xml += `
+    <image:image>
+      <image:loc>${img}</image:loc>
+      <image:title><![CDATA[${event.title || 'Event'}]]></image:title>
+    </image:image>`
+    })
+  }
+
+  if (event.video_url) {
+    xml += `
+    <video:video>
+      <video:content_loc>${event.video_url}</video:content_loc>
+      <video:title><![CDATA[${event.title || 'Event'}]]></video:title>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>`
+  }
+
+  return xml
+}
+
+// ===============================
+// 🔁 FETCH DYNAMIC ROUTES
+// ===============================
 async function fetchDynamicRoutes() {
-    const dynamicRoutes = [];
+  const routes = []
 
-    try {
-        // Fetch events
-        const { data: events, error: eventsError } = await supabase
-            .from('events')
-            .select('id, updated_at')
-            .eq('status', 'active')
-            .limit(5000); // Limit to avoid timeout
+  // EVENTS
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('id, title, cover_image, images, video_url, updated_at')
+    .eq('status', 'active')
+    .limit(5000)
 
-        if (eventsError) {
-            console.error('Error fetching events:', eventsError);
-        } else {
-            events.forEach(event => {
-                dynamicRoutes.push({
-                    path: `/event/${event.id}`,
-                    lastmod: event.updated_at || new Date().toISOString().split('T')[0]
-                });
-            });
-            console.log(`✅ Fetched ${events.length} events`);
-        }
+  if (eventsError) {
+    console.error('❌ Events error:', eventsError)
+  } else {
+    events.forEach(e => {
+      routes.push({
+        path: `/event/${e.id}`,
+        lastmod: e.updated_at?.split('T')[0],
+        media: generateMediaXml(e)
+      })
+    })
+    console.log(`✅ Fetched ${events.length} events`)
+  }
 
-        // Fetch promotions
-        const { data: promotions, error: promotionsError } = await supabase
-            .from('promotions')
-            .select('id, updated_at')
-            .eq('status', 'active')
-            .limit(5000);
+  // PROMOTIONS
+  const { data: promotions } = await supabase
+    .from('promotion_packs')
+    .select('id, updated_at')
+    .eq('status', 'active')
 
-        if (promotionsError) {
-            console.error('Error fetching promotions:', promotionsError);
-        } else {
-            promotions.forEach(promo => {
-                dynamicRoutes.push({
-                    path: `/promotion/${promo.id}`,
-                    lastmod: promo.updated_at || new Date().toISOString().split('T')[0]
-                });
-            });
-            console.log(`✅ Fetched ${promotions.length} promotions`);
-        }
+  promotions?.forEach(p => {
+    routes.push({
+      path: `/promotion/${p.id}`,
+      lastmod: p.updated_at?.split('T')[0]
+    })
+  })
 
-    } catch (error) {
-        console.error('Error in fetchDynamicRoutes:', error);
-    }
+  // CONTESTS
+  const { data: contests } = await supabase
+    .from('contests')
+    .select('id, updated_at')
+    .eq('status', 'active')
 
-    return dynamicRoutes;
+  contests?.forEach(c => {
+    routes.push({
+      path: `/contest/${c.id}`,
+      lastmod: c.updated_at?.split('T')[0]
+    })
+  })
+
+  return routes
 }
 
-function generateUrlEntry(url, lastmod, alternates = [], priority = '0.8') {
-    let alternatesXml = '';
+// ===============================
+// 🧱 URL GENERATOR
+// ===============================
+function generateAlternates(path) {
+  const alternates = []
 
-    if (alternates.length > 0) {
-        alternatesXml = alternates.map(alt =>
-            `    <xhtml:link rel="alternate" hreflang="${alt.hreflang}" href="${alt.href}"/>`
-        ).join('\n');
-    }
+  languages.forEach(lang => {
+    africanCountries.forEach(country => {
+      alternates.push(
+        `<xhtml:link rel="alternate" hreflang="${lang}-${country.toUpperCase()}" href="${BASE_URL}/${lang}/${country}${path}"/>`
+      )
+    })
+  })
 
-    return `
-  <url>
-    <loc>${url}</loc>
-    <lastmod>${lastmod}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>
-${alternatesXml}
-  </url>`;
+  alternates.push(
+    `<xhtml:link rel="alternate" hreflang="x-default" href="${BASE_URL}/fr/ci${path}"/>`
+  )
+
+  return alternates.join('\n')
 }
 
+// ===============================
+// 🗺️ GENERATE SITEMAP
+// ===============================
 async function generateSitemap() {
-    console.log('🚀 Starting sitemap generation...');
+  console.log('🚀 Generating sitemap...')
 
-    try {
-        const dynamicRoutes = await fetchDynamicRoutes();
-        const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+  const dynamicRoutes = await fetchDynamicRoutes()
+  const today = new Date().toISOString().split('T')[0]
 
-        let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">`;
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">`
 
-        // Generate static pages with internationalization
-        staticPages.forEach(page => {
-            const alternates = [];
+  // STATIC
+  staticPages.forEach(page => {
+    xml += `
+  <url>
+    <loc>${BASE_URL}${page === '/' ? '' : page}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${page === '/' ? '1.0' : '0.7'}</priority>
+${generateAlternates(page === '/' ? '' : page)}
+  </url>`
+  })
 
-            languages.forEach(lang => {
-                africanCountries.forEach(country => {
-                    alternates.push({
-                        hreflang: `${lang}-${country.toUpperCase()}`,
-                        href: `${BASE_URL}/${lang}/${country}${page === '/' ? '' : page}`
-                    });
-                });
-            });
+  // DYNAMIC
+  dynamicRoutes.forEach(r => {
+    xml += `
+  <url>
+    <loc>${BASE_URL}${r.path}</loc>
+    <lastmod>${r.lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+${generateAlternates(r.path)}
+${r.media || ''}
+  </url>`
+  })
 
-            // Add default language
-            alternates.push({
-                hreflang: 'x-default',
-                href: `${BASE_URL}/fr/ci${page === '/' ? '' : page}`
-            });
+  xml += '\n</urlset>'
 
-            const priority = page === '/' ? '1.0' : '0.7';
-            sitemapXml += generateUrlEntry(
-                `${BASE_URL}${page === '/' ? '' : page}`,
-                today,
-                alternates,
-                priority
-            );
-        });
-        console.log(`✅ Generated ${staticPages.length} static pages`);
+  const distPath = path.resolve(process.cwd(), 'dist')
+  writeFileSync(path.join(distPath, 'sitemap.xml'), xml.trim())
 
-        // Generate dynamic pages (events, promotions)
-        dynamicRoutes.forEach(route => {
-            const alternates = [];
-
-            languages.forEach(lang => {
-                africanCountries.forEach(country => {
-                    alternates.push({
-                        hreflang: `${lang}-${country.toUpperCase()}`,
-                        href: `${BASE_URL}/${lang}/${country}${route.path}`
-                    });
-                });
-            });
-
-            // Add default language
-            alternates.push({
-                hreflang: 'x-default',
-                href: `${BASE_URL}/fr/ci${route.path}`
-            });
-
-            sitemapXml += generateUrlEntry(
-                `${BASE_URL}${route.path}`,
-                route.lastmod,
-                alternates,
-                '0.9'
-            );
-        });
-        console.log(`✅ Generated ${dynamicRoutes.length} dynamic pages`);
-
-        sitemapXml += '\n</urlset>';
-
-        // Write sitemap file
-        const publicPath = path.resolve(process.cwd(), 'public');
-        writeFileSync(path.join(publicPath, 'sitemap.xml'), sitemapXml.trim());
-
-        console.log('✅ Sitemap generated successfully at public/sitemap.xml');
-        console.log(`📊 Total URLs: ${staticPages.length + dynamicRoutes.length}`);
-
-    } catch (error) {
-        console.error('❌ Error generating sitemap:', error);
-        process.exit(1);
-    }
+  console.log(`✅ Sitemap generated`)
+  console.log(`📊 Total URLs: ${staticPages.length + dynamicRoutes.length}`)
 }
 
-// Run the script
-generateSitemap().catch(error => {
-    console.error('❌ Fatal error:', error);
-    process.exit(1);
-});
+generateSitemap().catch(err => {
+  console.error('❌ Sitemap fatal error:', err)
+  process.exit(1)
+})
