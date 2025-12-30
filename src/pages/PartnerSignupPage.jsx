@@ -37,7 +37,7 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
   };
 
   return (
-    <div className="license-purchase">
+    <div className="license-purchase px-2 sm:px-0">
       <AnimatePresence>
         {userLicenses && userLicenses.length > 0 && (
           <motion.section 
@@ -45,8 +45,11 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h2 className="text-white"><ShieldCheck className="inline w-6 h-6 mr-2 text-indigo-400" /> {t('partner_signup.your_licenses_title')}</h2>
-            <div className="licenses-grid">
+            <h2 className="text-white text-lg sm:text-xl md:text-2xl flex items-center gap-2 mb-4">
+              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" /> 
+              {t('partner_signup.your_licenses_title')}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {userLicenses.map(license => {
                 const isPending = license.submission_status === 'pending';
                 const isApproved = license.submission_status === 'approved';
@@ -57,40 +60,40 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
                 if (license.status === 'pending_payment') return null;
 
                 return (
-                  <div key={license.id} className={`license-card ${isLicenseActive(license.expiry_date) ? 'active' : 'expired'} bg-gray-900 border-gray-800 text-white`}>
-                    <div className="license-header">
-                      <h3 className="text-white bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent font-bold text-xl">
+                  <div key={license.id} className={`license-card bg-gray-900 border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white`}>
+                    <div className="license-header mb-4">
+                      <h3 className="text-white bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent font-bold text-base sm:text-lg truncate">
                         {license.partner_license_packs?.name || 'Licence'}
                       </h3>
-                      <span className="license-status">
+                      <span className="license-status text-xs sm:text-sm mt-1 inline-block px-2 py-1 rounded-full bg-gray-800">
                         {isApproved ? `🟢 ${t('partner_signup.license_card.active')}` : 
                          isRejected ? `🔴 ${t('partner_signup.license_card.rejected')}` :
                          isPending ? `🟡 ${t('partner_signup.license_card.pending')}` :
                          `⚪ ${t('partner_signup.license_card.pending_contract')}`}
                       </span>
                     </div>
-                    <div className="license-details text-gray-300">
-                      <p><strong className="text-amber-300">{t('partner_signup.license_card.revenue_share', {percent: license.revenue_share_percent})}</strong></p>
-                      <p><strong className="text-cyan-300">{t('partner_signup.license_card.purchased_on')}</strong> {formatDate(license.purchase_date)}</p>
-                      <p><strong className="text-emerald-300">{t('partner_signup.license_card.expires_on')}</strong> {formatDate(license.expiry_date)}</p>
-                      <p><strong className="text-blue-300">{t('partner_signup.license_card.days_remaining', { count: Math.max(0, Math.ceil((new Date(license.expiry_date) - new Date()) / (1000 * 60 * 60 * 24))) })}</strong></p>
+                    <div className="license-details text-gray-300 text-sm space-y-2">
+                      <p><strong className="text-amber-300 text-xs sm:text-sm">{t('partner_signup.license_card.revenue_share', {percent: license.revenue_share_percent})}</strong></p>
+                      <p><strong className="text-cyan-300 text-xs sm:text-sm">{t('partner_signup.license_card.purchased_on')}</strong> {formatDate(license.purchase_date)}</p>
+                      <p><strong className="text-emerald-300 text-xs sm:text-sm">{t('partner_signup.license_card.expires_on')}</strong> {formatDate(license.expiry_date)}</p>
+                      <p><strong className="text-blue-300 text-xs sm:text-sm">{t('partner_signup.license_card.days_remaining', { count: Math.max(0, Math.ceil((new Date(license.expiry_date) - new Date()) / (1000 * 60 * 60 * 24))) })}</strong></p>
                       
                       {isRejected && license.admin_notes && (
-                        <Alert variant="destructive" className="mt-3 bg-red-900/30 border-red-800">
-                          <AlertTriangle className="h-4 w-4 text-red-400" />
-                          <AlertTitle className="text-red-200">Dossier rejeté</AlertTitle>
-                          <AlertDescription className="text-red-300">{license.admin_notes}</AlertDescription>
+                        <Alert variant="destructive" className="mt-3 bg-red-900/30 border-red-800 p-3">
+                          <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
+                          <AlertTitle className="text-red-200 text-xs sm:text-sm">Dossier rejeté</AlertTitle>
+                          <AlertDescription className="text-red-300 text-xs sm:text-sm truncate">{license.admin_notes}</AlertDescription>
                         </Alert>
                       )}
 
                       {needsUpload && (
-                        <div className="bg-orange-900/30 p-4 rounded-lg border border-orange-800 space-y-3 mt-3">
-                          <p className="text-sm font-medium text-orange-300 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4" /> Action Requise : Signature du Contrat
+                        <div className="bg-orange-900/30 p-3 rounded-lg border border-orange-800 space-y-2 mt-3">
+                          <p className="text-xs sm:text-sm font-medium text-orange-300 flex items-center gap-2">
+                            <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" /> Action Requise
                           </p>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <Button size="sm" variant="outline" onClick={() => onDownloadContract(license)} className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white">
-                              <Download className="w-4 h-4 mr-2" /> 1. Télécharger Modèle
+                          <div className="flex flex-col gap-2">
+                            <Button size="sm" variant="outline" onClick={() => onDownloadContract(license)} className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white h-8 sm:h-9 text-xs">
+                              <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-2" /> 1. Télécharger
                             </Button>
                             <div className="relative">
                               <input
@@ -101,9 +104,9 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
                                 onChange={(e) => onUploadContract(e, license)}
                                 ref={fileInputRef}
                               />
-                              <Button size="sm" className="bg-indigo-900 hover:bg-indigo-800 w-full text-white" onClick={() => document.getElementById(`upload-${license.id}`).click()} disabled={uploading}>
-                                {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UploadCloud className="w-4 h-4 mr-2" />}
-                                2. Envoyer Contrat Signé
+                              <Button size="sm" className="bg-indigo-900 hover:bg-indigo-800 w-full text-white h-8 sm:h-9 text-xs" onClick={() => document.getElementById(`upload-${license.id}`).click()} disabled={uploading}>
+                                {uploading ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-2" /> : <UploadCloud className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />}
+                                2. Envoyer
                               </Button>
                             </div>
                           </div>
@@ -111,7 +114,7 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
                       )}
 
                       {isPending && (
-                        <div className="mt-3 text-sm text-gray-400">
+                        <div className="mt-3 text-xs sm:text-sm text-gray-400">
                           <p className="italic">Contrat en cours d'examen.</p>
                           {license.contract_url && (
                             <a href={license.contract_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline flex items-center gap-1 mt-1">
@@ -129,23 +132,24 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
         )}
       </AnimatePresence>
 
-      <section className="available-licenses">
-        <h2 className="text-white"><span role="img" aria-label="rocket" className="mr-2">🚀</span> {t('partner_signup.available_licenses_title')}</h2>
-        <p className="license-subtitle text-gray-400">
+      <section className="available-licenses mt-8 sm:mt-12">
+        <h2 className="text-white text-lg sm:text-xl md:text-2xl mb-2">
+          🚀 {t('partner_signup.available_licenses_title')}
+        </h2>
+        <p className="license-subtitle text-gray-400 text-sm sm:text-base mb-6">
           {t('partner_signup.available_licenses_subtitle')}
         </p>
         
-        <div className="licenses-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {licenses.map((license, index) => {
             const benefits = license.features || [];
             const isPopular = license.name.toUpperCase().includes('BUSINESS');
             const isStarter = license.name.toUpperCase().includes('STARTER');
             const isPremium = license.name.toUpperCase().includes('PREMIUM');
 
-            // Déterminer la couleur basée sur le type de licence
             let titleColor = 'text-white';
             let badgeColor = 'border-blue-500 text-blue-300 bg-blue-500/10';
-            let durationBg = 'bg-gray-800'; // Fond noir pour la durée
+            let durationBg = 'bg-gray-800';
             
             if (isStarter) {
               titleColor = 'text-blue-400';
@@ -161,52 +165,54 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
             return (
               <motion.div 
                 key={license.id} 
-                className="license-pack-card bg-gray-900 border-gray-800"
+                className="license-pack-card bg-gray-900 border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 relative"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                {isPopular && <div className="license-badge bg-emerald-600 text-white">Recommandé</div>}
-                {isPremium && <div className="license-badge bg-purple-600 text-white">Premium</div>}
+                {(isPopular || isPremium) && (
+                  <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-bold ${isPopular ? 'bg-emerald-600 text-white' : 'bg-purple-600 text-white'}`}>
+                    {isPopular ? 'Recommandé' : 'Premium'}
+                  </div>
+                )}
                 
-                <div className="license-pack-header">
-                  <Badge variant="outline" className={`mb-2 capitalize ${badgeColor}`}>
+                <div className="license-pack-header mb-4">
+                  <Badge variant="outline" className={`mb-2 text-xs sm:text-sm ${badgeColor}`}>
                     {license.coverage_type}
                   </Badge>
-                  <h3 className={`${titleColor} font-bold text-2xl`}>
+                  <h3 className={`${titleColor} font-bold text-lg sm:text-xl md:text-2xl`}>
                     {license.name}
                   </h3>
-                  <div className="license-price text-amber-300 font-bold text-3xl">
+                  <div className="license-price text-amber-300 font-bold text-xl sm:text-2xl md:text-3xl mt-2">
                     {license.fcfa_price.toLocaleString()} FCFA 
-                    <span className="text-lg font-normal text-gray-300 block mt-1">Paiement unique</span>
+                    <span className="text-sm font-normal text-gray-300 block mt-1">Paiement unique</span>
                   </div>
                 </div>
                 
-                <div className="revenue-share mt-4">
-                  <div className="revenue-percent text-emerald-400 font-bold text-4xl">
+                <div className="revenue-share mt-3 sm:mt-4">
+                  <div className="revenue-percent text-emerald-400 font-bold text-3xl sm:text-4xl">
                     {license.revenue_share_percent}%
                   </div>
-                  <div className="revenue-label text-emerald-300 font-medium">
+                  <div className="revenue-label text-emerald-300 font-medium text-sm">
                     de la commission
                   </div>
                 </div>
 
-                {/* Section durée avec fond noir amélioré */}
-                <div className={`${durationBg} p-3 rounded-lg border border-gray-700 mt-3`}>
+                <div className={`${durationBg} p-2 sm:p-3 rounded-lg border border-gray-700 mt-3`}>
                   <div className="flex items-center justify-center gap-2">
-                    <Calendar className="w-5 h-5 text-blue-400" />
-                    <span className="text-white font-medium">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                    <span className="text-white font-medium text-sm sm:text-base">
                       {formatDuration(license.duration_days)}
                     </span>
                   </div>
                 </div>
                 
                 <div className="license-features mt-4">
-                  <h4 className="text-gray-300 font-semibold mb-3">Fonctionnalités incluses :</h4>
-                  <ul>
+                  <h4 className="text-gray-300 font-semibold text-sm sm:text-base mb-2">Fonctionnalités :</h4>
+                  <ul className="space-y-1 sm:space-y-2">
                     {benefits.map((feature, idx) => (
-                      <li key={idx} className="text-gray-300 mb-2 flex items-start">
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <li key={idx} className="text-gray-300 text-xs sm:text-sm flex items-start">
+                        <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-200">{feature}</span>
                       </li>
                     ))}
@@ -215,14 +221,14 @@ const LicensePurchase = ({ user, userLicenses, licenses, purchaseLoading, upload
                 
                 <Button 
                   onClick={() => onPurchase(license)}
-                  className="buy-license-button mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg"
+                  className="buy-license-button mt-4 sm:mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg h-10 sm:h-12 w-full text-sm sm:text-base"
                   disabled={purchaseLoading === license.id}
                 >
                   {purchaseLoading === license.id ? (
-                    <Loader2 className="animate-spin" />
+                    <Loader2 className="animate-spin w-4 h-4" />
                   ) : (
                     <>
-                      Acheter sur MoneyFusion <ExternalLink className="ml-2 w-4 h-4" />
+                      Acheter sur MoneyFusion <ExternalLink className="ml-2 w-3 h-3 sm:w-4 sm:h-4" />
                     </>
                   )}
                 </Button>
@@ -403,9 +409,9 @@ const PartnerSignupPage = () => {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center text-center p-4">
         <div>
-          <h1 className="text-3xl font-bold mb-4">{t('partner_signup.unauthorized_title')}</h1>
-          <p className="text-gray-400 mb-6">{t('partner_signup.unauthorized_desc')}</p>
-          <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4">{t('partner_signup.unauthorized_title')}</h1>
+          <p className="text-gray-400 mb-6 text-sm sm:text-base">{t('partner_signup.unauthorized_desc')}</p>
+          <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-10 sm:h-12 text-sm sm:text-base">
             {t('partner_signup.unauthorized_cta')}
           </Button>
         </div>
@@ -417,8 +423,8 @@ const PartnerSignupPage = () => {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-400 mx-auto" />
-          <p className="mt-4 text-gray-300">Chargement des offres partenaires...</p>
+          <Loader2 className="w-8 h-8 sm:w-12 sm:h-12 animate-spin text-blue-400 mx-auto" />
+          <p className="mt-4 text-gray-300 text-sm sm:text-base">Chargement des offres partenaires...</p>
         </div>
       </div>
     );
@@ -433,14 +439,14 @@ const PartnerSignupPage = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="container mx-auto px-4 py-12 md:py-20"
+        className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 md:py-20"
       >
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
             Devenir Partenaire BonPlanInfos
           </h1>
-          <p className="text-gray-300 max-w-2xl mx-auto text-lg">
-            Rejoignez notre réseau de partenaires et générez des revenus stables grâce à notre programme de concessions territoriales.
+          <p className="text-gray-300 max-w-2xl mx-auto text-sm sm:text-base md:text-lg px-2">
+            Rejoignez notre réseau de partenaires et générez des revenus stables.
           </p>
         </div>
         
