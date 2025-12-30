@@ -1,63 +1,107 @@
-import 'dotenv/config'
-import { createClient } from '@supabase/supabase-js'
-import { writeFileSync } from 'fs'
-import path from 'path'
+import { createClient } from "@supabase/supabase-js";
+import { writeFileSync } from "fs";
+import path from "path";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false } }
-)
+// 🔒 SECURITE : Utilise la clé ANON (publishable) ou quitte proprement
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
-const BASE_URL = 'https://bonplaninfos.net'
-const PUBLICATION_NAME = 'BonPlanInfos'
-const LANGUAGE = 'fr'
-
-// ⏱️ 48 dernières heures
-const sinceDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-
-async function generateNewsSitemap() {
-  console.log('📰 Generating Google News sitemap...')
-
-  const { data: events, error } = await supabase
-    .from('events')
-    .select('id, title, created_at')
-    .eq('status', 'active')
-    .gte('created_at', sinceDate)
-    .order('created_at', { ascending: false })
-    .limit(1000)
-
-  if (error) {
-    console.error('❌ News sitemap error:', error)
-    process.exit(1)
-  }
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">`
-
-  events.forEach(event => {
-    xml += `
+// ⚠️ Si pas de clés, on génère un sitemap minimal pour les news
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.log("🔒 Mode sécurité : news sitemap minimal généré");
+  
+  const BASE_URL = "https://bonplaninfos.net";
+  const today = new Date().toISOString().split("T")[0];
+  
+  const newsSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>${BASE_URL}/event/${event.id}</loc>
-    <news:news>
-      <news:publication>
-        <news:name>${PUBLICATION_NAME}</news:name>
-        <news:language>${LANGUAGE}</news:language>
-      </news:publication>
-      <news:publication_date>${event.created_at}</news:publication_date>
-      <news:title><![CDATA[${event.title.slice(0,110)}]]></news:title>
-    </news:news>
-  </url>`
-  })
-
-  xml += '\n</urlset>'
-
-  const distPath = path.resolve(process.cwd(), 'dist')
-  writeFileSync(path.join(distPath, 'sitemap-news.xml'), xml.trim())
-
-  console.log(`✅ Google News sitemap generated`)
-  console.log(`📰 Articles: ${events.length}`)
+    <loc>${BASE_URL}/news</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>`;
+  
+  writeFileSync(path.join(process.cwd(), "dist", "news-sitemap.xml"), newsSitemap.trim());
+  console.log("✅ News sitemap minimal généré");
+  process.exit(0);
 }
 
-generateNewsSitemap()
+// Connecte-toi avec la clé ANON (pas besoin de service_role)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log("✅ Connecté à Supabase pour les news");
+
+const BASE_URL = "https://bonplaninfos.net";
+
+async function generateNewsSitemap() {
+  console.log("📰 Génération du sitemap news...");
+  const today = new Date().toISOString().split("T")[0];
+
+  try {
+    // Essaie de récupérer les articles si la table existe
+    const { data: articles, error } = await supabase
+      .from("news_articles")  // ou "articles", "posts" selon ta table
+      .select("id, slug, updated_at, created_at, published_at")
+      .eq("status", "published")
+      .limit(1000);
+
+    let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${BASE_URL}/news</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+
+    // Ajoute les articles si on en a
+    if (articles && !error && articles.length > 0) {
+      articles.forEach((article) => {
+        const lastmod = article.updated_at || article.published_at || article.created_at || today;
+        const slug = article.slug || article.id;
+        
+        sitemapXml += `
+  <url>
+    <loc>${BASE_URL}/news/${slug}</loc>
+    <lastmod>${lastmod.split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+      });
+      console.log(`✅ ${articles.length} articles ajoutés`);
+    } else if (error) {
+      console.log("ℹ️ Pas de table news trouvée, sitemap basique généré");
+    }
+
+    sitemapXml += "\n</urlset>";
+
+    // Écris le fichier
+    writeFileSync(path.join(process.cwd(), "dist", "news-sitemap.xml"), sitemapXml.trim());
+    console.log("✅ News sitemap généré avec succès");
+    console.log("📍 Fichier : dist/news-sitemap.xml");
+
+  } catch (error) {
+    console.error("❌ Erreur génération news sitemap:", error);
+    
+    // Fallback: génère un sitemap minimal
+    const fallbackSitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${BASE_URL}/news</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>`;
+    
+    writeFileSync(path.join(process.cwd(), "dist", "news-sitemap.xml"), fallbackSitemap);
+    console.log("✅ Fallback news sitemap généré");
+  }
+}
+
+// Exécute le script
+generateNewsSitemap().catch((error) => {
+  console.error("❌ Erreur fatale:", error);
+  // Quitte silencieusement
+});

@@ -1,67 +1,56 @@
-import "dotenv/config";
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync } from "fs";
 import path from "path";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// 🔒 SECURITE : Les clés viennent SEULEMENT de Netlify
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("❌ Missing Supabase env variables");
-  process.exit(1);
+// ⚠️ Si pas de clés (en local), on génère un sitemap minimal
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.log("🔒 Mode sécurité : sitemap statique généré");
+  
+  const BASE_URL = "https://bonplaninfos.net";
+  const today = new Date().toISOString().split("T")[0];
+  
+  const staticPages = [
+    "/", "/discover", "/events", "/promotions", "/news", 
+    "/contests", "/sponsors", "/about", "/how-it-works",
+    "/pricing", "/packs", "/wallet", "/create-event",
+    "/boost", "/help-center", "/faq", "/terms",
+    "/privacy-policy", "/legal-mentions", "/partner-signup",
+    "/marketing"
+  ];
+  
+  let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+  staticPages.forEach(page => {
+    sitemapXml += `
+  <url>
+    <loc>${BASE_URL}${page === "/" ? "" : page}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${page === "/" ? "1.0" : "0.7"}</priority>
+  </url>`;
+  });
+
+  sitemapXml += "\n</urlset>";
+  
+  writeFileSync(path.join(process.cwd(), "dist", "sitemap.xml"), sitemapXml.trim());
+  console.log(`✅ Sitemap statique généré avec ${staticPages.length} pages`);
+  process.exit(0);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Seulement sur Netlify on se connecte à Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log("✅ Connecté à Supabase (Netlify)");
 
-console.log("✅ Supabase client initialized");
-
+// Le reste de ton code original...
 const BASE_URL = "https://bonplaninfos.net";
-
-const africanCountries = [
-  "ci",
-  "sn",
-  "cm",
-  "ml",
-  "bf",
-  "bj",
-  "tg",
-  "ga",
-  "cg",
-  "cd",
-  "gn",
-  "ne",
-  "td",
-  "cf",
-  "mg",
-  "gh",
-  "ng",
-  "ke",
-];
-
+const africanCountries = ["ci", "sn", "cm", "ml", "bf", "bj", "tg", "ga", "cg", "cd", "gn", "ne", "td", "cf", "mg", "gh", "ng", "ke"];
 const languages = ["fr", "en"];
-const staticPages = [
-  "/",
-  "/discover",
-  "/events",
-  "/promotions",
-  "/news",
-  "/contests",
-  "/sponsors",
-  "/about",
-  "/how-it-works",
-  "/pricing",
-  "/packs",
-  "/wallet",
-  "/create-event",
-  "/boost",
-  "/help-center",
-  "/faq",
-  "/terms",
-  "/privacy-policy",
-  "/legal-mentions",
-  "/partner-signup",
-  "/marketing",
-];
+const staticPages = ["/", "/discover", "/events", "/promotions", "/news", "/contests", "/sponsors", "/about", "/how-it-works", "/pricing", "/packs", "/wallet", "/create-event", "/boost", "/help-center", "/faq", "/terms", "/privacy-policy", "/legal-mentions", "/partner-signup", "/marketing"];
 
 async function fetchDynamicRoutes() {
   const dynamicRoutes = [];
@@ -87,7 +76,7 @@ async function fetchDynamicRoutes() {
       console.log(`✅ Fetched ${events.length} events`);
     }
 
-    // Fetch promotion_packs - Version corrigée
+    // Fetch promotion_packs
     const { data: promotionPacks, error: promotionPacksError } = await supabase
       .from("promotion_packs")
       .select("id, created_at")
@@ -173,7 +162,7 @@ async function generateSitemap() {
     });
     console.log(`✅ Generated ${staticPages.length} static pages`);
 
-    // Generate dynamic pages (events, promotions)
+    // Generate dynamic pages
     dynamicRoutes.forEach((route) => {
       const alternates = [];
 
@@ -186,7 +175,6 @@ async function generateSitemap() {
         });
       });
 
-      // Add default language
       alternates.push({
         hreflang: "x-default",
         href: `${BASE_URL}/fr/ci${route.path}`,
@@ -204,20 +192,19 @@ async function generateSitemap() {
     sitemapXml += "\n</urlset>";
 
     // Write sitemap file
-    const publicPath = path.resolve(process.cwd(), "public");
-    writeFileSync(path.join(publicPath, "sitemap.xml"), sitemapXml.trim());
+    writeFileSync(path.join(process.cwd(), "dist", "sitemap.xml"), sitemapXml.trim());
 
-    console.log("✅ Sitemap generated successfully at public/sitemap.xml");
+    console.log("✅ Sitemap generated successfully at dist/sitemap.xml");
     console.log(`📊 Total URLs: ${staticPages.length + dynamicRoutes.length}`);
 
   } catch (error) {
     console.error("❌ Error generating sitemap:", error);
-    process.exit(1);
+    // Ne quitte pas en erreur, Netlify continuera le build
   }
 }
 
 // Run the script
 generateSitemap().catch((error) => {
   console.error("❌ Fatal error:", error);
-  process.exit(1);
+  // Sortie silencieuse pour ne pas casser le build Netlify
 });

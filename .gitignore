@@ -1,0 +1,23 @@
+# NE JAMAIS COMMITTER
+.env
+.env.local
+.env.production
+*.env*
+secrets.txt
+*.key
+*.pem
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
