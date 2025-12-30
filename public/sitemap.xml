@@ -3,7 +3,7 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://bonplaninfos.net</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci"/>
@@ -46,7 +46,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/discover</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/discover"/>
@@ -89,7 +89,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/events</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/events"/>
@@ -132,7 +132,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/promotions</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotions"/>
@@ -175,7 +175,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/news</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/news"/>
@@ -217,8 +217,51 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/news"/>
   </url>
   <url>
+    <loc>https://bonplaninfos.net/contests</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/contests"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/contests"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/contests"/>
+  </url>
+  <url>
     <loc>https://bonplaninfos.net/sponsors</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/sponsors"/>
@@ -261,7 +304,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/about</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/about"/>
@@ -304,7 +347,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/how-it-works</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/how-it-works"/>
@@ -347,7 +390,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/pricing</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/pricing"/>
@@ -389,8 +432,180 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/pricing"/>
   </url>
   <url>
+    <loc>https://bonplaninfos.net/packs</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/packs"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/packs"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/packs"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/packs"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/wallet</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/wallet"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/wallet"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/wallet"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/wallet"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/create-event</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/create-event"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/create-event"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/create-event"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/create-event"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/boost</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/boost"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/boost"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/boost"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/boost"/>
+  </url>
+  <url>
     <loc>https://bonplaninfos.net/help-center</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/help-center"/>
@@ -432,8 +647,51 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/help-center"/>
   </url>
   <url>
+    <loc>https://bonplaninfos.net/faq</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/faq"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/faq"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/faq"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/faq"/>
+  </url>
+  <url>
     <loc>https://bonplaninfos.net/terms</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/terms"/>
@@ -476,7 +734,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/privacy-policy</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/privacy-policy"/>
@@ -519,7 +777,7 @@
   </url>
   <url>
     <loc>https://bonplaninfos.net/legal-mentions</loc>
-    <lastmod>2025-12-29</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
     <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/legal-mentions"/>
@@ -559,6 +817,92 @@
     <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/legal-mentions"/>
     <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/legal-mentions"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/legal-mentions"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/partner-signup</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/partner-signup"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/partner-signup"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/marketing</loc>
+    <lastmod>2025-12-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/marketing"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/marketing"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/marketing"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/marketing"/>
   </url>
   <url>
     <loc>https://bonplaninfos.net/event/8302b904-3419-4043-aaf3-f3f6e0b47993</loc>
@@ -604,49 +948,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/8302b904-3419-4043-aaf3-f3f6e0b47993"/>
   </url>
   <url>
-    <loc>https://bonplaninfos.net/event/cb11d234-29a5-4ddb-9141-98399fef5689</loc>
-    <lastmod>2025-12-26T03:20:56.491093+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
-  </url>
-  <url>
     <loc>https://bonplaninfos.net/event/b1151e83-4583-4c63-a63f-1be179f3c771</loc>
     <lastmod>2025-12-29T12:42:58.057158+00:00</lastmod>
     <changefreq>weekly</changefreq>
@@ -688,6 +989,49 @@
     <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/b1151e83-4583-4c63-a63f-1be179f3c771"/>
     <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/b1151e83-4583-4c63-a63f-1be179f3c771"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/b1151e83-4583-4c63-a63f-1be179f3c771"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/event/cb11d234-29a5-4ddb-9141-98399fef5689</loc>
+    <lastmod>2025-12-29T23:24:10.693227+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/cb11d234-29a5-4ddb-9141-98399fef5689"/>
   </url>
   <url>
     <loc>https://bonplaninfos.net/event/13ca6fe2-5f75-4627-b824-90b8d3fb6df5</loc>
@@ -2367,6 +2711,49 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/061b025a-d6e7-4198-9823-6862d1d22c3c"/>
   </url>
   <url>
+    <loc>https://bonplaninfos.net/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd</loc>
+    <lastmod>2025-12-29T23:28:55.914041+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
+  </url>
+  <url>
     <loc>https://bonplaninfos.net/event/b5bd39db-5ef9-44f1-96d8-4a16da7eced0</loc>
     <lastmod>2025-12-25T19:44:16.352456+00:00</lastmod>
     <changefreq>weekly</changefreq>
@@ -3784,49 +4171,6 @@
     <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/f036a97a-05a2-4196-bc20-38047060efc6"/>
     <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/f036a97a-05a2-4196-bc20-38047060efc6"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/f036a97a-05a2-4196-bc20-38047060efc6"/>
-  </url>
-  <url>
-    <loc>https://bonplaninfos.net/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd</loc>
-    <lastmod>2025-12-25T19:44:16.352456+00:00</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/dfa52b82-9e90-49c5-bcf0-b2a1cb7bc7fd"/>
   </url>
   <url>
     <loc>https://bonplaninfos.net/event/e0d02797-72f2-4501-94a0-3278c116d878</loc>
@@ -7783,5 +8127,263 @@
     <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/event/3b9a4b91-6e39-4bc8-bfa2-1ac66977c2ec"/>
     <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/event/3b9a4b91-6e39-4bc8-bfa2-1ac66977c2ec"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/event/3b9a4b91-6e39-4bc8-bfa2-1ac66977c2ec"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348</loc>
+    <lastmod>2025-10-09T19:56:15.383574+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/a06bd7ec-9bf6-41e9-82b4-1646d0bf5348"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06</loc>
+    <lastmod>2025-10-09T19:56:15.383574+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/6d7a9b26-9cb8-4629-a829-058b0cae4f06"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5</loc>
+    <lastmod>2025-10-09T19:56:15.383574+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/bd0c202b-fc37-44b3-ad43-c1119e0c57c5"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d</loc>
+    <lastmod>2025-10-24T22:32:47.640114+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/0af1d296-a39e-407a-a765-4d8f4abfdf1d"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/f7058835-f349-4b88-a87c-abfd7914460f</loc>
+    <lastmod>2025-10-24T22:32:47.640114+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/f7058835-f349-4b88-a87c-abfd7914460f"/>
+  </url>
+  <url>
+    <loc>https://bonplaninfos.net/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b</loc>
+    <lastmod>2025-10-24T22:32:47.640114+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/promotion/1d431445-3c57-4edc-98ae-bb2331ea1e9b"/>
   </url>
 </urlset>
