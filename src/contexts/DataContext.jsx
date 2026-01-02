@@ -3,7 +3,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
-const DataContext = createContext();
+// Initialize with empty object to prevent destructuring errors if provider is missing
+const DataContext = createContext({});
 
 export const useData = () => {
   return useContext(DataContext);
@@ -27,7 +28,7 @@ const fetchWithRetry = async (fn, retries = 3, delay = 1000, fallbackValue = nul
 export const DataProvider = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // Core Data State
   const [userProfile, setUserProfile] = useState(null);
   const [welcomePopups, setWelcomePopups] = useState([]);
@@ -80,9 +81,9 @@ export const DataProvider = ({ children }) => {
     }
 
     const now = Date.now();
-    const isCacheValid = 
-      profileCache.current.data && 
-      profileCache.current.userId === user.id && 
+    const isCacheValid =
+      profileCache.current.data &&
+      profileCache.current.userId === user.id &&
       (now - profileCache.current.timestamp < CACHE_DURATION);
 
     // Use cache if valid and not forced refresh (refreshTrigger increments on force)
@@ -130,32 +131,32 @@ export const DataProvider = ({ children }) => {
   // 2. Fetch App Settings
   const fetchAppSettings = useCallback(async () => {
     try {
-        const { data, error } = await fetchWithRetry(
-            () => supabase.from('app_settings').select('*').limit(1).maybeSingle(),
-            2, 1000, {}
-        );
+      const { data, error } = await fetchWithRetry(
+        () => supabase.from('app_settings').select('*').limit(1).maybeSingle(),
+        2, 1000, {}
+      );
 
-        if (!error && data) {
-            setAppSettings(prev => ({ ...prev, ...data }));
-        }
+      if (!error && data) {
+        setAppSettings(prev => ({ ...prev, ...data }));
+      }
     } catch (err) {
-        console.warn("Exception fetching app_settings:", err);
+      console.warn("Exception fetching app_settings:", err);
     }
   }, []);
 
   // 3. Fetch Welcome Popups
   const fetchWelcomePopups = useCallback(async () => {
     try {
-        const { data, error } = await fetchWithRetry(
-            () => supabase.from('welcome_popups').select('*').eq('is_active', true).order('created_at', { ascending: false }),
-            2, 1000, []
-        );
+      const { data, error } = await fetchWithRetry(
+        () => supabase.from('welcome_popups').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+        2, 1000, []
+      );
 
-        if (!error && data) {
-            setWelcomePopups(data);
-        }
+      if (!error && data) {
+        setWelcomePopups(data);
+      }
     } catch (err) {
-        console.warn("Exception fetching welcome_popups:", err);
+      console.warn("Exception fetching welcome_popups:", err);
     }
   }, []);
 
@@ -168,7 +169,7 @@ export const DataProvider = ({ children }) => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_read', false);
-      
+
       if (!error) {
         setNotificationCount(count || 0);
       }
@@ -197,7 +198,7 @@ export const DataProvider = ({ children }) => {
       if (error) throw error;
 
       console.log("Profile updated successfully");
-      
+
       // Force refresh to update local state immediately
       await fetchUserProfile();
       // Or more aggressively invalidate cache
@@ -294,14 +295,14 @@ export const DataProvider = ({ children }) => {
     try {
       let query = supabase
         .from('events')
-        .select('*') 
+        .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
       if (filters.organizer_id) {
         query = query.eq('organizer_id', filters.organizer_id);
       }
-      
+
       if (filters.country) {
         query = query.eq('country', filters.country);
       }
@@ -336,8 +337,8 @@ export const DataProvider = ({ children }) => {
     userProfile,
     welcomePopups,
     appSettings,
-    loading, 
-    loadingProfile, 
+    loading,
+    loadingProfile,
     notificationBellAnimation,
     notificationCount,
     fetchNotificationCount,
@@ -345,10 +346,10 @@ export const DataProvider = ({ children }) => {
     updateUserProfile,
     triggerNotificationAnimation,
     refreshData: () => {
-        fetchAppSettings();
-        fetchWelcomePopups();
-        forceRefreshUserProfile();
-        fetchNotificationCount();
+      fetchAppSettings();
+      fetchWelcomePopups();
+      forceRefreshUserProfile();
+      fetchNotificationCount();
     },
     getEvents,
     getPromotions,

@@ -12,6 +12,7 @@ import EventsPage from '@/pages/EventsPage';
 import CreateEventPage from '@/pages/CreateEventPage';
 import EventDetailPage from '@/pages/EventDetailPage';
 import AdminDashboard from '@/pages/AdminDashboard';
+import AdminUsersPage from '@/pages/AdminUsersPage'; // Import AdminUsersPage
 import SecretaryDashboard from '@/pages/SecretaryDashboard';
 import WalletPage from '@/pages/WalletPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -36,7 +37,7 @@ import ContestsPage from '@/pages/ContestsPage';
 import ContestDetailPage from '@/pages/ContestDetailPage';
 import DiscoverPage from '@/pages/DiscoverPage';
 import CoinPacksPage from '@/pages/CoinPacksPage';
-import CreditPacksPage from '@/pages/CreditPacksPage'; // New Import
+import CreditPacksPage from '@/pages/CreditPacksPage';
 import PaymentRedirectPage from '@/pages/PaymentRedirectPage';
 import CreateRaffleEventPage from '@/pages/CreateRaffleEventPage';
 import CreateVotingEventPage from '@/pages/CreateVotingEventPage';
@@ -92,6 +93,7 @@ function App() {
                   <Route path="/contests" element={<ContestsPage />} />
                   <Route path="/contest/:id" element={<ContestDetailPage />} />
                   <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/secretary" element={<SecretaryDashboard />} />
                   <Route path="/wallet" element={<WalletPage />} />
                   <Route path="/settings" element={<SettingsPage />} />

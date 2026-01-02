@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, AlertTriangle, Hourglass, Calendar } from 'lucide-react';
+import { Clock, AlertTriangle, Hourglass, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const EventCountdown = ({
@@ -16,40 +16,61 @@ const EventCountdown = ({
     const now = new Date();
     const eventDateTime = new Date(eventDate);
 
+    // If specific start time is provided separately (legacy support)
     if (eventStartTime) {
       const [hours, minutes] = eventStartTime.split(':');
       eventDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     }
 
     const difference = eventDateTime.getTime() - now.getTime();
-    let timeLeft = {};
-
-    if (difference > 0) {
-      timeLeft = {
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / (1000 * 60)) % 60),
-        seconds: Math.floor((difference / 1000) % 60),
-        totalMs: difference
+    
+    // Strictly stop at 0
+    if (difference <= 0) {
+      return {
+        days: -1,
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        totalMs: 0
       };
-    } else {
-      timeLeft = { days: -1, totalMs: difference };
     }
-    return timeLeft;
+
+    return {
+      days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((difference / (1000 * 60)) % 60),
+      seconds: Math.floor((difference / 1000) % 60),
+      totalMs: difference
+    };
   };
 
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+  const [hasEnded, setHasEnded] = useState(false);
 
   useEffect(() => {
+    // Initial check
+    const initialTime = calculateTimeLeft();
+    setTimeLeft(initialTime);
+    if (initialTime.totalMs <= 0) {
+        setHasEnded(true);
+        return;
+    }
+
     const timer = setInterval(() => {
       const newTimeLeft = calculateTimeLeft();
       setTimeLeft(newTimeLeft);
-      if (newTimeLeft.days === -1 && timeLeft.days !== -1 && onCountdownEnd) {
-        onCountdownEnd();
+      
+      if (newTimeLeft.totalMs <= 0 && !hasEnded) {
+        setHasEnded(true);
+        if (onCountdownEnd) {
+          onCountdownEnd();
+        }
+        clearInterval(timer);
       }
     }, 1000);
+
     return () => clearInterval(timer);
-  }, [eventDate, eventStartTime]);
+  }, [eventDate, eventStartTime, hasEnded, onCountdownEnd]);
 
   // --- Motivational Messages & Styles ---
   const getMotivationalMessage = () => {
@@ -66,7 +87,7 @@ const EventCountdown = ({
   };
 
   // Styling logic based on urgency
-  const isUrgent = timeLeft.days !== null && timeLeft.days < 2;
+  const isUrgent = timeLeft.days !== null && timeLeft.days >= 0 && timeLeft.days < 2;
   const isVeryUrgent = timeLeft.days === 0 && timeLeft.hours < 5;
 
   // Dynamic styles
@@ -77,7 +98,7 @@ const EventCountdown = ({
 
   const urgentStyles = "bg-gradient-to-r from-red-600 via-orange-600 to-red-600 bg-[length:200%_200%] animate-gradient-x text-white shadow-red-500/20";
   const normalStyles = "bg-black/40 text-white";
-  const finishedStyles = "bg-gray-800/80 text-gray-300";
+  const finishedStyles = "bg-gray-800/90 text-gray-300 border-gray-700";
 
   const getContainerStyles = () => {
     if (timeLeft.days === -1) return finishedStyles;
@@ -112,12 +133,16 @@ const EventCountdown = ({
       <div className={`${containerBaseStyles} ${getContainerStyles()} ${isVeryUrgent ? 'animate-pulse' : ''}`}>
         {showIcon && (
           <div className={`p-1.5 sm:p-2 rounded-full bg-white/10 ${isUrgent ? 'animate-ping-slow' : ''}`}>
-            {isUrgent ? <Hourglass className="w-4 h-4 sm:w-5 sm:h-5" /> : <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-300" />}
+            {timeLeft.days === -1 ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" /> : 
+             isUrgent ? <Hourglass className="w-4 h-4 sm:w-5 sm:h-5" /> : 
+             <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-300" />}
           </div>
         )}
 
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider opacity-80">Temps restant</span>
+          <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider opacity-80">
+            {timeLeft.days === -1 ? 'Statut' : 'Temps restant'}
+          </span>
           <span className="text-lg sm:text-2xl md:text-3xl font-mono tracking-tight tabular-nums">
             {formatTimeLeft()}
           </span>

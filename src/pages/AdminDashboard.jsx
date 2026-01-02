@@ -1056,9 +1056,13 @@ const AdminDashboard = () => {
             <TabsContent value="payments">
               <AdminPaymentsTab />
             </TabsContent>
-            <TabsContent value="users">
-              <UserManagement users={allUsers} onRefresh={fetchData} />
-            </TabsContent>
+           <TabsContent value="users">
+  <UserManagement 
+    users={allUsers} 
+    onRefresh={fetchData}
+    userProfile={userProfile}  // Ajoutez cette ligne
+  />
+</TabsContent>
             <TabsContent value="secretaries">
               <SecretaryManagementTab users={allUsers} onRefresh={fetchData} />
             </TabsContent>

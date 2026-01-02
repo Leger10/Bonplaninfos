@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles, User } from 'lucide-react'; // Added User icon
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import EventCountdown from '@/components/EventCountdown';
@@ -52,7 +52,19 @@ const EventCard = ({ event, onClick }) => {
     return formatDistanceToNowStrict(end, { locale: fr, addSuffix: true });
   };
   
-  const promotionTimeLeft = getPromotionTimeLeft(event.promotion_end || event.promoted_until);
+  // Determine the best date to use for promotion status
+  const getBestPromotionDate = () => {
+    const d1 = event.promoted_until ? new Date(event.promoted_until) : null;
+    const d2 = event.promotion_end ? new Date(event.promotion_end) : null;
+    
+    // Return the one that is in the future, or the latest one if both are present
+    if (d1 && d2) return d1 > d2 ? event.promoted_until : event.promotion_end;
+    if (d1) return event.promoted_until;
+    if (d2) return event.promotion_end;
+    return null;
+  };
+
+  const promotionTimeLeft = getBestPromotionDate() ? getPromotionTimeLeft(getBestPromotionDate()) : null;
 
   return (
     <motion.div
@@ -116,6 +128,12 @@ const EventCard = ({ event, onClick }) => {
                 <MapPin className="w-4 h-4 mr-2 text-[#C9A227]" />
                  {event.location || `${event.city}, ${event.country}`}
               </div>
+              {event.organizer_name && (
+                <div className="flex items-center text-gray-400 text-xs">
+                  <User className="w-3 h-3 mr-1 text-[#C9A227]" />
+                  Par {event.organizer_name}
+                </div>
+              )}
             </div>
           </div>
 

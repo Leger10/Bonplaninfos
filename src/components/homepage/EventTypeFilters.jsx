@@ -10,11 +10,11 @@ const EventTypeFilters = () => {
     const { t } = useTranslation();
 
     const eventTypes = [
-        { name: t('home_page.event_types.standard'), type: 'standard', icon: Zap, color: 'from-blue-500 to-indigo-600' },
-        { name: t('home_page.event_types.ticketing'), type: 'ticketing', icon: Ticket, color: 'from-purple-500 to-pink-600' },
-        { name: t('home_page.event_types.raffles'), type: 'raffle', icon: Gift, color: 'from-green-400 to-teal-500' },
-        { name: t('home_page.event_types.voting'), type: 'voting', icon: Vote, color: 'from-yellow-500 to-orange-600' },
-        { name: t('home_page.event_types.stands'), type: 'stand_rental', icon: Store, color: 'from-red-500 to-rose-600' },
+        { name: t('home_page.event_types.standard'), type: 'standard', icon: Zap, color: 'from-blue-600 to-indigo-700' },
+        { name: t('home_page.event_types.ticketing'), type: 'ticketing', icon: Ticket, color: 'from-purple-600 to-pink-700' },
+        { name: t('home_page.event_types.raffles'), type: 'raffle', icon: Gift, color: 'from-emerald-600 to-teal-700' },
+        { name: t('home_page.event_types.voting'), type: 'voting', icon: Vote, color: 'from-orange-600 to-red-700' },
+        { name: t('home_page.event_types.stands'), type: 'stand_rental', icon: Store, color: 'from-cyan-600 to-blue-700' },
     ];
     
     const EventTypeCard = ({ name, icon: Icon, color, onClick }) => (
@@ -24,9 +24,9 @@ const EventTypeFilters = () => {
             onClick={onClick}
         >
             <Card className={`relative overflow-hidden cursor-pointer group bg-gradient-to-br ${color} text-white shadow-lg`}>
-                <div className="p-6 flex flex-col items-center justify-center h-32 text-center">
-                    <Icon className="w-10 h-10 mb-3" />
-                    <h3 className="font-bold text-md">{name}</h3>
+                <div className="p-4 flex flex-col items-center justify-center h-28 text-center"> {/* Adjusted padding and height */}
+                    <Icon className="w-8 h-8 mb-2" /> {/* Adjusted icon size and margin */}
+                    <h3 className="font-bold text-sm">{name}</h3> {/* Adjusted font size */}
                 </div>
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-10 transition-opacity"></div>
             </Card>

@@ -9,11 +9,11 @@ import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
-    AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogContent,
 } from "@/components/ui/alert-dialog";
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -47,17 +47,22 @@ const HomePage = () => {
         setLoading(true);
 
         try {
+            const now = new Date().toISOString();
+            
+            // Corrected query to include promoted_until check
             const { data: eventsRes, error: eventsError } = await supabase
                 .from('events')
                 .select('*, organizer:organizer_id(full_name), category:category_id(name, slug)')
                 .eq('status', 'active')
                 .eq('is_promoted', true)
-                .gt('promotion_end', new Date().toISOString())
+                // We check both columns using OR logic to be robust
+                // This ensures we catch events using either the legacy or new column for promotion expiration
+                .or(`promoted_until.gt.${now},promotion_end.gt.${now}`)
                 .order('created_at', { ascending: false })
                 .limit(8);
 
             if (eventsError) throw eventsError;
-            
+
             const formattedEvents = eventsRes.map(e => ({
                 ...e,
                 category_name: e.category?.name,
@@ -82,6 +87,7 @@ const HomePage = () => {
             }
 
         } catch (error) {
+            console.error("Error fetching homepage data:", error);
             toast({ title: t('common.error_title'), description: t('home_page.loading_error.description'), variant: 'destructive' });
         } finally {
             setLoading(false);
@@ -104,7 +110,7 @@ const HomePage = () => {
             requiredCoins: cost,
             onSuccess: async () => {
                 try {
-                    const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, {method: 'POST'});
+                    const { data: rpcData, error: rpcError } = await supabase.rpc('access_protected_event', { p_event_id: event.id, p_user_id: user.id }, { method: 'POST' });
                     if (rpcError) throw rpcError;
                     if (!rpcData.success) throw new Error(rpcData.message);
 

@@ -7,12 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Loader2, Copy, RefreshCw, Ban, CheckCircle, Edit, Trash2, AlertTriangle, UserCheck, XCircle, MessageSquare, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { MoreHorizontal, Loader2, Copy, Ban, CheckCircle, Edit, Trash2, ShieldAlert, KeyRound, Eye, EyeOff, Search, Flag } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Badge } from '@/components/ui/badge';
-import ImpersonationBanner from '@/components/layout/ImpersonationBanner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,10 +23,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
-// Helper component for user form
+import UserReportsTab from './UserReportsTab';
+import UserReactivationsTab from './UserReactivationsTab';
+
+// Helper to mask sensitive info
+const maskEmail = (email) => {
+  if (!email) return '';
+  const [name, domain] = email.split('@');
+  return `${name.substring(0, 2)}***@${domain}`;
+};
+
+const maskPhone = (phone) => {
+  if (!phone) return '';
+  return `${phone.substring(0, 4)}****${phone.substring(phone.length - 2)}`;
+};
+
 const UserForm = ({ userToEdit, onSave, onCancel }) => {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -75,8 +87,6 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
           city: formData.city,
         }).eq('id', userToEdit.id);
         if (profileError) throw profileError;
-      } else {
-        throw new Error("La création directe d'utilisateur n'est pas supportée depuis cette interface.");
       }
       toast({ title: 'Succès', description: `Utilisateur mis à jour avec succès.` });
       onSave();
@@ -111,33 +121,114 @@ const UserForm = ({ userToEdit, onSave, onCancel }) => {
   );
 };
 
-const UserManagementTab = ({ onRefresh }) => {
+const ReportDialog = ({ userToReport, isOpen, onClose }) => {
   const { toast } = useToast();
-  const { userProfile } = useData(); 
+  const { user: currentUser } = useAuth();
+  const [reason, setReason] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleReport = async () => {
+    if (!reason) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner un motif.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('content_reports').insert({
+        reporter_id: currentUser.id,
+        target_type: 'user',
+        target_id: userToReport.id,
+        reason: reason,
+        status: 'pending',
+        content: description
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Signalement envoyé", description: "Le super administrateur examinera ce profil." });
+      onClose();
+    } catch (error) {
+      console.error("Report error", error);
+      toast({ title: "Erreur", description: "Impossible d'envoyer le signalement.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Signaler l'utilisateur</DialogTitle>
+          <DialogDescription>
+            Signalez ce profil au Super Administrateur pour examen.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <Select value={reason} onValueChange={setReason}>
+            <SelectTrigger><SelectValue placeholder="Motif du signalement" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="spam">Spam / Faux profil</SelectItem>
+              <SelectItem value="harassment">Harcèlement</SelectItem>
+              <SelectItem value="inappropriate">Contenu inapproprié</SelectItem>
+              <SelectItem value="fraud">Fraude / Arnaque</SelectItem>
+              <SelectItem value="other">Autre</SelectItem>
+            </SelectContent>
+          </Select>
+          <Textarea 
+            placeholder="Détails supplémentaires (optionnel)" 
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annuler</Button>
+          <Button variant="destructive" onClick={handleReport} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Signaler"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const UserManagement = ({ onRefresh, userProfile }) => {
+  const { toast } = useToast();
   const { invokeFunction } = useAuth();
   
-  // Tabs state
-  const [activeTab, setActiveTab] = useState('users');
+  // Permissions Logic
+  const isSuperAdmin = userProfile?.user_type === 'super_admin';
+  const isSuperSecretary = userProfile?.user_type === 'secretary' && userProfile?.appointed_by_super_admin;
+  const canManageUsers = isSuperAdmin || isSuperSecretary; 
+  const canViewSensitiveInfo = canManageUsers;
 
+  // Filters State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({ 
+    user_type: 'all',
+    country: '',
+    city: '',
+    status: 'all' 
+  });
+  
   // Users List State
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [userToEdit, setUserToEdit] = useState(null);
-  const [toggleLoading, setToggleLoading] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 0, size: 20 });
   const [totalUsers, setTotalUsers] = useState(0);
-  const [filters, setFilters] = useState({ user_type: 'all' });
-  const [impersonatingUser, setImpersonatingUser] = useState(null);
 
-  // Reactivation Requests State
-  const [requests, setRequests] = useState([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
-  const [requestActionLoading, setRequestActionLoading] = useState(null);
+  // Tab Counts State
+  const [reportCount, setReportCount] = useState(0);
+  const [reactivationCount, setReactivationCount] = useState(0);
 
+  // Actions State
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [userToReport, setUserToReport] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
   // Password Reset State
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
   const [resetUser, setResetUser] = useState(null);
@@ -145,19 +236,33 @@ const UserManagementTab = ({ onRefresh }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
-  // Check super admin status
-  const isSuperAdmin = userProfile?.user_type === 'super_admin';
-
   // --- Users Fetching ---
   const fetchUsers = useCallback(async () => {
+    if (!userProfile) return;
     setLoading(true);
     let query = supabase.from('profiles').select('*', { count: 'exact' });
 
+    // Hierarchy Filtering
+    if (!canManageUsers) {
+      if (userProfile.country) query = query.eq('country', userProfile.country);
+      if (userProfile.city) query = query.eq('city', userProfile.city);
+    }
+
+    // Dynamic Filters
     if (searchTerm) {
       query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,affiliate_code.ilike.%${searchTerm}%`);
     }
     if (filters.user_type !== 'all') {
       query = query.eq('user_type', filters.user_type);
+    }
+    if (filters.status !== 'all') {
+      query = query.eq('is_active', filters.status === 'active');
+    }
+    if (filters.country) {
+      query = query.ilike('country', `%${filters.country}%`);
+    }
+    if (filters.city) {
+      query = query.ilike('city', `%${filters.city}%`);
     }
 
     const { data, error, count } = await query
@@ -172,38 +277,31 @@ const UserManagementTab = ({ onRefresh }) => {
       setTotalUsers(count || 0);
     }
     setLoading(false);
-  }, [searchTerm, filters, pagination, toast]);
+  }, [searchTerm, filters, pagination, toast, userProfile, canManageUsers]);
 
-  // --- Requests Fetching ---
-  const fetchRequests = useCallback(async () => {
-    setLoadingRequests(true);
-    try {
-        const { data, error } = await supabase
-            .from('reactivation_requests')
-            .select(`
-                *,
-                user:user_id (id, full_name, email, avatar_url, user_type)
-            `)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setRequests(data || []);
-    } catch (err) {
-        console.error("Fetch requests error:", err);
-        toast({ title: 'Erreur', description: "Impossible de charger les demandes", variant: 'destructive' });
-    } finally {
-        setLoadingRequests(false);
-    }
-  }, [toast]);
-
-  // Initial load
   useEffect(() => {
     fetchUsers();
-    fetchRequests();
-  }, [fetchUsers, fetchRequests]);
+  }, [fetchUsers]);
 
-  // --- Actions ---
+  // Initial fetch for counters (optional, as tabs will trigger it, but good for initial load)
+  useEffect(() => {
+    const fetchCounters = async () => {
+        // Fetch initial report count
+        const { count: reports } = await supabase
+            .from('content_reports')
+            .select('*', { count: 'exact', head: true })
+            .eq('target_type', 'user');
+        setReportCount(reports || 0);
+
+        // Fetch initial reactivation count
+        const { count: reactivations } = await supabase
+            .from('reactivation_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
+        setReactivationCount(reactivations || 0);
+    };
+    fetchCounters();
+  }, []);
 
   const handleSave = () => {
     setIsFormOpen(false);
@@ -212,13 +310,13 @@ const UserManagementTab = ({ onRefresh }) => {
   };
 
   const handleToggleStatus = async (user) => {
+    if (!canManageUsers) return;
     if (user.user_type === 'super_admin') {
       toast({ title: 'Action interdite', description: 'Le Super Admin ne peut pas être désactivé.', variant: 'destructive' });
       return;
     }
 
     try {
-        setToggleLoading(true);
         const newStatus = !user.is_active;
         const { error } = await supabase
             .from('profiles')
@@ -235,20 +333,13 @@ const UserManagementTab = ({ onRefresh }) => {
         
         fetchUsers();
     } catch (err) {
-        console.error("Toggle status error:", err);
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
-    } finally {
-        setToggleLoading(false);
     }
   };
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
-    
-    if (userProfile?.user_type !== 'super_admin') {
-        toast({ title: 'Non autorisé', description: "Seul le Super Admin peut supprimer un utilisateur.", variant: 'destructive' });
-        return;
-    }
+    if (!canManageUsers) return;
 
     setDeleteLoading(true);
     try {
@@ -263,95 +354,35 @@ const UserManagementTab = ({ onRefresh }) => {
         fetchUsers();
         setUserToDelete(null);
     } catch (err) {
-        console.error("Delete error:", err);
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     } finally {
         setDeleteLoading(false);
     }
   };
 
-  const handleRequestAction = async (requestId, userId, action) => {
-    setRequestActionLoading(requestId);
-    try {
-        if (action === 'approve') {
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({ is_active: true })
-                .eq('id', userId);
-            if (profileError) throw profileError;
-
-            const { error: reqError } = await supabase
-                .from('reactivation_requests')
-                .update({ 
-                    status: 'approved', 
-                    reviewed_by: userProfile.id, 
-                    reviewed_at: new Date().toISOString() 
-                })
-                .eq('id', requestId);
-            if (reqError) throw reqError;
-
-            toast({ title: "Approuvé", description: "Utilisateur réactivé avec succès.", variant: 'success' });
-        } else {
-            const { error: reqError } = await supabase
-                .from('reactivation_requests')
-                .update({ 
-                    status: 'rejected', 
-                    reviewed_by: userProfile.id, 
-                    reviewed_at: new Date().toISOString() 
-                })
-                .eq('id', requestId);
-            if (reqError) throw reqError;
-
-            toast({ title: "Rejeté", description: "Demande de réactivation rejetée." });
-        }
-        
-        fetchRequests();
-        fetchUsers();
-    } catch (err) {
-        console.error("Request action error:", err);
-        toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
-    } finally {
-        setRequestActionLoading(null);
-    }
-  };
-
-  const handleOpenResetPassword = (user) => {
-    setResetUser(user);
-    setNewPassword('000000');
-    setResetPasswordDialog(true);
-  };
-
   const confirmResetPassword = async () => {
     if (!resetUser || !newPassword) return;
     setResetLoading(true);
     try {
-        console.log("Invoking admin-reset-password for user:", resetUser.id);
         const { data, error } = await invokeFunction('admin-reset-password', {
             body: JSON.stringify({ userId: resetUser.id, newPassword: newPassword })
         });
 
-        if (error) {
-            console.error("Invoke function returned error:", error);
-            throw error;
-        }
-        
-        if (data && data.error) {
-            console.error("Function data contained error:", data.error);
-            throw new Error(data.error);
+        if (error || (data && data.error)) {
+            throw new Error(error?.message || data?.error);
         }
 
         toast({ 
             title: "Mot de passe réinitialisé", 
-            description: `Le mot de passe de ${resetUser.full_name || resetUser.email} a été défini sur : ${newPassword}. L'email de l'utilisateur a également été confirmé.`,
+            description: `Nouveau mot de passe pour ${resetUser.full_name || 'utilisateur'} : ${newPassword}`,
             variant: "success",
             duration: 10000 
         });
         setResetPasswordDialog(false);
     } catch (err) {
-        console.error("Reset password error catch:", err);
         toast({ 
-            title: 'Erreur technique', 
-            description: err.message || "Impossible de joindre le serveur. Vérifiez votre connexion ou réessayez.", 
+            title: 'Erreur', 
+            description: err.message || "Erreur technique.", 
             variant: 'destructive' 
         });
     } finally {
@@ -368,274 +399,222 @@ const UserManagementTab = ({ onRefresh }) => {
   const pageCount = Math.ceil(totalUsers / pagination.size);
 
   return (
-    <div>
-      {impersonatingUser && <ImpersonationBanner user={impersonatingUser} onRevert={() => window.location.reload()} />}
+    <Tabs defaultValue="users" className="w-full">
+      <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsTrigger value="users">
+            Utilisateurs ({totalUsers})
+        </TabsTrigger>
+        <TabsTrigger value="reports">
+            Utilisateurs Signalés ({reportCount})
+        </TabsTrigger>
+        <TabsTrigger value="reactivations">
+            Demandes de Réactivation ({reactivationCount})
+        </TabsTrigger>
+      </TabsList>
 
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Gestion des Utilisateurs</h2>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchRequests(); }}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading || loadingRequests ? 'animate-spin' : ''}`} />
-                Actualiser
-            </Button>
-        </div>
-      </div>
+      <TabsContent value="users" className="space-y-4">
+        {/* Filters & Search */}
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4 w-full">
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Rechercher..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                    />
+                </div>
+                
+                <div className="flex flex-wrap gap-2 w-full">
+                    <Select value={filters.user_type} onValueChange={(val) => setFilters(prev => ({...prev, user_type: val}))}>
+                        <SelectTrigger className="w-[140px]"><SelectValue placeholder="Rôle" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les rôles</SelectItem>
+                            <SelectItem value="user">Utilisateur</SelectItem>
+                            <SelectItem value="organizer">Organisateur</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="secretary">Secrétaire</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-4">
-            <TabsTrigger value="users">
-                Utilisateurs
-                <Badge variant="secondary" className="ml-2 text-xs">{totalUsers}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="relative">
-                Demandes Réactivation
-                {requests.length > 0 && (
-                    <Badge variant="destructive" className="ml-2 text-xs animate-pulse">{requests.length}</Badge>
-                )}
-            </TabsTrigger>
-        </TabsList>
+                    <Select value={filters.status} onValueChange={(val) => setFilters(prev => ({...prev, status: val}))}>
+                        <SelectTrigger className="w-[140px]"><SelectValue placeholder="Statut" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous statuts</SelectItem>
+                            <SelectItem value="active">Actif</SelectItem>
+                            <SelectItem value="inactive">Inactif</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-        {/* --- USERS TAB --- */}
-        <TabsContent value="users">
-            <div className="flex flex-col md:flex-row gap-4 mb-4">
-                <Input
-                placeholder="Rechercher (nom, email, code)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-                />
-                <Select value={filters.user_type} onValueChange={(val) => setFilters({ user_type: val })}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Rôle" /></SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="user">Utilisateur</SelectItem>
-                    <SelectItem value="organizer">Organisateur</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="secretary">Secrétaire</SelectItem>
-                </SelectContent>
-                </Select>
+                    <Input 
+                        placeholder="Filtrer par Pays" 
+                        value={filters.country}
+                        onChange={(e) => setFilters(prev => ({...prev, country: e.target.value}))}
+                        className="w-[140px]"
+                    />
+                    
+                    <Input 
+                        placeholder="Filtrer par Ville" 
+                        value={filters.city}
+                        onChange={(e) => setFilters(prev => ({...prev, city: e.target.value}))}
+                        className="w-[140px]"
+                    />
+                </div>
             </div>
+            <div className="text-sm text-muted-foreground text-right">
+                Total: {totalUsers} utilisateurs
+            </div>
+        </div>
 
-            <div className="rounded-md border bg-card">
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Utilisateur</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Rôle</TableHead>
-                    <TableHead>Code Parrainage</TableHead>
-                    <TableHead>Filleuls</TableHead>
-                    <TableHead>Date d'inscription</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading && users.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                    ) : users.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
-                    ) : (
-                    users.map(user => (
-                        <TableRow key={user.id}>
-                        <TableCell>
-                            <div className="font-medium">{user.full_name || 'Sans nom'}</div>
-                            <div className="text-xs text-muted-foreground">{user.email}</div>
-                            <div className="text-xs text-muted-foreground flex gap-1 items-center">
-                                {user.country} {user.city && `• ${user.city}`}
+        {/* Users Table */}
+        <div className="rounded-md border bg-card overflow-hidden">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Utilisateur</TableHead>
+                <TableHead>Coordonnées</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Rôle</TableHead>
+                <TableHead>Localisation</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {loading ? (
+                <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                ) : users.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Aucun utilisateur trouvé.</TableCell></TableRow>
+                ) : (
+                users.map(user => (
+                    <TableRow key={user.id}>
+                    <TableCell>
+                        <div className="font-medium">{user.full_name || 'Sans nom'}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                            Code: <code className="bg-muted px-1 rounded">{user.affiliate_code || 'N/A'}</code>
+                            <Copy className="h-3 w-3 cursor-pointer hover:text-primary" onClick={() => copyCode(user.affiliate_code)} />
+                        </div>
+                    </TableCell>
+                    <TableCell>
+                        <div className="text-sm">
+                            {canViewSensitiveInfo ? user.email : maskEmail(user.email)}
+                        </div>
+                        {user.phone && (
+                            <div className="text-xs text-muted-foreground">
+                                {canViewSensitiveInfo ? user.phone : maskPhone(user.phone)}
                             </div>
-                        </TableCell>
-                        <TableCell>
-                            <Badge variant={user.is_active ? "success" : "destructive"} className="text-[10px]">
-                            {user.is_active ? "Actif" : "Inactif"}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <Badge variant={user.user_type === 'super_admin' ? 'destructive' : 'outline'} className="gap-1">
-                                {user.user_type}
-                                {user.admin_type && ` (${user.admin_type})`}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            {user.affiliate_code ? (
-                            <div className="flex items-center gap-2">
-                                <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{user.affiliate_code}</code>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyCode(user.affiliate_code)}><Copy className="h-3 w-3" /></Button>
-                            </div>
-                            ) : <span className="text-xs text-muted-foreground italic">Non généré</span>}
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-1">
-                            <span className="font-bold">{user.referral_count || 0}</span>
-                            </div>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                            {new Date(user.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                
-                                <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>
-                                <Edit className="mr-2 h-4 w-4" /> Modifier
-                                </DropdownMenuItem>
-                                
-                                {isSuperAdmin && (
-                                    <DropdownMenuItem onClick={() => handleOpenResetPassword(user)}>
+                        )}
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={user.is_active ? "outline" : "destructive"} className={user.is_active ? "bg-green-100 text-green-800 border-green-200" : "text-[10px]"}>
+                        {user.is_active ? "Actif" : "Inactif"}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className="capitalize">{user.user_type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                        <div className="text-sm">{user.country}</div>
+                        <div className="text-xs text-muted-foreground">{user.city}</div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            
+                            {canManageUsers ? (
+                                <>
+                                    <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>
+                                    <Edit className="mr-2 h-4 w-4" /> Modifier infos
+                                    </DropdownMenuItem>
+                                    
+                                    <DropdownMenuItem onClick={() => { setResetUser(user); setNewPassword('000000'); setResetPasswordDialog(true); }}>
                                         <KeyRound className="mr-2 h-4 w-4" /> Réinit. mot de passe
                                     </DropdownMenuItem>
-                                )}
 
-                                <DropdownMenuItem onClick={() => handleToggleStatus(user)} disabled={toggleLoading || user.user_type === 'super_admin'}>
-                                {user.is_active ? (
-                                    <>
-                                    <Ban className="mr-2 h-4 w-4 text-orange-500" /> 
-                                    <span className="text-orange-500">Désactiver</span>
-                                    </>
-                                ) : (
-                                    <>
-                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                    <span className="text-green-500">Réactiver</span>
-                                    </>
-                                )}
+                                    <DropdownMenuItem onClick={() => handleToggleStatus(user)} disabled={user.user_type === 'super_admin'}>
+                                    {user.is_active ? (
+                                        <><Ban className="mr-2 h-4 w-4 text-orange-500" /> <span className="text-orange-500">Désactiver</span></>
+                                    ) : (
+                                        <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> <span className="text-green-500">Réactiver</span></>
+                                    )}
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        onClick={() => setUserToDelete(user)}
+                                        disabled={user.user_type === 'super_admin'}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                    </DropdownMenuItem>
+                                </>
+                            ) : (
+                                <DropdownMenuItem onClick={() => setUserToReport(user)}>
+                                    <Flag className="mr-2 h-4 w-4 text-orange-500" /> Signaler
                                 </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
 
-                                {/* Delete - ONLY Super Admin */}
-                                {isSuperAdmin && (
-                                    <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem 
-                                            className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
-                                            onClick={() => setUserToDelete(user)}
-                                            disabled={user.user_type === 'super_admin'}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                                        </DropdownMenuItem>
-                                    </>
-                                )}
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        </TableCell>
-                        </TableRow>
-                    ))
-                    )}
-                </TableBody>
-                </Table>
-            </div>
+        <div className="flex items-center justify-end space-x-2 py-4">
+            <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.max(0, p.page - 1) }))} disabled={pagination.page === 0}>Précédent</Button>
+            <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
+            <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.min(pageCount - 1, p.page + 1) }))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
+        </div>
+      </TabsContent>
 
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.max(0, p.page - 1) }))} disabled={pagination.page === 0}>Précédent</Button>
-                <span className="text-sm text-muted-foreground">Page {pagination.page + 1} sur {pageCount || 1}</span>
-                <Button variant="outline" size="sm" onClick={() => setPagination(p => ({ ...p, page: Math.min(pageCount - 1, p.page + 1) }))} disabled={pagination.page >= pageCount - 1}>Suivant</Button>
-            </div>
-        </TabsContent>
+      <TabsContent value="reports">
+        <UserReportsTab onCountChange={setReportCount} />
+      </TabsContent>
 
-        {/* --- REACTIVATION REQUESTS TAB --- */}
-        <TabsContent value="requests">
-            <div className="rounded-md border bg-card">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Utilisateur</TableHead>
-                            <TableHead>Message / Motif</TableHead>
-                            <TableHead>Date de la demande</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loadingRequests ? (
-                            <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                        ) : requests.length === 0 ? (
-                            <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">Aucune demande de réactivation en attente.</TableCell></TableRow>
-                        ) : (
-                            requests.map(req => (
-                                <TableRow key={req.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{req.user?.full_name || 'Inconnu'}</div>
-                                        <div className="text-xs text-muted-foreground">{req.user?.email}</div>
-                                        <Badge variant="outline" className="mt-1">{req.user?.user_type}</Badge>
-                                    </TableCell>
-                                    <TableCell className="max-w-[300px]">
-                                        <div className="flex gap-2 items-start">
-                                            <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
-                                            <span className="text-sm italic text-muted-foreground">"{req.request_message || 'Pas de message'}"</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm text-muted-foreground">
-                                        {format(new Date(req.created_at), 'dd MMM yyyy HH:mm', { locale: fr })}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
-                                                onClick={() => handleRequestAction(req.id, req.user_id, 'approve')}
-                                                disabled={!!requestActionLoading}
-                                            >
-                                                {requestActionLoading === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4 mr-1" />}
-                                                Approuver
-                                            </Button>
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                                onClick={() => handleRequestAction(req.id, req.user_id, 'reject')}
-                                                disabled={!!requestActionLoading}
-                                            >
-                                                {requestActionLoading === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-1" />}
-                                                Rejeter
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-        </TabsContent>
-      </Tabs>
+      <TabsContent value="reactivations">
+        <UserReactivationsTab onCountChange={setReactivationCount} />
+      </TabsContent>
 
-      {/* Edit/Create Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{userToEdit ? "Modifier" : "Créer"} un utilisateur</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Modifier utilisateur</DialogTitle></DialogHeader>
           <UserForm userToEdit={userToEdit} onSave={handleSave} onCancel={() => setIsFormOpen(false)} />
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert (Super Admin Only) */}
+      {/* Report Dialog */}
+      <ReportDialog 
+        isOpen={!!userToReport} 
+        onClose={() => setUserToReport(null)} 
+        userToReport={userToReport} 
+      />
+
+      {/* Delete Confirmation */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-red-600">
-                    <AlertTriangle className="h-5 w-5" />
-                    Confirmer la suppression
+                    <ShieldAlert className="h-5 w-5" /> Suppression définitive
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                    Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{userToDelete?.full_name || userToDelete?.email}</strong> ?
-                    <br /><br />
-                    Cette action est irréversible et supprimera toutes les données associées (transactions, événements, etc.).
+                    Cette action est irréversible. L'utilisateur <strong>{userToDelete?.full_name}</strong> et toutes ses données seront supprimés.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleteLoading}>Annuler</AlertDialogCancel>
-                <AlertDialogAction 
-                    onClick={handleDeleteUser} 
-                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                    disabled={deleteLoading}
-                >
-                    {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                    Supprimer définitivement
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteUser} className="bg-red-600 hover:bg-red-700">
+                    {deleteLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Supprimer"}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -646,61 +625,32 @@ const UserManagementTab = ({ onRefresh }) => {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
-                <DialogDescription>
-                    Définissez un mot de passe temporaire pour <strong>{resetUser?.full_name || resetUser?.email}</strong>.
-                </DialogDescription>
+                <DialogDescription>Définissez un nouveau mot de passe pour cet utilisateur.</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
                 <div className="flex gap-2 relative">
                     <Input 
                         value={newPassword} 
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Nouveau mot de passe"
                         type={showPassword ? 'text' : 'password'}
+                        placeholder="Nouveau mot de passe"
                     />
-                    <button 
-                        type="button" 
-                        onClick={() => setShowPassword(!showPassword)} 
-                        className="absolute right-24 top-1/2 -translate-y-1/2 text-muted-foreground px-2"
-                    >
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-24 top-1/2 -translate-y-1/2 text-muted-foreground px-2">
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
-                    <Button variant="outline" onClick={() => setNewPassword('Temp' + Math.floor(1000 + Math.random() * 9000) + '!')}>
-                        Générer
-                    </Button>
-                </div>
-                
-                <div className="flex gap-2">
-                    <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => copyCode(newPassword)}
-                        disabled={!newPassword}
-                    >
-                        <Copy className="h-3 w-3 mr-2" /> Copier le mot de passe
-                    </Button>
-                </div>
-
-                <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-md">
-                    <p className="font-semibold mb-1">Important :</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                        <li>Le mot de passe par défaut est <strong>000000</strong></li>
-                        <li>Communiquez ce mot de passe à l'utilisateur de manière sécurisée.</li>
-                        <li>L'email de l'utilisateur sera automatiquement marqué comme confirmé.</li>
-                    </ul>
+                    <Button variant="outline" onClick={() => setNewPassword('Temp' + Math.floor(1000 + Math.random() * 9000))}>Générer</Button>
                 </div>
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setResetPasswordDialog(false)}>Annuler</Button>
                 <Button onClick={confirmResetPassword} disabled={resetLoading}>
-                    {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer la réinitialisation"}
+                    {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer"}
                 </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Tabs>
   );
 };
 
-export default UserManagementTab;
+export default UserManagement;
