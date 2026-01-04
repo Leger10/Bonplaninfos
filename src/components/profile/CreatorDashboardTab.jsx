@@ -67,16 +67,21 @@ const CreatorDashboardTab = () => {
   };
   
   const handleDownloadSlip = () => {
-      const totalEarned = stats?.summary?.total_earned || 0;
-      // Approximation for PDF
-      const grossEst = Math.floor(totalEarned / 0.95); 
+      // Pour être cohérent avec le label "GAINS NETS DISPONIBLES" du document,
+      // on utilise le solde disponible actuel comme montant Net.
+      const netEarnings = availableBalanceFcfa || 0;
+      
+      // On recalcule le brut approximatif en considérant que Net = Brut * 0.95
+      // Donc Brut = Net / 0.95
+      const grossRevenue = Math.round(netEarnings / 0.95);
+      const fees = grossRevenue - netEarnings;
       
       generateEarningsSlip({
-          organizerName: user?.email || "Créateur",
+          organizerName: user?.user_metadata?.full_name || user?.email || "Créateur",
           period: format(new Date(), 'MMMM yyyy', { locale: fr }),
-          totalRevenue: grossEst * 10, // FCFA
-          fees: (grossEst - totalEarned) * 10,
-          netEarnings: totalEarned * 10,
+          totalRevenue: grossRevenue, // En FCFA
+          fees: fees,                 // En FCFA
+          netEarnings: netEarnings,   // En FCFA
           date: new Date()
       });
       toast({ title: "Document généré", description: "Le relevé de gains a été téléchargé." });

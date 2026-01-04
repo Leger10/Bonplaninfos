@@ -1,7 +1,13 @@
-// Dans pdfGenerator.js - version corrigée avec espacement
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// Helper pour formater les montants avec séparateur de milliers (espace) et sans décimales
+// Utilise une regex simple pour éviter les problèmes de locale et de caractères spéciaux comme les slashes
+const formatCurrency = (amount) => {
+  if (amount === undefined || amount === null) return '0';
+  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+};
 
 export const generateSalarySlip = (data) => {
   const doc = new jsPDF();
@@ -29,30 +35,30 @@ export const generateSalarySlip = (data) => {
   
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text("BULLETIN DE SALAIRE ADMIN", 105, 35, null, null, "center"); // Changé de y=20 à y=35
+  doc.text("BULLETIN DE SALAIRE ADMIN", 105, 20, null, null, "center");
 
   // Info Box
   doc.setDrawColor(200, 200, 200);
   doc.setFillColor(248, 250, 252);
-  doc.rect(20, 50, 170, 40, 'FD'); // Changé de y=35 à y=50
+  doc.rect(20, 35, 170, 40, 'FD');
 
   doc.setFontSize(10);
   doc.setTextColor(...secondaryColor);
-  doc.text("ADMINISTRATEUR:", 25, 60); // Ajuster les positions y
-  doc.text("ZONE:", 25, 70);
-  doc.text("PÉRIODE:", 25, 80);
-  doc.text("DATE D'ÉMISSION:", 110, 60); // Ajuster la position y
+  doc.text("ADMINISTRATEUR:", 25, 45);
+  doc.text("ZONE:", 25, 55);
+  doc.text("PÉRIODE:", 25, 65);
+  doc.text("DATE D'ÉMISSION:", 110, 45);
 
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
-  doc.text(adminName || "N/A", 60, 60);
-  doc.text(zone || "N/A", 60, 70);
-  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 80);
-  doc.text(format(new Date(date), 'dd MMMM yyyy', { locale: fr }), 150, 60);
+  doc.text(adminName || "N/A", 60, 45);
+  doc.text(zone || "N/A", 60, 55);
+  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 65);
+  doc.text(format(new Date(date), 'dd MMMM yyyy', { locale: fr }), 150, 45);
 
   // Table Header
-  let y = 105; // Changé de 90 à 105
+  let y = 90;
   doc.setFillColor(...primaryColor);
   doc.rect(20, y, 170, 10, 'F');
   doc.setTextColor(255, 255, 255);
@@ -68,19 +74,19 @@ export const generateSalarySlip = (data) => {
   // 1. Volume Zone
   doc.text("Volume d'affaires Zone", 25, y);
   doc.text("-", 100, y);
-  doc.text(volumeZone.toLocaleString('fr-FR'), 160, y);
+  doc.text(formatCurrency(volumeZone), 160, y);
   y += 10;
 
   // 2. Commission Plateforme
   doc.text("Commission Plateforme (Base Calcul)", 25, y);
   doc.text("5%", 100, y);
-  doc.text(commissionBase.toLocaleString('fr-FR'), 160, y);
+  doc.text(formatCurrency(commissionBase), 160, y);
   y += 10;
 
   // 3. Part Admin (Licence)
   doc.text("Part Administrateur (Licence)", 25, y);
   doc.text(`${licenseRate}%`, 100, y);
-  doc.text(((commissionBase * (licenseRate / 100))).toLocaleString('fr-FR'), 160, y);
+  doc.text(formatCurrency((commissionBase * (licenseRate / 100))), 160, y);
   y += 10;
 
   // 4. Score Performance
@@ -99,7 +105,7 @@ export const generateSalarySlip = (data) => {
   doc.setFont("helvetica", "bold");
   doc.text("SALAIRE NET À PAYER", 25, y);
   doc.setTextColor(...primaryColor);
-  doc.text(`${netSalary.toLocaleString('fr-FR')} FCFA`, 160, y);
+  doc.text(`${formatCurrency(netSalary)} FCFA`, 160, y);
 
   // Footer
   doc.setFontSize(8);
@@ -118,7 +124,6 @@ export const generateEarningsSlip = (data) => {
     totalRevenue,
     fees,
     netEarnings,
-    transactionsCount,
     date
   } = data;
 
@@ -132,43 +137,43 @@ export const generateEarningsSlip = (data) => {
   
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
-  doc.text("RELEVÉ DE GAINS", 105, 35, null, null, "center"); // Changé de y=20 à y=35
+  doc.text("RELEVÉ DE GAINS", 105, 20, null, null, "center");
 
   // Info
   doc.setFontSize(10);
-  doc.text("ORGANISATEUR:", 20, 50); // Changé de 40 à 50
+  doc.text("ORGANISATEUR:", 20, 40);
   doc.setFont("helvetica", "bold");
-  doc.text(organizerName || "Client", 60, 50); // Changé de 40 à 50
+  doc.text(organizerName || "Client", 60, 40);
   
   doc.setFont("helvetica", "normal");
-  doc.text("PÉRIODE:", 20, 60); // Changé de 50 à 60
+  doc.text("PÉRIODE:", 20, 50);
   doc.setFont("helvetica", "bold");
-  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 60); // Changé de 50 à 60
+  doc.text(period || format(new Date(), 'MMMM yyyy', { locale: fr }), 60, 50);
 
   // Stats Box
   doc.setDrawColor(200, 200, 200);
   doc.setFillColor(245, 247, 255);
-  doc.roundedRect(20, 75, 170, 50, 3, 3, 'FD'); // Changé de y=60 à y=75
+  doc.roundedRect(20, 60, 170, 50, 3, 3, 'FD');
 
   doc.setFontSize(12);
   doc.setTextColor(0,0,0);
-  doc.text("Détail des revenus", 30, 90); // Ajusté
+  doc.text("Détail des revenus", 30, 75);
 
   doc.setFontSize(10);
-  doc.text("Revenus Bruts Générés:", 30, 105); // Ajusté
-  doc.text(`${totalRevenue.toLocaleString('fr-FR')} FCFA`, 150, 105); // Ajusté
+  doc.text("Revenus Bruts Générés (Est.):", 30, 90);
+  doc.text(`${formatCurrency(totalRevenue)} FCFA`, 150, 90);
 
-  doc.text("Frais de Service (5%):", 30, 115); // Ajusté
+  doc.text("Frais de Service (5%):", 30, 100);
   doc.setTextColor(220, 38, 38); // Red
-  doc.text(`- ${fees.toLocaleString('fr-FR')} FCFA`, 150, 115); // Ajusté
+  doc.text(`- ${formatCurrency(fees)} FCFA`, 150, 100);
 
   // Net
   doc.setTextColor(0,0,0);
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("GAINS NETS DISPONIBLES", 30, 145); // Ajusté
+  doc.text("GAINS NETS DISPONIBLES", 30, 130);
   doc.setTextColor(...primaryColor);
-  doc.text(`${netEarnings.toLocaleString('fr-FR')} FCFA`, 150, 145); // Ajusté
+  doc.text(`${formatCurrency(netEarnings)} FCFA`, 150, 130);
 
   // Footer
   doc.setFontSize(8);
