@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Vote, Plus, Trash, Upload, X, ArrowRight, ArrowLeft, Image as ImageIcon, Layers, Users, Calendar, DollarSign, FileText } from 'lucide-react';
+import { Loader2, Vote, Plus, Trash, Upload, X, ArrowRight, ArrowLeft, Image as ImageIcon, Layers, Users, Calendar, DollarSign, FileText, Clock, AlertTriangle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Progress } from '@/components/ui/progress';
-import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const CreateVotingEventPage = () => {
   const { user } = useAuth();
@@ -21,13 +21,30 @@ const CreateVotingEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [showContractModal, setShowContractModal] = useState(false);
+  
+  // Terms Acceptance State
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
-  // Form State
+  // Form State - Dates
+  // Date de l'événement physique (Cérémonie, Gala, etc.)
+  const [eventDate, setEventDate] = useState(''); 
+  
+  // Période de vote
+  const [votingStartDate, setVotingStartDate] = useState(() => {
+    const now = new Date();
+    // Format local datetime-local: YYYY-MM-DDTHH:mm
+    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  });
+  
+  const [votingEndDate, setVotingEndDate] = useState(() => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    return new Date(nextWeek.getTime() - (nextWeek.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+  });
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [votePrice, setVotePrice] = useState(100); // FCFA default
-  const [endDate, setEndDate] = useState('');
   const [coverImage, setCoverImage] = useState(null);
   const [categories, setCategories] = useState(['Général']);
   const [newCategory, setNewCategory] = useState('');
@@ -108,18 +125,42 @@ const CreateVotingEventPage = () => {
     setCandidates(prev => prev.map(c => c.category === catToRemove ? { ...c, category: 'Général' } : c));
   };
 
-  const initiateSubmit = () => {
+  const validateDates = () => {
+    const now = new Date();
+    const start = new Date(votingStartDate);
+    const end = new Date(votingEndDate);
+    const event = eventDate ? new Date(eventDate) : null;
+
+    if (end <= now) {
+      toast({ title: "Date invalide", description: "La fin des votes doit être dans le futur.", variant: "destructive" });
+      return false;
+    }
+
+    if (end < start) {
+      toast({ title: "Date invalide", description: "La fin des votes ne peut pas être antérieure au début.", variant: "destructive" });
+      return false;
+    }
+
+    return true;
+  };
+
+  const performSubmission = async () => {
     if (!user) return;
     if (!title || !coverImage || candidates.some(c => !c.name)) {
       toast({ title: "Champs manquants", description: "Veuillez remplir tous les champs obligatoires (*)", variant: "destructive" });
       return;
     }
-    setShowContractModal(true);
-  };
+    
+    if (!termsAccepted) {
+        toast({ title: "Conditions non acceptées", description: "Veuillez accepter les conditions pour continuer.", variant: "destructive" });
+        return;
+    }
 
-  const performSubmission = async () => {
+    if (!validateDates()) return;
+
     setLoading(true);
     try {
+      // 1. Create Event Record
       const { data: event, error: eventError } = await supabase.from('events').insert({
         title,
         description,
@@ -128,7 +169,10 @@ const CreateVotingEventPage = () => {
         status: 'active',
         cover_image: coverImage,
         cover_image_url: coverImage,
-        event_date: new Date().toISOString(),
+        // Main event date (Ceremony) or fallback to voting end
+        event_date: eventDate ? new Date(eventDate).toISOString() : new Date(votingEndDate).toISOString(),
+        // End date governs the global "Active/Finished" status
+        end_date: new Date(votingEndDate).toISOString(), 
         city: 'Online',
         country: 'Global',
         tags: categories,
@@ -139,12 +183,16 @@ const CreateVotingEventPage = () => {
       if (eventError) throw eventError;
 
       const pricePi = Math.ceil(votePrice / 10);
+      
+      // 2. Create Event Settings (Specific Voting Logic)
       const { error: settingsError } = await supabase.from('event_settings').insert({
         event_id: event.id,
         vote_price_fcfa: votePrice,
         vote_price_pi: pricePi,
         voting_enabled: true,
-        end_date: endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        // Specific voting period
+        start_date: new Date(votingStartDate).toISOString(),
+        end_date: new Date(votingEndDate).toISOString(),
         organizer_rate: 95,
         commission_rate: 5
       });
@@ -237,57 +285,90 @@ const CreateVotingEventPage = () => {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="price" className="text-gray-300">Prix du vote (FCFA)</Label>
-                        <div className="relative">
-                          <Input
-                            id="price"
-                            type="number"
-                            value={votePrice}
-                            onChange={e => setVotePrice(Number(e.target.value))}
-                            min="0"
-                            className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500"
-                          />
-                          <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
-                        </div>
-                        <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} π</p>
+                    <div className="space-y-2">
+                      <Label htmlFor="price" className="text-gray-300">Prix du vote (FCFA)</Label>
+                      <div className="relative">
+                        <Input
+                          id="price"
+                          type="number"
+                          value={votePrice}
+                          onChange={e => setVotePrice(Number(e.target.value))}
+                          min="0"
+                          className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500"
+                        />
+                        <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="date" className="text-gray-300">Fin des votes</Label>
-                        <div className="relative">
-                          <Input
-                            id="date"
-                            type="datetime-local"
-                            value={endDate}
-                            onChange={e => setEndDate(e.target.value)}
-                            className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500 [&::-webkit-calendar-picker-indicator]:invert"
-                          />
-                          <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
-                        </div>
-                      </div>
+                      <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} π</p>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-gray-300">Image de couverture <span className="text-red-500">*</span></Label>
-                    <div className={`border-2 border-dashed rounded-xl h-64 md:h-full flex flex-col items-center justify-center p-4 transition-all ${coverImage ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-gray-800 hover:border-gray-600 bg-gray-950'}`}>
-                      {coverImage ? (
-                        <div className="relative w-full h-full group">
-                          <img src={coverImage} alt="Cover" className="w-full h-full object-cover rounded-lg shadow-sm" />
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                            <Button variant="secondary" size="sm" className="pointer-events-none">Changer l'image</Button>
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <Label className="text-gray-300">Image de couverture <span className="text-red-500">*</span></Label>
+                      <div className={`border-2 border-dashed rounded-xl h-48 flex flex-col items-center justify-center p-4 transition-all ${coverImage ? 'border-emerald-500/50 bg-emerald-950/10' : 'border-gray-800 hover:border-gray-600 bg-gray-950'}`}>
+                        {coverImage ? (
+                          <div className="relative w-full h-full group">
+                            <img src={coverImage} alt="Cover" className="w-full h-full object-cover rounded-lg shadow-sm" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                              <Button variant="secondary" size="sm" className="pointer-events-none">Changer l'image</Button>
+                            </div>
+                            <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
                           </div>
-                          <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                        ) : (
+                          <div className="text-center relative w-full h-full flex flex-col items-center justify-center">
+                            {uploadingImage ? <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-2" /> : <ImageIcon className="w-10 h-10 text-gray-600 mb-2" />}
+                            <p className="text-sm font-medium text-gray-400">Cliquez pour ajouter une image</p>
+                            <p className="text-xs text-gray-600 mt-1">JPG, PNG (Max 5MB)</p>
+                            <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-gray-800">
+                        <h4 className="font-semibold text-emerald-400 flex items-center gap-2">
+                            <Clock className="w-4 h-4" /> Configuration des dates
+                        </h4>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="eventDate" className="text-gray-300">Date de la cérémonie (Optionnel)</Label>
+                            <Input
+                                id="eventDate"
+                                type="datetime-local"
+                                value={eventDate}
+                                onChange={e => setEventDate(e.target.value)}
+                                className="bg-gray-950 border-gray-800 text-white [&::-webkit-calendar-picker-indicator]:invert"
+                            />
+                            <p className="text-xs text-gray-500">La date de l'événement final (Gala, Remise des prix...)</p>
                         </div>
-                      ) : (
-                        <div className="text-center relative w-full h-full flex flex-col items-center justify-center">
-                          {uploadingImage ? <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-2" /> : <ImageIcon className="w-10 h-10 text-gray-600 mb-2" />}
-                          <p className="text-sm font-medium text-gray-400">Cliquez pour ajouter une image</p>
-                          <p className="text-xs text-gray-600 mt-1">JPG, PNG (Max 5MB)</p>
-                          <Input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*" onChange={e => e.target.files[0] && handleImageUpload(e.target.files[0])} disabled={uploadingImage} />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="votingStart" className="text-gray-300">Début des votes</Label>
+                                <Input
+                                    id="votingStart"
+                                    type="datetime-local"
+                                    value={votingStartDate}
+                                    onChange={e => setVotingStartDate(e.target.value)}
+                                    className="bg-gray-950 border-gray-800 text-white [&::-webkit-calendar-picker-indicator]:invert"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="votingEnd" className="text-gray-300">Fin des votes <span className="text-red-500">*</span></Label>
+                                <Input
+                                    id="votingEnd"
+                                    type="datetime-local"
+                                    value={votingEndDate}
+                                    onChange={e => setVotingEndDate(e.target.value)}
+                                    className="bg-gray-950 border-gray-800 text-white [&::-webkit-calendar-picker-indicator]:invert"
+                                />
+                            </div>
                         </div>
-                      )}
+                        {new Date(votingEndDate) <= new Date() && (
+                            <div className="flex items-center gap-2 text-red-400 text-xs bg-red-950/20 p-2 rounded border border-red-900/50">
+                                <AlertTriangle className="w-3 h-3" /> La date de fin doit être dans le futur
+                            </div>
+                        )}
                     </div>
                   </div>
                 </div>
@@ -406,6 +487,29 @@ const CreateVotingEventPage = () => {
                     <span>Ajouter un candidat</span>
                   </Button>
                 </div>
+                
+                {/* Checkbox d'acceptation du contrat */}
+                <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg mt-6">
+                    <div className="flex items-center space-x-3">
+                        <Checkbox 
+                            id="terms" 
+                            checked={termsAccepted} 
+                            onCheckedChange={setTermsAccepted}
+                            className="border-gray-600 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                            <label
+                                htmlFor="terms"
+                                className="text-sm font-medium leading-none text-gray-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                J'ai lu et j'accepte le contrat Organisateur
+                            </label>
+                            <p className="text-xs text-gray-500">
+                                En publiant ce concours, vous acceptez les conditions de service et le règlement de la plateforme.
+                            </p>
+                        </div>
+                    </div>
+                </div>
               </div>
             )}
           </CardContent>
@@ -419,7 +523,11 @@ const CreateVotingEventPage = () => {
                 Suivant <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[150px] shadow-lg shadow-emerald-900/20" onClick={initiateSubmit} disabled={loading || uploadingImage}>
+              <Button 
+                className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[150px] shadow-lg shadow-emerald-900/20 disabled:opacity-50 disabled:cursor-not-allowed" 
+                onClick={performSubmission} 
+                disabled={loading || uploadingImage || !termsAccepted}
+              >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Vote className="w-4 h-4 mr-2" />}
                 Publier le Concours
               </Button>
@@ -427,8 +535,6 @@ const CreateVotingEventPage = () => {
           </CardFooter>
         </Card>
       </div>
-      
-      <OrganizerContractModal open={showContractModal} onOpenChange={setShowContractModal} onAccept={performSubmission} />
     </div>
   );
 };

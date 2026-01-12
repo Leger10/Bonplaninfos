@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Store, Plus, Trash, Coins, Calendar, MapPin, CheckCircle2, ArrowRight, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import ImageUpload from '@/components/ImageUpload';
-import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // --- Utility Functions ---
 const convertToCoins = (amount, currency) => {
@@ -22,7 +22,7 @@ const convertToCoins = (amount, currency) => {
   if (currency === 'XOF' || currency === 'XAF') rate = 10;
   else if (currency === 'EUR') rate = 655 / 10;
   else if (currency === 'USD') rate = 600 / 10;
-  
+
   const safeAmount = parseFloat(amount) || 0;
   return Math.ceil(safeAmount / rate);
 };
@@ -45,43 +45,43 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <Badge variant="outline" className="bg-background">Type #{index + 1}</Badge>
           {canRemove && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => onRemove(st.id)} 
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onRemove(st.id)}
               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <Trash className="w-4 h-4" />
             </Button>
           )}
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div className="space-y-2">
             <Label>Nom du stand *</Label>
-            <Input 
-              value={st.name} 
-              onChange={e => onChange(st.id, 'name', e.target.value)} 
-              placeholder="Ex: Stand Premium" 
-              className="font-semibold" 
+            <Input
+              value={st.name}
+              onChange={e => onChange(st.id, 'name', e.target.value)}
+              placeholder="Ex: Stand Premium"
+              className="font-semibold"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Dimensions</Label>
-              <Input 
-                value={st.size} 
-                onChange={e => onChange(st.id, 'size', e.target.value)} 
-                placeholder="Ex: 9m²" 
+              <Input
+                value={st.size}
+                onChange={e => onChange(st.id, 'size', e.target.value)}
+                placeholder="Ex: 9m²"
               />
             </div>
             <div className="space-y-2">
               <Label>Quantité *</Label>
-              <Input 
-                type="number" 
-                min="1" 
-                value={st.quantity_available} 
-                onChange={e => onChange(st.id, 'quantity_available', e.target.value)} 
+              <Input
+                type="number"
+                min="1"
+                value={st.quantity_available}
+                onChange={e => onChange(st.id, 'quantity_available', e.target.value)}
               />
             </div>
           </div>
@@ -90,17 +90,17 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div className="space-y-2">
             <Label>Prix unitaire *</Label>
-            <Input 
-              type="number" 
-              min="0" 
-              value={st.base_price} 
-              onChange={e => onChange(st.id, 'base_price', e.target.value)} 
+            <Input
+              type="number"
+              min="0"
+              value={st.base_price}
+              onChange={e => onChange(st.id, 'base_price', e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>Devise</Label>
-            <Select 
-              value={st.base_currency} 
+            <Select
+              value={st.base_currency}
               onValueChange={val => onChange(st.id, 'base_currency', val)}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -122,12 +122,12 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
 
         <div className="space-y-2">
           <Label>Inclus / Description</Label>
-          <Textarea 
-            value={st.description} 
-            onChange={e => onChange(st.id, 'description', e.target.value)} 
-            placeholder="Électricité, Wifi, Mobilier..." 
-            rows={2} 
-            className="bg-muted/20" 
+          <Textarea
+            value={st.description}
+            onChange={e => onChange(st.id, 'description', e.target.value)}
+            placeholder="Électricité, Wifi, Mobilier..."
+            rows={2}
+            className="bg-muted/20"
           />
         </div>
       </CardContent>
@@ -141,7 +141,7 @@ const CreateStandEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState(1);
-  const [showContractModal, setShowContractModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // --- Step 1: Event Details ---
   const [title, setTitle] = useState('');
@@ -196,12 +196,12 @@ const CreateStandEventPage = () => {
 
   const removeStandType = useCallback((id) => {
     setStandTypes(prev => {
-        if (prev.length > 1) {
-            return prev.filter(st => st.id !== id);
-        } else {
-            toast({ title: "Action impossible", description: "Vous devez proposer au moins un type de stand.", variant: "destructive" });
-            return prev;
-        }
+      if (prev.length > 1) {
+        return prev.filter(st => st.id !== id);
+      } else {
+        toast({ title: "Action impossible", description: "Vous devez proposer au moins un type de stand.", variant: "destructive" });
+        return prev;
+      }
     });
   }, []);
 
@@ -209,25 +209,28 @@ const CreateStandEventPage = () => {
   const validateStep1 = () => {
     const requiredFields = { title, categoryId, eventDate, city, country };
     const missing = Object.keys(requiredFields).filter(k => !requiredFields[k]);
-    
+
     if (missing.length > 0) {
       toast({ title: "Champs manquants", description: "Veuillez remplir tous les champs obligatoires (*)", variant: "destructive" });
       return false;
     }
 
     const start = new Date(eventDate);
-    if (start < new Date()) {
-        toast({ title: "Date invalide", description: "La date de début doit être dans le futur", variant: "destructive" });
-        return false;
+    const end = endDate ? new Date(endDate) : null;
+    const now = new Date();
+
+    if (start < now) {
+      toast({ title: "Date invalide", description: "La date de début doit être dans le futur", variant: "destructive" });
+      return false;
     }
-    
-    if (endDate && new Date(endDate) <= start) {
-        toast({ title: "Date invalide", description: "La date de fin doit être après la date de début", variant: "destructive" });
-        return false;
+
+    if (end && end < start) {
+      toast({ title: "Date invalide", description: "La date de fin ne peut pas être antérieure à la date de début.", variant: "destructive" });
+      return false;
     }
 
     if (!coverImage) {
-        toast({ title: "Image manquante", description: "Une image de couverture est recommandée pour attirer les exposants.", variant: "default" });
+      toast({ title: "Image manquante", description: "Une image de couverture est recommandée pour attirer les exposants.", variant: "default" });
     }
     return true;
   };
@@ -249,19 +252,18 @@ const CreateStandEventPage = () => {
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
   // --- Submission ---
-  const initiateSubmit = (e) => {
-    e.preventDefault();
+  const performSubmission = async () => {
     if (!user) {
       toast({ title: 'Erreur', description: 'Session expirée. Veuillez vous reconnecter.', variant: 'destructive' });
       navigate('/auth');
       return;
     }
-    if (!validateStep1() || !validateStep2()) return;
     
-    setShowContractModal(true);
-  };
+    if (!termsAccepted) {
+        toast({ title: 'Acceptation requise', description: 'Veuillez accepter les conditions pour publier.', variant: 'destructive' });
+        return;
+    }
 
-  const performSubmission = async () => {
     setLoading(true);
 
     try {
@@ -282,7 +284,7 @@ const CreateStandEventPage = () => {
           status: 'active',
           max_participants: maxParticipants,
           is_public: isPublic,
-          cover_image: coverImage, 
+          cover_image: coverImage,
           created_at: new Date().toISOString(),
           contract_accepted_at: new Date().toISOString(),
           contract_version: 'v1.0'
@@ -293,11 +295,11 @@ const CreateStandEventPage = () => {
 
       // 2. Create Stand Event Metadata
       const { data: standEventData, error: standEventError } = await supabase
-        .from('stand_events').insert({ 
-            event_id: newEventId,
-            base_currency: standTypes[0].base_currency || 'XOF' 
+        .from('stand_events').insert({
+          event_id: newEventId,
+          base_currency: standTypes[0].base_currency || 'XOF'
         }).select().single();
-        
+
       if (standEventError) throw standEventError;
       const standEventId = standEventData.id;
 
@@ -315,25 +317,25 @@ const CreateStandEventPage = () => {
         quantity_rented: 0,
         is_active: true
       }));
-      
+
       const { error: standTypesError } = await supabase.from('stand_types').insert(standTypesToInsert);
       if (standTypesError) throw standTypesError;
 
       // 4. Update Settings
       await supabase.from('event_settings').insert({
-          event_id: newEventId,
-          stands_enabled: true,
-          total_stands: standTypes.reduce((acc, st) => acc + parseInt(st.quantity_available), 0),
-          stands_rented: 0,
-          created_at: new Date().toISOString()
+        event_id: newEventId,
+        stands_enabled: true,
+        total_stands: standTypes.reduce((acc, st) => acc + parseInt(st.quantity_available), 0),
+        stands_rented: 0,
+        created_at: new Date().toISOString()
       });
 
-      toast({ 
-          title: 'Félicitations !', 
-          description: 'Votre espace de location de stands a été créé avec succès.',
-          className: "bg-green-600 text-white border-none"
+      toast({
+        title: 'Félicitations !',
+        description: 'Votre espace de location de stands a été créé avec succès.',
+        className: "bg-green-600 text-white border-none"
       });
-      
+
       navigate(`/event/${newEventId}`);
 
     } catch (error) {
@@ -351,8 +353,8 @@ const CreateStandEventPage = () => {
           <ImageIcon className="w-5 h-5 text-primary" /> Image de couverture
         </Label>
         <div className="bg-muted/30 p-6 rounded-xl border border-dashed border-2 hover:border-primary/50 transition-colors">
-          <ImageUpload 
-            onImageUploaded={setCoverImage} 
+          <ImageUpload
+            onImageUploaded={setCoverImage}
             existingImage={coverImage}
             className="w-full"
           />
@@ -419,11 +421,11 @@ const CreateStandEventPage = () => {
 
       <div className="space-y-4">
         {standTypes.map((st, index) => (
-          <StandTypeItem 
-            key={st.id} 
-            st={st} 
-            index={index} 
-            onChange={handleStandTypeChange} 
+          <StandTypeItem
+            key={st.id}
+            st={st}
+            index={index}
+            onChange={handleStandTypeChange}
             onRemove={removeStandType}
             canRemove={standTypes.length > 1}
           />
@@ -483,7 +485,7 @@ const CreateStandEventPage = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-6 p-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-xl flex justify-between items-center">
             <div>
               <p className="font-medium text-green-800 dark:text-green-300">Revenu Potentiel Max (brut)</p>
@@ -491,6 +493,29 @@ const CreateStandEventPage = () => {
             </div>
             <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{totalPotentialRevenuePi} π</p>
           </div>
+        </div>
+        
+        {/* Checkbox d'acceptation */}
+        <div className="bg-muted/30 border border-border p-4 rounded-lg mt-4">
+            <div className="flex items-center space-x-3">
+                <Checkbox 
+                    id="terms" 
+                    checked={termsAccepted} 
+                    onCheckedChange={setTermsAccepted}
+                    className="border-primary/50 data-[state=checked]:bg-primary"
+                />
+                <div className="grid gap-1.5 leading-none">
+                    <label
+                        htmlFor="terms"
+                        className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                        J'ai lu et j'accepte le contrat Organisateur
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                        En publiant cet événement, vous acceptez les conditions générales de location de stands.
+                    </p>
+                </div>
+            </div>
         </div>
       </div>
     );
@@ -501,7 +526,7 @@ const CreateStandEventPage = () => {
       <Helmet>
         <title>Créer un Espace Stands - BonPlanInfos</title>
       </Helmet>
-      
+
       <main className="container mx-auto max-w-4xl px-4 py-8">
         <Card className="shadow-xl border-primary/10">
           <CardHeader className="text-center pb-6 bg-muted/20 border-b">
@@ -512,7 +537,7 @@ const CreateStandEventPage = () => {
               Organisez votre salon professionnel en 3 étapes simples
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="pt-8 px-6 md:px-10">
             {/* Simple Step Indicator */}
             <div className="flex items-center justify-center mb-10 w-full max-w-2xl mx-auto">
@@ -535,7 +560,7 @@ const CreateStandEventPage = () => {
                 </React.Fragment>
               ))}
             </div>
-            
+
             <div className="mt-8">
               {step === 1 && <Step1Details />}
               {step === 2 && <Step2Stands />}
@@ -557,7 +582,12 @@ const CreateStandEventPage = () => {
                 Suivant <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Button onClick={initiateSubmit} disabled={loading} size="lg" className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-lg min-w-[200px]">
+              <Button 
+                onClick={performSubmission} 
+                disabled={loading || !termsAccepted} 
+                size="lg" 
+                className="bg-green-600 hover:bg-green-700 text-white gap-2 shadow-lg min-w-[200px]"
+              >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 Publier l'événement
               </Button>
@@ -565,8 +595,6 @@ const CreateStandEventPage = () => {
           </CardFooter>
         </Card>
       </main>
-      
-      <OrganizerContractModal open={showContractModal} onOpenChange={setShowContractModal} onAccept={performSubmission} />
     </div>
   );
 };

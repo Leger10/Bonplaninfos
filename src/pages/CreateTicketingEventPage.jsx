@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Plus, Ticket, Trash, Coins, Save, ArrowRight, ArrowLeft, CheckCircle, MessageSquare } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import ImageUpload from '@/components/ImageUpload';
-import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const TICKET_COLORS = [
   { name: 'Bleu (Standard)', value: 'blue', hex: 'bg-blue-500' },
@@ -37,7 +37,7 @@ const CreateTicketingEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState(1);
-  const [showContractModal, setShowContractModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Pricing Configuration
   const COIN_RATE = adminConfig?.coin_to_fcfa_rate || 10;
@@ -106,8 +106,7 @@ const CreateTicketingEventPage = () => {
 
   const convertToCoins = (fcfa) => Math.ceil(parseInt(fcfa || 0, 10) / COIN_RATE);
 
-  const initiateSubmit = (e) => {
-    e.preventDefault();
+  const performSubmission = async () => {
     if (!user) {
       toast({ title: 'Erreur', description: 'Vous devez être connecté.', variant: 'destructive' });
       return;
@@ -118,11 +117,26 @@ const CreateTicketingEventPage = () => {
       return;
     }
     
-    // Open Contract Modal
-    setShowContractModal(true);
-  };
+    // Validations Dates
+    const start = new Date(eventDate);
+    const end = endDate ? new Date(endDate) : null;
+    const now = new Date();
 
-  const performSubmission = async () => {
+    if (start < now) {
+        toast({ title: 'Date invalide', description: 'La date de l\'événement doit être dans le futur.', variant: 'destructive' });
+        return;
+    }
+
+    if (end && end < start) {
+        toast({ title: 'Date invalide', description: 'La date de fin ne peut pas être antérieure à la date de début.', variant: 'destructive' });
+        return;
+    }
+    
+    if (!termsAccepted) {
+        toast({ title: "Conditions non acceptées", description: "Veuillez cocher la case pour accepter le contrat.", variant: "destructive" });
+        return;
+    }
+
     setLoading(true);
 
     try {
@@ -229,7 +243,7 @@ const CreateTicketingEventPage = () => {
               </TabsList>
             </div>
 
-            <TabsContent value="1" className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+           <TabsContent value="1" className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -265,7 +279,7 @@ const CreateTicketingEventPage = () => {
                   </div>
                 </div>
               </div>
-
+                
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Détaillez votre événement..." className="min-h-[150px] bg-background/50" />
@@ -434,10 +448,38 @@ const CreateTicketingEventPage = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Checkbox d'acceptation */}
+              <div className="bg-muted/20 border border-border p-4 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                      <Checkbox 
+                          id="terms" 
+                          checked={termsAccepted} 
+                          onCheckedChange={setTermsAccepted}
+                          className="border-primary/50 data-[state=checked]:bg-primary"
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                          <label
+                              htmlFor="terms"
+                              className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                              J'ai lu et j'accepte le contrat Organisateur
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                              En publiant cet événement, vous acceptez de respecter le règlement de la billetterie.
+                          </p>
+                      </div>
+                  </div>
+              </div>
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep(2)} className="px-6"><ArrowLeft className="mr-2 w-4 h-4" /> Retour</Button>
-                <Button onClick={initiateSubmit} disabled={loading} size="lg" className="px-8 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white shadow-lg hover:shadow-xl transition-all w-full sm:w-auto">
+                <Button 
+                    onClick={performSubmission} 
+                    disabled={loading || !termsAccepted} 
+                    size="lg" 
+                    className="px-8 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white shadow-lg hover:shadow-xl transition-all w-full sm:w-auto"
+                >
                   {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 w-4 h-4" />}
                   Confirmer et Publier
                 </Button>
@@ -446,12 +488,6 @@ const CreateTicketingEventPage = () => {
           </Tabs>
         </CardContent>
       </Card>
-
-      <OrganizerContractModal 
-        open={showContractModal}
-        onOpenChange={setShowContractModal}
-        onAccept={performSubmission}
-      />
     </div>
   );
 };

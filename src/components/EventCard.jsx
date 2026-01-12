@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles, User } from 'lucide-react'; // Added User icon
+import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import EventCountdown from '@/components/EventCountdown';
@@ -85,7 +85,11 @@ const EventCard = ({ event, onClick }) => {
               />
           </div>
           
-          <EventCountdown eventDate={event.event_date} />
+          {/* Synchronized Countdown: Passes end_date to allow switching to 'Ends in' mode if started */}
+          <EventCountdown 
+            eventDate={event.event_date} 
+            eventEndDate={event.end_date} 
+          />
           
           <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
              {event.is_promoted && (

@@ -6,7 +6,12 @@ import { fr } from 'date-fns/locale';
 // Utilise une regex simple pour éviter les problèmes de locale et de caractères spéciaux comme les slashes
 const formatCurrency = (amount) => {
   if (amount === undefined || amount === null) return '0';
-  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  // Convertir en nombre si c'est une chaîne
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '0';
+  
+  // Arrondir et formater avec des espaces comme séparateurs de milliers
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 };
 
 export const generateSalarySlip = (data) => {

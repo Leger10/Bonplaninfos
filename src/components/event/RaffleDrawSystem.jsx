@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Trophy, Sparkles, X, Shuffle, Loader2, Star } from 'lucide-react';
+import { Crown, Trophy, Sparkles, X, Shuffle, Loader2, Star, Target, Calendar, CheckCircle } from 'lucide-react';
 
 const Podium = ({ winners }) => {
   if (!winners || winners.length === 0) return null;
@@ -103,12 +103,11 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
   const [rankings, setRankings] = useState([]);
   const [loadingRankings, setLoadingRankings] = useState(false);
   
-  // Animation pour le défilement des numéros - CORRECTION 1
+  // Animation pour le défilement des numéros
   useEffect(() => {
     if (showRankings) return;
     
     const interval = setInterval(() => {
-      // Générer 5 numéros aléatoires pour l'animation
       const newNumbers = Array.from({ length: 5 }, () => 
         Math.floor(Math.random() * 10000).toString().padStart(4, '0')
       );
@@ -138,11 +137,10 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
     return () => clearInterval(interval);
   }, [showRankings]);
 
-  // Fetch final rankings when winner is announced - CORRECTION 2
+  // Fetch final rankings when winner is announced
   const fetchRankings = useCallback(async () => {
     setLoadingRankings(true);
     try {
-        // CORRECTION 2: Récupérer uniquement le meilleur ticket par participant
         const { data: allTickets, error } = await supabase
             .from('raffle_tickets')
             .select(`
@@ -162,25 +160,22 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
 
         if (error) throw error;
 
-        // CORRECTION 2: Filtrer pour garder uniquement le meilleur rang par participant
         const uniqueParticipants = new Map();
         
         allTickets?.forEach(ticket => {
             const userId = ticket.user_id;
             const currentBest = uniqueParticipants.get(userId);
             
-            // Si le participant n'est pas encore dans la map, ou si ce ticket a un meilleur rang (plus petit nombre)
             if (!currentBest || ticket.rank < currentBest.rank) {
                 uniqueParticipants.set(userId, ticket);
             }
         });
 
-        // Convertir la map en tableau et trier par rang
         const uniqueRankings = Array.from(uniqueParticipants.values())
             .sort((a, b) => a.rank - b.rank)
             .map((ticket, index) => ({
                 ...ticket,
-                rank: index + 1 // Réindexer les rangs pour qu'ils soient continus
+                rank: index + 1
             }));
 
         setRankings(uniqueRankings);
@@ -194,7 +189,6 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
 
   // Listen for draw completion
   useEffect(() => {
-    // Check initially
     const checkStatus = async () => {
         const { data } = await supabase.from('raffle_events').select('status').eq('id', raffleId).single();
         if (data?.status === 'completed') {
@@ -208,7 +202,7 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'raffle_events', filter: `id=eq.${raffleId}` }, 
       (payload) => {
         if (payload.new.status === 'completed') {
-            setTimeout(fetchRankings, 2000); // Delay for suspense
+            setTimeout(fetchRankings, 2000);
         }
       })
       .subscribe();
@@ -239,7 +233,6 @@ const LiveDrawBroadcast = ({ raffleId, onClose }) => {
           <CardContent className="p-6">
             {!showRankings ? (
                 <div className="flex flex-col items-center justify-center space-y-8 py-10">
-                    {/* CORRECTION 1: Afficher plusieurs numéros qui défilent */}
                     <div className="flex flex-wrap gap-4 justify-center items-center">
                       {currentNumbers.map((num, index) => (
                         <motion.div
@@ -344,10 +337,86 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
     const { toast } = useToast();
     const [isLiveBroadcast, setIsLiveBroadcast] = useState(false);
     
+    // Calculer si le tirage peut être lancé
+    const canLaunchDraw = useMemo(() => {
+        if (!raffleData) return false;
+        
+        // Le tirage n'a pas encore été effectué
+        if (raffleData.status === 'completed') return false;
+        
+        // Vérifier si l'objectif est atteint
+        const targetAmount = raffleData.target_amount_pi || 0;
+        const currentAmount = (raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0);
+        const isTargetReached = targetAmount > 0 && currentAmount >= targetAmount;
+        
+        // Vérifier si le délai est écoulé
+        const now = new Date();
+        const endDate = raffleData.end_date ? new Date(raffleData.end_date) : null;
+        const isDatePassed = endDate && now >= endDate;
+        
+        // Conditions pour lancer le tirage :
+        // 1. Au moins 1 ticket vendu
+        // 2. ET (l'objectif est atteint OU la date de fin est passée)
+        const hasTickets = (raffleData.tickets_sold || 0) > 0;
+        
+        return hasTickets && (isTargetReached || isDatePassed);
+    }, [raffleData]);
+
+    // Get draw status info
+    const getDrawStatusInfo = useMemo(() => {
+        if (!raffleData) return null;
+        
+        const targetAmount = raffleData.target_amount_pi || 0;
+        const currentAmount = (raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0);
+        const isTargetReached = targetAmount > 0 && currentAmount >= targetAmount;
+        
+        const now = new Date();
+        const endDate = raffleData.end_date ? new Date(raffleData.end_date) : null;
+        const isDatePassed = endDate && now >= endDate;
+        
+        if (raffleData.status === 'completed') {
+            return {
+                status: 'completed',
+                message: 'Le tirage a été effectué',
+                color: 'green'
+            };
+        }
+        
+        if (canLaunchDraw) {
+            return {
+                status: 'ready',
+                message: 'Prêt à lancer le tirage !',
+                color: 'green'
+            };
+        }
+        
+        if (isTargetReached) {
+            return {
+                status: 'target-reached',
+                message: 'Objectif atteint !',
+                color: 'green'
+            };
+        }
+        
+        if (isDatePassed) {
+            return {
+                status: 'date-passed',
+                message: 'Date limite dépassée',
+                color: 'orange'
+            };
+        }
+        
+        return {
+            status: 'waiting',
+            message: 'En attente des conditions',
+            color: 'blue'
+        };
+    }, [raffleData, canLaunchDraw]);
+
     // Auto-open if live
     useEffect(() => {
         if (raffleData?.status === 'completed') {
-            // Optional: Auto open for first time view could be implemented here with localStorage
+            // Auto open for organizer or could be implemented with localStorage
         }
     }, [raffleData]);
 
@@ -366,7 +435,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                     description: "Les résultats sont en cours de génération. Les participants verront le défilement des numéros.",
                     duration: 5000 
                 });
-                setIsLiveBroadcast(true); // Open the view immediately for the organizer
+                setIsLiveBroadcast(true);
                 if (onDrawComplete) onDrawComplete();
             } else {
                 toast({ title: "Attention", description: data.message, variant: "warning" });
@@ -382,15 +451,88 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
             {isLiveBroadcast && <LiveDrawBroadcast raffleId={raffleData.id} onClose={() => setIsLiveBroadcast(false)} />}
             
             {isOrganizer ? (
-                <Card className="border-2 border-yellow-500 bg-gradient-to-r from-orange-50 to-yellow-50">
+                <Card className="border-2 border-yellow-500 bg-gradient-to-r from-yellow-50 to-orange-50 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Crown className="w-5 h-5 text-orange-600" />
-                            Zone Organisateur
+                        <CardTitle className="flex items-center gap-2 text-gray-900">
+                            <Crown className="w-5 h-5 text-yellow-600" />
+                            Zone Organisateur - Contrôle du tirage
                         </CardTitle>
-                        <CardDescription>Contrôle du tirage au sort</CardDescription>
+                        <CardDescription className="text-gray-600">
+                            Gestion et lancement du tirage au sort
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Status Indicator */}
+                        {getDrawStatusInfo && (
+                            <div className={`p-3 rounded-lg border ${getDrawStatusInfo.color === 'green' ? 'bg-green-50 border-green-200' : 
+                                getDrawStatusInfo.color === 'orange' ? 'bg-orange-50 border-orange-200' : 
+                                'bg-blue-50 border-blue-200'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {getDrawStatusInfo.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                                        {getDrawStatusInfo.status === 'ready' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                                        {getDrawStatusInfo.status === 'target-reached' && <Target className="w-4 h-4 text-green-600" />}
+                                        {getDrawStatusInfo.status === 'date-passed' && <Calendar className="w-4 h-4 text-orange-600" />}
+                                        {getDrawStatusInfo.status === 'waiting' && <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />}
+                                        <span className={`font-medium ${
+                                            getDrawStatusInfo.color === 'green' ? 'text-green-700' : 
+                                            getDrawStatusInfo.color === 'orange' ? 'text-orange-700' : 
+                                            'text-blue-700'
+                                        }`}>
+                                            {getDrawStatusInfo.message}
+                                        </span>
+                                    </div>
+                                    <Badge variant="outline" className={`text-xs ${
+                                        getDrawStatusInfo.color === 'green' ? 'border-green-300 text-green-700' : 
+                                        getDrawStatusInfo.color === 'orange' ? 'border-orange-300 text-orange-700' : 
+                                        'border-blue-300 text-blue-700'
+                                    }`}>
+                                        {getDrawStatusInfo.status === 'completed' ? 'Terminé' : 
+                                         getDrawStatusInfo.status === 'ready' ? 'Prêt' : 
+                                         getDrawStatusInfo.status === 'target-reached' ? 'Objectif Atteint' :
+                                         getDrawStatusInfo.status === 'date-passed' ? 'Date Dépassée' : 'En Cours'}
+                                    </Badge>
+                                </div>
+                                
+                                {/* Conditions display */}
+                                {(raffleData.target_amount_pi > 0 || raffleData.end_date) && (
+                                    <div className="mt-2 text-sm space-y-1">
+                                        {raffleData.target_amount_pi > 0 && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <Target className="w-3 h-3" />
+                                                    Objectif:
+                                                </span>
+                                                <span className={`font-medium ${
+                                                    ((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)) >= raffleData.target_amount_pi 
+                                                        ? 'text-green-600' 
+                                                        : 'text-gray-700'
+                                                }`}>
+                                                    {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} π
+                                                </span>
+                                            </div>
+                                        )}
+                                        {raffleData.end_date && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-gray-600 flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    Date limite:
+                                                </span>
+                                                <span className={`font-medium ${
+                                                    new Date() >= new Date(raffleData.end_date) 
+                                                        ? 'text-orange-600' 
+                                                        : 'text-gray-700'
+                                                }`}>
+                                                    {new Date(raffleData.end_date).toLocaleDateString('fr-FR')}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Statistics */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white p-3 rounded border text-center">
                                 <div className="text-xs text-gray-500 uppercase">Tickets Vendus</div>
@@ -407,15 +549,44 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                             </div>
                         </div>
 
+                        {/* Action Button */}
                         {raffleData.status !== 'completed' ? (
-                            <Button 
-                                onClick={handleLaunchDraw} 
-                                className="w-full h-12 text-lg font-bold bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white shadow-lg"
-                                disabled={raffleData.tickets_sold === 0}
-                            >
-                                <Shuffle className="w-5 h-5 mr-2" />
-                                LANCER LE TIRAGE
-                            </Button>
+                            <div className="space-y-3">
+                                {canLaunchDraw ? (
+                                    <Button 
+                                        onClick={handleLaunchDraw} 
+                                        className="w-full h-12 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg"
+                                    >
+                                        <Shuffle className="w-5 h-5 mr-2" />
+                                        LANCER LE TIRAGE
+                                    </Button>
+                                ) : (
+                                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                                        <p className="text-blue-700 font-medium mb-1">Conditions requises non encore remplies</p>
+                                        <div className="text-sm text-blue-600 space-y-1">
+                                            {(!raffleData.tickets_sold || raffleData.tickets_sold === 0) && (
+                                                <p className="flex items-center justify-center gap-1">
+                                                    <X className="w-3 h-3" />
+                                                    Aucun ticket vendu
+                                                </p>
+                                            )}
+                                            {(raffleData.target_amount_pi || 0) > 0 && 
+                                             ((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)) < raffleData.target_amount_pi && (
+                                                <p className="flex items-center justify-center gap-1">
+                                                    <Target className="w-3 h-3" />
+                                                    Objectif: {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} π
+                                                </p>
+                                            )}
+                                            {raffleData.end_date && new Date() < new Date(raffleData.end_date) && (
+                                                <p className="flex items-center justify-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    Date limite: {new Date(raffleData.end_date).toLocaleDateString('fr-FR')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         ) : (
                             <Button 
                                 onClick={() => setIsLiveBroadcast(true)} 

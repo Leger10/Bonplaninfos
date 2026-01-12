@@ -56,15 +56,35 @@ const EventsPage = () => {
         }
         setLoading(true);
         try {
+            // Fetch events directly from the 'events' table to ensure we get 'end_date'
+            // and all other necessary fields that might be missing from the view
             const [eventsRes, categoriesRes] = await Promise.all([
-                fetchWithRetry(() => supabase.from('events_with_categories').select('*').eq('status', 'active')),
+                fetchWithRetry(() => 
+                    supabase
+                        .from('events')
+                        .select('*, category:category_id(name, slug), organizer:organizer_id(full_name)')
+                        .eq('status', 'active')
+                ),
                 fetchWithRetry(() => supabase.from('event_categories').select('*').eq('is_active', true).order('name'))
             ]);
+
             if (eventsRes.error) throw eventsRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
-            setEvents(eventsRes.data || []);
+
+            // Map data to flatten structure for compatibility with existing components
+            const mappedEvents = (eventsRes.data || []).map(event => ({
+                ...event,
+                category_name: event.category?.name,
+                category_slug: event.category?.slug,
+                organizer_name: event.organizer?.full_name,
+                // Ensure end_date is explicitly available
+                end_date: event.end_date 
+            }));
+
+            setEvents(mappedEvents);
             setCategories(categoriesRes.data || []);
         } catch (error) {
+            console.error("Error fetching events:", error);
             toast({ title: t("common.error_title"), description: "Impossible de charger les événements.", variant: "destructive" });
         } finally {
             setLoading(false);

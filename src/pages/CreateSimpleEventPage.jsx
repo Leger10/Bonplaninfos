@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from 'uuid';
-import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Helper function to convert images to JPG
 const convertImageToJpg = (file) => {
@@ -79,7 +79,7 @@ const CreateSimpleEventPage = () => {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [categories, setCategories] = useState([]);
   const [imagePreview, setImagePreview] = useState('');
-  const [showContractModal, setShowContractModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { userProfile } = useData();
@@ -142,18 +142,20 @@ const CreateSimpleEventPage = () => {
 
   const canSubmit = formData.title && formData.event_date && formData.location && formData.city && formData.country && formData.category_id && !isProcessingImage;
 
-  // New handler that opens modal instead of submitting directly
-  const initiateSubmit = (e) => {
+  // Actual submission after contract acceptance
+  const performSubmission = async (e) => {
     e.preventDefault();
+    
     if (!canSubmit) {
       toast({ title: 'Champs requis', description: 'Veuillez remplir tous les champs obligatoires.', variant: 'destructive' });
       return;
     }
-    setShowContractModal(true);
-  };
+    
+    if (!termsAccepted) {
+        toast({ title: 'Conditions requises', description: 'Veuillez accepter le contrat Organisateur.', variant: 'destructive' });
+        return;
+    }
 
-  // Actual submission after contract acceptance
-  const performSubmission = async () => {
     setLoading(true);
 
     try {
@@ -234,7 +236,7 @@ const CreateSimpleEventPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-8">
-              <form onSubmit={initiateSubmit} className="space-y-8">
+              <form onSubmit={performSubmission} className="space-y-8">
 
                 {/* Image Upload Section */}
                 <div className="space-y-4">
@@ -385,25 +387,43 @@ const CreateSimpleEventPage = () => {
                     </div>
                   </div>
                 </div>
+                
+                {/* Checkbox de confirmation */}
+                <div className="bg-muted/30 border border-border p-4 rounded-lg mt-4">
+                    <div className="flex items-center space-x-3">
+                        <Checkbox 
+                            id="terms" 
+                            checked={termsAccepted} 
+                            onCheckedChange={setTermsAccepted}
+                            className="border-primary/50 data-[state=checked]:bg-primary"
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                            <label
+                                htmlFor="terms"
+                                className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                J'ai lu et j'accepte le contrat Organisateur
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                                Je confirme l'exactitude des informations et j'accepte les conditions de publication.
+                            </p>
+                        </div>
+                    </div>
+                </div>
 
                 <div className="pt-4">
-                  <Button type="submit" disabled={loading || !canSubmit || isProcessingImage} className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                  <Button 
+                    type="submit" 
+                    disabled={loading || !canSubmit || isProcessingImage || !termsAccepted} 
+                    className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                  >
                     {loading ? <Loader2 className="animate-spin mr-2" /> : 'Publier l\'événement'}
                   </Button>
-                  <p className="text-center text-xs text-muted-foreground mt-4">
-                    En cliquant sur "Publier", vous devrez accepter le contrat Organisateur.
-                  </p>
                 </div>
               </form>
             </CardContent>
           </Card>
         </motion.div>
-
-        <OrganizerContractModal
-          open={showContractModal}
-          onOpenChange={setShowContractModal}
-          onAccept={performSubmission}
-        />
       </main>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock, Clock, Scan } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock, Clock, Scan, Settings, PlayCircle, PauseCircle, CheckCircle2, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import VotingInterface from '@/components/event/VotingInterface';
 import EventCountdown from '@/components/EventCountdown';
 import BookmarkButton from '@/components/common/BookmarkButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { extractStoragePath } from '@/lib/utils';
+import { extractStoragePath, fetchWithRetry } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import CommunityVerification from '@/components/event/CommunityVerification';
 import TicketScannerDialog from '@/components/event/TicketScannerDialog';
@@ -83,8 +83,8 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                 <span className="font-bold text-white">{stats.verification_rate}%</span>
               </div>
               <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500" 
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
                   style={{ width: `${stats.verification_rate}%` }}
                 ></div>
               </div>
@@ -120,10 +120,10 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
 
   const handleLike = async () => {
     if (!user) {
-      toast({ 
-        title: "Connexion requise", 
+      toast({
+        title: "Connexion requise",
         description: "Veuillez vous connecter pour interagir.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -131,7 +131,7 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
     try {
       const newLikedState = !isLiked;
       const likeChange = newLikedState ? 1 : -1;
-      
+
       setLikes(prev => prev + likeChange);
       setIsLiked(newLikedState);
 
@@ -180,8 +180,8 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
       {/* Favorite Button */}
       <div className="flex flex-col items-center gap-1">
         <div className="w-10 h-10 flex items-center justify-center">
-          <BookmarkButton 
-            eventId={event?.id} 
+          <BookmarkButton
+            eventId={event?.id}
             variant="ghost"
             className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm hover:bg-black/80 border border-white/20 hover:border-white/40 text-white p-0"
           />
@@ -237,9 +237,9 @@ const ExpandableDescription = ({ description }) => {
         {!isExpanded && shouldTruncate && "..."}
       </p>
       {shouldTruncate && (
-        <Button 
-          variant="ghost" 
-          onClick={() => setIsExpanded(!isExpanded)} 
+        <Button
+          variant="ghost"
+          onClick={() => setIsExpanded(!isExpanded)}
           className="mt-2 p-0 h-auto font-semibold text-blue-400 hover:text-blue-300 hover:bg-transparent flex items-center"
         >
           {isExpanded ? (
@@ -251,17 +251,6 @@ const ExpandableDescription = ({ description }) => {
       )}
     </div>
   );
-};
-
-// Utility for fetch retries
-const fetchWithRetry = async (fn, retries = 3, delay = 1000) => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries === 0) throw error;
-    await new Promise(resolve => setTimeout(resolve, delay));
-    return fetchWithRetry(fn, retries - 1, delay * 1.5);
-  }
 };
 
 const EventDetailPage = () => {
@@ -276,6 +265,7 @@ const EventDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [togglingSales, setTogglingSales] = useState(false);
 
   // Organizer specific states
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -295,15 +285,15 @@ const EventDetailPage = () => {
     setLoading(true);
     console.log("Fetching event data for ID:", id);
     try {
-      const { data: fetchedEvent, error: eventError } = await fetchWithRetry(() => 
+      const { data: fetchedEvent, error: eventError } = await fetchWithRetry(() =>
         supabase.from('events')
           .select('*, organizer:organizer_id(full_name), category:category_id(name, slug)')
           .eq('id', id)
           .maybeSingle()
       );
-      
+
       if (eventError) throw eventError;
-      
+
       if (!fetchedEvent) {
         console.error("Event not found");
         setEvent(null);
@@ -357,7 +347,7 @@ const EventDetailPage = () => {
             .select('views_count')
             .eq('id', id)
             .single();
-            
+
           if (updatedEvent) {
             setEvent(prev => prev ? {
               ...prev,
@@ -439,19 +429,75 @@ const EventDetailPage = () => {
     }
   };
 
+  const handleToggleSales = async () => {
+    if (!isOwner) return;
+    setTogglingSales(true);
+    
+    // Toggle the current status
+    const newStatus = !event.is_sales_closed;
+    
+    console.log(`[EventDetail] Toggling sales. Old: ${event.is_sales_closed}, New: ${newStatus}`);
+    
+    try {
+        // Optimistic update - Update UI immediately
+        setEvent(prev => ({ ...prev, is_sales_closed: newStatus }));
+        
+        const { error } = await supabase
+            .from('events')
+            .update({ is_sales_closed: newStatus })
+            .eq('id', event.id);
+            
+        if (error) {
+            // Revert on error
+            setEvent(prev => ({ ...prev, is_sales_closed: !newStatus }));
+            throw error;
+        }
+        
+        toast({
+            title: newStatus ? "Ventes fermées" : "Ventes rouvertes",
+            description: newStatus ? "Les participants ne peuvent plus acheter." : "Les ventes sont de nouveau ouvertes.",
+            className: newStatus ? "bg-amber-600 text-white" : "bg-green-600 text-white"
+        });
+    } catch (err) {
+        console.error("Error toggling sales", err);
+        toast({ title: "Erreur", description: "Impossible de modifier le statut des ventes", variant: "destructive" });
+    } finally {
+        setTogglingSales(false);
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-blue-400" /></div>;
   if (!event) return <div className="min-h-screen bg-black text-center p-8"><h1 className="text-2xl text-red-400">Événement non trouvé</h1></div>;
 
   const optimizedImageUrl = event.cover_image || "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
   const canDelete = isOwner || (userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type));
 
-  // Determine if event is closed
-  const eventDateObj = new Date(event.event_date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  eventDateObj.setHours(0, 0, 0, 0);
+  // --- UPDATED DATE LOGIC ---
+  const now = new Date();
+  let closingDate;
   
-  const isEventClosed = eventDateObj < today;
+  // Utiliser la date de fin si elle existe, sinon utiliser event_date + 1 jour
+  if (event.end_date) {
+      closingDate = new Date(event.end_date);
+  } else if (event.event_date) {
+      closingDate = new Date(event.event_date);
+      closingDate.setHours(23, 59, 59, 999);
+  } else {
+      closingDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Demain par défaut
+  }
+
+  // Event is considered strictly "closed" if date passed
+  const isDateClosed = now > closingDate;
+  // Final state for components: date closed OR manually closed
+  const isSalesClosed = isDateClosed || event.is_sales_closed === true;
+  
+  console.log(`[EventDetail] Render cycle. 
+    Event Date: ${event.event_date}
+    End Date: ${event.end_date}
+    Closing Date: ${closingDate}
+    isDateClosed: ${isDateClosed}
+    isSalesClosed (manual): ${event.is_sales_closed}
+    Final isSalesClosed: ${isSalesClosed}`);
 
   return (
     <div className="min-h-screen bg-black">
@@ -463,9 +509,9 @@ const EventDetailPage = () => {
           </Button>
           <div className="flex gap-2">
             {canDelete && (
-              <Button 
-                variant="destructive" 
-                size="sm" 
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={() => setDeleteDialogOpen(true)}
                 className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0"
               >
@@ -478,17 +524,17 @@ const EventDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Image Section */}
             <div className="relative rounded-xl overflow-hidden shadow-2xl group aspect-video md:aspect-[2/1]">
               <img className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={event.title} src={optimizedImageUrl} />
-              
+
               {/* Subtle gradient at bottom */}
               <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-              
+
               {/* Action Buttons Overlay */}
-              <TikTokActionButtons 
-                event={event} 
+              <TikTokActionButtons
+                event={event}
                 onRefresh={handleDataRefresh}
                 user={user}
               />
@@ -496,34 +542,35 @@ const EventDetailPage = () => {
 
             {/* Title & Category Section */}
             <div className="flex flex-col gap-4 px-1">
-               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="space-y-3 flex-1">
-                     <Badge className="bg-blue-900/40 text-blue-300 hover:bg-blue-800/40 border-blue-700/50 text-sm px-3 py-1 w-fit">
-                        {event.category?.name || event.event_type}
-                     </Badge>
-                     <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight">
-                        {event.title}
-                     </h1>
-                  </div>
-                  <div className="flex items-center gap-3 md:pt-2">
-                     <div className="hidden md:block">
-                        <BookmarkButton eventId={event.id} />
-                     </div>
-                  </div>
-               </div>
-            </div>
-            
-            {/* Countdown Timer */}
-            {event.event_date && (
-                <div className="flex justify-center w-full py-2">
-                  <EventCountdown
-                    eventDate={event.event_date}
-                    showMotivation={true}
-                    size="large"
-                    className="w-full justify-center"
-                  />
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="space-y-3 flex-1">
+                  <Badge className="bg-blue-900/40 text-blue-300 hover:bg-blue-800/40 border-blue-700/50 text-sm px-3 py-1 w-fit">
+                    {event.category?.name || event.event_type}
+                  </Badge>
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight">
+                    {event.title}
+                  </h1>
                 </div>
-              )}
+                <div className="flex items-center gap-3 md:pt-2">
+                  <div className="hidden md:block">
+                    <BookmarkButton eventId={event.id} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Countdown Timer with End Date Support */}
+            {event.event_date && (
+              <div className="flex justify-center w-full py-2">
+                <EventCountdown
+                  eventDate={event.event_date}
+                  eventEndDate={closingDate} // Pass end_date to allow "Ongoing" state
+                  showMotivation={true}
+                  size="large"
+                  className="w-full justify-center"
+                />
+              </div>
+            )}
 
             {/* Main Content Card */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -531,33 +578,33 @@ const EventDetailPage = () => {
                 <CardContent className="p-6 md:p-8">
                   {/* Metadata Section */}
                   <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b border-gray-800">
-                     <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
-                        <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
-                           <Calendar className="w-5 h-5" />
-                        </div>
-                        <div>
-                           <p className="text-xs text-gray-400 font-medium">Date</p>
-                           <p className="font-semibold text-sm text-white">
-                              {new Date(event.event_date).toLocaleDateString('fr-FR', {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                           </p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
-                        <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
-                           <MapPin className="w-5 h-5" />
-                        </div>
-                        <div>
-                           <p className="text-xs text-gray-400 font-medium">Lieu</p>
-                           <p className="font-semibold text-sm text-white">{event.city}, {event.country}</p>
-                        </div>
-                     </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
+                      <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
+                        <Calendar className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium">Date</p>
+                        <p className="font-semibold text-sm text-white">
+                          {new Date(event.event_date).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
+                      <div className="p-2 rounded-full bg-blue-900/30 text-blue-400">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium">Lieu</p>
+                        <p className="font-semibold text-sm text-white">{event.city}, {event.country}</p>
+                      </div>
+                    </div>
                   </div>
 
                   <h3 className="font-bold text-xl mb-3 text-white">À propos</h3>
@@ -565,13 +612,23 @@ const EventDetailPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Post-Event Status Message */}
-              {isEventClosed && (
+              {/* Status Messages */}
+              {isDateClosed && (
                 <Alert className="bg-amber-950/50 border-amber-800/50 text-amber-300">
                   <Clock className="h-4 w-4" />
                   <AlertTitle className="text-amber-200">Événement Terminé</AlertTitle>
                   <AlertDescription className="text-amber-400">
-                    Cet événement est terminé. Vous pouvez consulter les informations et statistiques, mais les participations payantes (billets, votes, etc.) ne sont plus possibles.
+                    Cet événement est terminé. Les participations ne sont plus possibles.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {!isDateClosed && event.is_sales_closed && (
+                <Alert className="bg-red-950/50 border-red-800/50 text-red-300">
+                  <Lock className="h-4 w-4" />
+                  <AlertTitle className="text-red-200">Ventes Fermées</AlertTitle>
+                  <AlertDescription className="text-red-400">
+                    L'organisateur a fermé les ventes pour le moment.
                   </AlertDescription>
                 </Alert>
               )}
@@ -580,28 +637,29 @@ const EventDetailPage = () => {
               <CommunityVerification eventId={event.id} eventDate={event.event_date} />
 
               {event.event_type === 'voting' && (
-                <VotingInterface 
-                  event={event} 
-                  isUnlocked={true} 
-                  onRefresh={handleDataRefresh} 
-                  isClosed={isEventClosed}
+                <VotingInterface
+                  event={event}
+                  isUnlocked={true}
+                  onRefresh={handleDataRefresh}
+                  isClosed={isSalesClosed} // Use combined closed status which is dynamic
                 />
               )}
               {event.event_type === 'raffle' && (
                 <RaffleInterface
                   raffleData={eventData}
                   eventId={event.id}
+                  event={event} 
                   isUnlocked={true}
                   onPurchaseSuccess={handleDataRefresh}
-                  isClosed={isEventClosed}
+                  isClosed={isSalesClosed} // Use combined closed status
                 />
               )}
               {event.event_type === 'stand_rental' && (
-                <StandRentalInterface 
-                  event={event} 
-                  isUnlocked={true} 
-                  onRefresh={handleDataRefresh} 
-                  isClosed={isEventClosed}
+                <StandRentalInterface
+                  event={event}
+                  isUnlocked={true}
+                  onRefresh={handleDataRefresh}
+                  isClosed={isSalesClosed} // Use combined closed status
                 />
               )}
               {event.event_type === 'ticketing' && (
@@ -612,7 +670,7 @@ const EventDetailPage = () => {
                     ticketTypes={ticketTypes}
                     isUnlocked={true}
                     onRefresh={handleDataRefresh}
-                    isClosed={isEventClosed}
+                    isClosed={isSalesClosed} // Use combined closed status
                   />
                 </div>
               )}
@@ -631,51 +689,76 @@ const EventDetailPage = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {isOwner && event.event_type === 'ticketing' && (
-              <Card className="bg-gray-900/80 backdrop-blur-sm border-blue-800/50 shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-3 border-b border-blue-800/30">
-                  <h3 className="font-bold text-blue-300 flex items-center gap-2">
-                    <Lock className="w-4 h-4" /> Espace Organisateur
-                  </h3>
-                </div>
-                <CardContent className="p-4 space-y-3">
-                  <p className="text-sm text-gray-400 mb-2">Gérez les entrées pour cet événement.</p>
-                  
-                  <Button 
-                    onClick={() => setShowScannerModal(true)} 
-                    className="w-full font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg" 
-                    size="lg"
-                  >
-                    <Scan className="w-5 h-5 mr-2" /> Vérifier Billets
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setShowStatsModal(true)} 
-                    variant="outline" 
-                    className="w-full border-blue-800/50 text-blue-400 hover:bg-blue-900/30 hover:text-blue-300"
-                  >
-                    <BarChart className="w-4 h-4 mr-2" /> Statistiques Entrées
-                  </Button>
-                  
-                  <div className="pt-4 mt-4 border-t border-gray-800">
-                    <p className="text-xs text-gray-400 mb-2">Options de vérification:</p>
-                    <ul className="text-xs space-y-1 text-gray-300">
-                      <li className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <span>Scan QR Code automatique</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span>Saisie manuelle du code</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span>Mode entrée/sortie</span>
-                      </li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Organizer Dashboard General Control */}
+            {isOwner && (
+                <Card className="bg-gray-900/80 backdrop-blur-sm border-blue-800/50 shadow-xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 p-3 border-b border-blue-800/30">
+                      <h3 className="font-bold text-blue-300 flex items-center gap-2">
+                        <Settings className="w-4 h-4" /> Administration
+                      </h3>
+                    </div>
+                    <CardContent className="p-4 space-y-3">
+                        <div className="flex flex-col gap-3 bg-black/20 p-3 rounded-lg border border-white/10">
+                            <div className="flex justify-between items-center">
+                                <p className="font-medium text-white">Statut des Ventes</p>
+                                {event.is_sales_closed ? (
+                                    <Badge variant="destructive" className="bg-red-600 text-white">Actuellement fermées</Badge>
+                                ) : (
+                                    <Badge variant="default" className="bg-green-600 text-white hover:bg-green-700">Actuellement ouvertes</Badge>
+                                )}
+                            </div>
+                            
+                            {event.is_sales_closed ? (
+                                <Button 
+                                    size="sm" 
+                                    onClick={handleToggleSales}
+                                    disabled={togglingSales}
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                                >
+                                    {togglingSales ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                    Rouvrir les ventes
+                                </Button>
+                            ) : (
+                                <Button 
+                                    size="sm" 
+                                    onClick={handleToggleSales}
+                                    disabled={togglingSales}
+                                    variant="destructive"
+                                    className="w-full font-bold"
+                                >
+                                    {togglingSales ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
+                                    Fermer les ventes
+                                </Button>
+                            )}
+                            
+                            <p className="text-[10px] text-gray-400 text-center italic">
+                                {event.is_sales_closed 
+                                    ? "Les participants ne peuvent plus acheter de tickets/votes." 
+                                    : "Les participants peuvent acheter des tickets/votes."}
+                            </p>
+                        </div>
+                        
+                        {event.event_type === 'ticketing' && (
+                            <>
+                                <Button
+                                    onClick={() => setShowScannerModal(true)}
+                                    className="w-full font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg"
+                                    size="lg"
+                                >
+                                    <Scan className="w-5 h-5 mr-2" /> Vérifier Billets
+                                </Button>
+
+                                <Button
+                                    onClick={() => setShowStatsModal(true)}
+                                    variant="outline"
+                                    className="w-full border-blue-800/50 text-blue-400 hover:bg-blue-900/30 hover:text-blue-300"
+                                >
+                                    <BarChart className="w-4 h-4 mr-2" /> Statistiques Entrées
+                                </Button>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
             )}
 
             {isOwner && event.event_type === 'stand_rental' && (
@@ -705,7 +788,7 @@ const EventDetailPage = () => {
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-400 flex items-center gap-1">
-                            <PieChart className="w-3 h-3"/> Frais (5%)
+                            <PieChart className="w-3 h-3" /> Frais (5%)
                           </span>
                           <span className="text-red-400">-{standStats.platform_fee} π</span>
                         </div>
@@ -757,9 +840,9 @@ const EventDetailPage = () => {
             <AlertDialogCancel className="bg-gray-900 text-gray-300 border-gray-700 hover:bg-gray-800">
               Annuler
             </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteEvent} 
-              className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0" 
+            <AlertDialogAction
+              onClick={handleDeleteEvent}
+              className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 border-0"
               disabled={isDeleting}
             >
               {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}

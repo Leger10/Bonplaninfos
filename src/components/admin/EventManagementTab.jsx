@@ -50,7 +50,7 @@ const EventManagementTab = ({ events, onRefresh }) => {
       }
     } else {
       toast({
-        title: "🚧 Cette fonctionnalité n'est pas encore implémentée—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochaine requête ! 🚀",
+        title: "🚧 Cette fonctionnalité n'est pas disponible—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochaine requête ! 🚀",
       });
     }
   };
