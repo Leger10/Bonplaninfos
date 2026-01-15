@@ -96,7 +96,7 @@ const WithdrawalTab = () => {
                 </Badge>
             )}
         </div>
-        <p className="text-xl font-bold truncate">{value.toLocaleString()} π <span className="text-sm font-normal text-muted-foreground">({formatCurrency(value * rate)})</span></p>
+        <p className="text-xl font-bold truncate">{value.toLocaleString()} pièces <span className="text-sm font-normal text-muted-foreground">({formatCurrency(value * rate)})</span></p>
         {description && <p className="text-[10px] text-muted-foreground mt-1 truncate">{description}</p>}
       </div>
     </div>
@@ -114,7 +114,7 @@ const WithdrawalTab = () => {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div>
                       <p className="text-emerald-100 font-medium mb-1">Total Disponible (Global)</p>
-                      <h2 className="text-4xl md:text-5xl font-bold mb-2">{balances.total.toLocaleString()} π</h2>
+                      <h2 className="text-4xl md:text-5xl font-bold mb-2">{balances.total.toLocaleString()} pièces</h2>
                       <p className="text-emerald-50 opacity-90 text-lg">
                           ≈ {formatCurrency(balances.total * rate)}
                       </p>
@@ -202,7 +202,7 @@ const WithdrawalTab = () => {
                                       {new Date(req.requested_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                                   </td>
                                   <td className="px-4 py-3">
-                                      <div className="font-bold text-base">{req.amount_pi} π</div>
+                                      <div className="font-bold text-base">{req.amount_pi} pièces</div>
                                       <div className="text-xs text-muted-foreground">{formatCurrency(req.amount_fcfa)}</div>
                                   </td>
                                   <td className="px-4 py-3 hidden md:table-cell">

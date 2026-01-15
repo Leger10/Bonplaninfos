@@ -327,7 +327,7 @@ const Analytics = () => {
                       </div>
                       <div className="text-right">
                         <span className={`font-bold ${transaction.amount_pi > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {transaction.amount_pi > 0 ? '+' : ''}{transaction.amount_pi} π
+                          {transaction.amount_pi > 0 ? '+' : ''}{transaction.amount_pi} pièces
                         </span>
                       </div>
                     </div>
@@ -347,7 +347,7 @@ const Analytics = () => {
                             {recentWithdrawals.map(w => (
                                 <div key={w.id} className="flex justify-between p-2 border rounded">
                                     <span>{w.user?.full_name}</span>
-                                    <span className="font-bold">{w.amount_pi} π</span>
+                                    <span className="font-bold">{w.amount_pi} pièces</span>
                                 </div>
                             ))}
                         </div>

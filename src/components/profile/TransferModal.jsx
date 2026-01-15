@@ -30,7 +30,7 @@ const TransferModal = ({ isOpen, onClose, totalAmount, loading, onConfirm }) => 
           <div className="bg-muted/30 p-6 rounded-xl border border-border text-center space-y-2">
             <p className="text-sm text-muted-foreground uppercase font-semibold tracking-wider">Montant total</p>
             <div className="text-4xl font-bold text-primary">
-              {totalAmount} <span className="text-2xl text-muted-foreground">π</span>
+              {totalAmount} <span className="text-2xl text-muted-foreground">pièces</span>
             </div>
           </div>
 
@@ -40,7 +40,7 @@ const TransferModal = ({ isOpen, onClose, totalAmount, loading, onConfirm }) => 
                 <CheckCircle2 className="w-4 h-4" />
                 Montant Net (95%)
               </span>
-              <span className="font-bold">+{Math.floor(totalAmount)} π</span>
+              <span className="font-bold">+{Math.floor(totalAmount)} pièces</span>
             </div>
             
             <div className="flex items-center justify-between text-sm p-3 bg-red-50 text-red-800 rounded-lg border border-red-100">
@@ -48,7 +48,7 @@ const TransferModal = ({ isOpen, onClose, totalAmount, loading, onConfirm }) => 
                 <AlertCircle className="w-4 h-4" />
                 Frais Plateforme (5%)
               </span>
-              <span className="font-bold">-{Math.ceil(totalAmount * 0.05)} π</span>
+              <span className="font-bold">-{Math.ceil(totalAmount * 0.05)} pièces</span>
             </div>
           </div>
           

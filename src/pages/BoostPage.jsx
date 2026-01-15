@@ -552,14 +552,14 @@ const BoostPage = () => {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center">
                                   <Coins className="w-5 h-5 text-amber-500 mr-2" />
-                                  <span className="text-xl font-bold">{pack.cost_pi} π</span>
+                                  <span className="text-xl font-bold">{pack.cost_pi} pièces</span>
                                 </div>
                                 <div className="text-right">
                                   <div className="text-sm font-medium">
                                     ≈ {calculateFcfaCost(pack.cost_pi).toLocaleString('fr-FR')} FCFA
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {Math.round(pack.cost_pi / pack.duration_days * 10) / 10} π/ jour
+                                    {Math.round(pack.cost_pi / pack.duration_days * 10) / 10} pièces/ jour
                                   </div>
                                 </div>
                               </div>
@@ -584,7 +584,7 @@ const BoostPage = () => {
                           </div>
                           <div className="flex items-center">
                             <Coins className="w-4 h-4 text-amber-500 mr-2" />
-                            <span>Coût : <strong>{selectedPackInfo.cost_pi} π</strong> ({calculateFcfaCost(selectedPackInfo.cost_pi).toLocaleString('fr-FR')} FCFA)</span>
+                            <span>Coût : <strong>{selectedPackInfo.cost_pi} pièces</strong> ({calculateFcfaCost(selectedPackInfo.cost_pi).toLocaleString('fr-FR')} FCFA)</span>
                           </div>
                         </div>
                       </div>
@@ -634,7 +634,7 @@ const BoostPage = () => {
                   Activer la promotion
                   {selectedPackInfo && (
                     <span className="ml-3 bg-white/20 px-3 py-1 rounded-full text-sm">
-                      {selectedPackInfo.cost_pi} π
+                      {selectedPackInfo.cost_pi} pièces
                     </span>
                   )}
                 </>
@@ -645,7 +645,7 @@ const BoostPage = () => {
               <p className="text-sm text-muted-foreground mt-4 max-w-2xl mx-auto">
                 En cliquant, vous confirmez la promotion de <strong>"{selectedEvent.title}"</strong> 
                 avec le pack <strong>{selectedPackInfo.name}</strong> pendant {selectedPackInfo.duration_days} jours 
-                pour un coût de {selectedPackInfo.cost_pi} π ({calculateFcfaCost(selectedPackInfo.cost_pi).toLocaleString('fr-FR')} FCFA).
+                pour un coût de {selectedPackInfo.cost_pi} pièces ({calculateFcfaCost(selectedPackInfo.cost_pi).toLocaleString('fr-FR')} FCFA).
               </p>
             )}
           </motion.div>

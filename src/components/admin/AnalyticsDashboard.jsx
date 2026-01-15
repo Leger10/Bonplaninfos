@@ -201,7 +201,7 @@ const AnalyticsDashboard = () => {
           {/* 1. Commissions */}
           <StatCard
             title="Commissions Totales"
-            value={`${stats.totalCommissions.toLocaleString()} π`}
+            value={`${stats.totalCommissions.toLocaleString()} pièces`}
             subtext="Cumul commissions plateforme (5%)"
             icon={Coins}
             colorClass="text-yellow-500"
@@ -211,7 +211,7 @@ const AnalyticsDashboard = () => {
           {/* 2. Estimated Revenue (User Holdings) */}
           <StatCard
             title="Masse Monétaire (Utilisateurs)"
-            value={`${stats.estimatedRevenue.toLocaleString()} π`}
+            value={`${stats.estimatedRevenue.toLocaleString()} pièces`}
             subtext="Total solde actuel des utilisateurs"
             icon={Wallet}
             colorClass="text-blue-500"
@@ -380,7 +380,7 @@ const AnalyticsDashboard = () => {
                       </div>
                       <div className="text-right">
                         <div className={`font-bold ${tx.amount_pi > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                          {tx.amount_pi > 0 ? '+' : ''}{tx.amount_pi} π
+                          {tx.amount_pi > 0 ? '+' : ''}{tx.amount_pi} pièces
                         </div>
                         {tx.amount_fcfa && (
                           <div className="text-xs text-muted-foreground">

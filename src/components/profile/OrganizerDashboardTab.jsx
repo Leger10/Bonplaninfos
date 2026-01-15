@@ -95,7 +95,7 @@ const OrganizerDashboardTab = () => {
               {availableBalanceFcfa.toLocaleString()} <span className="text-lg opacity-80">FCFA</span>
             </div>
             <p className="text-sm opacity-80 mb-6 font-mono">
-              ({availableBalanceCoins.toLocaleString()} π)
+              ({availableBalanceCoins.toLocaleString()} pièces)
             </p>
             <div className="flex gap-2">
                 <Button 

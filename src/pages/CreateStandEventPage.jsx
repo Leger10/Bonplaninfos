@@ -115,7 +115,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
             <Label className="text-primary font-bold">Prix en Pièces (Auto)</Label>
             <div className="h-10 flex items-center px-3 rounded-md bg-primary/10 text-primary font-bold border border-primary/20">
               <Coins className="w-4 h-4 mr-2" />
-              {convertToCoins(st.base_price, st.base_currency)} π
+              {convertToCoins(st.base_price, st.base_currency)} pièces
             </div>
           </div>
         </div>
@@ -479,7 +479,7 @@ const CreateStandEventPage = () => {
                   <p className="text-xs text-muted-foreground">{st.quantity_available} unités • {st.size}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-primary text-lg">{convertToCoins(st.base_price, st.base_currency)} π</p>
+                  <p className="font-bold text-primary text-lg">{convertToCoins(st.base_price, st.base_currency)} pièces</p>
                   <p className="text-xs text-muted-foreground">{formatCurrency(st.base_price, st.base_currency)}</p>
                 </div>
               </div>
@@ -491,7 +491,7 @@ const CreateStandEventPage = () => {
               <p className="font-medium text-green-800 dark:text-green-300">Revenu Potentiel Max (brut)</p>
               <p className="text-xs text-green-600/80 dark:text-green-400/80">Si les {totalPotentialStands} stands sont loués</p>
             </div>
-            <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{totalPotentialRevenuePi} π</p>
+            <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{totalPotentialRevenuePi} pièces</p>
           </div>
         </div>
         

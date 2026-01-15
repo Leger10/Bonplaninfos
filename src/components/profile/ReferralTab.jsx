@@ -169,7 +169,7 @@ const ReferralTab = () => {
           <div className="mt-3 flex items-center justify-center md:justify-start gap-2 text-xs text-gray-400">
              <span className="font-mono bg-gray-700 px-2 py-1 rounded text-gray-300">Code: {referralCode}</span>
              <span>•</span>
-             <span>Bonus ami: 100 FCFA (10π)</span>
+             <span>Bonus ami: 100 FCFA (10pièces)</span>
           </div>
         </div>
         )}

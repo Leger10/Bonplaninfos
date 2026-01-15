@@ -197,7 +197,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, isFinished, i
                                 <Share2 className="w-3 h-3" />
                             </Button>
                             <Button onClick={() => setConfirmation({ isOpen: true, onConfirm: handleVote })} disabled={loading} size="sm" className="col-span-5 bg-emerald-600 hover:bg-emerald-700 text-xs text-white border-0 shadow-lg shadow-emerald-900/20">
-                                {loading ? <Loader2 className="animate-spin w-3 h-3" /> : `Voter ${totalCostPi}π`}
+                                {loading ? <Loader2 className="animate-spin w-3 h-3" /> : `Voter ${totalCostPi}pièces`}
                             </Button>
                         </div>
                     </div>
@@ -285,7 +285,7 @@ const CandidateCard = ({ candidate, totalVotes, votePrice, onVote, isFinished, i
             <WalletInfoModal isOpen={showWalletInfo} onClose={() => setShowWalletInfo(false)} onProceed={() => { setShowWalletInfo(false); navigate('/packs'); }} />
             <AlertDialog open={confirmation.isOpen} onOpenChange={(o) => !o && setConfirmation({ isOpen: false, onConfirm: null })}>
                 <AlertDialogContent className="bg-gray-900 text-white border-gray-700">
-                    <AlertDialogHeader><AlertDialogTitle>Confirmer le vote</AlertDialogTitle><AlertDialogDescription className="text-gray-400">Voter pour {candidate.name} ({voteCount} voix) pour {totalCostPi}π (pièces achetées uniquement)?</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle>Confirmer le vote</AlertDialogTitle><AlertDialogDescription className="text-gray-400">Voter pour {candidate.name} ({voteCount} voix) pour {totalCostPi}pièces (pièces achetées uniquement)?</AlertDialogDescription></AlertDialogHeader>
                     <AlertDialogFooter><AlertDialogCancel className="text-black">Annuler</AlertDialogCancel><AlertDialogAction onClick={confirmation.onConfirm} className="bg-emerald-600 text-white">Confirmer</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -582,7 +582,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                     <Vote className="w-6 h-6 text-emerald-500" />
                     Espace de Vote
                 </h2>
-                {user && <Badge variant="outline" className="text-amber-400 border-amber-400 bg-amber-950/20 px-3 py-1"><Coins className="w-3 h-3 mr-2" /> Solde Acheté: {userPaidBalance}π</Badge>}
+                {user && <Badge variant="outline" className="text-amber-400 border-amber-400 bg-amber-950/20 px-3 py-1"><Coins className="w-3 h-3 mr-2" /> Solde Acheté: {userPaidBalance}pièces</Badge>}
             </div>
 
             {settings && (
@@ -824,13 +824,13 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                                                 </div>
                                                 <span className="text-gray-300 truncate max-w-[120px]">{i.candidate.name}</span>
                                             </div>
-                                            <span className="text-emerald-400 font-mono">{i.quantity * i.price}π</span>
+                                            <span className="text-emerald-400 font-mono">{i.quantity * i.price}pièces</span>
                                         </div>
                                     ))}
                                     <Separator />
                                     <div className="flex justify-between items-center pt-2">
                                         <span className="text-gray-400">Total</span>
-                                        <span className="text-xl font-bold text-emerald-400">{cartItems.reduce((s, i) => s + i.quantity * i.price, 0)}π</span>
+                                        <span className="text-xl font-bold text-emerald-400">{cartItems.reduce((s, i) => s + i.quantity * i.price, 0)}pièces</span>
                                     </div>
                                     <Button onClick={handleCheckout} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white">
                                         Confirmer le paiement

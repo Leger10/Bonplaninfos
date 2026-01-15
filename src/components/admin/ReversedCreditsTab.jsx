@@ -127,7 +127,7 @@ const ReversedCreditsTab = ({ isSuperAdmin, country }) => {
                                 <div key={log.id} className="p-4 bg-background/50 rounded-lg shadow-sm border border-destructive/20">
                                     <div className="flex justify-between items-start flex-wrap gap-2">
                                         <div>
-                                            <p className="font-semibold text-destructive">Crédit Annulé de {log.details?.amount || 'N/A'} π</p>
+                                            <p className="font-semibold text-destructive">Crédit Annulé de {log.details?.amount || 'N/A'} pièces</p>
                                             <p className="text-sm"><span className="font-medium">Utilisateur:</span> {log.target?.full_name || log.target?.email || 'N/A'}</p>
                                             <p className="text-sm"><span className="font-medium">Crédité par:</span> {log.actor?.full_name || log.actor?.email || 'Système'}</p>
                                             <p className="text-sm text-muted-foreground"><span className="font-medium">Annulé par:</span> {log.details?.reversed_by_name || 'N/A'}</p>
@@ -158,7 +158,7 @@ const ReversedCreditsTab = ({ isSuperAdmin, country }) => {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmer l'annulation</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Voulez-vous vraiment annuler le crédit de {logToReverse?.details.amount} π pour {logToReverse?.target.full_name} ? Cette action est irréversible.
+                            Voulez-vous vraiment annuler le crédit de {logToReverse?.details.amount} pièces pour {logToReverse?.target.full_name} ? Cette action est irréversible.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

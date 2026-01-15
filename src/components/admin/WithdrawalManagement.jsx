@@ -244,7 +244,7 @@ const WithdrawalManagement = () => {
                                     </TableCell>
                                     <TableCell>
                                         <div className="font-medium">{req.amount_fcfa?.toLocaleString()} FCFA</div>
-                                        <div className="text-xs text-muted-foreground">{req.amount_pi} π</div>
+                                        <div className="text-xs text-muted-foreground">{req.amount_pi} pièces</div>
                                     </TableCell>
                                     <TableCell className="text-red-500 font-medium">
                                         -{req.fees?.toLocaleString()} FCFA

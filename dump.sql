@@ -133,10 +133,10 @@ BEGIN
     
     -- Vérifier le solde
     IF (COALESCE(user_profile.coin_balance, 0) + COALESCE(user_profile.free_coin_balance, 0)) < access_cost THEN
-        RETURN jsonb_build_object('success', false, 'message', 'Solde insuffisant. ' || access_cost || 'π requis pour accéder à cet événement', 'has_access', false);
+        RETURN jsonb_build_object('success', false, 'message', 'Solde insuffisant. ' || access_cost || 'pièces requis pour accéder à cet événement', 'has_access', false);
     END IF;
     
-    -- Débiter l'utilisateur de 2π
+    -- Débiter l'utilisateur de 2pièces
     free_coins_used := LEAST(COALESCE(user_profile.free_coin_balance, 0), access_cost);
     paid_coins_used := access_cost - free_coins_used;
 
@@ -150,7 +150,7 @@ BEGIN
     
     -- Distribuer les gains si des pièces PAYANTES ont été utilisées
     IF paid_coins_used > 0 THEN
-      -- Créditer l'organisateur de 1π
+      -- Créditer l'organisateur de 1pièces
       INSERT INTO organizer_earnings (organizer_id, event_id, transaction_type, earnings_coins, earnings_fcfa, status, platform_commission, description) 
       VALUES (event_record.organizer_id, p_event_id, 'event_access', organizer_credit, organizer_credit * v_coin_to_fcfa_rate, 'available', platform_commission, 'Gain pour accès à un événement protégé');
 
@@ -158,7 +158,7 @@ BEGIN
       SET available_earnings = COALESCE(available_earnings, 0) + organizer_credit
       WHERE id = event_record.organizer_id;
       
-      -- Créditer la plateforme de 1π
+      -- Créditer la plateforme de 1pièces
       SELECT id INTO super_admin_id FROM profiles WHERE user_type = 'super_admin' LIMIT 1;
       IF super_admin_id IS NOT NULL THEN
         UPDATE public.profiles
@@ -1007,8 +1007,8 @@ BEGIN
         'can_withdraw', can_withdraw,
         'missing_for_withdrawal', CASE WHEN can_withdraw THEN 0 ELSE 50 - total_earnings END,
         'message', CASE 
-            WHEN can_withdraw THEN 'Vous pouvez demander un retrait (≥50π)'
-            ELSE 'Minimum 50π requis pour le retrait'
+            WHEN can_withdraw THEN 'Vous pouvez demander un retrait (≥50pièces)'
+            ELSE 'Minimum 50pièces requis pour le retrait'
         END
     );
 END;
@@ -1054,7 +1054,7 @@ BEGIN
     SELECT message_text INTO encouragement_message FROM encouragement_messages WHERE message_type = 'video_completion' AND is_active = true ORDER BY display_order LIMIT 1;
     IF encouragement_message IS NULL THEN encouragement_message := video_record.reward_message; END IF;
     
-    IF streak_bonus > 0 THEN encouragement_message := COALESCE(encouragement_message, '') || ' Bonus série: +' || streak_bonus || 'π! 🔥'; END IF;
+    IF streak_bonus > 0 THEN encouragement_message := COALESCE(encouragement_message, '') || ' Bonus série: +' || streak_bonus || 'pièces! 🔥'; END IF;
     
     -- Insert or update view log
     INSERT INTO user_video_views (user_id, video_id, watch_duration, fully_watched, watch_started_at, watch_completed_at, reward_received, coins_awarded, reward_message, device_info)
@@ -4078,9 +4078,9 @@ BEGIN
         request.organizer_id,
         'Mise à jour de votre demande de retrait',
         CASE 
-            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'π a été approuvée et sera payée sous peu.'
-            WHEN p_status = 'paid' THEN 'Votre demande de retrait de ' || request.amount_pi || 'π a été payée.'
-            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'π a été rejetée. Raison: ' || COALESCE(p_notes, 'Non spécifiée')
+            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été approuvée et sera payée sous peu.'
+            WHEN p_status = 'paid' THEN 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été payée.'
+            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été rejetée. Raison: ' || COALESCE(p_notes, 'Non spécifiée')
         END,
         CASE WHEN p_status = 'approved' OR p_status = 'paid' THEN 'success' ELSE 'warning' END,
         jsonb_build_object('request_id', p_request_id)
@@ -4237,8 +4237,8 @@ BEGIN
         request.user_id,
         'Mise à jour de votre demande de retrait',
         CASE 
-            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'π a été approuvée et sera traitée.'
-            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'π a été rejetée. Raison: ' || p_rejection_reason
+            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été approuvée et sera traitée.'
+            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été rejetée. Raison: ' || p_rejection_reason
         END,
         CASE WHEN p_status = 'approved' THEN 'success' ELSE 'warning' END
     );
@@ -4306,8 +4306,8 @@ BEGIN
         request.organizer_id,
         'Mise à jour de votre demande de retrait',
         CASE 
-            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'π a été approuvée.'
-            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'π a été rejetée. Raison: ' || p_rejection_reason
+            WHEN p_status = 'approved' THEN 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été approuvée.'
+            ELSE 'Votre demande de retrait de ' || request.amount_pi || 'pièces a été rejetée. Raison: ' || p_rejection_reason
         END,
         CASE WHEN p_status = 'approved' THEN 'success' ELSE 'warning' END
     );
@@ -4390,7 +4390,7 @@ BEGIN
     IF interaction_cost > 0 THEN
         SELECT * INTO user_profile FROM profiles WHERE id = p_user_id;
         IF (COALESCE(user_profile.coin_balance, 0) + COALESCE(user_profile.free_coin_balance, 0)) < interaction_cost THEN
-            RETURN jsonb_build_object('success', false, 'message', 'Solde insuffisant. ' || interaction_cost || 'π requis pour cette action');
+            RETURN jsonb_build_object('success', false, 'message', 'Solde insuffisant. ' || interaction_cost || 'pièces requis pour cette action');
         END IF;
         
         free_coins_used := LEAST(COALESCE(user_profile.free_coin_balance, 0), interaction_cost);
@@ -5048,7 +5048,7 @@ BEGIN
 
     -- Validations
     IF p_amount_pi < min_withdrawal THEN
-        RAISE EXCEPTION 'Le montant minimum de retrait est de %π.', min_withdrawal;
+        RAISE EXCEPTION 'Le montant minimum de retrait est de %pièces.', min_withdrawal;
     END IF;
 
     IF COALESCE(organizer_profile.available_earnings, 0) < p_amount_pi THEN
@@ -5104,7 +5104,7 @@ BEGIN
     
     -- Validations
     IF p_amount_coins < min_withdrawal THEN
-        RETURN jsonb_build_object('success', false, 'message', 'Le montant minimum de retrait est de ' || min_withdrawal || 'π.');
+        RETURN jsonb_build_object('success', false, 'message', 'Le montant minimum de retrait est de ' || min_withdrawal || 'pièces.');
     END IF;
 
     IF COALESCE(organizer_profile.available_earnings, 0) < p_amount_coins THEN
@@ -5156,7 +5156,7 @@ BEGIN
 
     -- Validations
     IF p_amount_pi < min_withdrawal THEN
-        RAISE EXCEPTION 'Le montant minimum de retrait est de %π.', min_withdrawal;
+        RAISE EXCEPTION 'Le montant minimum de retrait est de %pièces.', min_withdrawal;
     END IF;
 
     IF COALESCE(user_profile.available_earnings, 0) < p_amount_pi THEN
@@ -6128,7 +6128,7 @@ BEGIN
           <div class="summary">
             <h3>Résumé de la commande</h3>
             <p><strong>Nombre de billets :</strong> %s</p>
-            <p><strong>Coût total :</strong> %s π (~%s FCFA)</p>
+            <p><strong>Coût total :</strong> %s pièces (~%s FCFA)</p>
             <p><strong>Période d''achat :</strong> %s</p>
           </div>
           <h2>Vos billets</h2>
@@ -6278,7 +6278,7 @@ BEGIN
     event_info.cover_image,
     CASE 
       WHEN p_total_pi IS NOT NULL THEN 
-        format('<div class="summary"><h3>Résumé de la commande</h3><p><strong>Nombre de billets :</strong> %s</p><p><strong>Coût total :</strong> %s π (~%s FCFA)</p>%s</div>',
+        format('<div class="summary"><h3>Résumé de la commande</h3><p><strong>Nombre de billets :</strong> %s</p><p><strong>Coût total :</strong> %s pièces (~%s FCFA)</p>%s</div>',
           array_length(p_ticket_ids, 1),
           p_total_pi,
           COALESCE(p_total_fcfa::text, '0'),
@@ -6366,7 +6366,7 @@ BEGIN
             'message', 'Prix mis à jour avec succès',
             'price_id', existing_price.id,
             'calculated_coins', calculated_coins,
-            'formatted_price', calculated_coins || 'π = ' || p_amount || ' ' || p_currency,
+            'formatted_price', calculated_coins || 'pièces = ' || p_amount || ' ' || p_currency,
             'action', 'updated'
         );
     ELSE
@@ -6383,7 +6383,7 @@ BEGIN
             'message', 'Prix créé avec succès',
             'price_id', existing_price.id,
             'calculated_coins', calculated_coins,
-            'formatted_price', calculated_coins || 'π = ' || p_amount || ' ' || p_currency,
+            'formatted_price', calculated_coins || 'pièces = ' || p_amount || ' ' || p_currency,
             'action', 'created'
         );
     END IF;
@@ -8532,7 +8532,7 @@ CREATE TABLE IF NOT EXISTS "public"."mandatory_videos" (
     "video_duration" integer NOT NULL,
     "thumbnail_url" "text",
     "reward_coins" integer DEFAULT 10,
-    "reward_message" "text" DEFAULT 'Félicitations! Vous avez gagné 10π gratuits! 🎉'::"text",
+    "reward_message" "text" DEFAULT 'Félicitations! Vous avez gagné 10 pièces gratuits! 🎉'::"text",
     "is_active" boolean DEFAULT true,
     "is_mandatory" boolean DEFAULT true,
     "display_order" integer DEFAULT 0,

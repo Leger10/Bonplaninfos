@@ -88,7 +88,7 @@ const CreditStatsTab = () => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Crédits Distribués</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-700">{totalCredits.toLocaleString()} π</div>
+            <div className="text-3xl font-bold text-blue-700">{totalCredits.toLocaleString()} pièces</div>
             <p className="text-xs text-muted-foreground mt-1">Net après annulations</p>
           </CardContent>
         </Card>
@@ -118,7 +118,7 @@ const CreditStatsTab = () => {
                 <TableHead>Pays</TableHead>
                 <TableHead className="text-right">Transactions</TableHead>
                 <TableHead className="text-right">Annulations (Reversals)</TableHead>
-                <TableHead className="text-right">Total Net (π)</TableHead>
+                <TableHead className="text-right">Total Net (pièces)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -139,10 +139,10 @@ const CreditStatsTab = () => {
                     </TableCell>
                     <TableCell className="text-right">{item.transactionCount}</TableCell>
                     <TableCell className="text-right text-red-500">
-                      {item.reversals > 0 ? `-${item.reversals.toLocaleString()} π` : '-'}
+                      {item.reversals > 0 ? `-${item.reversals.toLocaleString()} pièces` : '-'}
                     </TableCell>
                     <TableCell className="text-right font-bold text-green-600">
-                      {item.totalAmount.toLocaleString()} π
+                      {item.totalAmount.toLocaleString()} pièces
                     </TableCell>
                   </TableRow>
                 ))

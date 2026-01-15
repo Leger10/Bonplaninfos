@@ -42,7 +42,7 @@ serve(async (req) => {
                 <strong>Nombre de tickets :</strong> ${ticket_quantity}
               </li>
               <li style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">
-                <strong>Montant total :</strong> ${total_paid}π
+                <strong>Montant total :</strong> ${total_paid}pièces
               </li>
               <li style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">
                 <strong>Numéros de tickets :</strong> ${ticket_numbers.join(', ')}

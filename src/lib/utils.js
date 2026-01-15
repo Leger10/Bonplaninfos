@@ -101,7 +101,7 @@ export function generateEventStructuredData(event) {
   if (!event) return null;
 
   const price = event.starting_price_pi || event.price_pi;
-  const currency = "π";
+  const currency = "pièces";
 
   const structuredData = {
     "@context": "https://schema.org",

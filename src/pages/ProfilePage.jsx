@@ -270,7 +270,7 @@ const ProfilePage = () => {
         title: "✅ Transfert réussi",
         description: (
           <div>
-            <p className="font-bold text-emerald-600">+{netAmount} π transférés</p>
+            <p className="font-bold text-emerald-600">+{netAmount} pièces transférés</p>
             <p className="text-xs mt-1">Vos gains sont maintenant disponibles dans votre solde.</p>
           </div>
         ),
@@ -311,7 +311,7 @@ const ProfilePage = () => {
           </div>
           
           <div className="flex flex-col gap-1 mt-2">
-            <div className="text-2xl font-bold">{sum} <span className="text-sm font-normal text-muted-foreground">π</span></div>
+            <div className="text-2xl font-bold">{sum} <span className="text-sm font-normal text-muted-foreground">pièces</span></div>
             <div className="flex gap-2 mt-2">
               <Button 
                 variant="ghost" 
@@ -423,7 +423,7 @@ const ProfilePage = () => {
                           </h3>
                           <div className="text-5xl font-bold tracking-tight">
                             {totalPending}{" "}
-                            <span className="text-3xl opacity-80">π</span>
+                            <span className="text-3xl opacity-80">pièces</span>
                           </div>
                           <p className="text-sm opacity-75">
                             Ces gains sont stockés temporairement. Transférez-les pour pouvoir les retirer.
@@ -439,7 +439,7 @@ const ProfilePage = () => {
                             disabled={totalPending === 0}
                           >
                             <Wallet className="mr-2 h-5 w-5" />
-                            Tout transférer ({totalPending} π)
+                            Tout transférer ({totalPending} pièces)
                           </Button>
                         </div>
                       </div>

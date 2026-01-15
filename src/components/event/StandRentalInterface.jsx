@@ -80,7 +80,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       // Check Balance First (Optional but good UX)
       const { data: profile } = await supabase.from('profiles').select('coin_balance').eq('id', user.id).single();
       if (profile.coin_balance < rentingType.calculated_price_pi) {
-        throw new Error(`Solde insuffisant. Il vous faut ${rentingType.calculated_price_pi} π.`);
+        throw new Error(`Solde insuffisant. Il vous faut ${rentingType.calculated_price_pi} pièces.`);
       }
 
       // Call RPC
@@ -148,7 +148,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               <div>
                 <Label className="text-muted-foreground">Coût total payé</Label>
                 <div className="font-bold text-primary text-xl">
-                  {myRental.rental_amount_pi} π
+                  {myRental.rental_amount_pi} pièces
                 </div>
               </div>
             </div>
@@ -240,7 +240,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                 <CardFooter className="border-t pt-4 bg-muted/10 flex justify-between items-center">
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">Prix de location</span>
-                    <span className="text-xl font-bold text-primary">{type.calculated_price_pi} π</span>
+                    <span className="text-xl font-bold text-primary">{type.calculated_price_pi} pièces</span>
                   </div>
                   
                   {isClosed ? (
@@ -260,7 +260,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                           <DialogDescription>
                             Remplissez les informations de votre entreprise pour valider la location.
                             <br/>
-                            <strong>Coût : {type.calculated_price_pi} π</strong>
+                            <strong>Coût : {type.calculated_price_pi} pièces</strong>
                           </DialogDescription>
                         </DialogHeader>
                         
@@ -320,7 +320,7 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                             className="w-full"
                           >
                             {isRenting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                            Confirmer la réservation ({type.calculated_price_pi} π)
+                            Confirmer la réservation ({type.calculated_price_pi} pièces)
                           </Button>
                         </DialogFooter>
                       </DialogContent>

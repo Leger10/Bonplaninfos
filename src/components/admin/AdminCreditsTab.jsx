@@ -153,7 +153,7 @@ const AdminCreditsTab = () => {
                 </div>
               </div>
               <p className="text-xs text-green-600 mt-1">
-                Taux: 1π = {coinToFcfaRate} FCFA
+                Taux: 1pièces = {coinToFcfaRate} FCFA
               </p>
             </CardContent>
           </Card>
@@ -218,7 +218,7 @@ const AdminCreditsTab = () => {
           </div>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span>Moyenne: {creditLogs.length > 0 ? Math.round(totals.totalCoins / creditLogs.length) : 0}π par crédit</span>
+            <span>Moyenne: {creditLogs.length > 0 ? Math.round(totals.totalCoins / creditLogs.length) : 0} pièces par crédit</span>
           </div>
         </div>
 

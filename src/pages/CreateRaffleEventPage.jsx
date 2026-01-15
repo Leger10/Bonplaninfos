@@ -586,15 +586,15 @@ const CreateRaffleEventPage = () => {
         </div>
       </div>
 
-      {/* Affichage prix en π */}
+      {/* Affichage prix en pièces */}
       <div className="p-4 border rounded-lg space-y-2">
-        <Label>Prix en π (Pi)</Label>
+        <Label>Prix en pièces</Label>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
             {calculatedPricePi} <Coins className="w-6 h-6" />
           </p>
           <p className="text-sm text-muted-foreground">
-            {formData.ticketPrice} {formData.ticketCurrency} = {calculatedPricePi}π
+            {formData.ticketPrice} {formData.ticketCurrency} = {calculatedPricePi} pièces
           </p>
         </div>
       </div>
@@ -606,7 +606,7 @@ const CreateRaffleEventPage = () => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="text-center">
               <p className="font-semibold">Revenu total estimé</p>
-              <p className="text-2xl font-bold text-primary">{totalRevenuePi}π</p>
+              <p className="text-2xl font-bold text-primary">{totalRevenuePi} pièces</p>
             </div>
             <div className="text-center">
               <p className="font-semibold">Valeur en FCFA</p>
@@ -690,9 +690,9 @@ const CreateRaffleEventPage = () => {
                   </div>
                   <div className="flex items-end">
                     <div className="p-2 bg-muted rounded-lg text-sm w-full">
-                      <p className="font-semibold">Valeur en π</p>
+                      <p className="font-semibold">Valeur en pièces</p>
                       <p className="text-primary font-bold">
-                        {Math.ceil(prize.value_fcfa / exchangeRates.PI)}π
+                        {Math.ceil(prize.value_fcfa / exchangeRates.PI)} pièces
                       </p>
                     </div>
                   </div>
@@ -717,7 +717,7 @@ const CreateRaffleEventPage = () => {
                 <p className="text-sm text-muted-foreground">Valeur totale</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-primary">{Math.ceil(totalPrizeValue / exchangeRates.PI)}π</p>
+                <p className="text-2xl font-bold text-primary">{Math.ceil(totalPrizeValue / exchangeRates.PI)} pièces</p>
                 <p className="text-sm text-muted-foreground">En pièces</p>
               </div>
             </div>
@@ -806,7 +806,7 @@ const CreateRaffleEventPage = () => {
             </div>
             <div className="flex justify-between">
               <span>Prix du ticket:</span>
-              <span className="font-bold">{calculatedPricePi}π ({formData.ticketPrice} {formData.ticketCurrency})</span>
+              <span className="font-bold">{calculatedPricePi} pièces ({formData.ticketPrice} {formData.ticketCurrency})</span>
             </div>
             <div className="flex justify-between">
               <span>Total tickets:</span>
@@ -818,7 +818,7 @@ const CreateRaffleEventPage = () => {
             </div>
             <div className="flex justify-between">
               <span>Revenu total estimé:</span>
-              <span className="font-bold text-primary">{totalRevenuePi}π</span>
+              <span className="font-bold text-primary">{totalRevenuePi}pièces</span>
             </div>
             <div className="flex justify-between">
               <span>Nombre de lots:</span>

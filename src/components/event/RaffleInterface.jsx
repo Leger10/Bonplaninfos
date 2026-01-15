@@ -322,9 +322,9 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
             title: "🎫 Achat réussi avec commissions",
             description: (
                 <div className="text-sm">
-                    <div>Total: {data.total} π</div>
-                    <div className="text-green-600">Organisateur: {data.organizer_amount} π (95%)</div>
-                    <div className="text-blue-600">Plateforme: {data.platform_commission} π (5%)</div>
+                    <div>Total: {data.total} pièces</div>
+                    <div className="text-green-600">Organisateur: {data.organizer_amount} pièces (95%)</div>
+                    <div className="text-blue-600">Plateforme: {data.platform_commission} pièces (5%)</div>
                 </div>
             ),
             duration: 6000,
@@ -413,7 +413,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                     <div className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-primary/10 rounded-lg">
                         <Wallet className="w-4 h-4 text-primary" />
                         <span className="text-sm font-medium whitespace-nowrap">
-                            Solde: <span className="font-bold">{userBalance.toFixed(2)} π</span>
+                            Solde: <span className="font-bold">{userBalance.toFixed(2)} pièces</span>
                         </span>
                     </div>
                 </div>
@@ -558,7 +558,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             <div className="flex items-center gap-2">
                                                 <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded text-sm">
                                                     <Wallet className="w-3 h-3" />
-                                                    <span className="font-medium">{userBalance.toFixed(2)} π</span>
+                                                    <span className="font-medium">{userBalance.toFixed(2)} pièces</span>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
@@ -578,12 +578,12 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                     <div className="flex-1 min-w-0">
                                                         <div className="font-medium truncate">{item.type.name}</div>
                                                         <div className="text-sm text-muted-foreground">
-                                                            {item.unitPrice.toFixed(2)} π × {item.quantity}
+                                                            {item.unitPrice.toFixed(2)} pièces × {item.quantity}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2 sm:gap-3 ml-2">
                                                         <div className="text-right">
-                                                            <div className="font-bold text-sm sm:text-base">{item.total.toFixed(2)} π</div>
+                                                            <div className="font-bold text-sm sm:text-base">{item.total.toFixed(2)} pièces</div>
                                                             <div className="text-xs text-muted-foreground">
                                                                 {item.totalFcfa.toLocaleString()} FCFA
                                                             </div>
@@ -606,7 +606,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 <Alert variant="destructive" className="mb-3">
                                                     <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
                                                     <AlertDescription className="text-xs">
-                                                        Il vous manque {balanceDeficit.toFixed(2)} π
+                                                        Il vous manque {balanceDeficit.toFixed(2)} pièces
                                                     </AlertDescription>
                                                 </Alert>
                                             )}
@@ -615,11 +615,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                                 <div className="min-w-0">
                                                     <span className="font-bold text-sm sm:text-base">Total</span>
                                                     <div className="text-xs sm:text-sm text-muted-foreground truncate">
-                                                        Solde disponible: {userBalance.toFixed(2)} π
+                                                        Solde disponible: {userBalance.toFixed(2)} pièces
                                                     </div>
                                                 </div>
                                                 <div className="text-right ml-2">
-                                                    <div className="text-xl sm:text-2xl font-bold text-primary">{cartTotal.toFixed(2)} π</div>
+                                                    <div className="text-xl sm:text-2xl font-bold text-primary">{cartTotal.toFixed(2)} pièces</div>
                                                     <div className="text-xs sm:text-sm text-muted-foreground">
                                                         {cartTotalFcfa.toLocaleString()} FCFA
                                                     </div>
@@ -672,7 +672,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     <div className="text-left">
                                         <p className="text-sm font-medium whitespace-nowrap">{totalTicketsInCart} billet{totalTicketsInCart > 1 ? 's' : ''}</p>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-xs font-bold text-primary whitespace-nowrap">{cartTotal.toFixed(2)} π</p>
+                                            <p className="text-xs font-bold text-primary whitespace-nowrap">{cartTotal.toFixed(2)} pièces</p>
                                             {!hasSufficientBalance && (
                                                 <Badge variant="destructive" className="h-4 px-1 text-[10px] whitespace-nowrap">
                                                     Solde insuffisant
@@ -728,13 +728,13 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                 <Wallet className="w-5 h-5 text-primary" />
                                 <div>
                                     <p className="text-sm font-medium">Votre solde</p>
-                                    <p className="text-xl sm:text-2xl font-bold text-primary">{userBalance.toFixed(2)} π</p>
+                                    <p className="text-xl sm:text-2xl font-bold text-primary">{userBalance.toFixed(2)} pièces</p>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-sm font-medium">Total panier</p>
                                 <p className={`text-xl sm:text-2xl font-bold ${hasSufficientBalance ? 'text-green-600' : 'text-destructive'}`}>
-                                    {cartTotal.toFixed(2)} π
+                                    {cartTotal.toFixed(2)} pièces
                                 </p>
                             </div>
                         </div>
@@ -742,7 +742,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                             <Alert variant="destructive" className="mt-3">
                                 <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
                                 <AlertDescription className="text-xs">
-                                    Il vous manque {balanceDeficit.toFixed(2)} π pour valider cette commande.
+                                    Il vous manque {balanceDeficit.toFixed(2)} pièces pour valider cette commande.
                                 </AlertDescription>
                             </Alert>
                         )}
@@ -797,12 +797,12 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                             </div>
                                         </div>
                                         <div className="text-right ml-2">
-                                            <div className="text-base sm:text-lg font-bold">{item.total.toFixed(2)} π</div>
+                                            <div className="text-base sm:text-lg font-bold">{item.total.toFixed(2)} pièces</div>
                                             <div className="text-xs sm:text-sm text-muted-foreground">
                                                 {item.totalFcfa.toLocaleString()} FCFA
                                             </div>
                                             <div className="text-xs text-muted-foreground mt-1">
-                                                {item.unitPrice.toFixed(2)} π / billet
+                                                {item.unitPrice.toFixed(2)} pièces / billet
                                             </div>
                                         </div>
                                     </div>
@@ -822,7 +822,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                         </div>
                                     </div>
                                     <div className="text-right ml-2">
-                                        <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} π</span>
+                                        <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} pièces</span>
                                         <span className="text-xs sm:text-sm text-muted-foreground">
                                             {cartTotalFcfa.toLocaleString()} FCFA
                                         </span>
@@ -833,7 +833,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     <Alert className="bg-amber-50 border-amber-200">
                                         <AlertDescription className="text-xs sm:text-sm text-amber-800">
                                             <Package className="w-4 h-4 inline mr-2" />
-                                            Votre solde est insuffisant. <strong>Rechargez vos π pour continuer.</strong>
+                                            Votre solde est insuffisant. <strong>Rechargez vos pièces pour continuer.</strong>
                                         </AlertDescription>
                                     </Alert>
                                 )}
@@ -879,7 +879,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                                     ) : hasSufficientBalance ? (
                                         <>
                                             <Check className="mr-2 w-5 h-5" />
-                                            <span className="truncate">Payer {cartTotal.toFixed(2)} π</span>
+                                            <span className="truncate">Payer {cartTotal.toFixed(2)} pièces</span>
                                         </>
                                     ) : (
                                         <>
@@ -903,11 +903,11 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         </div>
                         <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
                         <DialogDescription className="text-center text-sm sm:text-base">
-                            Votre solde actuel de <strong>{userBalance.toFixed(2)} π</strong> ne permet pas d'acheter
-                            le panier de <strong>{cartTotal.toFixed(2)} π</strong>.
+                            Votre solde actuel de <strong>{userBalance.toFixed(2)} pièces</strong> ne permet pas d'acheter
+                            le panier de <strong>{cartTotal.toFixed(2)} pièces</strong>.
                             <br />
                             <br />
-                            Il vous manque <strong className="text-destructive">{balanceDeficit.toFixed(2)} π</strong>.
+                            Il vous manque <strong className="text-destructive">{balanceDeficit.toFixed(2)} pièces</strong>.
                         </DialogDescription>
                     </DialogHeader>
                     
@@ -915,7 +915,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
                             <AlertTitle className="text-amber-800 text-sm sm:text-base">💡 Solution rapide</AlertTitle>
                             <AlertDescription className="text-amber-700 text-xs sm:text-sm">
-                                Rechargez votre compte avec un pack de π pour finaliser votre achat et profiter de l'événement !
+                                Rechargez votre compte avec un pack de pièces pour finaliser votre achat et profiter de l'événement !
                             </AlertDescription>
                         </Alert>
                         
@@ -939,7 +939,7 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
                         
                         <div className="text-xs text-muted-foreground text-center pt-4 border-t">
                             <p>
-                                💎 Les packs π vous permettent d'acheter des billets et de participer à tous les événements.
+                                💎 Les packs pièces vous permettent d'acheter des billets et de participer à tous les événements.
                                 <br />
                                 🎁 Profitez de promotions exclusives sur les gros packs !
                             </p>

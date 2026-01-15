@@ -151,7 +151,7 @@ en: {
         unlock_modal: {
           title: "Débloquer cet Événement",
           description:
-            'Pour voir les détails de "{{title}}", un coût de {{cost}}π (environ {{costFcfa}} FCFA) sera déduit de votre solde.',
+            'Pour voir les détails de "{{title}}", un coût de {{cost}}pièces (environ {{costFcfa}} FCFA) sera déduit de votre solde.',
           info: "Cette action est unique. Une fois débloqué, vous aurez un accès permanent à cet événement.",
           cancel: "Annuler",
           confirm: "Confirmer et Débloquer",
@@ -649,7 +649,7 @@ africa_compliance: "Nos pratiques de protection des données respectent les rég
 
       // ===== WALLET & COINS =====
       wallet_info_modal: {
-        title: "À quoi servent les pièces (π) ?",
+        title: "À quoi servent les pièces (pièces) ?",
         intro:
           "Les pièces sont la monnaie virtuelle de BonPlanInfos. Elles vous permettent d'accéder à des contenus exclusifs et d'interagir avec les événements.",
         free_coins_title: "Pièces Gratuites (🎁)",
@@ -701,14 +701,14 @@ africa_compliance: "Nos pratiques de protection des données respectent les rég
         tags: "Tags",
         unlock_event_to_see_content:
           "Débloquez cet événement pour voir le contenu exclusif !",
-        unlock_button: "Débloquer pour {{price}}π",
+        unlock_button: "Débloquer pour {{price}}pièces",
         unlocking: "Déblocage...",
         free_access: "Accès gratuit",
         owner_access: "Accès propriétaire",
         comments: "Commentaires",
         leave_comment: "Laissez un commentaire...",
         submit_comment: "Envoyer",
-        comment_cost: "Commenter pour {{price}}π",
+        comment_cost: "Commenter pour {{price}}pièces",
         ticketing: "Billetterie",
         voting: "Vote",
         raffle: "Tombola",
@@ -721,7 +721,7 @@ africa_compliance: "Nos pratiques de protection des données respectent les rég
         comment: "Commenter",
         share: "Partager",
         download: "Télécharger",
-        cost: "{{price}}π",
+        cost: "{{price}}pièces",
         comment_placeholder: "Ajouter un commentaire...",
         post_comment: "Publier",
       },
@@ -1507,7 +1507,7 @@ user_guide_page: {
         unlock_modal: {
           title: "Unlock This Event",
           description:
-            'To see the details for "{{title}}", a cost of {{cost}}π (about {{costFcfa}} FCFA) will be deducted from your balance.',
+            'To see the details for "{{title}}", a cost of {{cost}}pièces (about {{costFcfa}} FCFA) will be deducted from your balance.',
           info: "This is a one-time action. Once unlocked, you will have permanent access to this event.",
           cancel: "Cancel",
           confirm: "Confirm and Unlock",
@@ -2307,7 +2307,7 @@ testimonials: {
           organizer: "Organizer",
           user: "User",
           easy_withdrawal: "Easy Withdrawal",
-          from_50_pi: "From 50π",
+          from_50_pi: "From 50pièces",
           ready_cta_title: "Ready to turn your ideas into success?",
           ready_cta_subtitle: "Join thousands of organizers who trust us.",
           cta_button: "Launch my first event",
@@ -2368,7 +2368,7 @@ testimonials: {
 
       // ===== WALLET & COINS =====
       wallet_info_modal: {
-        title: "What are coins (π) for?",
+        title: "What are coins (pièces) for?",
         intro:
           "Coins are the virtual currency of BonPlanInfos. They allow you to access exclusive content and interact with events.",
         free_coins_title: "Free Coins (🎁)",
@@ -2419,14 +2419,14 @@ testimonials: {
         tags: "Tags",
         unlock_event_to_see_content:
           "Unlock this event to see exclusive content!",
-        unlock_button: "Unlock for {{price}}π",
+        unlock_button: "Unlock for {{price}}pièces",
         unlocking: "Unlocking...",
         free_access: "Free Access",
         owner_access: "Owner Access",
         comments: "Comments",
         leave_comment: "Leave a comment...",
         submit_comment: "Submit",
-        comment_cost: "Comment for {{price}}π",
+        comment_cost: "Comment for {{price}}pièces",
         ticketing: "Ticketing",
         voting: "Voting",
         raffle: "Raffle",
@@ -2439,7 +2439,7 @@ testimonials: {
         comment: "Comment",
         share: "Share",
         download: "Download",
-        cost: "{{price}}π",
+        cost: "{{price}}pièces",
         comment_placeholder: "Add a comment...",
         post_comment: "Post",
       },

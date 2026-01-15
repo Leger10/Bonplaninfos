@@ -302,7 +302,7 @@ const CreateTicketingEventPage = () => {
                 </div>
                 <div>
                   <p className="font-bold text-base text-blue-800 dark:text-blue-300">Conversion Automatique</p>
-                  <p className="text-muted-foreground">Le système calcule automatiquement le prix en Pièces (10 FCFA = 1 π). Les revenus sont partagés à 95% pour vous.</p>
+                  <p className="text-muted-foreground">Le système calcule automatiquement le prix en Pièces (10 FCFA = 1 pièces). Les revenus sont partagés à 95% pour vous.</p>
                 </div>
               </div>
 
@@ -381,7 +381,7 @@ const CreateTicketingEventPage = () => {
                                   <Input type="number" value={tt.presale_price} onChange={(e) => handleTicketTypeChange(tt.id, 'presale_price', e.target.value)} className="pr-12 bg-background" />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
                                 </div>
-                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.presale_price)} π</Badge>
+                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.presale_price)} pièces</Badge>
                               </div>
                             </div>
 
@@ -392,7 +392,7 @@ const CreateTicketingEventPage = () => {
                                   <Input type="number" value={tt.price} onChange={(e) => handleTicketTypeChange(tt.id, 'price', e.target.value)} className="pr-12 bg-background" />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">FCFA</span>
                                 </div>
-                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.price)} π</Badge>
+                                <Badge variant="outline" className="h-10 px-3 text-base font-medium min-w-[80px] justify-center">{convertToCoins(tt.price)} pièces</Badge>
                               </div>
                             </div>
                           </div>

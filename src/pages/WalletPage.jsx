@@ -106,11 +106,11 @@ const WalletPage = () => {
                     <CardContent className="space-y-4">
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                             <span className="font-medium">{t('wallet_page.free_coins')}</span>
-                            <span className="font-bold text-lg text-green-400">{free_coin_balance?.toLocaleString() || 0} π</span>
+                            <span className="font-bold text-lg text-green-400">{free_coin_balance?.toLocaleString() || 0} pièces</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-background rounded-lg">
                             <span className="font-medium">{t('wallet_page.paid_coins')}</span>
-                            <span className="font-bold text-lg text-blue-400">{coin_balance?.toLocaleString() || 0} π</span>
+                            <span className="font-bold text-lg text-blue-400">{coin_balance?.toLocaleString() || 0} pièces</span>
                         </div>
                         <p className="text-xs text-muted-foreground pt-2">
                           {t('wallet_page.free_coins_desc')}
@@ -126,7 +126,7 @@ const WalletPage = () => {
                     <CardContent>
                         <div className="p-4 rounded-lg bg-background text-center mb-4">
                             <p className="text-sm text-muted-foreground">{t('wallet_page.available_earnings')}</p>
-                            <p className="text-3xl font-bold text-green-400">{available_earnings?.toLocaleString() || 0} π</p>
+                            <p className="text-3xl font-bold text-green-400">{available_earnings?.toLocaleString() || 0} pièces</p>
                              <p className="text-sm text-muted-foreground">{t('wallet_page.earnings_in_fcfa', { amount: earningsInFcfa.toLocaleString() })}</p>
                         </div>
                          <Button className="w-full" disabled={(available_earnings || 0) < (adminConfig?.min_withdrawal_pi || 5000)}>

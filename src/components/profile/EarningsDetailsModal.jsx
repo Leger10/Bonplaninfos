@@ -92,15 +92,15 @@ const EarningsDetailsModal = ({ isOpen, onClose, category, transactions = [], sp
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="p-3 bg-white rounded border">
                 <div className="text-sm text-gray-600">Total brut</div>
-                <div className="text-xl font-bold text-gray-800">{Math.floor(totals.totalBrut)} π</div>
+                <div className="text-xl font-bold text-gray-800">{Math.floor(totals.totalBrut)} pièces</div>
               </div>
               <div className="p-3 bg-green-50 rounded border border-green-200">
                 <div className="text-sm text-green-600">Net (95%)</div>
-                <div className="text-xl font-bold text-green-700">{Math.floor(totals.totalNet)} π</div>
+                <div className="text-xl font-bold text-green-700">{Math.floor(totals.totalNet)} pièces</div>
               </div>
               <div className="p-3 bg-red-50 rounded border border-red-200">
                 <div className="text-sm text-red-600">Frais (5%)</div>
-                <div className="text-xl font-bold text-red-700">{Math.floor(totals.totalFees)} π</div>
+                <div className="text-xl font-bold text-red-700">{Math.floor(totals.totalFees)} pièces</div>
               </div>
             </div>
           </div>
@@ -137,7 +137,7 @@ const EarningsDetailsModal = ({ isOpen, onClose, category, transactions = [], sp
                         <Coins className="w-4 h-4 text-gray-600" />
                         <span className="text-sm">Montant brut :</span>
                       </div>
-                      <span className="font-semibold">{transaction.brut || transaction.amount} π</span>
+                      <span className="font-semibold">{transaction.brut || transaction.amount} pièces</span>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2">
@@ -148,7 +148,7 @@ const EarningsDetailsModal = ({ isOpen, onClose, category, transactions = [], sp
                             <span className="text-xs text-green-700">Net (95%) :</span>
                           </div>
                           <span className="font-bold text-green-700">
-                            {transaction.net || Math.floor((transaction.brut || transaction.amount) * 0.95)} π
+                            {transaction.net || Math.floor((transaction.brut || transaction.amount) * 0.95)} pièces
                           </span>
                         </div>
                       </div>
@@ -159,7 +159,7 @@ const EarningsDetailsModal = ({ isOpen, onClose, category, transactions = [], sp
                             <span className="text-xs text-red-700">Frais (5%) :</span>
                           </div>
                           <span className="font-bold text-red-700">
-                            {transaction.fees || Math.floor((transaction.brut || transaction.amount) * 0.05)} π
+                            {transaction.fees || Math.floor((transaction.brut || transaction.amount) * 0.05)} pièces
                           </span>
                         </div>
                       </div>
@@ -172,7 +172,7 @@ const EarningsDetailsModal = ({ isOpen, onClose, category, transactions = [], sp
                         <Coins className="w-4 h-4 text-blue-600" />
                         <span className="text-sm">Montant :</span>
                       </div>
-                      <span className="font-bold text-blue-700">{transaction.amount} π</span>
+                      <span className="font-bold text-blue-700">{transaction.amount} pièces</span>
                     </div>
                   </div>
                 )}

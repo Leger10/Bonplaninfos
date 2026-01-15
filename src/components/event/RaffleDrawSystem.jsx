@@ -508,7 +508,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                                                         ? 'text-green-600' 
                                                         : 'text-gray-700'
                                                 }`}>
-                                                    {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} π
+                                                    {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} pièces
                                                 </span>
                                             </div>
                                         )}
@@ -541,7 +541,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                             <div className="bg-white p-3 rounded border text-center">
                                 <div className="text-xs text-gray-500 uppercase">Revenu Est.</div>
                                 <div className="text-xl font-bold text-green-600">
-                                    {(raffleData.tickets_sold * (raffleData.calculated_price_pi || 0))} π
+                                    {(raffleData.tickets_sold * (raffleData.calculated_price_pi || 0))} pièces
                                 </div>
                                 <div className="text-[10px] text-gray-400">
                                     ~{(raffleData.tickets_sold * (raffleData.calculated_price_pi || 0) * 10).toLocaleString()} CFA
@@ -574,7 +574,7 @@ const RaffleDrawSystem = ({ raffleData, eventId, isOrganizer, onDrawComplete }) 
                                              ((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)) < raffleData.target_amount_pi && (
                                                 <p className="flex items-center justify-center gap-1">
                                                     <Target className="w-3 h-3" />
-                                                    Objectif: {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} π
+                                                    Objectif: {((raffleData.tickets_sold || 0) * (raffleData.calculated_price_pi || 0)).toFixed(0)}/{raffleData.target_amount_pi} pièces
                                                 </p>
                                             )}
                                             {raffleData.end_date && new Date() < new Date(raffleData.end_date) && (

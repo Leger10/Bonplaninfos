@@ -225,7 +225,7 @@ const AdminStats = ({ userProfile }) => {
             </span>
             <span className="block">
               Crédits: {(stats.credited * 10).toLocaleString("fr-FR")} FCFA (
-              {stats.credited} π)
+              {stats.credited} pièces)
             </span>
           </div>
         </CardContent>

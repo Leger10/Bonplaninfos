@@ -232,7 +232,7 @@ const ActivityLogTab = () => {
                         <div className="flex items-center gap-1.5">
                             <span className="font-medium text-muted-foreground">Montant:</span>
                             <Badge variant="outline" className="font-mono text-sm font-bold">
-                                {details.amount?.toLocaleString()} π
+                                {details.amount?.toLocaleString()} pièces
                             </Badge>
                         </div>
                         {details.reason && (
@@ -249,7 +249,7 @@ const ActivityLogTab = () => {
                     <div className="space-y-1">
                         <div className="flex flex-wrap gap-2 items-center">
                             <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
-                                {details.amount_pi?.toLocaleString()} π
+                                {details.amount_pi?.toLocaleString()} pièces
                             </Badge>
                             {details.amount_fcfa && (
                                 <span className="text-muted-foreground text-xs">

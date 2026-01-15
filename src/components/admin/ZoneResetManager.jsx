@@ -206,7 +206,7 @@ const ZoneResetManager = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <Badge variant="outline" className="font-mono bg-blue-50 text-blue-700 border-blue-200">
-                          {zone.total_credits.toLocaleString()} π
+                          {zone.total_credits.toLocaleString()} pièces
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">

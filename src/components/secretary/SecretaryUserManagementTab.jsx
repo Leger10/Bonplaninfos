@@ -240,8 +240,8 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col text-xs">
-                      <span className="font-semibold text-white">{u.coin_balance || 0} π (Payant)</span>
-                      <span className="text-gray-400">{u.free_coin_balance || 0} π (Gratuit)</span>
+                      <span className="font-semibold text-white">{u.coin_balance || 0} pièces (Payant)</span>
+                      <span className="text-gray-400">{u.free_coin_balance || 0} pièces (Gratuit)</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -352,7 +352,7 @@ const SecretaryUserManagementTab = ({ users, onRefresh }) => {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="amount" className="text-right text-gray-300">
-                Montant (π)
+                Montant (pièces)
               </Label>
               <Input
                 id="amount"

@@ -158,7 +158,7 @@ const PartnerWithdrawalQueue = ({ country }) => {
                       </TableCell>
                       <TableCell>
                         <div className="font-bold">{formatCurrencySimple(req.amount_fcfa)}</div>
-                        <div className="text-xs text-muted-foreground">{req.amount_pi} π</div>
+                        <div className="text-xs text-muted-foreground">{req.amount_pi} pièces</div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">

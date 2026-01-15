@@ -151,7 +151,7 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
           }
           participantMap[userId].tickets_count += 1;
           participantMap[userId].tickets.push(ticket.ticket_number);
-          participantMap[userId].total_spent += 2; // Prix fixe de 2π
+          participantMap[userId].total_spent += 2; // Prix fixe de 2pièces
         }
       });
 
@@ -462,7 +462,7 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
               <div className="text-right">
                 <div className="text-sm text-gray-300">
                   <span className="text-xs text-gray-500">Dépensé: </span>
-                  <span className="font-bold text-yellow-400">{participant.total_spent}π</span>
+                  <span className="font-bold text-yellow-400">{participant.total_spent}pièces</span>
                 </div>
                 <div className="flex gap-1 mt-1">
                   {participant.tickets.slice(0, 3).map((ticket, idx) => (
@@ -501,7 +501,7 @@ const LiveDrawBroadcast = ({ raffleId, currentUser, onClose, isOrganizer = false
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-yellow-400">
-              {participantRankings.reduce((sum, p) => sum + p.total_spent, 0)}π
+              {participantRankings.reduce((sum, p) => sum + p.total_spent, 0)}pièces
             </div>
             <div className="text-xs text-gray-400">Revenu total</div>
           </div>

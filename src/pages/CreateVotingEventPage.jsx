@@ -298,7 +298,7 @@ const CreateVotingEventPage = () => {
                         />
                         <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
                       </div>
-                      <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} π</p>
+                      <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} pièces</p>
                     </div>
                   </div>
 

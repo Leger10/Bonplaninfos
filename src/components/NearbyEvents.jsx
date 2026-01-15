@@ -200,12 +200,12 @@ const NearbyEvents = () => {
         throw new Error(rpcData.message);
       }
 
-      // Succès : l'utilisateur a été débité de 2π et l'organisateur a reçu 1π
+      // Succès : l'utilisateur a été débité de 2pièces et l'organisateur a reçu 1pièces
       const amountPaid = rpcData.amount_paid || 2;
       
       toast({ 
         title: "Contenu débloqué!", 
-        description: `Vous avez dépensé ${amountPaid}π. 1π a été transféré à l'organisateur.`,
+        description: `Vous avez dépensé ${amountPaid}pièces. 1pièces a été transféré à l'organisateur.`,
         duration: 3000
       });
       
@@ -369,7 +369,7 @@ const NearbyEvents = () => {
                 <Coins className="w-12 h-12 text-primary mb-4" />
                 <p className="text-lg">
                   Voir les détails de "<strong className="text-foreground">{confirmation.event?.title}</strong>" vous coûtera{' '}
-                  <strong className="text-foreground">{confirmation.cost}π</strong> ({confirmation.costFcfa?.toLocaleString('fr-FR')} FCFA).
+                  <strong className="text-foreground">{confirmation.cost}pièces</strong> ({confirmation.costFcfa?.toLocaleString('fr-FR')} FCFA).
                 </p>
                 <div className="mt-4 text-sm text-muted-foreground p-4 bg-muted rounded-lg">
                   <div className="flex items-start gap-3">
@@ -378,15 +378,15 @@ const NearbyEvents = () => {
                       <p className="font-medium mb-2 text-foreground">Comment fonctionne la rémunération :</p>
                       <ul className="space-y-2 text-xs md:text-sm">
                         <li className="flex items-center gap-2">
-                          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">2π</span>
+                          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">2pièces</span>
                           <span>sont déduits de votre solde</span>
                         </li>
                         <li className="flex items-center gap-2">
-                          <span className="bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-semibold">1π</span>
+                          <span className="bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-semibold">1pièces</span>
                           <span>est transféré à l'organisateur de l'événement</span>
                         </li>
                         <li className="flex items-center gap-2">
-                          <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded font-semibold">1π</span>
+                          <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded font-semibold">1pièces</span>
                           <span>reste dans l'écosystème BonPlanInfos</span>
                         </li>
                       </ul>
@@ -405,7 +405,7 @@ const NearbyEvents = () => {
               onClick={confirmation.onConfirm}
               className="bg-primary hover:bg-primary/90"
             >
-              Confirmer et Payer {confirmation.cost}π
+              Confirmer et Payer {confirmation.cost}pièces
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

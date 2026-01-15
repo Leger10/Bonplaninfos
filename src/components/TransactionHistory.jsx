@@ -103,7 +103,7 @@ const TransactionHistory = ({ userId }) => {
                                     <p className={`font-bold ${
                                         transaction.type === 'transfer' ? 'text-green-600' : 'text-red-600'
                                     }`}>
-                                        {transaction.type === 'transfer' ? '+' : '-'}{transaction.amount} π
+                                        {transaction.type === 'transfer' ? '+' : '-'}{transaction.amount} pièces
                                     </p>
                                     {transaction.type === 'withdrawal' && (
                                         <Badge variant="outline" className={

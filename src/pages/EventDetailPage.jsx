@@ -784,17 +784,17 @@ const EventDetailPage = () => {
                       <div className="space-y-2 pt-2 border-t border-gray-800">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-300">Revenus Bruts</span>
-                          <span className="font-medium text-white">{standStats.gross_revenue} π</span>
+                          <span className="font-medium text-white">{standStats.gross_revenue} pièces</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-400 flex items-center gap-1">
                             <PieChart className="w-3 h-3" /> Frais (5%)
                           </span>
-                          <span className="text-red-400">-{standStats.platform_fee} π</span>
+                          <span className="text-red-400">-{standStats.platform_fee} pièces</span>
                         </div>
                         <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-700">
                           <span className="font-bold text-green-400">Vos Gains Nets (95%)</span>
-                          <span className="font-bold text-xl text-green-400">{standStats.organizer_net} π</span>
+                          <span className="font-bold text-xl text-green-400">{standStats.organizer_net} pièces</span>
                         </div>
                       </div>
                     </>

@@ -68,7 +68,7 @@ const WithdrawalModal = ({
         }
 
         if (requestedAmountPI < MIN_WITHDRAWAL_PI) {
-            toast({ title: "Montant trop faible", description: `Minimum requis : ${MIN_WITHDRAWAL_PI} π (${MIN_WITHDRAWAL_PI * RATE} FCFA).`, variant: "destructive" });
+            toast({ title: "Montant trop faible", description: `Minimum requis : ${MIN_WITHDRAWAL_PI} pièces (${MIN_WITHDRAWAL_PI * RATE} FCFA).`, variant: "destructive" });
             return;
         }
 
@@ -120,7 +120,7 @@ const WithdrawalModal = ({
                 <DialogHeader>
                     <DialogTitle>Effectuer un retrait</DialogTitle>
                     <DialogDescription>
-                        Solde disponible : <span className="font-bold text-emerald-600">{availableBalance.toLocaleString()} FCFA</span> ({availableBalancePI} π)
+                        Solde disponible : <span className="font-bold text-emerald-600">{availableBalance.toLocaleString()} FCFA</span> ({availableBalancePI} pièces)
                     </DialogDescription>
                 </DialogHeader>
 
@@ -139,7 +139,7 @@ const WithdrawalModal = ({
                         )}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="amount">Montant à retirer (en Pièces π)</Label>
+                            <Label htmlFor="amount">Montant à retirer (en Pièces pièces)</Label>
                             <div className="flex gap-2">
                                 <Input
                                     id="amount"
@@ -153,7 +153,7 @@ const WithdrawalModal = ({
                                     {requestedAmountFCFA.toLocaleString()} F
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">1 π = {RATE} FCFA</p>
+                            <p className="text-xs text-muted-foreground">1 pièces = {RATE} FCFA</p>
                         </div>
 
                         {requestedAmountPI > 0 && (
