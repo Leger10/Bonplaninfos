@@ -108,7 +108,7 @@ const AdminCreditsTab = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="w-6 h-6 text-green-500" />
-          Historique des Crédits
+          Historique des pièces
           <Badge variant="secondary" className="ml-2">
             Zone: {userProfile?.country}
           </Badge>

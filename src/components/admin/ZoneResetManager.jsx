@@ -168,7 +168,7 @@ const ZoneResetManager = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-bold">Pays / Zone</TableHead>
                   <TableHead className="text-center">Utilisateurs</TableHead>
-                  <TableHead className="text-right">Crédits Distribués</TableHead>
+                  <TableHead className="text-right">pièces Distribués</TableHead>
                   <TableHead className="text-right">Revenus (Achats)</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
@@ -258,7 +258,7 @@ const ZoneResetManager = () => {
               <Checkbox id="reset-credits" checked={resetOptions.credits} onCheckedChange={(c) => setResetOptions(p => ({...p, credits: c}))} />
               <div className="grid gap-1.5 leading-none">
                 <Label htmlFor="reset-credits" className="font-semibold cursor-pointer">
-                  Crédits Distribués (Coins)
+                  pièces Distribués (Coins)
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Supprime l'historique des pièces créditées manuellement par les administrateurs.

@@ -85,7 +85,7 @@ const CreditStatsTab = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Crédits Distribués</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total pièces Distribués</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-700">{totalCredits.toLocaleString()} pièces</div>

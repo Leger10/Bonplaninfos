@@ -133,7 +133,7 @@ const PaymentSuccessPage = () => {
                                     
                                     <div className="py-4">
                                         <span className="text-6xl font-extrabold text-indigo-600 block mb-2">{resultData.coins_added}</span>
-                                        <span className="text-xl font-medium text-slate-400">Crédits ajoutés</span>
+                                        <span className="text-xl font-medium text-slate-400">pièces ajoutés</span>
                                     </div>
 
                                     {resultData.bonus_added > 0 && (

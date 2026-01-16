@@ -17,7 +17,7 @@ const CREDIT_PACKS = [
         amount: 500, 
         coins: 50, 
         bonus: 0, 
-        features: ['50 Crédits', 'Idéal pour tester', 'Validité illimitée'],
+        features: ['50 pièces', 'Idéal pour tester', 'Validité illimitée'],
         icon: Coins, 
         color: 'text-yellow-400',
         actionTags: ['Démarrer', 'Essentiel'],
@@ -29,7 +29,7 @@ const CREDIT_PACKS = [
         amount: 1000, 
         coins: 100, 
         bonus: 0, 
-        features: ['100 Crédits', 'Participation simple', 'Support standard'],
+        features: ['100 pièces', 'Participation simple', 'Support standard'],
         icon: Zap, 
         color: 'text-blue-400',
         actionTags: ['Populaire', 'Sans risque'],
@@ -41,7 +41,7 @@ const CREDIT_PACKS = [
         amount: 5000, 
         coins: 500, 
         bonus: 0, 
-        features: ['500 Crédits', 'Création d\'événements', 'Boost léger'],
+        features: ['500 pièces', 'Création d\'événements', 'Boost léger'],
         icon: Star, 
         color: 'text-indigo-400',
         actionTags: ['Recommandé', 'Meilleur rapport'],
@@ -54,7 +54,7 @@ const CREDIT_PACKS = [
         amount: 10000, 
         coins: 1000, 
         bonus: 50, 
-        features: ['1000 Crédits', '+50 Crédits Bonus', 'Visibilité accrue', 'Support prioritaire'],
+        features: ['1000 pièces', '+50 pièces Bonus', 'Visibilité accrue', 'Support prioritaire'],
         icon: Sparkles, 
         color: 'text-purple-400',
         actionTags: ['Boost +50%', 'Prioritaire'],
@@ -67,7 +67,7 @@ const CREDIT_PACKS = [
         amount: 25000, 
         coins: 2500, 
         bonus: 250, 
-        features: ['2500 Crédits', '+250 Crédits Bonus', 'Statut VIP', 'Support dédié'],
+        features: ['2500 pièces', '+250 pièces Bonus', 'Statut VIP', 'Support dédié'],
         icon: Crown, 
         color: 'text-red-400',
         actionTags: ['Exclusif', '+250 Bonus'],
@@ -80,7 +80,7 @@ const CREDIT_PACKS = [
         amount: 50000, 
         coins: 5000, 
         bonus: 500, 
-        features: ['5000 Crédits', '+500 Crédits Bonus', 'Boost Maximum', 'Partenariat exclusif'],
+        features: ['5000 pièces', '+500 pièces Bonus', 'Boost Maximum', 'Partenariat exclusif'],
         icon: Crown, 
         color: 'text-orange-400',
         actionTags: ['Maximum', '+500 Bonus'],
@@ -135,7 +135,7 @@ const CreditPacksPage = () => {
     return (
         <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
             <MultilingualSeoHead pageData={{ 
-                title: "Acheter des Crédits - BonPlanInfos", 
+                title: "Acheter des pièces - BonPlanInfos", 
                 description: "Rechargez votre compte en crédits avec nos packs exclusifs." 
             }} />
             
@@ -147,7 +147,7 @@ const CreditPacksPage = () => {
                     className="text-center space-y-4"
                 >
                     <h1 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500">
-                        Boutique de Crédits
+                        Boutique de pièces
                     </h1>
                     <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                         Choisissez le pack qui correspond à vos besoins et débloquez instantanément des fonctionnalités premium.
@@ -177,7 +177,7 @@ const CreditPacksPage = () => {
                             <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
                                 <div className="flex items-center justify-center gap-2">
                                     <Target className="w-4 h-4 text-red-400" />
-                                    <span className="text-sm font-medium text-gray-300">Crédits illimités</span>
+                                    <span className="text-sm font-medium text-gray-300">pièces illimités</span>
                                 </div>
                             </div>
                         </div>
@@ -225,7 +225,7 @@ const CreditPacksPage = () => {
                                     </div>
                                     <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-4 py-2 rounded-full text-sm font-bold mt-2">
                                         <Coins className="w-4 h-4 mr-2" />
-                                        {pack.coins.toLocaleString()} Crédits
+                                        {pack.coins.toLocaleString()} pièces
                                     </div>
                                 </div>
 
@@ -240,7 +240,7 @@ const CreditPacksPage = () => {
                                         {pack.bonus > 0 && (
                                             <li className="flex items-start text-sm font-bold text-green-400 bg-gray-800/50 p-3 rounded-lg border border-green-500/20">
                                                 <Sparkles className="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-                                                <span>+{pack.bonus} Crédits Bonus Offerts</span>
+                                                <span>+{pack.bonus} pièces Bonus Offertes</span>
                                             </li>
                                         )}
                                     </ul>
@@ -315,7 +315,7 @@ const CreditPacksPage = () => {
                                 {customAmount > 0 && (
                                     <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                                         <p className="text-sm font-medium text-gray-300">
-                                            Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} Crédits</span>
+                                            Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} pièces</span>
                                         </p>
                                     </div>
                                 )}
@@ -343,8 +343,8 @@ const CreditPacksPage = () => {
                                 <p className="text-sm text-gray-400">Augmentez votre visibilité instantanément</p>
                             </div>
                             <div className="space-y-2">
-                                <div className="text-yellow-400 font-bold">⚡ Crédits immédiats</div>
-                                <p className="text-sm text-gray-400">Rechargez et utilisez vos crédits sans délai</p>
+                                <div className="text-yellow-400 font-bold">⚡ pièces immédiates</div>
+                                <p className="text-sm text-gray-400">Rechargez et utilisez vos pièces sans délai</p>
                             </div>
                             <div className="space-y-2">
                                 <div className="text-yellow-400 font-bold">🎁 Bonus exclusifs</div>

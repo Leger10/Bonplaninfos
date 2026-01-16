@@ -224,7 +224,7 @@ const AdminStats = ({ userProfile }) => {
               Achats: {stats.purchased.toLocaleString("fr-FR")} FCFA
             </span>
             <span className="block">
-              Crédits: {(stats.credited * 10).toLocaleString("fr-FR")} FCFA (
+              pièces: {(stats.credited * 10).toLocaleString("fr-FR")} FCFA (
               {stats.credited} pièces)
             </span>
           </div>
@@ -991,7 +991,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="credits_history">
                 <CreditCard className="w-4 h-4 mr-2" />
                 {t("admin_dashboard.tabs.credits_history") ||
-                  "Historique Crédits"}
+                  "Historique pièces"}
               </TabsTrigger>
               <TabsTrigger value="reversed_credits">
                 <RotateCcw className="w-4 h-4 mr-2" />

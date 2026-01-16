@@ -17,7 +17,7 @@ const CREDIT_PACKS = [
         amount: 500, 
         coins: 50, 
         bonus: 0, 
-        features: ['50 Crédits', 'Test', 'Illimité'],
+        features: ['50 pièces', 'Test', 'Illimité'],
         icon: Coins, 
         color: 'text-yellow-400',
         actionTags: ['Essentiel'],
@@ -29,7 +29,7 @@ const CREDIT_PACKS = [
         amount: 1000, 
         coins: 100, 
         bonus: 0, 
-        features: ['100 Crédits', 'Simple', 'Support'],
+        features: ['100 pièces', 'Simple', 'Support'],
         icon: Zap, 
         color: 'text-blue-400',
         actionTags: ['Populaire'],
@@ -41,7 +41,7 @@ const CREDIT_PACKS = [
         amount: 5000, 
         coins: 500, 
         bonus: 0, 
-        features: ['500 Crédits', 'Événements', 'Boost léger'],
+        features: ['500 pièces', 'Événements', 'Boost léger'],
         icon: Star, 
         color: 'text-indigo-400',
         actionTags: ['Recommandé'],
@@ -54,7 +54,7 @@ const CREDIT_PACKS = [
         amount: 10000, 
         coins: 1000, 
         bonus: 50, 
-        features: ['1000 Crédits', '+50 Bonus', 'Visibilité +', 'Prioritaire'],
+        features: ['1000 pièces', '+50 Bonus', 'Visibilité +', 'Prioritaire'],
         icon: Sparkles, 
         color: 'text-purple-400',
         actionTags: ['+50%'],
@@ -67,7 +67,7 @@ const CREDIT_PACKS = [
         amount: 25000, 
         coins: 2500, 
         bonus: 250, 
-        features: ['2500 Crédits', '+250 Bonus', 'Statut VIP', 'Dédié'],
+        features: ['2500 pièces', '+250 Bonus', 'Statut VIP', 'Dédié'],
         icon: Crown, 
         color: 'text-red-400',
         actionTags: ['Exclusif'],
@@ -80,7 +80,7 @@ const CREDIT_PACKS = [
         amount: 50000, 
         coins: 5000, 
         bonus: 500, 
-        features: ['5000 Crédits', '+500 Bonus', 'Boost Max', 'Partenaire'],
+        features: ['5000 pièces', '+500 Bonus', 'Boost Max', 'Partenaire'],
         icon: Crown, 
         color: 'text-orange-400',
         actionTags: ['Maximum'],
@@ -135,7 +135,7 @@ const CoinPacksPage = () => {
     return (
         <div className="min-h-screen bg-black py-8 px-3 sm:px-4 text-gray-100">
             <MultilingualSeoHead pageData={{ 
-                title: "Acheter des Crédits - BonPlanInfos", 
+                title: "Acheter des pièces - BonPlanInfos", 
                 description: "Rechargez votre compte en crédits avec nos packs exclusifs." 
             }} />
             
@@ -147,10 +147,10 @@ const CoinPacksPage = () => {
                     className="text-center space-y-3 sm:space-y-4"
                 >
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500">
-                        Boutique de Crédits
+                        Boutique des pièces
                     </h1>
                     <p className="text-sm sm:text-base md:text-lg text-gray-300 max-w-2xl mx-auto px-2">
-                        Choisissez votre pack et débloquez des fonctionnalités premium.
+                       Choisis ton pack, recharge ton compte et profite des événements exclusifs 🔥
                     </p>
                     
                     {/* Stats Banner - Version mobile simplifiée */}
@@ -225,7 +225,7 @@ const CoinPacksPage = () => {
                                     </div>
                                     <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-2 sm:px-3 py-1 rounded-full text-xs font-bold mt-1">
                                         <Coins className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                        {pack.coins.toLocaleString()} Crédits
+                                        {pack.coins.toLocaleString()} pièces
                                     </div>
                                 </div>
 
@@ -314,7 +314,7 @@ const CoinPacksPage = () => {
                                 {customAmount > 0 && (
                                     <div className="mt-3 p-2 bg-gray-800/50 rounded border border-gray-700">
                                         <p className="text-xs sm:text-sm font-medium text-gray-300">
-                                            Vous recevrez ~ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} Crédits</span>
+                                            Vous recevrez ~ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} pièces</span>
                                         </p>
                                     </div>
                                 )}
