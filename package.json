@@ -5,15 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "vite --host --port 3000",
-    "build": "node tools/generate-llms.js || true && node node_modules/vite/bin/vite.js build",
-    "preview": "node node_modules/vite/bin/vite.js preview --host --port 3000",
+    "build": "node tools/generate-llms.js || true && vite build",
+    "preview": "vite preview --host --port 3000",
     "sitemap": "node scripts/generate-sitemap.js",
     "netlify-build": "npm run build",
     "start": "npm run dev",
     "clean": "node scripts/clean-cache.js",
     "fresh": "npm run clean && npm install && npm run dev",
     "restart": "npm run clean && npm run dev"
-  },
+},
   "dependencies": {
     "@babel/traverse": "^7.26.4",
     "@emotion/is-prop-valid": "^1.3.1",
