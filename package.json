@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite --host --port 3000",
-    "build": "node tools/generate-llms.js || true && vite build",
-    "preview": "vite preview --host --port 3000",
+   "dev": "vite --host --port 3000",
+    "build": "node tools/generate-llms.js || true && npx vite build",
+    "preview": "npx vite preview --host --port 3000",
     "sitemap": "node scripts/generate-sitemap.js",
     "netlify-build": "npm run build",
     "start": "npm run dev",
