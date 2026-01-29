@@ -87,9 +87,9 @@ export default defineConfig({
         react(),
         addTransformIndexHtml
     ],
-    // AJOUT : Optimisation pour Supabase
     optimizeDeps: {
-        include: ['@supabase/supabase-js', '@supabase/storage-js', '@supabase/postgrest-js']
+        // Supprimé storage-js d'ici car l'alias va s'en occuper plus proprement
+        include: ['@supabase/supabase-js']
     },
     server: {
         cors: true,
@@ -102,10 +102,11 @@ export default defineConfig({
         extensions: ['.jsx', '.js', '.tsx', '.ts', '.json'],
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // CORRECTIF : Force la résolution vers le fichier ESM spécifique pour éviter l'erreur de "packageEntryFailure"
+            '@supabase/supabase-js': path.resolve(__dirname, 'node_modules/@supabase/supabase-js/dist/module/index.js'),
         },
     },
     build: {
-        // AJOUT : Gestion des modules CommonJS pour éviter l'erreur de résolution
         commonjsOptions: {
             include: [/node_modules/],
             transformMixedEsModules: true
