@@ -18,7 +18,7 @@ self.addEventListener('push', (event) => {
   
   const title = payload.title || 'BonPlanInfos';
   const options = {
-    body: payload.message || 'Nouvelle notification',
+    body: payload.message || 'Nouvelle notification pour vous.',
     icon: '/pwa-192x192.png', // Ensure this exists or use fallback
     badge: '/badge-72x72.png',
     vibrate: [100, 50, 100],
