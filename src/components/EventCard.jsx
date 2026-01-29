@@ -85,11 +85,13 @@ const EventCard = ({ event, onClick }) => {
               />
           </div>
           
-          {/* Synchronized Countdown: Passes end_date to allow switching to 'Ends in' mode if started */}
-          <EventCountdown 
-            eventDate={event.event_date} 
-            eventEndDate={event.end_date} 
-          />
+          {/* Synchronized Countdown */}
+          {event.event_start_at && (
+            <EventCountdown 
+              eventDate={event.event_start_at} 
+              eventEndDate={event.event_end_at}
+            />
+          )}
           
           <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
              {event.is_promoted && (
@@ -125,7 +127,7 @@ const EventCard = ({ event, onClick }) => {
             <div className="space-y-2">
               <div className="flex items-center text-gray-300 text-sm">
                 <Calendar className="w-4 h-4 mr-2 text-[#C9A227]" />
-                {formatDate(event.event_date)}
+                {formatDate(event.event_start_at)}
               </div>
               
               <div className="flex items-center text-gray-300 text-sm">

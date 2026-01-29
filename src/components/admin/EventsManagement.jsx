@@ -125,7 +125,7 @@ const EventsManagement = ({ events, onRefresh }) => {
       Titre: e.title,
       Type: e.event_type,
       Organisateur: e.organizer?.full_name || 'Inconnu',
-      Date: new Date(e.event_date).toLocaleString('fr-FR'),
+      Date: new Date(e.event_start_at).toLocaleString('fr-FR'),
       Lieu: `${e.city}, ${e.country}`,
       Statut: e.status,
       Prix_Pi: e.price_pi,
@@ -251,7 +251,7 @@ const EventsManagement = ({ events, onRefresh }) => {
                       <td className="p-4">
                         <div className="flex flex-col">
                           <span className="font-semibold text-foreground line-clamp-1">{event.title}</span>
-                          <span className="text-xs text-muted-foreground md:hidden">{new Date(event.event_date).toLocaleDateString()}</span>
+                          <span className="text-xs text-muted-foreground md:hidden">{new Date(event.event_start_at).toLocaleDateString()}</span>
                         </div>
                       </td>
                       <td className="p-4 hidden md:table-cell">
@@ -262,7 +262,7 @@ const EventsManagement = ({ events, onRefresh }) => {
                       </td>
                       <td className="p-4 hidden lg:table-cell">
                         <div className="flex flex-col text-xs text-muted-foreground">
-                          <span>{new Date(event.event_date).toLocaleDateString('fr-FR')}</span>
+                          <span>{new Date(event.event_start_at).toLocaleDateString('fr-FR')}</span>
                           <span>{event.city}, {event.country}</span>
                         </div>
                       </td>

@@ -128,7 +128,9 @@ const WithdrawalModal = ({
                     <div className="py-8 flex justify-center"><Loader2 className="animate-spin" /></div>
                 ) : (
                     <div className="space-y-4 py-2">
-                        {userType === 'organizer' && !isPoolOpen && (
+
+                        {/* INFos des retraits des gains pour les vues */}
+                        {/* {userType === 'organizer' && !isPoolOpen && (
                             <Alert variant="warning" className="bg-amber-50 border-amber-200 text-amber-800 text-xs">
                                 <CalendarClock className="h-4 w-4" />
                                 <AlertTitle>Info Retraits</AlertTitle>
@@ -136,7 +138,7 @@ const WithdrawalModal = ({
                                     Les gains liés aux interactions (Vues, etc.) ne sont retirables que le {withdrawalConfig.withdrawal_dates.join(', ')} du mois.
                                 </AlertDescription>
                             </Alert>
-                        )}
+                        )} */}
 
                         <div className="grid gap-2">
                             <Label htmlFor="amount">Montant à retirer (en Pièces pièces)</Label>

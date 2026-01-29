@@ -14,7 +14,7 @@ const ContestCard = ({ contest, onClick }) => {
     : "https://images.unsplash.com/photo-1583795235849-913535366623?auto=format&fit=crop&w=400&h=200&q=75";
 
   const getTimeRemaining = () => {
-    const endDate = new Date(contest.end_date);
+    const endDate = new Date(contest.event_end_at);
     const now = new Date();
     const diff = endDate - now;
 
@@ -69,7 +69,7 @@ const ContestsPage = () => {
         .from('contests')
         .select('*')
         .eq('is_active', true)
-        .order('end_date', { ascending: true });
+        .order('event_end_at', { ascending: true });
 
       if (error) {
         console.error("Error fetching contests:", error);

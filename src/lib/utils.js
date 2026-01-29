@@ -107,11 +107,11 @@ export function generateEventStructuredData(event) {
     "@context": "https://schema.org",
     "@type": "Event",
     name: event.title,
-    startDate: event.event_date
-      ? new Date(event.event_date).toISOString()
+    startDate: event.event_start_at
+      ? new Date(event.event_start_at).toISOString()
       : undefined,
-    endDate: event.promotion_end
-      ? new Date(event.promotion_end).toISOString()
+    endDate: event.event_end_at
+      ? new Date(event.event_end_at).toISOString()
       : undefined,
     eventAttendanceMode: "https://schema.org/MixedEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",

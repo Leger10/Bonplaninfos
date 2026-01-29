@@ -178,7 +178,7 @@ const ContestDetailPage = () => {
                         <p className="text-gray-300 mt-2 max-w-2xl mx-auto">{contest.description}</p>
                         <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center mt-4 text-sm text-gray-400">
                             <div className="flex items-center"><Trophy className="w-4 h-4 mr-2 text-amber-400" /> Coût: <strong className="ml-1.5 flex items-center text-white">{contest.vote_cost_coins} <Coins className="w-3 h-3 ml-1 text-amber-400" /></strong></div>
-                            <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-amber-400" /> Fin: <strong className="ml-1.5 text-white">{new Date(contest.end_date).toLocaleDateString('fr-FR')}</strong></div>
+                            <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-amber-400" /> Fin: <strong className="ml-1.5 text-white">{new Date(contest.event_end_at).toLocaleDateString('fr-FR')}</strong></div>
                         </div>
                     </CardContent>
                 </Card>

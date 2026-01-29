@@ -20,7 +20,7 @@ const ProfileStats = ({ userProfile, eventCount }) => {
     },
     {
       icon: Trophy,
-      label: 'Gains',
+      label: 'Cliquer sur Retraits',
       value: userProfile.available_earnings || 0,
       color: 'text-yellow-400',
     },

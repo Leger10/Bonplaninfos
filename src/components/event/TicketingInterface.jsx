@@ -93,8 +93,8 @@ const TicketingInterface = ({ event, ticketingData, ticketTypes, isUnlocked, onR
     }, [user, showCheckoutModal, showCartDetails, userProfile]);
 
     const isPresale = useMemo(() => {
-        if (!event || !event.event_date) return false;
-        return new Date() < new Date(event.event_date);
+        if (!event || !event.event_start_at) return false;
+        return new Date() < new Date(event.event_start_at);
     }, [event]);
 
     const handleQuantityChange = (typeId, delta) => {

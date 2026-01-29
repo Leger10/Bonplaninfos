@@ -68,7 +68,7 @@ const CreateSimpleEventPage = () => {
     title: '',
     description: '',
     category_id: null,
-    event_date: '',
+   event_start_at: '',
     location: '',
     city: '',
     country: '',
@@ -140,7 +140,7 @@ const CreateSimpleEventPage = () => {
     }
   };
 
-  const canSubmit = formData.title && formData.event_date && formData.location && formData.city && formData.country && formData.category_id && !isProcessingImage;
+  const canSubmit = formData.title && formData.event_start_at && formData.location && formData.city && formData.country && formData.category_id && !isProcessingImage;
 
   // Actual submission after contract acceptance
   const performSubmission = async (e) => {
@@ -178,28 +178,29 @@ const CreateSimpleEventPage = () => {
         cover_image_url = urlData.publicUrl;
       }
 
-      const eventPayload = {
-        title: formData.title,
-        description: formData.description,
-        category_id: formData.category_id,
-        event_type: 'standard',
-        event_date: formData.event_date,
-        location: formData.location,
-        address: formData.location,
-        city: formData.city,
-        country: formData.country,
-        price_fcfa: 0,
-        price_pi: 0,
-        organizer_id: user.id,
-        status: 'active',
-        is_active: true,
-        is_public: true,
-        cover_image: cover_image_url,
-        tags: formData.is_public_to_all ? ['global'] : ['zone_only'],
-        // Contract metadata
-        contract_accepted_at: new Date().toISOString(),
-        contract_version: 'v1.0'
-      };
+     const eventPayload = {
+  title: formData.title,
+  description: formData.description,
+  category_id: formData.category_id,
+  event_type: 'standard',
+  event_start_at: formData.event_start_at || null,
+  location: formData.location,
+  address: formData.location,
+  city: formData.city,
+  country: formData.country,
+  price_fcfa: 0,
+  price_pi: 0,
+  organizer_id: user.id,
+  status: 'active',
+  is_active: true,
+  is_public: true,
+  cover_image: cover_image_url,
+  tags: formData.is_public_to_all ? ['global'] : ['zone_only'],
+
+  // Contract metadata
+  contract_accepted_at: new Date().toISOString(),
+  contract_version: 'v1.0',
+};
 
       const { data, error } = await supabase.from('events').insert(eventPayload).select().single();
       if (error) throw error;
@@ -289,19 +290,19 @@ const CreateSimpleEventPage = () => {
                   </div>
                 </div>
 
-                <div className="grid gap-6">
-                  {/* Basic Info */}
-                  <div className="space-y-2">
-                    <Label htmlFor="title" className="text-base">Titre de l'événement *</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={e => handleInputChange('title', e.target.value)}
-                      required
-                      className="h-12 text-lg"
-                      placeholder="Ex: Soirée Networking, Vente Privée..."
-                    />
-                  </div>
+              <div className="grid gap-6">
+  {/* Basic Info */}
+  <div className="space-y-2">
+    <Label htmlFor="title" className="text-base">Titre de l'événement *</Label>
+    <Input
+      id="title"
+      value={formData.title || ''}  // Assurez-vous d'avoir une valeur par défaut
+      onChange={(e) => handleInputChange('title', e.target.value)}
+      required
+      className="h-12 text-lg"
+      placeholder="Ex: Soirée Networking, Vente Privée..."
+    />
+  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -314,12 +315,12 @@ const CreateSimpleEventPage = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="event_date">Date et Heure *</Label>
+                      <Label htmlFor="event_start_at">Date et Heure *</Label>
                       <Input
-                        id="event_date"
+                        id="event_start_at"
                         type="datetime-local"
-                        value={formData.event_date}
-                        onChange={e => handleInputChange('event_date', e.target.value)}
+                        value={formData.event_start_at}
+                        onChange={e => handleInputChange('event_start_at', e.target.value)}
                         required
                         className="h-12"
                       />

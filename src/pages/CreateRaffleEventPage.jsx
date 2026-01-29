@@ -42,6 +42,7 @@ const CreateRaffleEventPage = () => {
     title: '',
     description: '',
     categoryId: '',
+    eventStartDate: '',
     drawDate: '',
     coverImage: null,
     coverImageUrl: '',
@@ -216,6 +217,7 @@ const CreateRaffleEventPage = () => {
       coverImageUrl: ''
     }));
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
@@ -244,13 +246,18 @@ const CreateRaffleEventPage = () => {
       // Convertir le prix en XOF pour stockage
       const ticketPriceXof = formData.ticketPrice * (exchangeRates[formData.ticketCurrency] || 1);
 
-      // 1. Create Event
+      // Définir les dates : utiliser eventStartDate si définie, sinon date actuelle
+      const eventStartDate = formData.eventStartDate || new Date().toISOString().slice(0, 16);
+      const eventEndAt = formData.drawDate; // La fin est la date du tirage
+
+      // 1. Create Event avec event_end_at
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .insert({
           title: formData.title,
           description: formData.description,
-          event_date: formData.drawDate,
+          event_start_at: eventStartDate,
+          event_end_at: eventEndAt, // CRITIQUE : Ajouter cette colonne
           city: formData.city,
           country: formData.country,
           address: formData.isOnline ? 'En ligne' : formData.address,
@@ -293,7 +300,6 @@ const CreateRaffleEventPage = () => {
       }
 
       // 3. Insert event_settings - Utiliser uniquement les colonnes existantes
-      // Supposons que event_settings a les colonnes : raffle_enabled, show_remaining_tickets, show_participants, notify_participants
       const { error: settingsError } = await supabase
         .from('event_settings')
         .insert({
@@ -302,7 +308,6 @@ const CreateRaffleEventPage = () => {
           show_remaining_tickets: formData.showRemainingTickets,
           show_participants: formData.showParticipants,
           notify_participants: formData.notifyParticipants
-          // Si automatic_draw n'existe pas, ne l'insérez pas
         });
 
       if (settingsError) {
@@ -439,6 +444,20 @@ const CreateRaffleEventPage = () => {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="eventStartDate">Date de début</Label>
+          <Input
+            id="eventStartDate"
+            type="datetime-local"
+            value={formData.eventStartDate}
+            onChange={(e) => handleInputChange('eventStartDate', e.target.value)}
+            placeholder="Date de début de la vente des tickets"
+          />
+          <p className="text-xs text-muted-foreground">
+            Si non spécifié, la date actuelle sera utilisée
+          </p>
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="drawDate">Date du tirage *</Label>
           <Input
             id="drawDate"
@@ -447,6 +466,9 @@ const CreateRaffleEventPage = () => {
             onChange={(e) => handleInputChange('drawDate', e.target.value)}
             required
           />
+          <p className="text-xs text-muted-foreground">
+            Date à laquelle le tirage au sort aura lieu
+          </p>
         </div>
       </div>
 
@@ -805,6 +827,22 @@ const CreateRaffleEventPage = () => {
               <span className="font-bold">{formData.title || 'Non défini'}</span>
             </div>
             <div className="flex justify-between">
+              <span>Date de début:</span>
+              <span className="font-bold">
+                {formData.eventStartDate ? 
+                  new Date(formData.eventStartDate).toLocaleDateString('fr-FR') : 
+                  'Aujourd\'hui'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Date du tirage:</span>
+              <span className="font-bold">
+                {formData.drawDate ? 
+                  new Date(formData.drawDate).toLocaleDateString('fr-FR') : 
+                  'Non définie'}
+              </span>
+            </div>
+            <div className="flex justify-between">
               <span>Prix du ticket:</span>
               <span className="font-bold">{calculatedPricePi} pièces ({formData.ticketPrice} {formData.ticketCurrency})</span>
             </div>
@@ -818,15 +856,11 @@ const CreateRaffleEventPage = () => {
             </div>
             <div className="flex justify-between">
               <span>Revenu total estimé:</span>
-              <span className="font-bold text-primary">{totalRevenuePi}pièces</span>
+              <span className="font-bold text-primary">{totalRevenuePi} pièces</span>
             </div>
             <div className="flex justify-between">
               <span>Nombre de lots:</span>
               <span className="font-bold">{formData.prizes.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Date du tirage:</span>
-              <span className="font-bold">{formData.drawDate ? new Date(formData.drawDate).toLocaleDateString('fr-FR') : 'Non définie'}</span>
             </div>
             {formData.coverImage && (
               <div className="flex justify-between">

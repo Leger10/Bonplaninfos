@@ -35,7 +35,7 @@ const MyTicketsTab = () => {
                 .select(`
                     *,
                     events (
-                        id, title, event_date, location, city, cover_image
+                        id, title, event_start_at, location, city, cover_image
                     ),
                     ticket_types (
                         name, color, description, price_pi
@@ -163,13 +163,13 @@ const MyTicketsTab = () => {
                             {/* Date Column */}
                             <div className="bg-muted/30 md:w-32 p-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-border">
                                 <span className="text-2xl font-bold text-primary">
-                                    {ticket.events?.event_date ? new Date(ticket.events.event_date).getDate() : '--'}
+                                    {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).getDate() : '--'}
                                 </span>
                                 <span className="text-xs uppercase font-bold text-muted-foreground">
-                                    {ticket.events?.event_date ? new Date(ticket.events.event_date).toLocaleDateString('fr-FR', { month: 'short' }) : '--'}
+                                    {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).toLocaleDateString('fr-FR', { month: 'short' }) : '--'}
                                 </span>
                                 <span className="text-xs text-muted-foreground mt-1">
-                                    {ticket.events?.event_date ? new Date(ticket.events.event_date).getFullYear() : ''}
+                                    {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).getFullYear() : ''}
                                 </span>
                             </div>
 

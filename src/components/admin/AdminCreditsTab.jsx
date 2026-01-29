@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Coins, Search, DollarSign, Euro, TrendingUp } from 'lucide-react';
+import { Loader2, Coins, Search, DollarSign, Euro, TrendingUp, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const AdminCreditsTab = () => {
   const { userProfile, adminConfig } = useData();
@@ -25,7 +26,8 @@ const AdminCreditsTab = () => {
   const eurRate = adminConfig?.currency_eur_rate || 650;
   const usdRate = adminConfig?.currency_usd_rate || 550;
 
-  const fetchCreditLogs = useCallback(async () => {
+  // Fonction pour charger les logs de crédits
+  const fetchCreditLogs = async () => {
     if (!userProfile?.country) return;
     setLoading(true);
 
@@ -61,21 +63,9 @@ const AdminCreditsTab = () => {
 
       if (error) throw error;
 
+      // Filtrer les logs qui n'ont pas été reversés
       const filteredLogs = data.filter(log => !(log.details?.reversed));
       setCreditLogs(filteredLogs);
-
-      // Calculer les totaux
-      const totalCoins = filteredLogs.reduce((sum, log) => sum + (log.details?.amount || 0), 0);
-      const totalFCFA = totalCoins * coinToFcfaRate;
-      const totalEUR = totalFCFA / eurRate;
-      const totalUSD = totalFCFA / usdRate;
-
-      setTotals({
-        totalCoins,
-        totalFCFA,
-        totalEUR,
-        totalUSD
-      });
 
     } catch (error) {
       toast({
@@ -87,35 +77,83 @@ const AdminCreditsTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [userProfile?.country, searchTerm, coinToFcfaRate, eurRate, usdRate]);
+  };
 
+  // Effet pour charger les logs
   useEffect(() => {
     fetchCreditLogs();
-  }, [fetchCreditLogs]);
+  }, [userProfile?.country, searchTerm]);
+
+  // Effet séparé pour calculer les totaux quand les logs ou les taux changent
+  useEffect(() => {
+    if (creditLogs.length > 0) {
+      const totalCoins = creditLogs.reduce((sum, log) => sum + (log.details?.amount || 0), 0);
+      const totalFCFA = totalCoins * coinToFcfaRate;
+      const totalEUR = totalFCFA / eurRate;
+      const totalUSD = totalFCFA / usdRate;
+
+      setTotals({
+        totalCoins,
+        totalFCFA,
+        totalEUR,
+        totalUSD
+      });
+    } else {
+      // Réinitialiser si pas de logs
+      setTotals({
+        totalCoins: 0,
+        totalFCFA: 0,
+        totalEUR: 0,
+        totalUSD: 0
+      });
+    }
+  }, [creditLogs, coinToFcfaRate, eurRate, usdRate]);
 
   // Formater les nombres
   const formatCurrency = (amount, currency = 'FCFA') => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: currency !== 'FCFA' ? 'currency' : undefined,
-      currency: currency === 'EUR' ? 'EUR' : currency === 'USD' ? 'USD' : undefined,
+    const formattedAmount = new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(amount) + (currency === 'FCFA' ? ' FCFA' : '');
+    }).format(amount);
+    
+    if (currency === 'EUR') {
+      return `${formattedAmount} €`;
+    } else if (currency === 'USD') {
+      return `$${formattedAmount}`;
+    } else {
+      return `${formattedAmount} FCFA`;
+    }
   };
 
   return (
     <Card className="glass-effect shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="w-6 h-6 text-green-500" />
-          Historique des pièces
-          <Badge variant="secondary" className="ml-2">
-            Zone: {userProfile?.country}
-          </Badge>
-        </CardTitle>
-        <p className="text-muted-foreground">
-          Liste des utilisateurs de votre pays crédités par les Super Admins et secrétaires.
-        </p>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-green-500" />
+            Historique des pièces
+            <Badge variant="secondary" className="ml-2">
+              Zone: {userProfile?.country}
+            </Badge>
+          </CardTitle>
+          <p className="text-muted-foreground">
+            Liste des utilisateurs de votre pays crédités par les Super Admins et secrétaires.
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchCreditLogs}
+          disabled={loading}
+          className="gap-2"
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4" />
+          )}
+          Rafraîchir
+        </Button>
       </CardHeader>
 
       <CardContent>
@@ -153,7 +191,7 @@ const AdminCreditsTab = () => {
                 </div>
               </div>
               <p className="text-xs text-green-600 mt-1">
-                Taux: 1pièces = {coinToFcfaRate} FCFA
+                Taux: 1 pièce = {coinToFcfaRate} FCFA
               </p>
             </CardContent>
           </Card>
@@ -220,76 +258,112 @@ const AdminCreditsTab = () => {
             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
             <span>Moyenne: {creditLogs.length > 0 ? Math.round(totals.totalCoins / creditLogs.length) : 0} pièces par crédit</span>
           </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+            <span>Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
         </div>
 
         {/* Tableau des crédits */}
         {loading ? (
-          <div className="flex justify-center p-8">
-            <Loader2 className="animate-spin text-primary w-8 h-8" />
+          <div className="flex flex-col items-center justify-center p-12">
+            <Loader2 className="animate-spin text-primary w-10 h-10 mb-4" />
+            <p className="text-muted-foreground">Chargement de l'historique...</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Utilisateur Crédité</TableHead>
-                <TableHead>Localisation</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Valeur FCFA</TableHead>
-                <TableHead>Crédité par</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {creditLogs.length === 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan="6" className="text-center py-8 text-muted-foreground">
-                    <Coins className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Aucun crédit trouvé dans votre zone.</p>
-                  </TableCell>
+                  <TableHead className="whitespace-nowrap">Utilisateur Crédité</TableHead>
+                  <TableHead className="whitespace-nowrap">Localisation</TableHead>
+                  <TableHead className="whitespace-nowrap">Montant</TableHead>
+                  <TableHead className="whitespace-nowrap">Valeur FCFA</TableHead>
+                  <TableHead className="whitespace-nowrap">Crédité par</TableHead>
+                  <TableHead className="whitespace-nowrap">Date</TableHead>
                 </TableRow>
-              ) : (
-                creditLogs.map(log => {
-                  const coinAmount = log.details?.amount || 0;
-                  const fcfaValue = coinAmount * coinToFcfaRate;
+              </TableHeader>
+              <TableBody>
+                {creditLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan="6" className="text-center py-12 text-muted-foreground">
+                      <Coins className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                      <p className="text-lg font-medium mb-2">Aucun crédit trouvé</p>
+                      <p className="text-sm">
+                        {searchTerm 
+                          ? `Aucun résultat pour "${searchTerm}"`
+                          : `Aucun crédit distribué dans la zone ${userProfile?.country || 'sélectionnée'}`
+                        }
+                      </p>
+                      {searchTerm && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setSearchTerm('')}
+                          className="mt-2"
+                        >
+                          Effacer la recherche
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  creditLogs.map(log => {
+                    const coinAmount = log.details?.amount || 0;
+                    const fcfaValue = coinAmount * coinToFcfaRate;
 
-                  return (
-                    <TableRow key={log.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <p className="font-semibold">{log.target_user?.full_name || 'Utilisateur inconnu'}</p>
-                        <p className="text-xs text-muted-foreground">{log.target_user?.email}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{log.target_user?.city || 'N/A'}</p>
-                        <p className="text-xs text-muted-foreground">{log.target_user?.country}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 font-bold text-amber-600">
-                          {coinAmount.toLocaleString('fr-FR')}
-                          <Coins className="w-4 h-4" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-green-600 font-semibold">
-                        {formatCurrency(fcfaValue)}
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{log.actor?.full_name}</p>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {log.actor?.user_type?.replace('_', ' ') || 'Admin'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(log.created_at).toLocaleDateString('fr-FR')}
-                        <br />
-                        <span className="text-xs">
-                          {new Date(log.created_at).toLocaleTimeString('fr-FR')}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                    return (
+                      <TableRow key={log.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <p className="font-semibold">{log.target_user?.full_name || 'Utilisateur inconnu'}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            {log.target_user?.email}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{log.target_user?.city || 'N/A'}</p>
+                          <p className="text-xs text-muted-foreground">{log.target_user?.country}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 font-bold text-amber-600">
+                            <span>{coinAmount.toLocaleString('fr-FR')}</span>
+                            <Coins className="w-4 h-4 flex-shrink-0" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-green-600 font-semibold whitespace-nowrap">
+                          {formatCurrency(fcfaValue)}
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{log.actor?.full_name}</p>
+                          <Badge variant="outline" className="text-xs capitalize mt-1">
+                            {log.actor?.user_type?.replace('_', ' ') || 'Admin'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div className="flex flex-col">
+                            <span>{new Date(log.created_at).toLocaleDateString('fr-FR')}</span>
+                            <span className="text-xs">
+                              {new Date(log.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Pagination ou info de fin */}
+        {creditLogs.length > 0 && !loading && (
+          <div className="mt-4 pt-4 border-t text-sm text-muted-foreground text-center">
+            <p>
+              Affichage de {creditLogs.length} crédit{creditLogs.length > 1 ? 's' : ''}
+              {searchTerm && ` pour "${searchTerm}"`}
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

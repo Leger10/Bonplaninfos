@@ -187,32 +187,55 @@ const MultilingualSeoHead = ({ pageData = {} }) => {
     };
 
     // Ajouter des données d'événement si disponible
-    if (isEventDetail && pageData) {
-      baseData["@graph"].push({
+    if (isEventDetail && pageData && pageData.event) {
+      const event = pageData.event;
+      const startDate = event.event_start_at || event.event_date;
+      const endDate = event.event_end_at || event.event_end_date || startDate;
+      const locationName = event.venue || event.location || event.city;
+      
+      const eventData = {
         "@type": "Event",
-        "name": pageData.title,
-        "description": pageData.description,
-        "startDate": pageData.event_date,
-        "endDate": pageData.end_date,
-        "location": {
+        "name": event.title || pageData.title,
+        "description": event.description || pageData.description || seo.description,
+        "image": ogImage
+      };
+
+      // Ajouter les dates seulement si elles existent
+      if (startDate) {
+        eventData.startDate = startDate;
+      }
+      if (endDate) {
+        eventData.endDate = endDate;
+      }
+
+      // Ajouter le lieu seulement si des informations de lieu existent
+      if (locationName || event.city) {
+        eventData.location = {
           "@type": "Place",
-          "name": pageData.venue || pageData.city,
+          "name": locationName,
           "address": {
             "@type": "PostalAddress",
-            "addressLocality": pageData.city,
-            "addressCountry": pageData.country
+            "addressLocality": event.city || '',
+            "addressCountry": event.country || ''
           }
-        },
-        "organizer": {
+        };
+      }
+
+      // Ajouter l'organisateur si disponible
+      if (event.organizer_name) {
+        eventData.organizer = {
           "@type": "Organization",
-          "name": pageData.organizer_name || "BonPlanInfos"
-        },
-        "image": ogImage
-      });
+          "name": event.organizer_name
+        };
+      }
+
+      baseData["@graph"].push(eventData);
     }
 
     return baseData;
   };
+
+  const structuredData = getStructuredData();
 
   return (
     <Helmet>
@@ -254,7 +277,7 @@ const MultilingualSeoHead = ({ pageData = {} }) => {
 
       {/* Schema.org structured data */}
       <script type="application/ld+json">
-        {JSON.stringify(getStructuredData())}
+        {JSON.stringify(structuredData)}
       </script>
 
       {/* Additional meta tags */}

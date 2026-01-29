@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock, Clock, Scan, Settings, PlayCircle, PauseCircle, CheckCircle2, Ban } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Phone, Trash2, Loader2, Share2, ChevronDown, ChevronUp, BarChart, AlertTriangle, QrCode, TrendingUp, PieChart, Heart, MessageCircle, Bookmark, Eye, Lock, Clock, Scan, Settings, PlayCircle, PauseCircle, CheckCircle2, Ban, CalendarDays, CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -253,6 +253,51 @@ const ExpandableDescription = ({ description }) => {
   );
 };
 
+// Date Display Component
+const DateDisplay = ({ event }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return "Date non spécifiée";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (!event.event_start_at) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-gray-300">
+        <CalendarDays className="w-4 h-4 text-[#C9A227]" />
+        <span className="font-medium">
+          {formatDate(event.event_start_at)}
+        </span>
+      </div>
+
+      {event.event_end_at && (
+        <div className="flex items-center gap-2 text-gray-400 text-sm ml-6">
+          <CalendarRange className="w-3 h-3 text-[#C9A227]" />
+          <span>Jusqu'au {formatDate(event.event_end_at)}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -300,6 +345,15 @@ const EventDetailPage = () => {
         return;
       }
 
+      console.log("Fetched event data:", {
+        id: fetchedEvent.id,
+        title: fetchedEvent.title,
+        event_start_at: fetchedEvent.event_start_at,
+        event_end_at: fetchedEvent.event_end_at,
+        organizer: fetchedEvent.organizer,
+        category: fetchedEvent.category
+      });
+
       setEvent(fetchedEvent);
 
       let specificEventData = null;
@@ -319,8 +373,15 @@ const EventDetailPage = () => {
 
     } catch (error) {
       console.error("Error fetching event:", error);
+      toast({
+        title: "Erreur de chargement",
+        description: "Impossible de charger les détails de l'événement.",
+        variant: "destructive"
+      });
       setEvent(null);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   }, [id]);
 
   useEffect(() => { fetchEventData(); }, [fetchEventData]);
@@ -472,36 +533,63 @@ const EventDetailPage = () => {
   const optimizedImageUrl = event.cover_image || "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
   const canDelete = isOwner || (userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type));
 
-  // --- UPDATED DATE LOGIC ---
+  // --- LOGIQUE DES DATES COHÉRENTE ---
   const now = new Date();
-  let closingDate;
   
-  // Utiliser la date de fin si elle existe, sinon utiliser event_date + 1 jour
-  if (event.end_date) {
-      closingDate = new Date(event.end_date);
-  } else if (event.event_date) {
-      closingDate = new Date(event.event_date);
-      closingDate.setHours(23, 59, 59, 999);
-  } else {
-      closingDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Demain par défaut
-  }
+  // Dates de l'événement
+  const eventStartDate = new Date(event.event_start_at);
+  const eventEndDate = event.event_end_at
+    ? new Date(event.event_end_at)
+    : null;
 
-  // Event is considered strictly "closed" if date passed
-  const isDateClosed = now > closingDate;
-  // Final state for components: date closed OR manually closed
-  const isSalesClosed = isDateClosed || event.is_sales_closed === true;
+  // Calcul de la date de fin de l'événement
+  const getClosingDate = () => {
+    if (eventEndDate) {
+      // Si une date de fin existe, c'est la date de fermeture
+      return eventEndDate;
+    } else {
+      // Sinon, fermeture à la fin de la journée du début
+      const closing = new Date(eventStartDate);
+      closing.setHours(23, 59, 59, 999);
+      return closing;
+    }
+  };
   
-  console.log(`[EventDetail] Render cycle. 
-    Event Date: ${event.event_date}
-    End Date: ${event.end_date}
-    Closing Date: ${closingDate}
-    isDateClosed: ${isDateClosed}
-    isSalesClosed (manual): ${event.is_sales_closed}
-    Final isSalesClosed: ${isSalesClosed}`);
+  const closingDate = getClosingDate();
+  
+  // État de l'événement basé sur les dates
+  const isEventFinished = now > closingDate; // Événement terminé (après la date de fin)
+  const isEventStarted = now >= eventStartDate; // Événement commencé
+  const isEventOngoing = isEventStarted && !isEventFinished; // Événement en cours
+  
+  // Prévente : avant le début de l'événement
+  const isPresale = now < eventStartDate && !isEventFinished;
+  
+  // Ventes fermées : soit l'événement est terminé, soit manuellement fermé
+  const isSalesClosed = isEventFinished || event.is_sales_closed === true;
+  
+  console.log(`[EventDetail] Dates logique:
+    Event Start: ${eventStartDate.toLocaleString()}
+    Event End: ${eventEndDate ? eventEndDate.toLocaleString() : 'Non spécifié'}
+    Closing Date: ${closingDate.toLocaleString()}
+    Now: ${now.toLocaleString()}
+    isEventFinished: ${isEventFinished}
+    isEventStarted: ${isEventStarted}
+    isEventOngoing: ${isEventOngoing}
+    isPresale: ${isPresale}
+    isSalesClosed: ${isSalesClosed}`);
 
   return (
     <div className="min-h-screen bg-black">
-      <MultilingualSeoHead pageData={{ title: event.title, description: event.description, ogImage: optimizedImageUrl }} />
+      {/* CORRECTION : Passer l'événement complet à MultilingualSeoHead */}
+      {event && (
+        <MultilingualSeoHead pageData={{ 
+          title: event.title, 
+          description: event.description, 
+          ogImage: optimizedImageUrl,
+          event: event // <-- AJOUTER CETTE LIGNE
+        }} />
+      )}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <Button variant="ghost" onClick={() => navigate(-1)} className="text-gray-300 hover:text-white hover:bg-gray-900">
@@ -559,12 +647,12 @@ const EventDetailPage = () => {
               </div>
             </div>
 
-            {/* Countdown Timer with End Date Support */}
-            {event.event_date && (
+            {/* Countdown Timer avec logique cohérente */}
+            {event.event_start_at && (
               <div className="flex justify-center w-full py-2">
                 <EventCountdown
-                  eventDate={event.event_date}
-                  eventEndDate={closingDate} // Pass end_date to allow "Ongoing" state
+                  eventDate={event.event_start_at}
+                  eventEndDate={event.event_end_at}
                   showMotivation={true}
                   size="large"
                   className="w-full justify-center"
@@ -584,16 +672,7 @@ const EventDetailPage = () => {
                       </div>
                       <div>
                         <p className="text-xs text-gray-400 font-medium">Date</p>
-                        <p className="font-semibold text-sm text-white">
-                          {new Date(event.event_date).toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
+                        <DateDisplay event={event} />
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-black/40 border border-gray-800 shadow-sm flex-1 min-w-[200px]">
@@ -603,6 +682,9 @@ const EventDetailPage = () => {
                       <div>
                         <p className="text-xs text-gray-400 font-medium">Lieu</p>
                         <p className="font-semibold text-sm text-white">{event.city}, {event.country}</p>
+                        {event.address && (
+                          <p className="text-xs text-gray-400 mt-1">{event.address}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -612,36 +694,59 @@ const EventDetailPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Status Messages */}
-              {isDateClosed && (
+              {/* Status Messages cohérents */}
+              {isEventFinished && (
                 <Alert className="bg-amber-950/50 border-amber-800/50 text-amber-300">
                   <Clock className="h-4 w-4" />
                   <AlertTitle className="text-amber-200">Événement Terminé</AlertTitle>
                   <AlertDescription className="text-amber-400">
-                    Cet événement est terminé. Les participations ne sont plus possibles.
+                    {eventEndDate 
+                      ? `Cet événement s'est terminé le ${new Date(eventEndDate).toLocaleDateString('fr-FR')}.`
+                      : `Cet événement s'est terminé le ${new Date(eventStartDate).toLocaleDateString('fr-FR')}.`
+                    }
                   </AlertDescription>
                 </Alert>
               )}
               
-              {!isDateClosed && event.is_sales_closed && (
+              {!isEventFinished && event.is_sales_closed && (
                 <Alert className="bg-red-950/50 border-red-800/50 text-red-300">
                   <Lock className="h-4 w-4" />
-                  <AlertTitle className="text-red-200">Ventes Fermées</AlertTitle>
+                  <AlertTitle className="text-red-200">Ventes Temporairement Fermées</AlertTitle>
                   <AlertDescription className="text-red-400">
-                    L'organisateur a fermé les ventes pour le moment.
+                    L'organisateur a temporairement suspendu les ventes. Réouverture possible avant la fin de l'événement.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isPresale && !event.is_sales_closed && (
+                <Alert className="bg-green-950/50 border-green-800/50 text-green-300">
+                  <Calendar className="h-4 w-4" />
+                  <AlertTitle className="text-green-200">Prévente Active</AlertTitle>
+                  <AlertDescription className="text-green-400">
+                    Profitez des tarifs préventes ! Valable jusqu'au {new Date(eventStartDate).toLocaleDateString('fr-FR')}.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isEventOngoing && !event.is_sales_closed && (
+                <Alert className="bg-blue-950/50 border-blue-800/50 text-blue-300">
+                  <PlayCircle className="h-4 w-4" />
+                  <AlertTitle className="text-blue-200">Événement en Cours</AlertTitle>
+                  <AlertDescription className="text-blue-400">
+                    L'événement a commencé ! Tarifs normaux applicables.
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* Community Verification */}
-              <CommunityVerification eventId={event.id} eventDate={event.event_date} />
+              <CommunityVerification eventId={event.id} eventDate={event.event_start_at} />
 
               {event.event_type === 'voting' && (
                 <VotingInterface
                   event={event}
                   isUnlocked={true}
                   onRefresh={handleDataRefresh}
-                  isClosed={isSalesClosed} // Use combined closed status which is dynamic
+                  isClosed={isSalesClosed}
                 />
               )}
               {event.event_type === 'raffle' && (
@@ -651,7 +756,7 @@ const EventDetailPage = () => {
                   event={event} 
                   isUnlocked={true}
                   onPurchaseSuccess={handleDataRefresh}
-                  isClosed={isSalesClosed} // Use combined closed status
+                  isClosed={isSalesClosed}
                 />
               )}
               {event.event_type === 'stand_rental' && (
@@ -659,7 +764,7 @@ const EventDetailPage = () => {
                   event={event}
                   isUnlocked={true}
                   onRefresh={handleDataRefresh}
-                  isClosed={isSalesClosed} // Use combined closed status
+                  isClosed={isSalesClosed}
                 />
               )}
               {event.event_type === 'ticketing' && (
@@ -670,7 +775,7 @@ const EventDetailPage = () => {
                     ticketTypes={ticketTypes}
                     isUnlocked={true}
                     onRefresh={handleDataRefresh}
-                    isClosed={isSalesClosed} // Use combined closed status
+                    isClosed={isSalesClosed}
                   />
                 </div>
               )}
@@ -698,46 +803,72 @@ const EventDetailPage = () => {
                       </h3>
                     </div>
                     <CardContent className="p-4 space-y-3">
+                        {/* État de l'événement */}
                         <div className="flex flex-col gap-3 bg-black/20 p-3 rounded-lg border border-white/10">
-                            <div className="flex justify-between items-center">
-                                <p className="font-medium text-white">Statut des Ventes</p>
-                                {event.is_sales_closed ? (
-                                    <Badge variant="destructive" className="bg-red-600 text-white">Actuellement fermées</Badge>
-                                ) : (
-                                    <Badge variant="default" className="bg-green-600 text-white hover:bg-green-700">Actuellement ouvertes</Badge>
-                                )}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <p className="font-medium text-white">Statut Événement</p>
+                                    {isEventFinished ? (
+                                        <Badge variant="destructive" className="bg-amber-600 text-white">Terminé</Badge>
+                                    ) : isEventOngoing ? (
+                                        <Badge variant="default" className="bg-green-600 text-white">En cours</Badge>
+                                    ) : (
+                                        <Badge variant="secondary" className="bg-blue-600 text-white">À venir</Badge>
+                                    )}
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <p className="font-medium text-white">Statut Ventes</p>
+                                    {isSalesClosed ? (
+                                        <Badge variant="destructive" className="bg-red-600 text-white">Fermées</Badge>
+                                    ) : isPresale ? (
+                                        <Badge variant="secondary" className="bg-yellow-600 text-white">Prévente</Badge>
+                                    ) : (
+                                        <Badge variant="default" className="bg-green-600 text-white">Ouvertes</Badge>
+                                    )}
+                                </div>
                             </div>
                             
-                            {event.is_sales_closed ? (
+                            {/* Bouton de contrôle des ventes - uniquement si événement non terminé */}
+                            {!isEventFinished && (
                                 <Button 
                                     size="sm" 
                                     onClick={handleToggleSales}
                                     disabled={togglingSales}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+                                    className={`w-full font-bold ${
+                                        event.is_sales_closed 
+                                            ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                            : 'bg-red-600 hover:bg-red-700 text-white'
+                                    }`}
                                 >
-                                    {togglingSales ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                                    Rouvrir les ventes
-                                </Button>
-                            ) : (
-                                <Button 
-                                    size="sm" 
-                                    onClick={handleToggleSales}
-                                    disabled={togglingSales}
-                                    variant="destructive"
-                                    className="w-full font-bold"
-                                >
-                                    {togglingSales ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Ban className="w-4 h-4 mr-2" />}
-                                    Fermer les ventes
+                                    {togglingSales ? (
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : event.is_sales_closed ? (
+                                        <>
+                                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                                            Rouvrir les ventes
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Ban className="w-4 h-4 mr-2" />
+                                            Fermer les ventes
+                                        </>
+                                    )}
                                 </Button>
                             )}
                             
                             <p className="text-[10px] text-gray-400 text-center italic">
-                                {event.is_sales_closed 
-                                    ? "Les participants ne peuvent plus acheter de tickets/votes." 
-                                    : "Les participants peuvent acheter des tickets/votes."}
+                                {isEventFinished 
+                                    ? "L'événement est terminé. Les ventes sont fermées définitivement." 
+                                    : event.is_sales_closed 
+                                        ? "Ventes manuellement fermées. Réouverture possible." 
+                                        : isPresale
+                                            ? "Prévente active - Tarifs avantageux"
+                                            : "Ventes normales actives"}
                             </p>
                         </div>
                         
+                        {/* Boutons spécifiques pour billetterie */}
                         {event.event_type === 'ticketing' && (
                             <>
                                 <Button
@@ -745,7 +876,7 @@ const EventDetailPage = () => {
                                     className="w-full font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg"
                                     size="lg"
                                 >
-                                    <Scan className="w-5 h-5 mr-2" /> Vérifier Billets
+                                    <Scan className="w-5 h-5 mr-2" /> Scanner Billets
                                 </Button>
 
                                 <Button
@@ -803,6 +934,7 @@ const EventDetailPage = () => {
               </Card>
             )}
 
+            {/* Organizer Info Card */}
             {event.organizer && (
               <Card className="bg-gray-900/50 border-gray-800">
                 <CardContent className="p-6">

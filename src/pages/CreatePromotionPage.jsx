@@ -105,7 +105,7 @@ const CreatePromotionPage = () => {
             organizer_id: user.id,
             promotion_pack_id: formData.promotion_pack_id,
             start_date: new Date().toISOString(),
-            end_date: new Date(Date.now() + packInfo.duration_days * 24 * 60 * 60 * 1000).toISOString(),
+            event_end_at: new Date(Date.now() + packInfo.duration_days * 24 * 60 * 60 * 1000).toISOString(),
             cost_pi: packInfo.cost_pi,
             status: 'active',
             payment_status: 'paid',

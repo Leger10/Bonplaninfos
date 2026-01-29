@@ -1,32 +1,44 @@
 // supabase/functions/send-raffle-email/index.ts
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { Resend } from "npm:resend@2.0.0"
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"))
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { user_id, raffle_title, ticket_quantity, total_paid, ticket_numbers, user_name, user_email } = await req.json()
+    const {
+      user_id,
+      raffle_title,
+      ticket_quantity,
+      total_paid,
+      ticket_numbers,
+      user_name,
+      user_email,
+    } = await req.json();
 
     if (!user_email) {
       return new Response(
         JSON.stringify({ error: "Email utilisateur manquant" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const { data, error } = await resend.emails.send({
-      from: 'Tombola <noreply@bonplaninfos.com>',
+      from: "Tombola <noreply@bonplaninfos.net>",
       to: [user_email],
       subject: `🎫 Confirmation de participation - ${raffle_title}`,
       html: `
@@ -45,7 +57,7 @@ serve(async (req) => {
                 <strong>Montant total :</strong> ${total_paid}pièces
               </li>
               <li style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">
-                <strong>Numéros de tickets :</strong> ${ticket_numbers.join(', ')}
+                <strong>Numéros de tickets :</strong> ${ticket_numbers.join(", ")}
               </li>
             </ul>
           </div>
@@ -58,27 +70,29 @@ serve(async (req) => {
             <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
           </div>
         </div>
-      `
-    })
+      `,
+    });
 
     if (error) {
-      console.error('Erreur Resend:', error)
-      return new Response(
-        JSON.stringify({ error: 'Erreur envoi email' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.error("Erreur Resend:", error);
+      return new Response(JSON.stringify({ error: "Erreur envoi email" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Email envoyé avec succès' }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
+      JSON.stringify({ success: true, message: "Email envoyé avec succès" }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (error) {
-    console.error('Erreur fonction:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.error("Erreur fonction:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
-})
+});

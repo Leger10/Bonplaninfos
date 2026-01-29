@@ -185,7 +185,7 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
       const ticketCode = safeText(ticket.ticket_code_short || ticket.ticket_code || ticketNum.slice(-6).toUpperCase());
       const holderName = safeText(user?.full_name || user?.email?.split("@")[0] || "Invité");
       const eventTitle = safeText(event?.title || "Événement BonPlanInfos");
-      const eventDate = formatDate(event?.event_date);
+      const eventDate = formatDate(event?.event_start_at);
       const location = safeText(event?.location || event?.city || "Lieu à confirmer");
       const ticketType = safeText(ticket.type_name || "Standard");
       const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.created_at);

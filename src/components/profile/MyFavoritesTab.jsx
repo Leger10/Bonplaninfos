@@ -35,7 +35,7 @@ const MyFavoritesTab = () => {
                         title,
                         description,
                         cover_image,
-                        event_date,
+                        event_start_at,
                         city,
                         country,
                         category:event_categories(name, color_hex)
@@ -122,7 +122,7 @@ const MyFavoritesTab = () => {
                                     </h3>
                                     <div className="flex items-center text-sm text-muted-foreground mt-1 gap-2">
                                         <Calendar className="w-3 h-3" />
-                                        <span>{format(new Date(fav.event.event_date), 'dd MMM yyyy', { locale: fr })}</span>
+                                        <span>{format(new Date(fav.event.event_start_at), 'dd MMM yyyy', { locale: fr })}</span>
                                     </div>
                                     <div className="flex items-center text-sm text-muted-foreground mt-1 gap-2">
                                         <MapPin className="w-3 h-3" />

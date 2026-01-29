@@ -81,7 +81,7 @@ const EventManagementTab = ({ events, onRefresh }) => {
                 </div>
                 <p className="text-sm text-gray-400 mb-1">{event.description}</p>
                 <p className="text-xs text-gray-500">
-                  {event.city} • {new Date(event.event_date).toLocaleDateString('fr-FR')}
+                  {event.city} • {new Date(event.event_start_at).toLocaleDateString('fr-FR')}
                 </p>
               </div>
 

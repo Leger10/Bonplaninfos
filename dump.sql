@@ -215,7 +215,7 @@ BEGIN
     SET 
         status = 'active',
         start_date = NOW(),
-        end_date = NOW() + (license_record.duration_days || ' days')::interval
+        event_end_at = NOW() + (license_record.duration_days || ' days')::interval
     WHERE id = p_license_id;
 
     RETURN QUERY SELECT true, 'La licence a été activée avec succès. La période de validité a commencé.';
@@ -749,7 +749,7 @@ DECLARE
     platform_share_amount INT;
     net_payment INT;
     start_date_month DATE;
-    end_date_month DATE;
+   event_end_at_month DATE;
 BEGIN
     -- Check if caller is super_admin
     IF (SELECT get_my_role()) <> 'super_admin' THEN
@@ -772,7 +772,7 @@ BEGIN
 
     -- Calculate start and end of the month
     start_date_month := to_date(p_month_year || '-01', 'YYYY-MM-DD');
-    end_date_month := (start_date_month + interval '1 month') - interval '1 day';
+    event_end_at_month := (start_date_month + interval '1 month') - interval '1 day';
 
     -- Calculate total revenue from interactions using purchased coins within the partner's zone
     SELECT COALESCE(SUM(ABS(ct.amount) * ac.coin_to_cfa_rate), 0)::INT
@@ -782,7 +782,7 @@ BEGIN
     CROSS JOIN (SELECT coin_to_cfa_rate FROM public.admin_config LIMIT 1) ac
     WHERE ct.type = 'debit'
       AND ct.description NOT LIKE '%Bonus%' -- Exclure les transactions bonus
-      AND ct.created_at >= start_date_month AND ct.created_at <= end_date_month
+      AND ct.created_at >= start_date_month AND ct.created_at <= event_end_at_month
       AND u.country = license_record.country
       AND (license_record.cities IS NULL OR license_record.cities = '{}' OR u.city = ANY(license_record.cities));
 
@@ -2660,7 +2660,7 @@ $$;
 ALTER FUNCTION "public"."get_global_analytics"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "end_date" "text", "p_country" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text") RETURNS TABLE("month_start" "date", "total_pi" numeric, "total_fcfa" numeric)
+CREATE OR REPLACE FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "event_end_at" "text", "p_country" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text") RETURNS TABLE("month_start" "date", "total_pi" numeric, "total_fcfa" numeric)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -2674,7 +2674,7 @@ BEGIN
     WHERE
         t.transaction_type IN ('manual_credit', 'credit_reversal')
         AND t.created_at >= start_date::timestamptz
-        AND t.created_at <= end_date::timestamptz
+        AND t.created_at <= event_end_at::timestamptz
         AND (p_country IS NULL OR t.country = p_country)
         AND (p_city IS NULL OR t.city = p_city)
     GROUP BY
@@ -2685,10 +2685,10 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "end_date" "text", "p_country" "text", "p_city" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "event_end_at" "text", "p_country" "text", "p_city" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "end_date" timestamp with time zone, "p_country" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text") RETURNS TABLE("month_start" "date", "total_pi" numeric, "total_fcfa" numeric)
+CREATE OR REPLACE FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "event_end_at" timestamp with time zone, "p_country" "text" DEFAULT NULL::"text", "p_city" "text" DEFAULT NULL::"text") RETURNS TABLE("month_start" "date", "total_pi" numeric, "total_fcfa" numeric)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -2701,7 +2701,7 @@ BEGIN
   WHERE 
     t.transaction_type IN ('manual_credit', 'credit_reversal')
     AND t.created_at >= start_date
-    AND t.created_at <= end_date
+    AND t.created_at <= event_end_at
     AND (p_country IS NULL OR t.country = p_country)
     AND (p_city IS NULL OR t.city = p_city)
   GROUP BY date_trunc('month', t.created_at)
@@ -2710,11 +2710,11 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "end_date" timestamp with time zone, "p_country" "text", "p_city" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "event_end_at" timestamp with time zone, "p_country" "text", "p_city" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_most_viewed_events"("p_limit" integer DEFAULT 10, "p_days" integer DEFAULT 30) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "category" "text", "city" "text", "country" "text", "location" "text", "event_date" timestamp with time zone, "organizer_id" "uuid", "event_type" "text", "is_active" boolean, "status" "text", "is_promoted" boolean, "promoted_until" timestamp with time zone, "price_fcfa" integer, "price_pi" integer, "views_count" integer, "interactions_count" integer, "participants_count" integer, "promotion_views_count" integer, "cover_image" "text", "tags" "text"[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "contact_phone" "text", "address" "text", "google_maps_link" "text", "latitude" numeric, "longitude" numeric, "full_address" "text", "google_place_id" "text", "location_instructions" "text", "geocoding_status" "text", "geocoding_attempts" integer, "geocoding_last_attempt" timestamp with time zone, "promotion_start" timestamp with time zone, "promotion_end" timestamp with time zone, "promotion_type" "text")
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."get_most_viewed_events"("p_limit" integer DEFAULT 10, "p_days" integer DEFAULT 30) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "category" "text", "city" "text", "country" "text", "location" "text", "event_start_at" timestamp with time zone, "organizer_id" "uuid", "event_type" "text", "is_active" boolean, "status" "text", "is_promoted" boolean, "promoted_until" timestamp with time zone, "price_fcfa" integer, "price_pi" integer, "views_count" integer, "interactions_count" integer, "participants_count" integer, "promotion_views_count" integer, "cover_image" "text", `tags` `text`[], `created_at` timestamp with time zone, `updated_at` timestamp with time zone, `contact_phone` `text`, `address` `text`, `google_maps_link` `text`, `latitude` numeric, `longitude` numeric, `full_address` `text`, `google_place_id` `text`, `location_instructions` `text`, `geocoding_status` `text`, `geocoding_attempts` integer, `geocoding_last_attempt` timestamp with time zone, `promotion_start` timestamp with time zone, `promotion_end` timestamp with time zone, `promotion_type` text)
+    LANGUAGE plpgsql
     AS $$
 BEGIN
     RETURN QUERY
@@ -2821,7 +2821,7 @@ $$;
 ALTER FUNCTION "public"."get_nearby_locations"("p_latitude" numeric, "p_longitude" numeric, "p_radius_km" integer, "p_type_slugs" "text"[], "p_limit" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_popular_events_by_category"("p_limit_per_category" integer DEFAULT 3) RETURNS TABLE("category_id" "uuid", "category_name" "text", "category_slug" "text", "category_icon" "text", "category_color" "text", "event_id" "uuid", "event_title" "text", "cover_image" "text", "event_date" timestamp with time zone, "organizer_name" "text", "starting_price_pi" integer, "total_participants" bigint, "event_rank" bigint)
+CREATE OR REPLACE FUNCTION "public"."get_popular_events_by_category"("p_limit_per_category" integer DEFAULT 3) RETURNS TABLE("category_id" "uuid", "category_name" "text", "category_slug" "text", "category_icon" "text", "category_color" "text", "event_id" "uuid", "event_title" "text", "cover_image" "text", "event_start_at" timestamp with time zone, "organizer_name" "text", "starting_price_pi" integer, "total_participants" bigint, "event_rank" bigint)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -2836,7 +2836,7 @@ BEGIN
             ewc.id as event_id,
             ewc.title as event_title,
             ewc.cover_image,
-            ewc.event_date,
+            ewc.event_start_at,
             ewc.organizer_name,
             ewc.starting_price_pi,
             (COALESCE(ewc.total_votes, 0) + COALESCE(ewc.total_tickets_sold, 0) + COALESCE(ewc.total_raffle_participants, 0)) as total_participants,
@@ -2849,7 +2849,7 @@ BEGIN
             ) as event_rank
         FROM events_with_categories ewc
         WHERE ewc.availability_status = 'active'
-          AND ewc.event_date > NOW()
+          AND ewc.event_start_at > NOW()
     )
     SELECT 
         re.category_id,
@@ -2860,7 +2860,7 @@ BEGIN
         re.event_id,
         re.event_title,
         re.cover_image,
-        re.event_date,
+        re.event_start_at,
         re.organizer_name,
         re.starting_price_pi,
         re.total_participants,
@@ -2875,19 +2875,14 @@ $$;
 ALTER FUNCTION "public"."get_popular_events_by_category"("p_limit_per_category" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_promoted_events"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "city" "text", "country" "text", "location" "text", "event_date" timestamp with time zone, "organizer_id" "uuid", "event_type" "text", "is_active" boolean, "status" "text", "is_promoted" boolean, "promoted_until" timestamp with time zone, "price_fcfa" integer, "price_pi" integer, "views_count" integer, "interactions_count" integer, "participants_count" integer, "promotion_views_count" integer, "cover_image" "text", "tags" "text"[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "contact_phone" "text", "address" "text", "google_maps_link" "text", "latitude" numeric, "longitude" numeric, "full_address" "text", "google_place_id" "text", "location_instructions" "text", "geocoding_status" "text", "geocoding_attempts" integer, "geocoding_last_attempt" timestamp with time zone, "promotion_start" timestamp with time zone, "promotion_end" timestamp with time zone, "promotion_type" "text", "verification_enabled" boolean, "max_verifications_per_ticket" integer, "verification_start_time" timestamp with time zone, "verification_end_time" timestamp with time zone, "category_id" "uuid", "boost_level" integer)
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
+CREATE OR REPLACE FUNCTION "public"."get_promoted_events"("p_limit" integer DEFAULT 10) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "city" "text", "country" "text", "location" "text", "event_start_at" timestamp with time zone, "organizer_id" "uuid", "event_type" "text", "is_active" boolean, "status" "text", "is_promoted" boolean, "promoted_until" timestamp with time zone, "price_fcfa" integer, "price_pi" integer, "views_count" integer, "interactions_count" integer, "participants_count" integer, "promotion_views_count" integer, "cover_image" "text", "tags" "text"[], "created_at" timestamp with time zone, "updated_at" timestamp with time zone, "contact_phone" "text", "address" "text", "google_maps_link" "text", "latitude" numeric, "longitude" numeric, "full_address" "text", "google_place_id" "text", "location_instructions" "text", "geocoding_status" "text", "geocoding_attempts" integer, "geocoding_last_attempt" timestamp with time zone, "promotion_start" timestamp with time zone, "promotion_end" timestamp with time zone, "promotion_type" 
         e.id,
         e.title,
         e.description,
         e.city,
         e.country,
         e.location,
-        e.event_date,
+        e.event_start_at,
         e.organizer_id,
         e.event_type,
         e.is_active,
@@ -2943,7 +2938,7 @@ $$;
 ALTER FUNCTION "public"."get_promoted_events"("p_limit" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_recommended_events"("p_user_id" "uuid", "p_limit" integer DEFAULT 10) RETURNS TABLE("event_id" "uuid", "title" "text", "cover_image" "text", "description" "text", "event_type" "text", "event_date" timestamp with time zone, "location" "text", "city" "text", "category_name" "text", "category_slug" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "similarity_score" numeric)
+CREATE OR REPLACE FUNCTION "public"."get_recommended_events"("p_user_id" "uuid", "p_limit" integer DEFAULT 10) RETURNS TABLE("event_id" "uuid", "title" "text", "cover_image" "text", "description" "text", "event_type" "text", "event_start_at" timestamp with time zone, "location" "text", "city" "text", "category_name" "text", "category_slug" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "similarity_score" numeric)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -2972,7 +2967,7 @@ BEGIN
         ewc.cover_image,
         ewc.description,
         ewc.event_type,
-        ewc.event_date,
+        ewc.event_start_at,
         ewc.location,
         ewc.city,
         ewc.category_name,
@@ -2988,7 +2983,7 @@ BEGIN
         END::numeric as similarity_score
     FROM events_with_categories ewc
     WHERE ewc.availability_status = 'active'
-      AND ewc.event_date > NOW()
+      AND ewc.event_start_at > NOW()
       AND NOT EXISTS (
         SELECT 1 FROM user_interactions ui
         WHERE ui.user_id = p_user_id AND ui.event_id = ewc.id AND ui.interaction_type = 'purchased'
@@ -2996,7 +2991,7 @@ BEGIN
     ORDER BY
         similarity_score DESC,
         ewc.is_promoted DESC,
-        ewc.event_date ASC
+        ewc.event_start_at ASC
     LIMIT p_limit;
 END;
 $$;
@@ -5531,7 +5526,7 @@ DECLARE
     event_record RECORD;
     existing_scan RECORD;
 BEGIN
-    SELECT et.*, tt.name as ticket_type, e.title as event_title, e.event_date, e.organizer_id
+    SELECT et.*, tt.name as ticket_type, e.title as event_title, e.event_start_at, e.organizer_id
     INTO ticket_record
     FROM event_tickets et
     JOIN ticket_types tt ON et.ticket_type_id = tt.id
@@ -5555,12 +5550,12 @@ BEGIN
         );
     END IF;
     
-    IF ticket_record.event_date > NOW() THEN
+    IF ticket_record.event_start_at > NOW() THEN
         RETURN jsonb_build_object(
             'success', false,
             'message', 'L''événement n''a pas encore commencé',
             'is_valid', false,
-            'event_date', ticket_record.event_date
+            'event_start_at', ticket_record.event_start_at
         );
     END IF;
     
@@ -5622,7 +5617,7 @@ $$;
 ALTER FUNCTION "public"."scan_ticket"("p_qr_code" "text", "p_scanner_id" "uuid", "p_scan_location" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_events"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_event_types" "text"[] DEFAULT NULL::"text"[], "p_price_min" integer DEFAULT NULL::integer, "p_price_max" integer DEFAULT NULL::integer, "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_only_promoted" boolean DEFAULT false, "p_sort_by" "text" DEFAULT 'event_date'::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "event_type" "text", "event_date" timestamp with time zone, "cover_image" "text", "location" "text", "city" "text", "country" "text", "category_name" "text", "category_slug" "text", "category_icon" "text", "category_color" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "promotion_end" timestamp with time zone, "views_count" integer, "interactions_count" integer, "total_participants" bigint, "availability_status" "text")
+CREATE OR REPLACE FUNCTION "public"."search_events"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_event_types" "text"[] DEFAULT NULL::"text"[], "p_price_min" integer DEFAULT NULL::integer, "p_price_max" integer DEFAULT NULL::integer, "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_only_promoted" boolean DEFAULT false, "p_sort_by" "text" DEFAULT 'event_start_at'::"text", "p_limit" integer DEFAULT 20, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "title" "text", "description" "text", "event_type" "text", "event_start_at" timestamp with time zone, "cover_image" "text", "location" "text", "city" "text", "country" "text", "category_name" "text", "category_slug" "text", "category_icon" "text", "category_color" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "promotion_end" timestamp with time zone, "views_count" integer, "interactions_count" integer, "total_participants" bigint, "availability_status" "text")
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -5632,7 +5627,7 @@ BEGIN
         ewc.title,
         ewc.description,
         ewc.event_type,
-        ewc.event_date,
+        ewc.event_start_at,
         ewc.cover_image,
         ewc.location,
         ewc.city,
@@ -5662,12 +5657,12 @@ BEGIN
       AND (p_event_types IS NULL OR ewc.event_type = ANY(p_event_types))
       AND (p_price_min IS NULL OR ewc.starting_price_pi >= p_price_min)
       AND (p_price_max IS NULL OR ewc.starting_price_pi <= p_price_max)
-      AND (p_date_from IS NULL OR ewc.event_date >= p_date_from)
-      AND (p_date_to IS NULL OR ewc.event_date <= p_date_to)
+      AND (p_date_from IS NULL OR ewc.event_start_at >= p_date_from)
+      AND (p_date_to IS NULL OR ewc.event_start_at <= p_date_to)
       AND (NOT p_only_promoted OR ewc.is_promoted = true)
     ORDER BY
         CASE WHEN p_sort_by = 'promoted' THEN ewc.is_promoted END DESC,
-        CASE WHEN p_sort_by = 'event_date' THEN ewc.event_date END ASC,
+        CASE WHEN p_sort_by = 'event_start_at' THEN ewc.event_start_at END ASC,
         CASE WHEN p_sort_by = 'views' THEN ewc.views_count END DESC,
         CASE WHEN p_sort_by = 'popularity' THEN (ewc.views_count + ewc.interactions_count) END DESC,
         ewc.id DESC
@@ -5680,7 +5675,7 @@ $$;
 ALTER FUNCTION "public"."search_events"("p_search_query" "text", "p_category_slugs" "text"[], "p_cities" "text"[], "p_event_types" "text"[], "p_price_min" integer, "p_price_max" integer, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_only_promoted" boolean, "p_sort_by" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_events_advanced"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_price_min_pi" integer DEFAULT NULL::integer, "p_price_max_pi" integer DEFAULT NULL::integer, "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 20) RETURNS TABLE("event_id" "uuid", "title" "text", "description" "text", "event_date" timestamp with time zone, "location" "text", "city" "text", "category_name" "text", "category_slug" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "days_remaining" "text")
+CREATE OR REPLACE FUNCTION "public"."search_events_advanced"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_price_min_pi" integer DEFAULT NULL::integer, "p_price_max_pi" integer DEFAULT NULL::integer, "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_limit" integer DEFAULT 20) RETURNS TABLE("event_id" "uuid", "title" "text", "description" "text", "event_start_at" timestamp with time zone, "location" "text", "city" "text", "category_name" "text", "category_slug" "text", "organizer_name" "text", "starting_price_pi" integer, "is_promoted" boolean, "days_remaining" "text")
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -5689,7 +5684,7 @@ BEGIN
         ewc.id as event_id,
         ewc.title,
         ewc.description,
-        ewc.event_date,
+        ewc.event_start_at,
         ewc.location,
         ewc.city,
         ewc.category_name,
@@ -5705,9 +5700,9 @@ BEGIN
       AND (p_cities IS NULL OR ewc.city = ANY(p_cities))
       AND (p_price_min_pi IS NULL OR ewc.starting_price_pi >= p_price_min_pi)
       AND (p_price_max_pi IS NULL OR ewc.starting_price_pi <= p_price_max_pi)
-      AND (p_date_from IS NULL OR ewc.event_date >= p_date_from)
-      AND (p_date_to IS NULL OR ewc.event_date <= p_date_to)
-    ORDER BY ewc.is_promoted DESC, ewc.event_date ASC
+      AND (p_date_from IS NULL OR ewc.event_start_at >= p_date_from)
+      AND (p_date_to IS NULL OR ewc.event_start_at <= p_date_to)
+    ORDER BY ewc.is_promoted DESC, ewc.event_start_at ASC
     LIMIT p_limit;
 END;
 $$;
@@ -5716,7 +5711,7 @@ $$;
 ALTER FUNCTION "public"."search_events_advanced"("p_search_query" "text", "p_category_slugs" "text"[], "p_cities" "text"[], "p_price_min_pi" integer, "p_price_max_pi" integer, "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone, "p_limit" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_events_for_card"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_limit" integer DEFAULT 20) RETURNS TABLE("event_id" "uuid", "title" "text", "event_date" timestamp with time zone, "city" "text", "country" "text", "full_address" "text", "cover_image" "text", "category_name" "text", "category_slug" "text", "organizer_id" "uuid", "organizer_name" "text", "event_type" "text", "is_promoted" boolean, "promotion_end" timestamp with time zone, "interactions_count" integer, "created_at" timestamp with time zone, "promoted_until" timestamp with time zone)
+CREATE OR REPLACE FUNCTION "public"."search_events_for_card"("p_search_query" "text" DEFAULT NULL::"text", "p_category_slugs" "text"[] DEFAULT NULL::"text"[], "p_cities" "text"[] DEFAULT NULL::"text"[], "p_limit" integer DEFAULT 20) RETURNS TABLE("event_id" "uuid", "title" "text", "event_start_at" timestamp with time zone, "city" "text", "country" "text", "full_address" "text", "cover_image" "text", "category_name" "text", "category_slug" "text", "organizer_id" "uuid", "organizer_name" "text", "event_type" "text", "is_promoted" boolean, "promotion_end" timestamp with time zone, "interactions_count" integer, "created_at" timestamp with time zone, "promoted_until" timestamp with time zone)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -5724,7 +5719,7 @@ BEGIN
     SELECT 
         e.id as event_id,
         e.title,
-        e.event_date,
+        e.event_start_at,
         e.city,
         e.country,
         e.full_address,
@@ -5747,13 +5742,13 @@ BEGIN
         public.profiles p ON e.organizer_id = p.id
     WHERE 
         e.status = 'active'
-        AND e.event_date >= NOW()
+        AND e.event_start_at >= NOW()
         AND (p_search_query IS NULL OR e.title ILIKE '%' || p_search_query || '%' OR e.description ILIKE '%' || p_search_query || '%')
         AND (p_category_slugs IS NULL OR ec.slug = ANY(p_category_slugs))
         AND (p_cities IS NULL OR e.city = ANY(p_cities))
     ORDER BY
         e.is_promoted DESC,
-        e.event_date ASC
+        e.event_start_at ASC
     LIMIT p_limit;
 END;
 $$;
@@ -5950,7 +5945,7 @@ BEGIN
     SELECT full_name INTO user_full_name FROM profiles WHERE id = p_user_id;
 
     -- Get Event Info
-    SELECT title, event_date, location, full_address, cover_image
+    SELECT title, event_start_at, location, full_address, cover_image
     INTO event_info
     FROM events
     WHERE id = p_event_id;
@@ -6024,7 +6019,7 @@ BEGIN
     app_logo_url, 
     user_full_name,
     event_info.title, 
-    to_char(event_info.event_date, 'DD/MM/YYYY à HH24:MI'), 
+    to_char(event_info.event_start_at, 'DD/MM/YYYY à HH24:MI'), 
     COALESCE(event_info.full_address, event_info.location, 'Lieu non spécifié'),
     event_info.cover_image,
     (SELECT STRING_AGG(
@@ -6068,7 +6063,7 @@ BEGIN
     SELECT full_name INTO user_full_name FROM profiles WHERE id = p_user_id;
 
     -- Get Event Info
-    SELECT title, event_date, location, full_address, cover_image
+    SELECT title, event_start_at, location, full_address, cover_image
     INTO event_info
     FROM events
     WHERE id = p_event_id;
@@ -6149,7 +6144,7 @@ BEGIN
     app_logo_url, 
     user_full_name,
     event_info.title, 
-    to_char(event_info.event_date, 'DD/MM/YYYY à HH24:MI'), 
+    to_char(event_info.event_start_at, 'DD/MM/YYYY à HH24:MI'), 
     COALESCE(event_info.full_address, event_info.location, 'Lieu non spécifié'),
     event_info.cover_image,
     array_length(p_ticket_ids, 1),
@@ -6197,7 +6192,7 @@ BEGIN
     SELECT full_name INTO user_full_name FROM profiles WHERE id = p_user_id;
 
     -- Get Event Info
-    SELECT title, event_date, location, full_address, cover_image
+    SELECT title, event_start_at, location, full_address, cover_image
     INTO event_info
     FROM events
     WHERE id = p_event_id;
@@ -6273,7 +6268,7 @@ BEGIN
     app_logo_url, 
     user_full_name,
     event_info.title, 
-    to_char(event_info.event_date, 'DD/MM/YYYY à HH24:MI'), 
+    to_char(event_info.event_start_at, 'DD/MM/YYYY à HH24:MI'), 
     COALESCE(event_info.full_address, event_info.location, 'Lieu non spécifié'),
     event_info.cover_image,
     CASE 
@@ -6310,7 +6305,7 @@ $$;
 ALTER FUNCTION "public"."send_ticket_confirmation_email"("p_user_id" "uuid", "p_user_email" "text", "p_ticket_ids" "uuid"[], "p_event_id" "uuid", "p_total_pi" integer, "p_total_fcfa" numeric, "p_purchase_period" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_ad_campaign_end_date"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."set_ad_campaign_event_end_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
@@ -6318,17 +6313,17 @@ BEGIN
   IF NEW.start_date IS NULL THEN
     NEW.start_date := NOW();
   END IF;
-  NEW.end_date := NEW.start_date + (NEW.duration_days || ' days')::INTERVAL;
+  NEW.event_end_at := NEW.start_date + (NEW.duration_days || ' days')::INTERVAL;
   RETURN NEW;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."set_ad_campaign_end_date"() OWNER TO "postgres";
+ALTER FUNCTION "public"."set_ad_campaign_event_end_at"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_event_end_at" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE plpgsql
     AS $$
 DECLARE
     calculated_coins INTEGER;
@@ -6357,7 +6352,7 @@ BEGIN
             amount = p_amount,
             calculated_coins = calculated_coins,
             start_date = p_start_date,
-            end_date = p_end_date,
+            event_end_at = p_event_end_at,
             updated_at = NOW()
         WHERE id = existing_price.id;
         
@@ -6372,10 +6367,10 @@ BEGIN
     ELSE
         INSERT INTO organizer_prices (
             event_id, price_type, currency, amount, 
-            calculated_coins, pricing_period, start_date, end_date
+            calculated_coins, pricing_period, start_date, event_end_at
         ) VALUES (
             p_ticket_type_id, 'ticket', p_currency, p_amount,
-            calculated_coins, p_pricing_period, p_start_date, p_end_date
+            calculated_coins, p_pricing_period, p_start_date, p_event_end_at
         ) RETURNING id INTO existing_price;
         
         RETURN jsonb_build_object(
@@ -6391,11 +6386,11 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text" DEFAULT 'regular'::"text", "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_end_date" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text" DEFAULT 'regular'::"text", "p_start_date" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_event_end_at" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE plpgsql
     AS $$
 DECLARE
     calculated_coins INTEGER;
@@ -6425,7 +6420,7 @@ BEGIN
             amount = p_amount,
             calculated_coins = calculated_coins,
             start_date = p_start_date,
-            end_date = p_end_date,
+            event_end_at = p_event_end_at,
             updated_at = NOW()
         WHERE id = existing_price.id;
         
@@ -6438,10 +6433,10 @@ BEGIN
     ELSE
         INSERT INTO organizer_prices (
             event_id, ticket_type_id, price_type, currency, amount, 
-            calculated_coins, pricing_period, start_date, end_date
+            calculated_coins, pricing_period, start_date, event_end_at
         ) VALUES (
             p_event_id, p_ticket_type_id, p_price_type, p_currency, p_amount,
-            calculated_coins, p_pricing_period, p_start_date, p_end_date
+            calculated_coins, p_pricing_period, p_start_date, p_event_end_at
         ) RETURNING id INTO existing_price;
         
         RETURN jsonb_build_object(
@@ -6455,24 +6450,24 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_license_end_date"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."set_license_event_end_at"() RETURNS "trigger"
+    LANGUAGE plpgsql
     AS $$
 BEGIN
   -- Fin = date de début + nombre de jours de la licence
   IF NEW.start_date IS NULL THEN
     NEW.start_date := NOW();
   END IF;
-  NEW.end_date := NEW.start_date + (NEW.duration_days || ' days')::INTERVAL;
+  NEW.event_end_at := NEW.start_date + (NEW.duration_days || ' days')::INTERVAL;
   RETURN NEW;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."set_license_end_date"() OWNER TO "postgres";
+ALTER FUNCTION "public"."set_license_event_end_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."start_verification_session"("p_event_id" "uuid", "p_organizer_id" "uuid", "p_scanner_id" "uuid", "p_location" "text" DEFAULT NULL::"text") RETURNS "jsonb"
@@ -7155,7 +7150,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "city" "text" NOT NULL,
     "country" "text" DEFAULT 'Côte d''Ivoire'::"text" NOT NULL,
     "location" "text",
-    "event_date" timestamp with time zone,
+    "event_start_at" timestamp with time zone,
     "organizer_id" "uuid",
     "event_type" "text" DEFAULT 'protected'::"text",
     "is_active" boolean DEFAULT true,
@@ -7694,7 +7689,7 @@ CREATE OR REPLACE VIEW "public"."category_filters" AS
     "count"("e"."id") AS "event_count",
     "count"(
         CASE
-            WHEN (("e"."event_date" > "now"()) AND ("e"."status" = 'active'::"text")) THEN 1
+            WHEN (("e"."event_start_at" > "now"()) AND ("e"."status" = 'active'::"text")) THEN 1
             ELSE NULL::integer
         END) AS "upcoming_events",
     "count"(
@@ -7873,7 +7868,7 @@ CREATE TABLE IF NOT EXISTS "public"."contests" (
     "title" "text" NOT NULL,
     "description" "text",
     "start_date" timestamp with time zone NOT NULL,
-    "end_date" timestamp with time zone NOT NULL,
+    "" timestamp with time zone NOT NULL,
     "vote_cost_coins" integer DEFAULT 1 NOT NULL,
     "category" "text",
     "organizer_id" "uuid",
@@ -8072,7 +8067,7 @@ CREATE TABLE IF NOT EXISTS "public"."event_promotions" (
     "organizer_id" "uuid",
     "promotion_pack_id" "uuid",
     "start_date" timestamp with time zone NOT NULL,
-    "end_date" timestamp with time zone NOT NULL,
+    "event_end_at" timestamp with time zone NOT NULL,
     "cost_pi" integer NOT NULL,
     "status" "text" DEFAULT 'pending'::"text",
     "payment_status" "text" DEFAULT 'pending'::"text",
@@ -8203,7 +8198,7 @@ CREATE TABLE IF NOT EXISTS "public"."event_settings" (
     "raffle_price_pi" integer DEFAULT 0,
     "total_participants" integer,
     "start_date" timestamp with time zone,
-    "end_date" timestamp with time zone,
+    "event_end_at" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "max_tickets_per_user" integer,
     "draw_date" timestamp with time zone,
@@ -8360,7 +8355,7 @@ CREATE OR REPLACE VIEW "public"."events_with_categories" AS
  SELECT "e"."id",
     "e"."title",
     "e"."description",
-    "e"."event_date",
+    "e"."event_start_at",
     "e"."status",
     "e"."is_active",
     "e"."is_promoted",
@@ -8380,8 +8375,8 @@ CREATE OR REPLACE VIEW "public"."events_with_categories" AS
     "ec"."color_hex" AS "category_color",
     "p"."full_name" AS "organizer_name",
         CASE
-            WHEN (("e"."status" = 'active'::"text") AND ("e"."event_date" > "now"())) THEN 'active'::"text"
-            WHEN (("e"."status" = 'active'::"text") AND ("e"."event_date" <= "now"())) THEN 'past'::"text"
+            WHEN (("e"."status" = 'active'::"text") AND ("e"."event_start_at" > "now"())) THEN 'active'::"text"
+            WHEN (("e"."status" = 'active'::"text") AND ("e"."event_start_at" <= "now"())) THEN 'past'::"text"
             ELSE "e"."status"
         END AS "availability_status",
     ( SELECT "count"(*) AS "count"
@@ -8411,7 +8406,7 @@ CREATE OR REPLACE VIEW "public"."events_with_location" AS
     "e"."title",
     "e"."description",
     "e"."event_type",
-    "e"."event_date",
+    "e"."event_start_at",
     "e"."location",
     "e"."latitude",
     "e"."longitude",
@@ -8703,7 +8698,7 @@ CREATE TABLE IF NOT EXISTS "public"."organizer_prices" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "start_date" timestamp with time zone,
-    "end_date" timestamp with time zone,
+    "" timestamp with time zone,
     "ticket_type_id" "uuid",
     CONSTRAINT "organizer_prices_currency_check" CHECK (("currency" = ANY (ARRAY['XAF'::"text", 'EUR'::"text", 'USD'::"text", 'XOF'::"text"]))),
     CONSTRAINT "organizer_prices_price_type_check" CHECK (("price_type" = ANY (ARRAY['ticket'::"text", 'vote'::"text", 'stand'::"text", 'raffle'::"text"]))),
@@ -9257,7 +9252,7 @@ CREATE TABLE IF NOT EXISTS "public"."stand_rentals" (
     "deposit_paid_pi" integer DEFAULT 0,
     "deposit_paid_fcfa" numeric(12,2) DEFAULT 0,
     "rental_start_date" timestamp with time zone,
-    "rental_end_date" timestamp with time zone,
+    "rental_event_end_at" timestamp with time zone,
     "status" "text" DEFAULT 'reserved'::"text",
     "reserved_at" timestamp with time zone DEFAULT "now"(),
     "confirmed_at" timestamp with time zone,
@@ -9452,7 +9447,7 @@ CREATE TABLE IF NOT EXISTS "public"."ticketing_events" (
     "tickets_sold" integer DEFAULT 0,
     "max_tickets_per_user" integer DEFAULT 5,
     "early_bird_price_pi" integer,
-    "early_bird_end_date" timestamp with time zone,
+    "early_bird_event_end_at" timestamp with time zone,
     "vip_tickets_available" boolean DEFAULT false,
     "vip_ticket_price_pi" integer,
     "seating_plan_available" boolean DEFAULT false,
@@ -9634,7 +9629,7 @@ ALTER TABLE "public"."user_video_views" OWNER TO "postgres";
 CREATE OR REPLACE VIEW "public"."verification_dashboard" AS
  SELECT "e"."id" AS "event_id",
     "e"."title" AS "event_title",
-    "e"."event_date",
+    "e"."event_start_at",
     "e"."verification_enabled",
     "e"."verification_start_time",
     "e"."verification_end_time",
@@ -9665,7 +9660,7 @@ CREATE OR REPLACE VIEW "public"."verification_dashboard" AS
      LEFT JOIN "public"."organizer_scanners" "os" ON ((("e"."organizer_id" = "os"."organizer_id") AND ("os"."is_active" = true))))
      LEFT JOIN "public"."ticket_verifications" "tv" ON (("e"."id" = "tv"."event_id")))
   WHERE ("e"."organizer_id" IS NOT NULL)
-  GROUP BY "e"."id", "e"."title", "e"."event_date", "e"."verification_enabled", "e"."verification_start_time", "e"."verification_end_time";
+  GROUP BY "e"."id", "e"."title", "e"."event_start_at", "e"."verification_enabled", "e"."verification_start_time", "e"."verification_end_time";
 
 
 ALTER VIEW "public"."verification_dashboard" OWNER TO "postgres";
@@ -10544,7 +10539,7 @@ CREATE INDEX "idx_event_notifications_event" ON "public"."event_notifications" U
 
 
 
-CREATE INDEX "idx_event_promotions_dates" ON "public"."event_promotions" USING "btree" ("start_date", "end_date");
+CREATE INDEX "idx_event_promotions_dates" ON "public"."event_promotions" USING "btree" ("start_date", "event_end_at");
 
 
 
@@ -10580,7 +10575,7 @@ CREATE INDEX "idx_events_city" ON "public"."events" USING "btree" ("city");
 
 
 
-CREATE INDEX "idx_events_date" ON "public"."events" USING "btree" ("event_date");
+CREATE INDEX "idx_events_date" ON "public"."events" USING "btree" ("event_start_at");
 
 
 
@@ -12336,16 +12331,13 @@ GRANT ALL ON FUNCTION "public"."get_global_analytics"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "end_date" "text", "p_country" "text", "p_city" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "end_date" "text", "p_country" "text", "p_city" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "end_date" "text", "p_country" "text", "p_city" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "event_end_at" "text", "p_country" "text", "p_city" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "event_end_at" "text", "p_country" "text", "p_city" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" "text", "event_end_at" "text", "p_country" "text", "p_city" "text") TO "service_role";
 
-
-
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "end_date" timestamp with time zone, "p_country" "text", "p_city" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "end_date" timestamp with time zone, "p_country" "text", "p_city" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "end_date" timestamp with time zone, "p_country" "text", "p_city" "text") TO "service_role";
-
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "event_end_at" timestamp with time zone, "p_country" "text", "p_city" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "event_end_at" timestamp with time zone, "p_country" "text", "p_city" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_monthly_credit_stats"("start_date" timestamp with time zone, "event_end_at" timestamp with time zone, "p_country" "text", "p_city" "text") TO "service_role";
 
 
 GRANT ALL ON FUNCTION "public"."get_most_viewed_events"("p_limit" integer, "p_days" integer) TO "anon";
@@ -12720,29 +12712,19 @@ GRANT ALL ON FUNCTION "public"."send_ticket_confirmation_email"("p_user_id" "uui
 
 
 
-GRANT ALL ON FUNCTION "public"."set_ad_campaign_end_date"() TO "anon";
-GRANT ALL ON FUNCTION "public"."set_ad_campaign_end_date"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_ad_campaign_end_date"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."set_ad_campaign_event_end_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_ad_campaign_event_end_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_ad_campaign_event_end_at"() TO "service_role";
 
+GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) TO "anon";
+GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) TO "service_role";
+GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_event_end_at" timestamp with time zone) TO "service_role";
 
-
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "anon";
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_pricing_period" "text", "p_amount" numeric, "p_currency" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "anon";
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_event_prices"("p_event_id" "uuid", "p_ticket_type_id" "uuid", "p_price_type" "text", "p_currency" "text", "p_amount" numeric, "p_pricing_period" "text", "p_start_date" timestamp with time zone, "p_end_date" timestamp with time zone) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."set_license_end_date"() TO "anon";
-GRANT ALL ON FUNCTION "public"."set_license_end_date"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_license_end_date"() TO "service_role";
-
-
+GRANT ALL ON FUNCTION "public"."set_license_event_end_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_license_event_end_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_license_event_end_at"() TO "service_role";
 
 GRANT ALL ON FUNCTION "public"."start_verification_session"("p_event_id" "uuid", "p_organizer_id" "uuid", "p_scanner_id" "uuid", "p_location" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."start_verification_session"("p_event_id" "uuid", "p_organizer_id" "uuid", "p_scanner_id" "uuid", "p_location" "text") TO "authenticated";

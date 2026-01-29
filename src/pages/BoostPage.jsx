@@ -224,7 +224,7 @@ const BoostPage = () => {
         organizer_id: user.id,
         promotion_pack_id: selectedPackInfo.id,
         start_date: startDate,
-        end_date: endDate,
+        event_end_at: endDate,
         cost_pi: selectedPackInfo.cost_pi,
         status: 'active',
         payment_status: 'paid'
