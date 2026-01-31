@@ -12,25 +12,20 @@ import {
   Heart, 
   Trophy, 
   Crown, 
-  Megaphone, 
-  BookOpen, 
-  ShoppingCart, 
-  Ticket, 
-  Vote, 
-  Store, 
-  CreditCard, 
-  Sparkles,
   Globe,
   Flag,
   Building,
   Award,
-  Shield,
   BadgeCheck,
-  Map,
   Target,
   Banknote,
   Calculator,
-  BarChart3
+  BarChart3,
+  BookOpen,
+  ShoppingCart,
+  Ticket,
+  Vote,
+  Store
 } from 'lucide-react';
 
 export const promotionalMessages = {
@@ -98,15 +93,6 @@ export const promotionalMessages = {
       color: "from-blue-500 to-cyan-500",
       action: () => window.location.href = '/create-event',
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
-    },
-    {
-      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "🌍 Partenaire officiel",
-      description: "Représentez BonPlanInfos. Revenus mensuels garantis !",
-      button: "Devenir partenaire",
-      color: "from-indigo-500 to-purple-500",
-      action: () => window.location.href = '/partner-signup',
-      targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     }
   ],
 
@@ -195,15 +181,6 @@ export const promotionalMessages = {
       color: "from-yellow-500 to-amber-500",
       action: () => window.location.href = '/boost',
       targetUserTypes: ['organizer', 'admin', 'super_admin']
-    },
-    {
-      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "🌍 Boostez votre carrière !",
-      description: "Devenez partenaire. Revenus illimités avec notre licence !",
-      button: "Devenir partenaire",
-      color: "from-blue-500 to-cyan-500",
-      action: () => window.location.href = '/partner-signup',
-      targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     }
   ],
 
@@ -228,13 +205,13 @@ export const promotionalMessages = {
       targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     },
     {
-      icon: <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "💵 200K FCFA/mois moyen",
-      description: "Nos partenaires gagnent bien. Rejoignez le programme licence !",
-      button: "Devenir partenaire",
+      icon: <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />,
+      title: "🛒 -30% offre limitée !",
+      description: "Économisez 30% sur les packs. Dernière chance !",
+      button: "Profiter",
       color: "from-green-500 to-teal-500",
-      action: () => window.location.href = '/partner-signup',
-      targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
+      action: () => window.location.href = '/packs',
+      targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
     }
   ],
 
@@ -257,15 +234,6 @@ export const promotionalMessages = {
       color: "from-green-500 to-teal-500",
       action: () => window.location.href = '/discover',
       targetUserTypes: ['organizer', 'user', 'admin', 'super_admin']
-    },
-    {
-      icon: <Globe className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "🌍 Partenaire certifié",
-      description: "Votre profil a du potentiel ! Représentez BonPlanInfos.",
-      button: "Postuler",
-      color: "from-indigo-500 to-purple-500",
-      action: () => window.location.href = '/partner-signup',
-      targetUserTypes: ['organizer', 'admin', 'super_admin', 'user']
     }
   ],
 
@@ -398,37 +366,6 @@ export const promotionalMessages = {
     }
   ],
 
-  // Packs de pièces
-  '/packs': [
-    {
-      icon: <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "🛒 -30% offre limitée !",
-      description: "Économisez 30% sur les packs. Dernière chance !",
-      button: "Profiter",
-      color: "from-green-500 to-teal-500",
-      action: () => window.location.href = '/packs',
-      targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
-    },
-    {
-      icon: <Gift className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "🎁 Pièces bonus offertes",
-      description: "Achetez maintenant = Pièces bonus gratuites !",
-      button: "Voir offres",
-      color: "from-red-500 to-pink-500",
-      action: () => window.location.href = '/packs',
-      targetUserTypes: ['user', 'organizer', 'admin', 'super_admin']
-    },
-    {
-      icon: <Coins className="w-4 h-4 sm:w-5 sm:h-5" />,
-      title: "💰 Investissez = Succès",
-      description: "Plus de pièces = Plus de visibilité. Multipliez votre audience !",
-      button: "Acheter",
-      color: "from-yellow-500 to-orange-500",
-      action: () => window.location.href = '/packs',
-      targetUserTypes: ['organizer', 'admin', 'super_admin']
-    }
-  ],
-
   // Création d'événements spécifiques
   '/create-simple-event': [
     {
@@ -498,7 +435,6 @@ export const promotionalRoutes = [
   '/events',
   '/create-event',
   '/boost',
-  '/wallet',
   '/profile',
   '/marketing',
   '/guide-utilisation',

@@ -49,7 +49,7 @@ const Footer = () => {
             { to: '/partner-signup', text: t('footer.partnership') },
             { to: '/sponsors', text: t('footer.sponsors') }, // Added Sponsors link here
             { href: 'mailto:support@bonplaninfos.net', text: 'support@bonplaninfos.net' },
-            { href: 'https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH', text: t('footer.whatsapp_community') },
+            { href: 'https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH', text: t('whatsapp_Groupe'), },
             { href: 'tel:+2250712275374', text: 'Tel: 002250712275374' },
         ],
         legal: [
@@ -186,8 +186,8 @@ const Footer = () => {
                 </div>
 
                 <div className="mt-12 border-t border-border/50 pt-8 text-center text-xs text-muted-foreground">
-                    <p>© {year} BonPlanInfos — {t('footer.all_rights_reserved')} | <Link to="/politique-confidentialite" className="hover:text-primary">{t('footer.privacy')}</Link> | <Link to="/conditions-utilisation" className="hover:text-primary">{t('footer.terms')}</Link></p>
-                    <p className="mt-2">support@bonplaninfos.net | WhatsApp : <a href="https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH" className="hover:text-primary" target="_blank" rel="noopener noreferrer">{t('footer.whatsapp_community')}</a> | Tel : +225 07 12 27 53 74</p>
+                    <p>© {year} BonPlanInfos — {t('Tous droits réservés')} | <Link to="/politique-confidentialite" className="hover:text-primary">{t('footer.privacy')}</Link> | <Link to="/conditions-utilisation" className="hover:text-primary">{t('footer.terms')}</Link></p>
+                    <p className="mt-2">support@bonplaninfos.net | WhatsApp : <a href="https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH" className="hover:text-primary" target="_blank" rel="noopener noreferrer">{t('whatsapp_community')}</a> | Tel : +225 07 12 27 53 74</p>
                     <p className="mt-2 text-muted-foreground">{t('footer.version')} 1.0.0</p>
                 </div>
             </div>

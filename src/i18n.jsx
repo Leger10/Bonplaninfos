@@ -168,80 +168,170 @@ const resources = {
         },
       },
 
-      // - Section Help Center
+cookie_banner: {
+        message: "Nous utilisons des cookies pour améliorer votre expérience. ",
+        learn_more: "En savoir plus",
+        accept: "Accepter",
+        reject: "Refuser",
+      },
 
-      help_center: {
-        meta_title: "Help Center - BonPlanInfos",
+ common: {
+        loading: "Chargement...",
+        error: "Une erreur est survenue",
+      },
+
+
+    faq: {
+        meta_title: "Questions Fréquentes - BonPlanInfos.net",
         meta_description:
-          "Find answers to your questions and contact our support team for any assistance on BonPlanInfos",
-        title: "Help Center",
-        subtitle: "Quickly find answers or contact our support team",
-        searchPlaceholder: "Search for a question or topic...",
-        faq: "Frequently Asked Questions",
-        contact: "Contact Us",
-
-        // Contact methods
-        email: "Email",
-        emailDesc: "Send us a detailed email and we'll respond within 24 hours",
-        writeUs: "Write to Us",
-
-        chat: "WhatsApp Chat",
-        chatDesc:
-          "Join our WhatsApp group for quick answers and community support",
-        startChat: "Join Group",
-
-        phone: "Phone",
-        phoneDesc: "Call us directly for immediate assistance",
-        call: "Call Now",
-
-        // FAQ Sections
-        faq_sections: {
+          "Trouvez des réponses sur BonPlanInfos.net, la plateforme africaine d'événements, monétisation et profits réels avec seulement 5% de commission",
+        title: "Questions Fréquentes",
+        subtitle:
+          "Trouvez rapidement des réponses sur notre plateforme événementielle africaine",
+        questions: {
           general: {
-            title: "General Questions",
-            q1: "How to create an account on BonPlanInfos?",
-            a1: "To create an account: 1) Click 'Sign Up' top right, 2) Fill your personal information, 3) Verify your email, 4) Log in. It's free and takes less than 2 minutes.",
-            q2: "Is the platform free?",
-            a2: "Yes, account creation and basic use are completely free. Only premium services (organizing paid events, advanced promotion) may have fees. Participants only pay for tickets they purchase.",
-            q3: "What types of events can I find?",
-            a3: "You'll find: concerts, festivals, conferences, workshops, sports events, exhibitions, parties, and much more. Our platform covers all types of events in Africa.",
-            q4: "How do payments work?",
-            a4: "We accept: mobile money (Orange Money, MTN Mobile Money, Moov Money), bank cards, and transfers. Payments are secure and encrypted. You receive 95% of the amount, we take 5% commission.",
+            title: "Questions Générales sur BonPlanInfos",
+            q1: "Qu'est-ce que BonPlanInfos.net exactement ?",
+            a1: "<b>BonPlanInfos.net</b> est la première plateforme africaine dédiée aux événements et à leur monétisation. Nous offrons aux organisateurs d'événements, artistes, promoteurs culturels et entrepreneurs des outils professionnels pour créer, gérer et monétiser leurs activités avec seulement <b>5% de commission plateforme</b>.",
+            q2: "Comment la plateforme est-elle différente des autres ?",
+            a2: "Notre différence : <b>Commission ultra-basse de 5%</b> (vous gardez 95%), <b>focus sur l'Afrique</b>, <b>paiements réels garantis</b>, et <b>suite complète d'outils</b> (billeterie, votes, tombolas, location de stands). Nous ne sommes pas juste une plateforme, mais une opportunité de business concret.",
+            q3: "Qui peut utiliser BonPlanInfos.net ?",
+            a3: "Notre plateforme est conçue pour : <b>Organisateurs d'événements</b>, <b>Promoteurs culturels</b>, <b>Artistes et managers</b>, <b>Associations</b>, <b>Écoles</b>, <b>Responsables de foires et expositions</b>. Tout créateur voulant monétiser ses activités événementielles en Afrique.",
+            q4: "La plateforme est-elle sécurisée ?",
+            a4: "Absolument ! Nous utilisons : <b>Tickets sécurisés avec QR codes</b>, <b>Paiements cryptés</b>, <b>Scan de vérification le jour J</b>, <b>Protection contre la fraude</b>. Les tickets invalides sont automatiquement refusés, garantissant l'authenticité de chaque participant.",
+            q5: "Comment créer un compte organisateur ?",
+            a5: "Pour créer votre compte : <b>1) Inscrivez-vous gratuitement</b> sur la plateforme, <b>2) Complétez votre profil organisateur</b>, <b>3) Acceptez notre contrat organisateur</b>, <b>4) Commencez à créer vos événements</b>. En cas de difficulté, contactez notre support via WhatsApp : +225 0712275374.",
+            q6: "Quelles sont les conditions générales d'utilisation ?",
+            a6: "En créant un compte, vous acceptez notre <b>Contrat Organisateur</b> qui précise : Vous êtes seul responsable de vos événements, nous sommes un prestataire technique. La commission est de 5%, les retraits sont simples, et vous gardez 95% de vos revenus. Téléchargez le contrat complet depuis votre tableau de bord.",
+            q7: "Comment fonctionnent les paiements et retraits ?",
+            a7: "<b>Paiements</b> : Collectés via moyens locaux (mobile money, cartes). <b>Retraits</b> : Disponibles sur votre compte organisateur. <b>Commission</b> : 5% prélevés sur chaque participation. <b>Exemple</b> : Pour 1 000 000 FCFA de ventes → Vous recevez 950 000 FCFA, nous prenons 50 000 FCFA.",
+            q8: "Où puis-je obtenir de l'aide ou du support ?",
+            a8: "Plusieurs canaux : <b>1) Support WhatsApp</b> : +225 0712275374, <b>2) Email</b> : support@bonplaninfos.net, <b>3) Chat en direct</b> sur la plateforme. Réponse sous 24h.",
           },
-          organizer: {
-            title: "For Organizers",
-            q1: "How to create an event?",
-            a1: "To create an event: 1) Log in, 2) Click 'Create Event', 3) Fill details (title, description, date, location), 4) Add photos, 5) Configure tickets and prices, 6) Publish.",
-            q2: "How to sell tickets online?",
-            a2: "Our ticketing system allows you to: create different ticket types, set prices, limit quantities, generate unique QR codes, and track sales in real time.",
-            q3: "When and how am I paid?",
-            a3: "Payments are made within 24-72h after your event. You can withdraw your funds via mobile money or bank transfer from your dashboard.",
-            q4: "Can I cancel or modify an event?",
-            a4: "Yes, you can modify or cancel your event up to 24h before. In case of cancellation, participants are automatically notified and refunded.",
+          features: {
+            title: "Fonctionnalités et Services",
+            q1: "Comment fonctionne la vente de billets en ligne ?",
+            a1: "Notre système de billeterie : <b>1) Créez votre événement</b> avec détails et prix, <b>2) Générez des tickets uniques avec QR code</b>, <b>3) Partagez le lien</b> sur réseaux sociaux, <b>4) Les participants achètent en ligne</b>, <b>5) Scan QR le jour J</b> pour validation. <b>Commission</b> : 5% seulement, vous gardez 95%.",
+            q2: "Puis-je organiser des concours de votes ?",
+            a2: "Oui ! Notre système de votes permet : <b>Élections en temps réel</b>, <b>Classements interactifs</b>, <b>Lien unique par candidat</b>, <b>Résultats visibles instantanément</b>. <b>Exemple</b> : Recettes 500 000 FCFA → Vous recevez 475 000 FCFA, commission 25 000 FCFA.",
+            q3: "Comment organiser des tirages au sort et tombolas ?",
+            a3: "Fonctionnalité tombola : <b>1) Configurez votre jeu</b>, <b>2) Vendez des tickets de participation</b>, <b>3) Tirage en direct transparent</b>, <b>4) Participants voient les gagnants en temps réel</b>. <b>Exemple</b> : 200 000 FCFA de recettes → 190 000 FCFA pour vous, 10 000 FCFA commission.",
+            q4: "Comment louer des stands pour événements ?",
+            a4: "Système de location de stands : <b>1) Listez vos stands disponibles</b>, <b>2) Fixez prix et conditions</b>, <b>3) Réservation en ligne</b>, <b>4) Organisation professionnelle</b>, <b>5) Moins de désordre le jour J</b>. <b>Exemple</b> : 1 000 000 FCFA → Vous gardez 950 000 FCFA.",
+            q5: "Comment booster la visibilité de mon commerce ?",
+            a5: "Section 'Découvrir' : <b>1) Ajoutez votre commerce</b> avec photos et descriptions, <b>2) Augmentez votre trafic</b>, <b>3) Boostez vos événements en choisissant un pack boost</b>, <b>4) Attirez plus de visiteurs</b>.",
+            q6: "Quels types d'événements puis-je organiser ?",
+            a6: "Tous types : <b>Concerts et spectacles</b>, <b>Conférences et séminaires</b>, <b>Festivals culturels</b>, <b>Événements sportifs</b>, <b>Expositions commerciales</b>, <b>Événements privés</b>, <b>Ateliers et formations</b>. La plateforme s'adapte à vos besoins.",
+            q7: "Puis-je protéger mon affiche événementielle ?",
+            a7: "Oui ! Fonctionnalité exclusive : <b>1) Publiez votre affiche</b> sur la plateforme, <b>2) Copiez le lien sécurisé</b>, <b>3) Partagez sur réseaux sociaux</b>, <b>4) Monétisez les vues et engagements</b>. Votre contenu reste protégé tout en étant largement diffusé.",
+            q8: "Y a-t-il des limites de transactions ou d'événements ?",
+            a8: "Aucune limite ! Vous pouvez : <b>Organiser autant d'événements que vous voulez</b>, <b>Vendre un nombre illimité de billets</b>, <b>Gérer plusieurs événements simultanément</b>, <b>Effectuer des retraits quotidiens si besoin</b>. Seule limite : respecter nos conditions d'utilisation.",
+          },
+          partnerships: {
+            title: "Licences et Partenariats",
+            q1: "Comment devenir concessionnaire BonPlanInfos ?",
+            a1: "Devenir concessionnaire : <b>1) Choisissez votre niveau</b> (Ville, Région, Pays), <b>2) Contactez-nous pour candidature</b>, <b>3) Fournissez documents requis</b>, <b>4) Passez entretien</b>, <b>5) Signez contrat</b>, <b>6) Payez droit d'entrée</b>. Opportunité de carrière avec revenus mensuels garantis.",
+            q2: "Quels sont les niveaux de concession disponibles ?",
+            a2: "3 niveaux : <b>1) STARTER – VILLE</b> : 2 ans, 1M FCFA droit d'entrée, 20% des commissions, <b>2) BUSINESS – RÉGION</b> : 3 ans, 3M FCFA, 30% des commissions, <b>3) PREMIUM – PAYS</b> : 5 ans, 5-10M FCFA, 40% des commissions. Voir détails dans onglet 'Partenariats'.",
+            q3: "Comment sont calculés les revenus des concessionnaires ?",
+            a3: "Les concessionnaires perçoivent un pourcentage des <b>5% de commission plateforme</b> générés dans leur zone : <b>Ville</b> : 20% (soit 1% des transactions), <b>Région</b> : 30% (1.5% des transactions), <b>Pays</b> : 40% (2% des transactions). Revenus sur : billets, votes, tombolas, locations.",
+            q4: "Quelles sont les obligations d'un concessionnaire ?",
+            a4: "Selon niveau : <b>Ville</b> : Point de représentation, responsable local, promotion active, <b>Région</b> : Bureau régional, minimum 2 agents, encadrement villes, <b>Pays</b> : Siège national, 3-5 employés, supervision nationale, conformité légale. Rapports mensuels obligatoires.",
+            q5: "Puis-je transférer ma concession à quelqu'un d'autre ?",
+            a5: "Oui, sous conditions : <b>1) Accord écrit de BonPlanInfos</b>, <b>2) Nouveau concessionnaire éligible</b>, <b>3) Paiement frais de transfert</b> (10% valeur résiduelle), <b>4) Signature avenant au contrat</b>. Priorité donnée aux repreneurs recommandés par le concessionnaire sortant.",
+            q6: "Comment se passe le renouvellement de concession ?",
+            a6: "Procédure : <b>Démarre 3 mois avant expiration</b> → <b>Évaluation des performances</b> → <b>Renégociation si nécessaire</b> → <b>Signature nouveau contrat</b>. Priorité aux concessionnaires performants. Durées : Ville 2 ans, Région 3 ans, Pays 5 ans, tous renouvelables.",
+            q7: "Quelle est la durée des contrats de concession ?",
+            a7: "Durées contractuelles : <b>Contrat STARTER (Ville)</b> : 2 ans renouvelables, <b>Contrat BUSINESS (Région)</b> : 3 ans renouvelables, <b>Contrat PREMIUM (Pays)</b> : 5 ans renouvelables. Exclusivité territoriale garantie pendant toute la durée.",
+            q8: "Quels sont les avantages d'être concessionnaire ?",
+            a8: "Avantages clés : <b>Revenus mensuels stables</b>, <b>Exclusivité territoriale</b>, <b>Support technique complet</b>, <b>Formation continue</b>, <b>Opportunité de croissance</b>, <b>Bureau local possible</b>, <b>Réseau de partenaires</b>, <b>Branding officiel BonPlanInfos</b>.",
           },
           technical: {
-            title: "Technical Support",
-            q1: "Login problems?",
-            a1: "If you can't log in: 1) Check your email/password, 2) Use 'Forgot Password', 3) Try another browser, 4) Contact support if problem persists.",
-            q2: "How to reset my password?",
-            a2: "Click 'Forgot Password' on login page, enter your email, follow link in received email, and create new password.",
-            q3: "Is the platform available on mobile?",
-            a3: "Yes! Our site is fully responsive and works perfectly on all smartphones and tablets. No app to download.",
-            q4: "What to do in case of payment error?",
-            a4: "If a payment fails: 1) Don't retry immediately, 2) Check your balance, 3) Wait 2 hours, 4) Contact support. We process these cases quickly.",
-          },
-          partnership: {
-            title: "Partnerships and Licenses",
-            q1: "How to become a concessionaire?",
-            a1: "To become a concessionaire: 1) Choose a level (City, Region, Country), 2) Contact us via email or WhatsApp, 3) Provide required documents, 4) Pass an interview, 5) Sign contract.",
-            q2: "What are partnership benefits?",
-            a2: "As a concessionaire, you benefit from: stable monthly income, territorial exclusivity, complete technical support, training, and growth opportunities.",
-            q3: "What are entry costs?",
-            a3: "Entry fees vary: City (1M FCFA), Region (3M FCFA), Country (5-10M FCFA). These investments entitle you to a percentage of commissions generated in your zone.",
-            q4: "What is contract duration?",
-            a4: "Durations are: City (2 years), Region (3 years), Country (5 years). All contracts are renewable subject to performance.",
+            title: "Support Technique et Paiements",
+            q1: "Comment récupérer mes revenus après un événement ?",
+            a1: "Procédure de retrait : <b>1) Connectez-vous à votre compte organisateur</b>, <b>2) Allez dans 'Mes revenus'</b>, <b>3) Vérifiez le solde disponible</b>, <b>4) Sélectionnez mode de retrait</b> (mobile money, virement), <b>5) Confirmez la demande</b>. Délai : 24-72h selon méthode.",
+            q2: "Que faire si un participant a un problème avec son ticket ?",
+            a2: "En cas de problème : <b>1) Le participant montre le QR code</b>, <b>2) Vous scannez via l'appli organisateur</b>, <b>3) Vérifiez la validité</b>, <b>4) Si valide → accès accordé</b>, <b>Si invalide → contactez support</b>. En cas de fraude, nous remboursons l'organisateur.",
+            q3: "Comment fonctionne le scan QR code le jour J ?",
+            a3: "Système de scan : <b>1) Rendez-vous sur  l'appli</b>, <b>2) Connectez-vous avec vos identifiants de votre compte organisateur</b>, <b>3) Sélectionnez l'événement</b>, <b>4) Scannez chaque QR code via le scanne de votre Téléphone</b>, <b>5) Validation instantanée</b> (valide/invalide). Fonctionnalié 100% sécuriser ",
+            q4: "Quels moyens de paiement sont acceptés ?",
+            a4: "Nous acceptons : <b>Mobile Money</b> (Orange Money, MTN Mobile Money, Moov Money), <b>Cartes bancaires</b> (Visa, Mastercard), <b>Virements bancaires</b>, <b>Paiements en espèces</b> (via points de paiement partenaires). En développement : crypto-monnaies locales.",
+            q5: "Comment contester une transaction ou signaler une fraude ?",
+            a5: "Procédure contestation : <b>1) Contactez support sous 7 jours</b>, <b>2) Fournissez preuves</b> (screenshots, emails), <b>3) Notre équipe enquête sous 72h</b>, <b>4) Résolution et compensation si fraude avérée</b>. Nous avons système anti-fraude intelligent.",
+            // q6: "Puis-je exporter mes données et statistiques ?",
+            // a6: "Oui, exports disponibles : <b>1) Liste participants</b> (Excel/CSV), <b>2) Statistiques de vente</b>, <b>3) Revenus détaillés</b>, <b>4) Données démographiques</b>, <b>5) Rapports de performance</b>. Accès via tableau de bord → Exports. Automatique pour concessionnaires.",
+            q7: "La plateforme fonctionne-t-elle hors connexion ?",
+            a7: "Non la plateforme est 100% disponible  en ligne  : <b>Scan QR codes</b> (après synchronisation), <b>Vérification tickets</b>, <b>Liste participants</b>. Pour ventes et créations, connexion requise. Application organisateur optimisée pour connexions instables.",
+            q8: "Quelle est votre politique de confidentialité des données ?",
+            a8: "Nous respectons : <b>RGPD adapté Afrique</b>, <b>Données cryptées</b>, <b>Pas de vente à des tiers</b>, <b>Accès restreint</b>, <b>Droit à l'oubli</b>, <b>Transparence totale</b>. Consultez notre charte confidentialité complète dans la page marketing, page de partenariat.",
           },
         },
       },
+    
+
+
+
+  secretary_dashboard: {
+        title: "Tableau de bord Secrétaire",
+        welcome: "Bienvenue, {{name}}",
+        competence_zone: "Zone de compétence : {{country}}",
+        tabs: {
+          user_management: "Gestion Utilisateurs",
+          event_management: "Gestion Événements",
+          location_management: "Gestion Lieux",
+          credit_management: "Gestion pièces",
+          reversed_credits: "pièces Annulés",
+          withdrawal_management: "Gestion Retraits",
+          withdrawal_history: "Historique Retraits",
+          event_moderation: "Modération Événements & Lieux",
+        },
+        credit_form: {
+          title: "Créditer un utilisateur",
+          search_user_label: "Rechercher un utilisateur",
+          search_user_placeholder: "Nom ou email...",
+          user_label: "Utilisateur",
+          select_user_placeholder: "Sélectionner un utilisateur",
+          amount_label: "Montant (pièces)",
+          amount_placeholder: "ex: 100",
+          reason_label: "Raison (optionnel)",
+          reason_placeholder: "ex: Récompense",
+          submit_button: "Créditer l'utilisateur",
+        },
+        event_moderation: {
+          title: "Modération des Événements",
+          zone_country: "Zone: {{country}}",
+          filter_all: "Tous",
+          filter_active: "Actifs",
+          filter_inactive: "Inactifs",
+          credit_participants_button: "Créditer Participants",
+          confirm_delete_title: "Êtes-vous sûr ?",
+          confirm_delete_desc:
+            "Cette action est irréversible. L'événement et toutes ses données associées (tickets, votes, etc.) seront définitivement supprimés.",
+          event_deleted_success: "Événement supprimé avec succès.",
+          event_deleted_error: "Impossible de supprimer l'événement.",
+          status_updated_success: "Statut de l'événement mis à jour.",
+          status_updated_error: "Impossible de mettre à jour le statut.",
+          credit_user_for_event_title:
+            "Créditer pour l'événement : {{eventName}}",
+          credit_user_for_event_desc:
+            "Sélectionnez un utilisateur de votre zone pour lui attribuer des pièces pour sa participation.",
+          user_search_placeholder: "Rechercher par nom ou email...",
+          credit_amount_label: "Montant (pièces)",
+          credit_reason_label: "Raison du crédit",
+          credit_reason_placeholder:
+            "Participation à l'événement : {{eventName}}",
+          no_users_found: "Aucun utilisateur trouvé dans votre zone.",
+          credit_success_message:
+            "{{userName}} a été crédité de {{amount}} pièces.",
+          credit_error_generic: "Une erreur est survenue lors du crédit.",
+        },
+      },
+
+
+
+      // - Section Help Center
+
+     
 
       // ===== EVENTS PAGE =====
       events_page: {
@@ -319,11 +409,8 @@ const resources = {
         withdrawal_minimum: "Minimum pour un retrait : {{amount}} pièces.",
       },
 
-      // ===== DASHBOARDS =====
-      admin_dashboard: "Tableau de bord Admin",
-      secretary_dashboard: "Tableau de bord Secrétaire",
-
-      admin_dashboard: {
+ 
+  admin_dashboard: {
         unauthorized_title: "Accès non autorisé",
         unauthorized_desc:
           "Vous n'avez pas les permissions nécessaires pour accéder à cette page.",
@@ -422,148 +509,9 @@ const resources = {
           submit: "Soumettre la demande",
         },
       },
-      faq: {
-        meta_title: "Questions Fréquentes - BonPlanInfos.net",
-        meta_description:
-          "Trouvez des réponses sur BonPlanInfos.net, la plateforme africaine d'événements, monétisation et profits réels avec seulement 5% de commission",
-        title: "Questions Fréquentes",
-        subtitle:
-          "Trouvez rapidement des réponses sur notre plateforme événementielle africaine",
-        questions: {
-          general: {
-            title: "Questions Générales sur BonPlanInfos",
-            q1: "Qu'est-ce que BonPlanInfos.net exactement ?",
-            a1: "<b>BonPlanInfos.net</b> est la première plateforme africaine dédiée aux événements et à leur monétisation. Nous offrons aux organisateurs d'événements, artistes, promoteurs culturels et entrepreneurs des outils professionnels pour créer, gérer et monétiser leurs activités avec seulement <b>5% de commission plateforme</b>.",
-            q2: "Comment la plateforme est-elle différente des autres ?",
-            a2: "Notre différence : <b>Commission ultra-basse de 5%</b> (vous gardez 95%), <b>focus sur l'Afrique</b>, <b>paiements réels garantis</b>, et <b>suite complète d'outils</b> (billeterie, votes, tombolas, location de stands). Nous ne sommes pas juste une plateforme, mais une opportunité de business concret.",
-            q3: "Qui peut utiliser BonPlanInfos.net ?",
-            a3: "Notre plateforme est conçue pour : <b>Organisateurs d'événements</b>, <b>Promoteurs culturels</b>, <b>Artistes et managers</b>, <b>Associations</b>, <b>Écoles</b>, <b>Responsables de foires et expositions</b>. Tout créateur voulant monétiser ses activités événementielles en Afrique.",
-            q4: "La plateforme est-elle sécurisée ?",
-            a4: "Absolument ! Nous utilisons : <b>Tickets sécurisés avec QR codes</b>, <b>Paiements cryptés</b>, <b>Scan de vérification le jour J</b>, <b>Protection contre la fraude</b>. Les tickets invalides sont automatiquement refusés, garantissant l'authenticité de chaque participant.",
-            q5: "Comment créer un compte organisateur ?",
-            a5: "Pour créer votre compte : <b>1) Inscrivez-vous gratuitement</b> sur la plateforme, <b>2) Complétez votre profil organisateur</b>, <b>3) Acceptez notre contrat organisateur</b>, <b>4) Commencez à créer vos événements</b>. En cas de difficulté, contactez notre support via WhatsApp : +225 0712275374.",
-            q6: "Quelles sont les conditions générales d'utilisation ?",
-            a6: "En créant un compte, vous acceptez notre <b>Contrat Organisateur</b> qui précise : Vous êtes seul responsable de vos événements, nous sommes un prestataire technique. La commission est de 5%, les retraits sont simples, et vous gardez 95% de vos revenus. Téléchargez le contrat complet depuis votre tableau de bord.",
-            q7: "Comment fonctionnent les paiements et retraits ?",
-            a7: "<b>Paiements</b> : Collectés via moyens locaux (mobile money, cartes). <b>Retraits</b> : Disponibles sur votre compte organisateur. <b>Commission</b> : 5% prélevés sur chaque participation. <b>Exemple</b> : Pour 1 000 000 FCFA de ventes → Vous recevez 950 000 FCFA, nous prenons 50 000 FCFA.",
-            q8: "Où puis-je obtenir de l'aide ou du support ?",
-            a8: "Plusieurs canaux : <b>1) Support WhatsApp</b> : +225 0712275374, <b>2) Email</b> : support@bonplaninfos.net, <b>3) Chat en direct</b> sur la plateforme. Réponse sous 24h.",
-          },
-          features: {
-            title: "Fonctionnalités et Services",
-            q1: "Comment fonctionne la vente de billets en ligne ?",
-            a1: "Notre système de billeterie : <b>1) Créez votre événement</b> avec détails et prix, <b>2) Générez des tickets uniques avec QR code</b>, <b>3) Partagez le lien</b> sur réseaux sociaux, <b>4) Les participants achètent en ligne</b>, <b>5) Scan QR le jour J</b> pour validation. <b>Commission</b> : 5% seulement, vous gardez 95%.",
-            q2: "Puis-je organiser des concours de votes ?",
-            a2: "Oui ! Notre système de votes permet : <b>Élections en temps réel</b>, <b>Classements interactifs</b>, <b>Lien unique par candidat</b>, <b>Résultats visibles instantanément</b>. <b>Exemple</b> : Recettes 500 000 FCFA → Vous recevez 475 000 FCFA, commission 25 000 FCFA.",
-            q3: "Comment organiser des tirages au sort et tombolas ?",
-            a3: "Fonctionnalité tombola : <b>1) Configurez votre jeu</b>, <b>2) Vendez des tickets de participation</b>, <b>3) Tirage en direct transparent</b>, <b>4) Participants voient les gagnants en temps réel</b>. <b>Exemple</b> : 200 000 FCFA de recettes → 190 000 FCFA pour vous, 10 000 FCFA commission.",
-            q4: "Comment louer des stands pour événements ?",
-            a4: "Système de location de stands : <b>1) Listez vos stands disponibles</b>, <b>2) Fixez prix et conditions</b>, <b>3) Réservation en ligne</b>, <b>4) Organisation professionnelle</b>, <b>5) Moins de désordre le jour J</b>. <b>Exemple</b> : 1 000 000 FCFA → Vous gardez 950 000 FCFA.",
-            q5: "Comment booster la visibilité de mon commerce ?",
-            a5: "Section 'Découvrir' : <b>1) Ajoutez votre commerce</b> avec photos et descriptions, <b>2) Augmentez votre trafic</b>, <b>3) Boostez vos événements en choisissant un pack boost</b>, <b>4) Attirez plus de visiteurs</b>.",
-            q6: "Quels types d'événements puis-je organiser ?",
-            a6: "Tous types : <b>Concerts et spectacles</b>, <b>Conférences et séminaires</b>, <b>Festivals culturels</b>, <b>Événements sportifs</b>, <b>Expositions commerciales</b>, <b>Événements privés</b>, <b>Ateliers et formations</b>. La plateforme s'adapte à vos besoins.",
-            q7: "Puis-je protéger mon affiche événementielle ?",
-            a7: "Oui ! Fonctionnalité exclusive : <b>1) Publiez votre affiche</b> sur la plateforme, <b>2) Copiez le lien sécurisé</b>, <b>3) Partagez sur réseaux sociaux</b>, <b>4) Monétisez les vues et engagements</b>. Votre contenu reste protégé tout en étant largement diffusé.",
-            q8: "Y a-t-il des limites de transactions ou d'événements ?",
-            a8: "Aucune limite ! Vous pouvez : <b>Organiser autant d'événements que vous voulez</b>, <b>Vendre un nombre illimité de billets</b>, <b>Gérer plusieurs événements simultanément</b>, <b>Effectuer des retraits quotidiens si besoin</b>. Seule limite : respecter nos conditions d'utilisation.",
-          },
-          partnerships: {
-            title: "Licences et Partenariats",
-            q1: "Comment devenir concessionnaire BonPlanInfos ?",
-            a1: "Devenir concessionnaire : <b>1) Choisissez votre niveau</b> (Ville, Région, Pays), <b>2) Contactez-nous pour candidature</b>, <b>3) Fournissez documents requis</b>, <b>4) Passez entretien</b>, <b>5) Signez contrat</b>, <b>6) Payez droit d'entrée</b>. Opportunité de carrière avec revenus mensuels garantis.",
-            q2: "Quels sont les niveaux de concession disponibles ?",
-            a2: "3 niveaux : <b>1) STARTER – VILLE</b> : 2 ans, 1M FCFA droit d'entrée, 20% des commissions, <b>2) BUSINESS – RÉGION</b> : 3 ans, 3M FCFA, 30% des commissions, <b>3) PREMIUM – PAYS</b> : 5 ans, 5-10M FCFA, 40% des commissions. Voir détails dans onglet 'Partenariats'.",
-            q3: "Comment sont calculés les revenus des concessionnaires ?",
-            a3: "Les concessionnaires perçoivent un pourcentage des <b>5% de commission plateforme</b> générés dans leur zone : <b>Ville</b> : 20% (soit 1% des transactions), <b>Région</b> : 30% (1.5% des transactions), <b>Pays</b> : 40% (2% des transactions). Revenus sur : billets, votes, tombolas, locations.",
-            q4: "Quelles sont les obligations d'un concessionnaire ?",
-            a4: "Selon niveau : <b>Ville</b> : Point de représentation, responsable local, promotion active, <b>Région</b> : Bureau régional, minimum 2 agents, encadrement villes, <b>Pays</b> : Siège national, 3-5 employés, supervision nationale, conformité légale. Rapports mensuels obligatoires.",
-            q5: "Puis-je transférer ma concession à quelqu'un d'autre ?",
-            a5: "Oui, sous conditions : <b>1) Accord écrit de BonPlanInfos</b>, <b>2) Nouveau concessionnaire éligible</b>, <b>3) Paiement frais de transfert</b> (10% valeur résiduelle), <b>4) Signature avenant au contrat</b>. Priorité donnée aux repreneurs recommandés par le concessionnaire sortant.",
-            q6: "Comment se passe le renouvellement de concession ?",
-            a6: "Procédure : <b>Démarre 3 mois avant expiration</b> → <b>Évaluation des performances</b> → <b>Renégociation si nécessaire</b> → <b>Signature nouveau contrat</b>. Priorité aux concessionnaires performants. Durées : Ville 2 ans, Région 3 ans, Pays 5 ans, tous renouvelables.",
-            q7: "Quelle est la durée des contrats de concession ?",
-            a7: "Durées contractuelles : <b>Contrat STARTER (Ville)</b> : 2 ans renouvelables, <b>Contrat BUSINESS (Région)</b> : 3 ans renouvelables, <b>Contrat PREMIUM (Pays)</b> : 5 ans renouvelables. Exclusivité territoriale garantie pendant toute la durée.",
-            q8: "Quels sont les avantages d'être concessionnaire ?",
-            a8: "Avantages clés : <b>Revenus mensuels stables</b>, <b>Exclusivité territoriale</b>, <b>Support technique complet</b>, <b>Formation continue</b>, <b>Opportunité de croissance</b>, <b>Bureau local possible</b>, <b>Réseau de partenaires</b>, <b>Branding officiel BonPlanInfos</b>.",
-          },
-          technical: {
-            title: "Support Technique et Paiements",
-            q1: "Comment récupérer mes revenus après un événement ?",
-            a1: "Procédure de retrait : <b>1) Connectez-vous à votre compte organisateur</b>, <b>2) Allez dans 'Mes revenus'</b>, <b>3) Vérifiez le solde disponible</b>, <b>4) Sélectionnez mode de retrait</b> (mobile money, virement), <b>5) Confirmez la demande</b>. Délai : 24-72h selon méthode.",
-            q2: "Que faire si un participant a un problème avec son ticket ?",
-            a2: "En cas de problème : <b>1) Le participant montre le QR code</b>, <b>2) Vous scannez via l'appli organisateur</b>, <b>3) Vérifiez la validité</b>, <b>4) Si valide → accès accordé</b>, <b>Si invalide → contactez support</b>. En cas de fraude, nous remboursons l'organisateur.",
-            q3: "Comment fonctionne le scan QR code le jour J ?",
-            a3: "Système de scan : <b>1) Rendez-vous sur  l'appli</b>, <b>2) Connectez-vous avec vos identifiants de votre compte organisateur</b>, <b>3) Sélectionnez l'événement</b>, <b>4) Scannez chaque QR code via le scanne de votre Téléphone</b>, <b>5) Validation instantanée</b> (valide/invalide). Fonctionnalié 100% sécuriser ",
-            q4: "Quels moyens de paiement sont acceptés ?",
-            a4: "Nous acceptons : <b>Mobile Money</b> (Orange Money, MTN Mobile Money, Moov Money), <b>Cartes bancaires</b> (Visa, Mastercard), <b>Virements bancaires</b>, <b>Paiements en espèces</b> (via points de paiement partenaires). En développement : crypto-monnaies locales.",
-            q5: "Comment contester une transaction ou signaler une fraude ?",
-            a5: "Procédure contestation : <b>1) Contactez support sous 7 jours</b>, <b>2) Fournissez preuves</b> (screenshots, emails), <b>3) Notre équipe enquête sous 72h</b>, <b>4) Résolution et compensation si fraude avérée</b>. Nous avons système anti-fraude intelligent.",
-            // q6: "Puis-je exporter mes données et statistiques ?",
-            // a6: "Oui, exports disponibles : <b>1) Liste participants</b> (Excel/CSV), <b>2) Statistiques de vente</b>, <b>3) Revenus détaillés</b>, <b>4) Données démographiques</b>, <b>5) Rapports de performance</b>. Accès via tableau de bord → Exports. Automatique pour concessionnaires.",
-            q7: "La plateforme fonctionne-t-elle hors connexion ?",
-            a7: "Non la plateforme est 100% disponible  en ligne  : <b>Scan QR codes</b> (après synchronisation), <b>Vérification tickets</b>, <b>Liste participants</b>. Pour ventes et créations, connexion requise. Application organisateur optimisée pour connexions instables.",
-            q8: "Quelle est votre politique de confidentialité des données ?",
-            a8: "Nous respectons : <b>RGPD adapté Afrique</b>, <b>Données cryptées</b>, <b>Pas de vente à des tiers</b>, <b>Accès restreint</b>, <b>Droit à l'oubli</b>, <b>Transparence totale</b>. Consultez notre charte confidentialité complète dans la page marketing, page de partenariat.",
-          },
-        },
-      },
-      secretary_dashboard: {
-        title: "Tableau de bord Secrétaire",
-        welcome: "Bienvenue, {{name}}",
-        competence_zone: "Zone de compétence : {{country}}",
-        tabs: {
-          user_management: "Gestion Utilisateurs",
-          event_management: "Gestion Événements",
-          location_management: "Gestion Lieux",
-          credit_management: "Gestion pièces",
-          reversed_credits: "pièces Annulés",
-          withdrawal_management: "Gestion Retraits",
-          withdrawal_history: "Historique Retraits",
-          event_moderation: "Modération Événements & Lieux",
-        },
-        credit_form: {
-          title: "Créditer un utilisateur",
-          search_user_label: "Rechercher un utilisateur",
-          search_user_placeholder: "Nom ou email...",
-          user_label: "Utilisateur",
-          select_user_placeholder: "Sélectionner un utilisateur",
-          amount_label: "Montant (pièces)",
-          amount_placeholder: "ex: 100",
-          reason_label: "Raison (optionnel)",
-          reason_placeholder: "ex: Récompense",
-          submit_button: "Créditer l'utilisateur",
-        },
-        event_moderation: {
-          title: "Modération des Événements",
-          zone_country: "Zone: {{country}}",
-          filter_all: "Tous",
-          filter_active: "Actifs",
-          filter_inactive: "Inactifs",
-          credit_participants_button: "Créditer Participants",
-          confirm_delete_title: "Êtes-vous sûr ?",
-          confirm_delete_desc:
-            "Cette action est irréversible. L'événement et toutes ses données associées (tickets, votes, etc.) seront définitivement supprimés.",
-          event_deleted_success: "Événement supprimé avec succès.",
-          event_deleted_error: "Impossible de supprimer l'événement.",
-          status_updated_success: "Statut de l'événement mis à jour.",
-          status_updated_error: "Impossible de mettre à jour le statut.",
-          credit_user_for_event_title:
-            "Créditer pour l'événement : {{eventName}}",
-          credit_user_for_event_desc:
-            "Sélectionnez un utilisateur de votre zone pour lui attribuer des pièces pour sa participation.",
-          user_search_placeholder: "Rechercher par nom ou email...",
-          credit_amount_label: "Montant (pièces)",
-          credit_reason_label: "Raison du crédit",
-          credit_reason_placeholder:
-            "Participation à l'événement : {{eventName}}",
-          no_users_found: "Aucun utilisateur trouvé dans votre zone.",
-          credit_success_message:
-            "{{userName}} a été crédité de {{amount}} pièces.",
-          credit_error_generic: "Une erreur est survenue lors du crédit.",
-        },
-      },
-
+    
+  
+      
       // ===== ACTIONS & BOUTONS =====
       confirm_logout: "Voulez-vous vraiment vous déconnecter ?",
       cancel: "Annuler",
@@ -625,6 +573,7 @@ const resources = {
           "Rejoignez notre communauté dès aujourd'hui et ne manquez plus aucun bon plan.",
         cta_button: "Inscrivez-vous Gratuitement",
       },
+
 
       // ===== FOOTER =====
       footer: {
@@ -2068,6 +2017,125 @@ const resources = {
 
         last_updated: "Last updated: December 2025",
       },
+
+
+faq: {
+  meta_title: "Frequently Asked Questions - BonPlanInfos.net",
+  meta_description:
+    "Find clear answers about BonPlanInfos.net, Africa’s leading event monetization platform with real profits and only 5% commission.",
+  title: "Frequently Asked Questions",
+  subtitle:
+    "Find quick and clear answers about Africa’s event monetization platform",
+
+  questions: {
+    general: {
+      title: "General Questions About BonPlanInfos",
+      q1: "What exactly is BonPlanInfos.net?",
+      a1: "<b>BonPlanInfos.net</b> is Africa’s first all-in-one platform dedicated to event creation and monetization. We provide event organizers, artists, cultural promoters, and entrepreneurs with professional tools to create, manage, and monetize their activities with only <b>5% platform commission</b>.",
+
+      q2: "How is BonPlanInfos different from other platforms?",
+      a2: "Our key advantages: <b>Ultra-low 5% commission</b> (you keep 95%), <b>strong focus on Africa</b>, <b>real and guaranteed payouts</b>, and a <b>complete monetization ecosystem</b> (ticketing, voting, raffles, booth rentals). We are not just a platform — we are a real business opportunity.",
+
+      q3: "Who can use BonPlanInfos?",
+      a3: "The platform is designed for <b>event organizers</b>, <b>cultural promoters</b>, <b>artists and managers</b>, <b>associations</b>, <b>schools</b>, <b>fair and exhibition managers</b>, and anyone looking to monetize event-based activities in Africa.",
+
+      q4: "Is the platform secure?",
+      a4: "Absolutely. We use <b>secure QR-code tickets</b>, <b>encrypted payments</b>, <b>real-time validation on event day</b>, and <b>advanced fraud protection</b>. Invalid or duplicated tickets are automatically rejected.",
+
+      q5: "How do I create an organizer account?",
+      a5: "To create your account: <b>1) Sign up for free</b>, <b>2) Complete your organizer profile</b>, <b>3) Accept the organizer agreement</b>, <b>4) Start creating and monetizing your events</b>. For assistance, contact our WhatsApp support: +225 0712275374.",
+
+      q6: "What are the terms and conditions?",
+      a6: "By creating an account, you accept our <b>Organizer Agreement</b>. You remain fully responsible for your events, while BonPlanInfos acts as a technical service provider. The commission is fixed at 5%, withdrawals are simple, and you keep 95% of your revenue.",
+
+      q7: "How do payments and withdrawals work?",
+      a7: "<b>Payments</b> are collected via local methods (mobile money, cards). <b>Withdrawals</b> are available directly in your organizer account. <b>Commission</b>: 5% per transaction. <b>Example</b>: 1,000,000 FCFA in sales → You receive 950,000 FCFA.",
+
+      q8: "Where can I get help or support?",
+      a8: "Support channels: <b>WhatsApp</b>: +225 0712275374, <b>Email</b>: support@bonplaninfos.net, and <b>live chat</b> on the platform. Average response time: under 24 hours."
+    },
+
+    features: {
+      title: "Features and Services",
+      q1: "How does online ticket sales work?",
+      a1: "Ticketing process: <b>1) Create your event</b>, <b>2) Generate unique QR-code tickets</b>, <b>3) Share your event link</b>, <b>4) Participants buy online</b>, <b>5) Scan QR codes on event day</b>. Commission: only 5%.",
+
+      q2: "Can I organize voting competitions?",
+      a2: "Yes. Our voting system offers <b>real-time rankings</b>, <b>interactive leaderboards</b>, <b>unique links per candidate</b>, and <b>instant result visibility</b>. Example: 500,000 FCFA revenue → You receive 475,000 FCFA.",
+
+      q3: "How do raffles and lotteries work?",
+      a3: "Raffle system: <b>1) Configure your raffle</b>, <b>2) Sell participation tickets</b>, <b>3) Conduct a transparent live draw</b>, <b>4) Winners are displayed instantly</b>. Example: 200,000 FCFA → You keep 190,000 FCFA.",
+
+      q4: "Can I rent booths or exhibition stands?",
+      a4: "Yes. Booth rental system: <b>1) List available booths</b>, <b>2) Set prices and conditions</b>, <b>3) Online reservations</b>, <b>4) Structured event management</b>, <b>5) Less chaos on event day</b>.",
+
+      q5: "How can I increase visibility for my business?",
+      a5: "Through the <b>Discover</b> section: <b>1) Add your business</b>, <b>2) Upload photos and descriptions</b>, <b>3) Boost events with visibility packs</b>, <b>4) Attract more visitors</b>.",
+
+      q6: "What types of events can I organize?",
+      a6: "All types: <b>Concerts</b>, <b>festivals</b>, <b>conferences</b>, <b>sports events</b>, <b>trade fairs</b>, <b>private events</b>, <b>workshops and trainings</b>.",
+
+      q7: "Can I protect my event poster or flyer?",
+      a7: "Yes. You can publish your official poster on the platform, share a <b>secure link</b>, and <b>monetize views and engagement</b> while protecting your content.",
+
+      q8: "Are there limits on transactions or events?",
+      a8: "No limits. You can create unlimited events, sell unlimited tickets, manage multiple events simultaneously, and request withdrawals whenever needed, as long as platform rules are respected."
+    },
+
+    partnerships: {
+      title: "Licenses and Partnerships",
+      q1: "How can I become a BonPlanInfos concessionaire?",
+      a1: "Steps: <b>1) Choose your level</b> (City, Region, Country), <b>2) Apply</b>, <b>3) Submit required documents</b>, <b>4) Pass an interview</b>, <b>5) Sign the contract</b>, <b>6) Pay the entry fee</b>.",
+
+      q2: "What concession levels are available?",
+      a2: "Three levels: <b>Starter – City</b>, <b>Business – Region</b>, <b>Premium – Country</b>, each with increasing duration, territory, and commission share.",
+
+      q3: "How are concessionaire revenues calculated?",
+      a3: "Concessionaires earn a percentage of the platform’s <b>5% commission</b> generated in their territory: City (20%), Region (30%), Country (40%).",
+
+      q4: "What are the obligations of a concessionaire?",
+      a4: "Depending on level: local representation, active promotion, team management, reporting, and compliance with legal and operational standards.",
+
+      q5: "Can I transfer my concession?",
+      a5: "Yes, under approval by BonPlanInfos, eligibility of the new concessionaire, transfer fees, and contract amendment.",
+
+      q6: "How does concession renewal work?",
+      a6: "Renewal starts 3 months before expiration and includes performance evaluation and contract renewal for eligible partners.",
+
+      q7: "What is the duration of concession contracts?",
+      a7: "City: 2 years, Region: 3 years, Country: 5 years — all renewable with territorial exclusivity.",
+
+      q8: "What are the benefits of being a concessionaire?",
+      a8: "Stable monthly income, territorial exclusivity, full technical support, continuous training, and strong brand positioning."
+    },
+
+    technical: {
+      title: "Technical Support and Payments",
+      q1: "How do I withdraw my earnings?",
+      a1: "Steps: <b>1) Log in</b>, <b>2) Go to My Revenue</b>, <b>3) Check available balance</b>, <b>4) Select withdrawal method</b>, <b>5) Confirm</b>. Processing time: 24–72 hours.",
+
+      q2: "What if a participant has a ticket issue?",
+      a2: "Scan the QR code, verify validity, grant access if valid, or contact support if invalid. Fraud cases are handled by our security team.",
+
+      q3: "How does QR code scanning work on event day?",
+      a3: "Organizers log in to their account, select the event, scan QR codes using a smartphone. Validation is instant. Offline scanning is possible after prior synchronization.",
+
+      q4: "What payment methods are supported?",
+      a4: "Mobile Money (Orange, MTN, Moov), bank cards (Visa, Mastercard), bank transfers, and partner cash payment points.",
+
+      q5: "How do I report fraud or dispute a transaction?",
+      a5: "Contact support within 7 days, provide evidence, and our team will investigate within 72 hours.",
+
+      q7: "Does the platform work offline?",
+      a7: "Partial offline mode is available for QR code scanning after synchronization. Event creation and sales require an internet connection.",
+
+      q8: "What is your data privacy policy?",
+      a8: "We apply strict data protection standards: encrypted data, restricted access, no resale to third parties, and full transparency. See our privacy policy for details."
+    }
+  }
+},
+
+
       // ===== WALLET PAGE =====
       wallet_page: {
         title: "My Wallet",
@@ -2088,92 +2156,7 @@ const resources = {
         withdrawal_minimum: "Minimum for withdrawal: {{amount}} coins.",
       },
 
-      faq: {
-        meta_title: "Frequently Asked Questions - BonPlanInfos.net",
-        meta_description:
-          "Find answers about BonPlanInfos.net, the African events platform with real monetization and only 5% commission",
-        title: "Frequently Asked Questions",
-        subtitle: "Quickly find answers about our African events platform",
-        questions: {
-          general: {
-            title: "General Questions about BonPlanInfos",
-            q1: "What exactly is BonPlanInfos.net?",
-            a1: "<b>BonPlanInfos.net</b> is the first African platform dedicated to events and their monetization. We provide event organizers, artists, cultural promoters, and entrepreneurs with professional tools to create, manage, and monetize their activities with only <b>5% platform commission</b>.",
-            q2: "How is the platform different from others?",
-            a2: "Our difference: <b>Ultra-low 5% commission</b> (you keep 95%), <b>Africa focus</b>, <b>guaranteed real payments</b>, and <b>complete tool suite</b> (ticketing, votes, raffles, stand rentals). We're not just a platform, but a concrete business opportunity.",
-            q3: "Who can use BonPlanInfos.net?",
-            a3: "Our platform is designed for: <b>Event organizers</b>, <b>Cultural promoters</b>, <b>Artists and managers</b>, <b>Associations</b>, <b>Schools</b>, <b>Trade show and exhibition managers</b>. Any creator wanting to monetize their event activities in Africa.",
-            q4: "Is the platform secure?",
-            a4: "Absolutely! We use: <b>Secure tickets with QR codes</b>, <b>Encrypted payments</b>, <b>Verification scan on D-day</b>, <b>Fraud protection</b>. Invalid tickets are automatically rejected, ensuring each participant's authenticity.",
-            q5: "How to create an organizer account?",
-            a5: "To create your account: <b>1) Register for free</b> on the platform, <b>2) Complete your organizer profile</b>, <b>3) Accept our organizer contract</b>, <b>4) Start creating your events</b>. If difficulty, contact our support via WhatsApp: +225 XX XX XX XX.",
-            q6: "What are the general terms of use?",
-            a6: "By creating an account, you accept our <b>Organizer Contract</b> which specifies: You are solely responsible for your events, we are a technical provider. Commission is 5%, withdrawals are simple, and you keep 95% of your revenue. Download the complete contract from your dashboard.",
-            q7: "How do payments and withdrawals work?",
-            a7: "<b>Payments</b>: Collected via local methods (mobile money, cards). <b>Withdrawals</b>: Available on your organizer account. <b>Commission</b>: 5% deducted from each participation. <b>Example</b>: For 1,000,000 FCFA in sales → You receive 950,000 FCFA, we take 50,000 FCFA.",
-            q8: "Where can I get help or support?",
-            a8: "Multiple channels: <b>1) WhatsApp Support</b>: +225 XX XX XX XX, <b>2) WhatsApp Community</b>: https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH, <b>3) Email</b>: support@bonplaninfos.net, <b>4) Live chat</b> on the platform. Response within 24h.",
-          },
-          features: {
-            title: "Features and Services",
-            q1: "How does online ticket sales work?",
-            a1: "Our ticketing system: <b>1) Create your event</b> with details and pricing, <b>2) Generate unique tickets with QR code</b>, <b>3) Share the link</b> on social media, <b>4) Participants buy online</b>, <b>5) QR scan on D-day</b> for validation. <b>Commission</b>: Only 5%, you keep 95%.",
-            q2: "Can I organize voting contests?",
-            a2: "Yes! Our voting system allows: <b>Real-time elections</b>, <b>Interactive rankings</b>, <b>Unique link per candidate</b>, <b>Results visible instantly</b>. <b>Example</b>: Revenue 500,000 FCFA → You receive 475,000 FCFA, commission 25,000 FCFA.",
-            q3: "How to organize raffles and lotteries?",
-            a3: "Raffle feature: <b>1) Configure your game</b>, <b>2) Sell participation tickets</b>, <b>3> Transparent live draw</b>, <b>4) Participants see winners in real-time</b>. <b>Example</b>: 200,000 FCFA revenue → 190,000 FCFA for you, 10,000 FCFA commission.",
-            q4: "How to rent stands for events?",
-            a4: "Stand rental system: <b>1) List your available stands</b>, <b>2) Set prices and conditions</b>, <b>3) Online reservation</b>, <b>4) Professional organization</b>, <b>5> Less clutter on D-day</b>. <b>Example</b>: 1,000,000 FCFA → You keep 950,000 FCFA.",
-            q5: "How to boost my business visibility?",
-            a5: "'Discover' section: <b>1) Add your business</b> with photos and descriptions, <b>2) Increase your traffic</b>, <b>3) Boost your events</b>, <b>4) Attract more visitors</b>. Free for merchants, payment only for generated transactions.",
-            q6: "What types of events can I organize?",
-            a6: "All types: <b>Concerts and shows</b>, <b>Conferences and seminars</b>, <b>Cultural festivals</b>, <b>Sports events</b>, <b>Trade exhibitions</b>, <b>Private events</b>, <b>Workshops and training</b>. The platform adapts to your needs.",
-            q7: "Can I protect my event poster?",
-            a7: "Yes! Exclusive feature: <b>1) Publish your poster</b> on the platform, <b>2) Copy the secure link</b>, <b>3) Share on social media</b>, <b>4) Monetize views and engagement</b>. Your content remains protected while being widely distributed.",
-            q8: "Are there transaction or event limits?",
-            a8: "No limits! You can: <b>Organize as many events as you want</b>, <b>Sell unlimited tickets</b>, <b>Manage multiple events simultaneously</b>, <b>Make daily withdrawals if needed</b>. Only limit: respect our terms of use.",
-          },
-          partnerships: {
-            title: "Licenses and Partnerships",
-            q1: "How to become a BonPlanInfos concessionaire?",
-            a1: "Becoming a concessionaire: <b>1) Choose your level</b> (City, Region, Country), <b>2) Contact us to apply</b>, <b>3) Provide required documents</b>, <b>4) Pass interview</b>, <b>5) Sign contract</b>, <b>6) Pay entry fee</b>. Career opportunity with guaranteed monthly income.",
-            q2: "What concession levels are available?",
-            a2: "3 levels: <b>1) STARTER – CITY</b>: 2 years, 1M FCFA entry fee, 20% of commissions, <b>2) BUSINESS – REGION</b>: 3 years, 3M FCFA, 30% of commissions, <b>3) PREMIUM – COUNTRY</b>: 5 years, 5-10M FCFA, 40% of commissions. See details in 'Partnerships' tab.",
-            q3: "How are concessionaire revenues calculated?",
-            a3: "Concessionaires receive a percentage of the <b>5% platform commission</b> generated in their zone: <b>City</b>: 20% (i.e., 1% of transactions), <b>Region</b>: 30% (1.5% of transactions), <b>Country</b>: 40% (2% of transactions). Revenue from: tickets, votes, raffles, rentals.",
-            q4: "What are a concessionaire's obligations?",
-            a4: "Depending on level: <b>City</b>: Representation point, local manager, active promotion, <b>Region</b>: Regional office, minimum 2 agents, city supervision, <b>Country</b>: National headquarters, 3-5 employees, national supervision, legal compliance. Monthly reports required.",
-            q5: "Can I transfer my concession to someone else?",
-            a5: "Yes, under conditions: <b>1) Written agreement from BonPlanInfos</b>, <b>2) New concessionaire eligible</b>, <b>3> Transfer fee payment</b> (10% residual value), <b>4) Contract amendment signing</b>. Priority given to successors recommended by outgoing concessionaire.",
-            q6: "How does concession renewal work?",
-            a6: "Procedure: <b>Starts 3 months before expiration</b> → <b>Performance evaluation</b> → <b>Renegotiation if necessary</b> → <b>New contract signing</b>. Priority to performing concessionaires. Durations: City 2 years, Region 3 years, Country 5 years, all renewable.",
-            q7: "What is the duration of concession contracts?",
-            a7: "Contract durations: <b>STARTER Contract (City)</b>: 2 years renewable, <b>BUSINESS Contract (Region)</b>: 3 years renewable, <b>PREMIUM Contract (Country)</b>: 5 years renewable. Territorial exclusivity guaranteed for entire duration.",
-            q8: "What are the advantages of being a concessionaire?",
-            a8: "Key advantages: <b>Stable monthly income</b>, <b>Territorial exclusivity</b>, <b>Complete technical support</b>, <b>Continuous training</b>, <b>Growth opportunity</b>, <b>Possible local office</b>, <b>Partner network</b>, <b>Official BonPlanInfos branding</b>.",
-          },
-          technical: {
-            title: "Technical Support and Payments",
-            q1: "How to recover my revenue after an event?",
-            a1: "Withdrawal procedure: <b>1) Log into your organizer account</b>, <b>2) Go to 'My Revenue'</b>, <b>3) Check available balance</b>, <b>4) Select withdrawal method</b> (mobile money, transfer), <b>5) Confirm request</b>. Delay: 24-72h depending on method.",
-            q2: "What if a participant has a problem with their ticket?",
-            a2: "In case of problem: <b>1) Participant shows QR code</b>, <b>2) You scan via organizer app</b>, <b>3) Check validity</b>, <b>4) If valid → access granted</b>, <b>If invalid → contact support</b>. In case of fraud, we refund the organizer.",
-            q3: "How does QR code scanning work on D-day?",
-            a3: "Scan system: <b>1) Download organizer scan app</b>, <b>2) Log in with your credentials</b>, <b>3) Select the event</b>, <b>4) Scan each QR code</b>, <b>5) Instant validation</b> (valid/invalid). Works offline after synchronization.",
-            q4: "What payment methods are accepted?",
-            a4: "We accept: <b>Mobile Money</b> (Orange Money, MTN Mobile Money, Moov Money), <b>Bank cards</b> (Visa, Mastercard), <b>Bank transfers</b>, <b>Cash payments</b> (via partner payment points). In development: local cryptocurrencies.",
-            q5: "How to contest a transaction or report fraud?",
-            a5: "Contest procedure: <b>1) Contact support within 7 days</b>, <b>2) Provide evidence</b> (screenshots, emails), <b>3) Our team investigates within 72h</b>, <b>4) Resolution and compensation if fraud proven</b>. We have intelligent anti-fraud system.",
-            q6: "Can I export my data and statistics?",
-            a6: "Yes, exports available: <b>1) Participant list</b> (Excel/CSV), <b>2) Sales statistics</b>, <b>3) Detailed revenue</b>, <b>4) Demographic data</b>, <b>5) Performance reports</b>. Access via dashboard → Exports. Automatic for concessionaires.",
-            q7: "Does the platform work offline?",
-            a7: "Offline features: <b>QR code scanning</b> (after synchronization), <b>Ticket verification</b>, <b>Participant list</b>. For sales and creations, connection required. Organizer app optimized for unstable connections.",
-            q8: "What is your data privacy policy?",
-            a8: "We respect: <b>GDPR adapted for Africa</b>, <b>Encrypted data</b>, <b>No sale to third parties</b>, <b>Restricted access</b>, <b>Right to be forgotten</b>, <b>Complete transparency</b>. Consult our complete privacy charter in account settings.",
-          },
-        },
-      },
-
+    
       // ===== CREATE EVENT PAGE =====
       create_event_page: {
         meta: {
@@ -2559,107 +2542,86 @@ const resources = {
         },
       },
       // ===== DASHBOARDS =====
-      admin_dashboard: "Admin Dashboard",
-      secretary_dashboard: "Secretary Dashboard",
 
-      admin_dashboard: {
-        unauthorized_title: "Unauthorized Access",
-        unauthorized_desc:
-          "You do not have the required permissions to access this page.",
-        loading_error_title: "Loading Error",
-        super_admin_title: "Super Admin Dashboard",
-        admin_title: "Admin Dashboard - {{country}}",
-        secretary_title: "Secretary Dashboard",
-        welcome: "Welcome, {{name}}",
-        tabs: {
-          analytics: "Analytics",
-          users: "Users",
-          secretaries: "Secretaries",
-          config: "Configuration",
-          videos: "Videos",
-          partners: "Partners",
-          withdrawals: "Withdrawals",
-          salary_withdrawals: "Salary Withdrawals",
-          withdrawal_history: "Withdrawal History",
-          announcements: "Announcements",
-          events: "Events",
-          promotions: "Promotions",
-          popups: "Popups",
-          credits: "Credits",
-          credit_management: "Credit Management",
-          reversed_credits: "Reversed Credits",
-          transactions: "Transactions",
-          activity_log: "Activity Log",
-          payments: "Payments",
-          locations: "Locations",
-          badges: "Badges",
-          credit_stats: "Credit Stats",
-          salary: "My Salary",
-          credits_history: "Credits History",
-        },
-        stats: {
-          error_title: "Statistics Error",
-          revenue_title: "Chiffres affaires zone)",
-        },
-        license: {
-          partner_error_title: "Error loading partner",
-          status_title: "License Status",
-          status_active: "Active",
-          status_expired: "Expired",
-          activated_on: "Activated on",
-          expires_on: "Expires on",
-          expired_since: "Expired for {{count}} days",
-          days_remaining: "days remaining",
-          renew_button: "Request Renewal",
-          confirm_renewal_title: "Confirm Renewal Request?",
-          confirm_renewal_desc:
-            "A notification will be sent to the super administrator to review your license renewal request.",
-          renewal_sent_title: "Request Sent",
-          renewal_sent_desc: "Your renewal request has been sent successfully.",
-          renewal_error_desc: "Error sending renewal request: ",
-        },
-        banner: {
-          pending:
-            "Your admin account is pending verification. Some features may be limited.",
-          suspended:
-            "Your admin account has been suspended. Please contact support.",
-          expired:
-            "Your license has expired. Please renew it to restore full access.",
-        },
-        salary_dashboard: {
-          title: "Salary Dashboard",
-          current_month_revenue: "Zone Revenue (Current Month)",
-          personal_score: "Personal Score",
-          projected_salary: "Projected Salary (Current Month)",
-          request_withdrawal: "Request Withdrawal",
-          history_title: "Salary History",
-          month: "Month",
-          revenue: "Zone Revenue",
-          license_rate: "License Rate",
-          score: "Score",
-          salary: "Final Salary",
-          status: "Status",
-          paid: "Paid",
-          unpaid: "Unpaid",
-        },
-        withdrawal_form: {
-          title: "Salary Withdrawal Request",
-          description: "Submit a request to withdraw your available salary.",
-          available_salary: "Salary available for withdrawal",
-          amount_to_withdraw: "Amount",
-          withdrawal_method: "Method",
-          select_method: "Select a method",
-          bank_name: "Bank Name",
-          account_holder: "Account Holder",
-          account_number: "Account Number",
-          mobile_money_operator: "Operator",
-          phone_number: "Phone Number",
-          reason: "Reason (Optional)",
-          submit: "Submit Request",
+     
+
+     
+ help_center: {
+        meta_title: "Help Center - BonPlanInfos",
+        meta_description:
+          "Find answers to your questions and contact our support team for any assistance on BonPlanInfos",
+        title: "Help Center",
+        subtitle: "Quickly find answers or contact our support team",
+        searchPlaceholder: "Search for a question or topic...",
+        faq: "Frequently Asked Questions",
+        contact: "Contact Us",
+
+        // Contact methods
+        email: "Email",
+        emailDesc: "Send us a detailed email and we'll respond within 24 hours",
+        writeUs: "Write to Us",
+
+        chat: "WhatsApp Chat",
+        chatDesc:
+          "Join our WhatsApp group for quick answers and community support",
+        startChat: "Join Group",
+
+        phone: "Phone",
+        phoneDesc: "Call us directly for immediate assistance",
+        call: "Call Now",
+
+        // FAQ Sections
+        faq_sections: {
+          general: {
+            title: "General Questions",
+            q1: "How to create an account on BonPlanInfos?",
+            a1: "To create an account: 1) Click 'Sign Up' top right, 2) Fill your personal information, 3) Verify your email, 4) Log in. It's free and takes less than 2 minutes.",
+            q2: "Is the platform free?",
+            a2: "Yes, account creation and basic use are completely free. Only premium services (organizing paid events, advanced promotion) may have fees. Participants only pay for tickets they purchase.",
+            q3: "What types of events can I find?",
+            a3: "You'll find: concerts, festivals, conferences, workshops, sports events, exhibitions, parties, and much more. Our platform covers all types of events in Africa.",
+            q4: "How do payments work?",
+            a4: "We accept: mobile money (Orange Money, MTN Mobile Money, Moov Money), bank cards, and transfers. Payments are secure and encrypted. You receive 95% of the amount, we take 5% commission.",
+          },
+          organizer: {
+            title: "For Organizers",
+            q1: "How to create an event?",
+            a1: "To create an event: 1) Log in, 2) Click 'Create Event', 3) Fill details (title, description, date, location), 4) Add photos, 5) Configure tickets and prices, 6) Publish.",
+            q2: "How to sell tickets online?",
+            a2: "Our ticketing system allows you to: create different ticket types, set prices, limit quantities, generate unique QR codes, and track sales in real time.",
+            q3: "When and how am I paid?",
+            a3: "Payments are made within 24-72h after your event. You can withdraw your funds via mobile money or bank transfer from your dashboard.",
+            q4: "Can I cancel or modify an event?",
+            a4: "Yes, you can modify or cancel your event up to 24h before. In case of cancellation, participants are automatically notified and refunded.",
+          },
+          technical: {
+            title: "Technical Support",
+            q1: "Login problems?",
+            a1: "If you can't log in: 1) Check your email/password, 2) Use 'Forgot Password', 3) Try another browser, 4) Contact support if problem persists.",
+            q2: "How to reset my password?",
+            a2: "Click 'Forgot Password' on login page, enter your email, follow link in received email, and create new password.",
+            q3: "Is the platform available on mobile?",
+            a3: "Yes! Our site is fully responsive and works perfectly on all smartphones and tablets. No app to download.",
+            q4: "What to do in case of payment error?",
+            a4: "If a payment fails: 1) Don't retry immediately, 2) Check your balance, 3) Wait 2 hours, 4) Contact support. We process these cases quickly.",
+          },
+          partnership: {
+            title: "Partnerships and Licenses",
+            q1: "How to become a concessionaire?",
+            a1: "To become a concessionaire: 1) Choose a level (City, Region, Country), 2) Contact us via email or WhatsApp, 3) Provide required documents, 4) Pass an interview, 5) Sign contract.",
+            q2: "What are partnership benefits?",
+            a2: "As a concessionaire, you benefit from: stable monthly income, territorial exclusivity, complete technical support, training, and growth opportunities.",
+            q3: "What are entry costs?",
+            a3: "Entry fees vary: City (1M FCFA), Region (3M FCFA), Country (5-10M FCFA). These investments entitle you to a percentage of commissions generated in your zone.",
+            q4: "What is contract duration?",
+            a4: "Durations are: City (2 years), Region (3 years), Country (5 years). All contracts are renewable subject to performance.",
+          },
         },
       },
 
+
       secretary_dashboard: {
+         secretary_dashboard: "Secretary Dashboard",
         title: "Secretary Dashboard",
         welcome: "Welcome, {{name}}",
         competence_zone: "Area of competence: {{city}}, {{country}}",
@@ -2772,6 +2734,118 @@ const resources = {
           "Join our community today and never miss a good deal again.",
         cta_button: "Sign Up for Free",
       },
+
+  cookie_banner: {
+        message: "We use cookies to improve your experience. ",
+        learn_more: "Learn more",
+        accept: "Accept",
+        reject: "Reject",
+      },
+ common: {
+        loading: "Loading...",
+        error: "An error occurred",
+      },
+
+ admin_dashboard: {
+        meta_title: "Admin Dashboard - BonPlanInfos",
+         admin_dashboard: "Admin Dashboard",
+        unauthorized_title: "Unauthorized Access",
+        unauthorized_desc:
+          "You do not have the required permissions to access this page.",
+        loading_error_title: "Loading Error",
+        super_admin_title: "Super Admin Dashboard",
+        admin_title: "Admin Dashboard - {{country}}",
+        secretary_title: "Secretary Dashboard",
+        welcome: "Welcome, {{name}}",
+        tabs: {
+          analytics: "Analytics",
+          users: "Users",
+          secretaries: "Secretaries",
+          config: "Configuration",
+          videos: "Videos",
+          partners: "Partners",
+          withdrawals: "Withdrawals",
+          salary_withdrawals: "Salary Withdrawals",
+          withdrawal_history: "Withdrawal History",
+          announcements: "Announcements",
+          events: "Events",
+          promotions: "Promotions",
+          popups: "Popups",
+          credits: "Credits",
+          credit_management: "Credit Management",
+          reversed_credits: "Reversed Credits",
+          transactions: "Transactions",
+          activity_log: "Activity Log",
+          payments: "Payments",
+          locations: "Locations",
+          badges: "Badges",
+          credit_stats: "Credit Stats",
+          salary: "My Salary",
+          credits_history: "Credits History",
+        },
+        stats: {
+          error_title: "Statistics Error",
+          revenue_title: "Chiffres affaires zone)",
+        },
+        license: {
+          partner_error_title: "Error loading partner",
+          status_title: "License Status",
+          status_active: "Active",
+          status_expired: "Expired",
+          activated_on: "Activated on",
+          expires_on: "Expires on",
+          expired_since: "Expired for {{count}} days",
+          days_remaining: "days remaining",
+          renew_button: "Request Renewal",
+          confirm_renewal_title: "Confirm Renewal Request?",
+          confirm_renewal_desc:
+            "A notification will be sent to the super administrator to review your license renewal request.",
+          renewal_sent_title: "Request Sent",
+          renewal_sent_desc: "Your renewal request has been sent successfully.",
+          renewal_error_desc: "Error sending renewal request: ",
+        },
+        banner: {
+          pending:
+            "Your admin account is pending verification. Some features may be limited.",
+          suspended:
+            "Your admin account has been suspended. Please contact support.",
+          expired:
+            "Your license has expired. Please renew it to restore full access.",
+        },
+        salary_dashboard: {
+          title: "Salary Dashboard",
+          current_month_revenue: "Zone Revenue (Current Month)",
+          personal_score: "Personal Score",
+          projected_salary: "Projected Salary (Current Month)",
+          request_withdrawal: "Request Withdrawal",
+          history_title: "Salary History",
+          month: "Month",
+          revenue: "Zone Revenue",
+          license_rate: "License Rate",
+          score: "Score",
+          salary: "Final Salary",
+          status: "Status",
+          paid: "Paid",
+          unpaid: "Unpaid",
+        },
+        withdrawal_form: {
+          title: "Salary Withdrawal Request",
+          description: "Submit a request to withdraw your available salary.",
+          available_salary: "Salary available for withdrawal",
+          amount_to_withdraw: "Amount",
+          withdrawal_method: "Method",
+          select_method: "Select a method",
+          bank_name: "Bank Name",
+          account_holder: "Account Holder",
+          account_number: "Account Number",
+          mobile_money_operator: "Operator",
+          phone_number: "Phone Number",
+          reason: "Reason (Optional)",
+          submit: "Submit Request",
+        },
+      },
+
+
 
       // ===== FOOTER =====
       footer: {
@@ -3026,59 +3100,7 @@ const resources = {
           welcome_popup: "Welcome Popup",
         },
       },
-      faq: {
-        meta_title: "Frequently Asked Questions",
-        meta_description:
-          "Find answers to your questions about BonPlanInfos.net, the platform for deals and territorial concessions",
-        title: "Frequently Asked Questions",
-        subtitle: "Quickly find answers to your questions about our platform",
-        questions: {
-          general: {
-            title: "General Questions",
-            q1: "What is BonPlanInfos.net?",
-            q2: "How does the platform work?",
-            q3: "Is the platform free for users?",
-            q4: "What geographical areas are covered?",
-            q5: "How can I report a problem or error?",
-            q6: "Is the platform available on mobile?",
-            q7: "What are the customer support hours?",
-            q8: "How do I cancel my subscription?",
-          },
-          partnerships: {
-            title: "Partnerships and Concessions",
-            q1: "How to become an official partner?",
-            q2: "What concession levels are available?",
-            q3: "What are the eligibility criteria for a concession?",
-            q4: "How are commissions calculated?",
-            q5: "Is there a minimum commitment contract?",
-            q6: "What is the duration of concession contracts?",
-            q7: "What is the renewal procedure?",
-            q8: "Can a concession be transferred to a third party?",
-          },
-          business: {
-            title: "For Merchants",
-            q1: "How to register my business on the platform?",
-            q2: "What types of promotions are allowed?",
-            q3: "How to manage my offers and promotions?",
-            q4: "What are the fees for merchants?",
-            q5: "How do customers discover my offers?",
-            q6: "Can I target specific customers?",
-            q7: "How to measure the effectiveness of my promotions?",
-            q8: "What is the procedure in case of dispute?",
-          },
-          technical: {
-            title: "Technical Support",
-            q1: "How to reset my password?",
-            q2: "Why can't I log into my account?",
-            q3: "How to update my personal information?",
-            q4: "Is the platform secure?",
-            q5: "What to do if a transaction fails?",
-            q6: "How to export my data?",
-            q7: "Which browsers are compatible?",
-            q8: "How to contact technical support?",
-          },
-        },
-      },
+    
       // ===== DISCOVER PAGE =====
       discover_places: "Discover Places",
       discover_more_places: "Discover more places",
@@ -3416,6 +3438,8 @@ const resources = {
           },
         },
       },
+
+  
 
       // ===== LEGAL MENTIONS =====
       legal_mentions: {

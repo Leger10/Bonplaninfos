@@ -247,63 +247,133 @@ const WinnersList = ({ winners, currentUserId }) => {
   );
 };
 
-// Modal de diffusion en direct du tirage
+// Composant pour les numéros qui tournent avec effets - AMÉLIORÉ
+const SpinningNumber = ({ number, index, isSpinning, finalStage }) => {
+  return (
+    <motion.div
+      key={index}
+      initial={{ scale: 0, rotate: -180, opacity: 0 }}
+      animate={{ 
+        scale: isSpinning ? [1, 1.1, 1] : finalStage ? 1.2 : 1,
+        rotate: isSpinning ? [0, 360] : finalStage ? [0, 720] : 0,
+        opacity: 1 
+      }}
+      transition={{ 
+        scale: isSpinning ? { repeat: Infinity, duration: 0.3 } : finalStage ? { duration: 0.5 } : {},
+        rotate: isSpinning ? { 
+          repeat: Infinity, 
+          duration: finalStage ? 1 : 2,
+          ease: "linear" 
+        } : finalStage ? { duration: 0.5 } : {},
+        opacity: { duration: 0.5 }
+      }}
+      className="relative w-20 h-24 sm:w-24 sm:h-28 bg-black/80 rounded-xl border-2 border-yellow-500/70 flex items-center justify-center shadow-[0_0_20px_rgba(234,179,8,0.5)] overflow-hidden group"
+    >
+      {/* Effet de brillance */}
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-yellow-500/20 to-transparent animate-pulse"></div>
+      
+      {/* Effet de rotation intérieur */}
+      <motion.div 
+        animate={{ rotate: isSpinning ? 360 : 0 }}
+        transition={{ 
+          rotate: { 
+            repeat: Infinity, 
+            duration: 3,
+            ease: "linear" 
+          } 
+        }}
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-500/10 to-transparent"
+      />
+      
+      {/* Le numéro */}
+      <span className="text-4xl sm:text-5xl font-mono font-bold text-yellow-300 tabular-nums relative z-10 drop-shadow-[0_0_10px_rgba(234,179,8,0.7)]">
+        {number}
+      </span>
+      
+      {/* Effet de halo */}
+      <div className="absolute -inset-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+    </motion.div>
+  );
+};
+
+// Modal de diffusion en direct du tirage - AMÉLIORÉ POUR TOUS
 const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOrganizer }) => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [currentNumbers, setCurrentNumbers] = useState([]);
+  const [currentNumbers, setCurrentNumbers] = useState(Array(6).fill('0000'));
   const [showResults, setShowResults] = useState(false);
   const [drawMessages, setDrawMessages] = useState(["🎲 Initialisation du tirage..."]);
   const [winners, setWinners] = useState([]);
   const [loadingResults, setLoadingResults] = useState(true);
   const [drawStep, setDrawStep] = useState(0);
+  const [finalStage, setFinalStage] = useState(false);
 
-  // Animation des numéros qui défilent
+  // IMPORTANT: TOUT LE MONDE (participants et organisateur) voit l'animation
+  // Effet de défilement amélioré - PLUS LONG (8 secondes)
   useEffect(() => {
     if (drawStep === 1) {
-      const interval = setInterval(() => {
-        const newNumbers = Array.from({ length: 6 }, () => 
-          Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-        );
-        setCurrentNumbers(newNumbers);
-      }, 50);
+      let speed = 80; // Plus lent au début pour mieux voir
+      let startTime = Date.now();
+      const totalDuration = 8000; // 8 secondes au lieu de 5
+      let phase = 'fast'; // fast -> medium -> slow -> suspense
       
-      return () => clearInterval(interval);
-    }
-  }, [drawStep]);
-
-  // Simulation du processus de tirage
-  useEffect(() => {
-    if (drawStep === 0) {
-      const messages = [
-        "🎲 Mélange des tickets...",
-        "🔢 Vérification des numéros...",
-        "✨ Calcul des probabilités...",
-        "⚡ Initialisation du générateur aléatoire...",
-        "🎯 Prêt pour le tirage..."
-      ];
-      
-      let i = 0;
-      const interval = setInterval(() => {
-        if (i < messages.length) {
-          setDrawMessages(prev => [...prev.slice(-2), messages[i]]);
-          i++;
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / totalDuration;
+        
+        // Phases de vitesse pour varier le spectacle
+        if (progress < 0.2) {
+          phase = 'fast';
+          speed = 80; // Rapide au début
+        } else if (progress < 0.5) {
+          phase = 'medium';
+          speed = 120; // Moyen
+        } else if (progress < 0.8) {
+          phase = 'slow';
+          speed = 200; // Lent
         } else {
-          clearInterval(interval);
-          setDrawStep(1);
+          phase = 'suspense';
+          speed = 300; // Très lent pour le suspense
+          setFinalStage(true); // Activer les effets finaux
         }
-      }, 1200);
+        
+        // Génération de numéros aléatoires avec effet visuel
+        const newNumbers = Array.from({ length: 6 }, () => {
+          const base = Math.floor(Math.random() * 9000) + 1000;
+          return base.toString().padStart(4, '0');
+        });
+        setCurrentNumbers(newNumbers);
+        
+        // Messages d'ambiance dynamiques qui changent
+        if (progress < 0.1) {
+          setDrawMessages(prev => [...prev.slice(-2), "🎯 DÉMARRAGE DU TIRAGE..."]);
+        } else if (progress < 0.3) {
+          setDrawMessages(prev => [...prev.slice(-2), "⚡ MÉLANGE DES TICKETS EN COURS..."]);
+        } else if (progress < 0.5) {
+          setDrawMessages(prev => [...prev.slice(-2), "✨ SÉLECTION ALÉATOIRE ACTIVÉE..."]);
+        } else if (progress < 0.7) {
+          setDrawMessages(prev => [...prev.slice(-2), "🌟 DERNIÈRE PHASE DE CALCUL..."]);
+        } else if (progress < 0.85) {
+          setDrawMessages(prev => [...prev.slice(-2), "🎭 SUSPENSE... RÉSULTATS PROCHE!"]);
+        } else {
+          setDrawMessages(prev => [...prev.slice(-2), "🎉 RÉVÉLATION DES GAGNANTS !"]);
+        }
+        
+        if (elapsed < totalDuration) {
+          setTimeout(animate, speed);
+        } else {
+          // Effet final de suspense
+          setCurrentNumbers(['????', '????', '????', '????', '????', '????']);
+          
+          // Pause dramatique de 2 secondes
+          setTimeout(() => {
+            setDrawStep(2);
+            fetchWinners();
+          }, 2000);
+        }
+      };
       
-      return () => clearInterval(interval);
-    }
-    
-    if (drawStep === 1) {
-      const timer = setTimeout(() => {
-        setDrawStep(2);
-        fetchWinners();
-      }, 5000);
-      
-      return () => clearTimeout(timer);
+      animate();
     }
   }, [drawStep]);
 
@@ -359,6 +429,14 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
       setWinners(sortedWinners);
       setShowResults(true);
       
+      // Effet de notification pour tous les participants
+      toast({
+        title: "🎉 RÉSULTATS DISPONIBLES !",
+        description: "Les gagnants du tirage ont été révélés !",
+        duration: 5000,
+        className: "bg-gradient-to-r from-yellow-600 to-orange-600 text-white"
+      });
+      
       if (onDrawComplete) {
         onDrawComplete();
       }
@@ -396,6 +474,32 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
     };
   }, [raffleId, fetchWinners]);
 
+  // Simulation du processus de tirage - POUR TOUT LE MONDE
+  useEffect(() => {
+    if (drawStep === 0) {
+      const messages = [
+        "🎲 LANCEMENT DU TIRAGE EN DIRECT...",
+        "🔢 VÉRIFICATION DE TOUS LES TICKETS...",
+        "✨ ACTIVATION DU SYSTÈME ALÉATOIRE SÉCURISÉ...",
+        "⚡ PRÉPARATION DES RÉSULTATS EN TEMPS RÉEL...",
+        "🎯 LE TIRAGE VA COMMENCER !"
+      ];
+      
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i < messages.length) {
+          setDrawMessages(prev => [...prev.slice(-2), messages[i]]);
+          i++;
+        } else {
+          clearInterval(interval);
+          setDrawStep(1);
+        }
+      }, 2000); // Plus long pour créer du suspense
+      
+      return () => clearInterval(interval);
+    }
+  }, [drawStep]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 overflow-y-auto">
       <motion.div
@@ -414,62 +518,160 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
 
         <Card className="border-4 border-yellow-500 bg-gradient-to-br from-indigo-900 via-purple-900 to-black text-white shadow-2xl overflow-hidden">
           <div className="text-center py-6 border-b border-white/10 relative overflow-hidden">
+            {/* Effets visuels */}
             <Sparkles className="absolute top-4 left-4 text-yellow-400 w-6 h-6 animate-spin-slow" />
             <Sparkles className="absolute top-4 right-4 text-yellow-400 w-6 h-6 animate-spin-slow" />
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-500/10 to-transparent animate-shimmer"></div>
             
-            <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 uppercase tracking-widest">
+            {/* Étoiles volantes */}
+            {[...Array(20)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ 
+                  y: [0, -100],
+                  opacity: [0, 1, 0]
+                }}
+                transition={{ 
+                  duration: 2, 
+                  repeat: Infinity,
+                  delay: i * 0.1 
+                }}
+                className="absolute w-1 h-1 bg-yellow-400 rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: '100%',
+                }}
+              />
+            ))}
+            
+            <h2 className="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 uppercase tracking-widest">
               {showResults ? "🎉 RÉSULTATS OFFICIELS 🎉" : "🎯 TIRAGE EN DIRECT 🎯"}
             </h2>
             {eventTitle && (
-              <p className="text-lg text-gray-300 mt-2">{eventTitle}</p>
+              <p className="text-lg sm:text-xl text-gray-300 mt-2">{eventTitle}</p>
+            )}
+            {!showResults && (
+              <p className="text-sm text-yellow-400 mt-2 animate-pulse">
+                Diffusion en direct à tous les participants
+              </p>
             )}
           </div>
 
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             {!showResults ? (
-              <div className="flex flex-col items-center justify-center space-y-8 py-10">
+              <div className="flex flex-col items-center justify-center space-y-6 sm:space-y-8 py-6 sm:py-10">
+                {/* Messages d'ambiance */}
                 <div className="h-16 flex items-center justify-center w-full">
                   <AnimatePresence mode="wait">
                     <motion.div
-                      key={drawStep}
+                      key={drawMessages[drawMessages.length - 1]}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       className="text-center"
                     >
-                      <p className="text-2xl font-bold text-blue-200 mb-2">
-                        {drawStep === 0 ? "Préparation du tirage" : "Tirage en cours"}
+                      <p className="text-xl sm:text-2xl font-bold text-blue-200 mb-2">
+                        {drawStep === 0 ? "Préparation du tirage" : "Tirage en cours !"}
                       </p>
-                      <p className="text-lg text-gray-300">
+                      <p className="text-lg sm:text-xl text-yellow-300 animate-pulse">
                         {drawMessages[drawMessages.length - 1]}
                       </p>
                     </motion.div>
                   </AnimatePresence>
                 </div>
 
+                {/* Numéros qui défilent avec effets spectaculaires - VISIBLE PAR TOUS */}
                 {drawStep === 1 && (
-                  <div className="flex flex-wrap gap-4 justify-center items-center">
-                    {currentNumbers.map((num, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="w-20 h-24 bg-black/50 rounded-xl border-2 border-yellow-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.3)] relative overflow-hidden"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-yellow-500/20 to-transparent animate-pulse"></div>
-                        <span className="text-4xl font-mono font-bold text-yellow-400 tabular-nums relative z-10">
-                          {num}
-                        </span>
-                      </motion.div>
-                    ))}
+                  <div className="relative py-4 sm:py-8 w-full">
+                    {/* Effets sonores visuels */}
+                    <div className="flex flex-wrap justify-center gap-2 mb-4">
+                      {['🎵', '🎶', '🔊', '📢', '🎤', '🎧'].map((emoji, i) => (
+                        <motion.span
+                          key={i}
+                          animate={{ 
+                            scale: [1, 1.3, 1],
+                            rotate: [0, 10, -10, 0]
+                          }}
+                          transition={{ 
+                            duration: 0.5,
+                            repeat: Infinity,
+                            delay: i * 0.1 
+                          }}
+                          className="text-2xl"
+                        >
+                          {emoji}
+                        </motion.span>
+                      ))}
+                    </div>
+                    
+                    {/* Conteneur des numéros */}
+                    <div className="relative">
+                      {/* Numéros qui tournent - VISIBLE PAR TOUS */}
+                      <div className="flex flex-wrap gap-3 sm:gap-6 justify-center items-center">
+                        {currentNumbers.map((num, index) => (
+                          <SpinningNumber 
+                            key={index} 
+                            number={num} 
+                            index={index} 
+                            isSpinning={drawStep === 1}
+                            finalStage={finalStage}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Message de tension */}
+                      <div className="mt-6 text-center">
+                        <motion.p
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ 
+                            duration: 1,
+                            repeat: Infinity,
+                            repeatType: "reverse" 
+                          }}
+                          className="text-lg sm:text-xl font-bold text-orange-300"
+                        >
+                          {finalStage ? "🎭 SUSPENSE MAXIMAL !" : "⚡ LA TENSION MONTE ⚡"}
+                        </motion.p>
+                        <p className="text-sm text-gray-400 mt-2">
+                          {finalStage ? "Révélation dans quelques instants..." : "Tirage en cours..."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Barre de progression dramatique - PLUS LONGUE */}
+                    <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 8, ease: "linear" }} // 8 secondes
+                      className="h-2 sm:h-3 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 mt-6 rounded-full"
+                    />
+                    
+                    {/* Compte à rebours visuel amélioré */}
+                    <div className="text-center mt-4">
+                      <div className="inline-flex gap-3 sm:gap-4 text-2xl sm:text-3xl font-mono font-bold">
+                        {[8,7,6,5,4,3,2,1].map((sec) => (
+                          <motion.span
+                            key={sec}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: (8-sec) * 1 }}
+                            className="text-yellow-400"
+                          >
+                            {sec}
+                          </motion.span>
+                        ))}
+                      </div>
+                      <p className="text-gray-400 mt-2">
+                        {finalStage ? "Derniers instants..." : "Durée totale: 8 secondes"}
+                      </p>
+                    </div>
                   </div>
                 )}
 
+                {/* Progression générale */}
                 <div className="w-full max-w-md">
                   <Progress 
-                    value={drawStep === 0 ? 40 : drawStep === 1 ? 80 : 100} 
+                    value={drawStep === 0 ? 20 : drawStep === 1 ? 80 : 100} 
                     className="h-3 bg-gray-700"
                   />
                   <div className="flex justify-between text-sm text-gray-400 mt-2">
@@ -479,41 +681,52 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
                   </div>
                 </div>
 
-                {drawStep === 1 && (
+                {drawStep === 0 && (
                   <div className="text-center">
                     <Loader2 className="w-12 h-12 text-yellow-500 animate-spin mx-auto" />
                     <p className="text-sm text-gray-400 mt-4">
-                      Sélection aléatoire des gagnants en cours...
+                      Initialisation du système de tirage sécurisé...
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="space-y-8">
+              // SECTION RÉSULTATS (même pour tous)
+              <div className="space-y-6 sm:space-y-8">
                 {loadingResults ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-8 sm:py-12">
                     <Loader2 className="w-16 h-16 text-yellow-500 animate-spin mx-auto" />
                     <p className="text-xl text-gray-300 mt-4">Chargement des résultats...</p>
                   </div>
                 ) : (
                   <>
                     <div className="text-center space-y-3">
-                      <h3 className="text-3xl font-bold text-yellow-400">
+                      <motion.h3
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200 }}
+                        className="text-2xl sm:text-3xl font-bold text-yellow-400"
+                      >
                         FÉLICITATIONS AUX GAGNANTS ! 🎊
-                      </h3>
+                      </motion.h3>
                       <p className="text-gray-300 text-lg">
                         Voici le classement officiel certifié par le système.
                       </p>
+                      <div className="flex justify-center gap-2 mt-2">
+                        <Badge className="bg-green-900/50 text-green-300">Sécurisé</Badge>
+                        <Badge className="bg-blue-900/50 text-blue-300">Transparent</Badge>
+                        <Badge className="bg-purple-900/50 text-purple-300">Certifié</Badge>
+                      </div>
                     </div>
 
-                    <div className="mt-8">
-                      <h4 className="text-2xl font-bold text-center text-yellow-300 mb-6">
+                    <div className="mt-6 sm:mt-8">
+                      <h4 className="text-xl sm:text-2xl font-bold text-center text-yellow-300 mb-6">
                         🏆 P O D I U M 🏆
                       </h4>
                       <Podium winners={winners} />
                     </div>
 
-                    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden mt-8">
+                    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden mt-6 sm:mt-8">
                       <div className="p-4 bg-black/30 border-b border-white/10">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
@@ -526,7 +739,7 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
                         </div>
                       </div>
 
-                      <div className="p-6">
+                      <div className="p-4 sm:p-6">
                         <WinnersList winners={winners} currentUserId={user?.id} />
                       </div>
 
@@ -538,7 +751,8 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                    {/* Boutons d'action responsive */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4">
                       <Button
                         onClick={() => {
                           const text = `🎉 J'ai participé au tirage "${eventTitle}" ! Découvrez les résultats ici !`;
@@ -550,6 +764,7 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
                           });
                         }}
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                        size="sm"
                       >
                         <Share2 className="w-4 h-4 mr-2" />
                         Partager les résultats
@@ -559,6 +774,7 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
                         onClick={onClose}
                         variant="outline"
                         className="border-gray-600 text-gray-300 hover:bg-gray-800/50"
+                        size="sm"
                       >
                         <X className="w-4 h-4 mr-2" />
                         Retour à l'événement
@@ -574,6 +790,7 @@ const LiveDrawBroadcast = ({ raffleId, eventTitle, onClose, onDrawComplete, isOr
     </div>
   );
 };
+
 
 // Composant principal de tirage
 const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, isGoalReached, minTicketsRequired, stats, userProfile }) => {
@@ -845,6 +1062,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                 />
             )}
             
+            {/* Dialogs de confirmation */}
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <DialogContent className="sm:max-w-md border-2 border-yellow-500/50">
                     <DialogHeader>
@@ -958,6 +1176,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                 </AlertDialogContent>
             </AlertDialog>
             
+            {/* Modal des résultats */}
             {showResultsView && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 overflow-y-auto">
                     <motion.div
@@ -991,7 +1210,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                 </p>
                             </div>
 
-                            <CardContent className="p-6">
+                            <CardContent className="p-4 sm:p-6">
                                 {loadingWinners ? (
                                     <div className="text-center py-12">
                                         <Loader2 className="w-16 h-16 text-yellow-500 animate-spin mx-auto" />
@@ -999,8 +1218,8 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="text-center space-y-3 mb-8">
-                                            <h3 className="text-3xl font-bold text-yellow-400">
+                                        <div className="text-center space-y-3 mb-6 sm:mb-8">
+                                            <h3 className="text-2xl sm:text-3xl font-bold text-yellow-400">
                                                 FÉLICITATIONS AUX GAGNANTS ! 🎊
                                             </h3>
                                             <p className="text-gray-300 text-lg">
@@ -1008,14 +1227,14 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                             </p>
                                         </div>
 
-                                        <div className="mt-8">
-                                            <h4 className="text-2xl font-bold text-center text-yellow-300 mb-6">
+                                        <div className="mt-6 sm:mt-8">
+                                            <h4 className="text-xl sm:text-2xl font-bold text-center text-yellow-300 mb-6">
                                                 🏆 P O D I U M 🏆
                                             </h4>
                                             <Podium winners={winners} />
                                         </div>
 
-                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden mt-8">
+                                        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden mt-6 sm:mt-8">
                                             <div className="p-4 bg-black/30 border-b border-white/10">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
@@ -1028,7 +1247,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                                 </div>
                                             </div>
 
-                                            <div className="p-6">
+                                            <div className="p-4 sm:p-6">
                                                 <WinnersList winners={winners} currentUserId={user?.id} />
                                             </div>
 
@@ -1041,7 +1260,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                         </div>
 
                                         {/* Boutons d'action */}
-                                        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+                                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-6 sm:pt-8">
                                             <Button
                                                 onClick={() => {
                                                     const text = `🎉 J'ai participé au tirage "${eventData?.title || 'Tombola'}" ! Découvrez les résultats ici !`;
@@ -1053,6 +1272,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                                     });
                                                 }}
                                                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                                                size="sm"
                                             >
                                                 <Share2 className="w-4 h-4 mr-2" />
                                                 Partager les résultats
@@ -1062,6 +1282,7 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                                                 onClick={handleCloseResults}
                                                 variant="outline"
                                                 className="border-gray-600 text-gray-300 hover:bg-gray-800/50"
+                                                size="sm"
                                             >
                                                 <X className="w-4 h-4 mr-2" />
                                                 Retour à l'événement
