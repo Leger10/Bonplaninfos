@@ -1,7 +1,9 @@
 /**
- * Utility for automatic image format conversion
- * Converts unsupported formats (webp, heic, etc.) to jpg/png
+ * Utility for automatic image format conversion and compression
+ * Converts unsupported formats (webp, heic, etc.) to jpg/png and compresses images
  */
+
+import imageCompression from 'browser-image-compression';
 
 /**
  * Convert an image file to a supported format (JPEG or PNG)
@@ -128,6 +130,84 @@ export const convertImageToSupportedFormat = async (file, options = {}) => {
 };
 
 /**
+ * Compress image file
+ * @param {File} file - The image file to compress
+ * @param {Object} options - Compression options
+ * @returns {Promise<File>} - Compressed file
+ */
+export const compressImage = async (file, options = {}) => {
+  const defaultOptions = {
+    maxSizeMB: 1, // Max file size in MB
+    maxWidthOrHeight: 1920, // Max width or height
+    useWebWorker: true, // Use web worker for better performance
+    fileType: file.type.includes('png') ? 'image/png' : 'image/jpeg',
+    initialQuality: 0.85,
+    alwaysKeepResolution: true
+  };
+
+  const compressionOptions = { ...defaultOptions, ...options };
+
+  try {
+    // Show compression message
+    if (file.size > 2 * 1024 * 1024) { // If file > 2MB
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast({
+          title: "Compression d'image",
+          description: `Votre image (${(file.size / 1024 / 1024).toFixed(1)} MB) est en cours de compression...`,
+          duration: 2000,
+        });
+      }
+    }
+
+    const compressedFile = await imageCompression(file, compressionOptions);
+    
+    // Show success message if significant compression
+    const originalSizeMB = file.size / 1024 / 1024;
+    const compressedSizeMB = compressedFile.size / 1024 / 1024;
+    
+    if (originalSizeMB > 1 && originalSizeMB - compressedSizeMB > 0.5) {
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast({
+          title: "Compression réussie",
+          description: `Image compressée de ${originalSizeMB.toFixed(1)}MB à ${compressedSizeMB.toFixed(1)}MB (${Math.round((1 - compressedSizeMB/originalSizeMB) * 100)}% réduit)`,
+          duration: 3000,
+        });
+      }
+    }
+    
+    return compressedFile;
+  } catch (error) {
+    console.error('Image compression error:', error);
+    // Return original file if compression fails
+    return file;
+  }
+};
+
+/**
+ * Process image: convert if needed, then compress
+ * @param {File} file - Original image file
+ * @param {Object} options - Processing options
+ * @returns {Promise<File>} - Processed file
+ */
+export const processImage = async (file, options = {}) => {
+  let processedFile = file;
+  
+  // Check if conversion is needed
+  if (needsImageConversion(file)) {
+    const targetFormat = getRecommendedFormat(file);
+    processedFile = await convertImageToSupportedFormat(file, {
+      ...options,
+      targetFormat,
+    });
+  }
+  
+  // Always compress the image (even if already supported format)
+  processedFile = await compressImage(processedFile, options);
+  
+  return processedFile;
+};
+
+/**
  * Check if a file needs conversion
  * @param {File} file - The file to check
  * @returns {boolean} - True if conversion is needed
@@ -155,24 +235,50 @@ export const getRecommendedFormat = (file) => {
 };
 
 /**
- * Process and upload image with automatic conversion
- * @param {File} file - Original image file
- * @param {Function} uploadFn - Upload function that accepts a File
- * @param {Object} options - Conversion options
- * @returns {Promise<any>} - Upload result
+ * Validate image file
+ * @param {File} file - Image file to validate
+ * @returns {Object} - Validation result with isValid and message
  */
-export const uploadImageWithConversion = async (file, uploadFn, options = {}) => {
-  let fileToUpload = file;
+export const validateImage = (file) => {
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
   
-  // Check if conversion is needed
-  if (needsImageConversion(file)) {
-    const targetFormat = getRecommendedFormat(file);
-    fileToUpload = await convertImageToSupportedFormat(file, {
-      ...options,
-      targetFormat,
-    });
+  if (!allowedTypes.includes(file.type.toLowerCase())) {
+    return {
+      isValid: false,
+      message: `Format non supporté: ${file.type}. Formats acceptés: JPEG, PNG, WebP, HEIC.`
+    };
   }
   
-  // Call the upload function with the (possibly converted) file
+  if (file.size > maxSize) {
+    return {
+      isValid: false,
+      message: `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum: 5MB.`
+    };
+  }
+  
+  return { isValid: true, message: '' };
+};
+
+/**
+ * Upload image with automatic processing
+ * @param {File} file - Original image file
+ * @param {Function} uploadFn - Upload function that accepts a File
+ * @param {Object} options - Processing options
+ * @returns {Promise<any>} - Upload result
+ */
+export const uploadImageWithProcessing = async (file, uploadFn, options = {}) => {
+  // First validate the image
+  const validation = validateImage(file);
+  if (!validation.isValid) {
+    throw new Error(validation.message);
+  }
+  
+  let fileToUpload = file;
+  
+  // Process the image (convert if needed + compress)
+  fileToUpload = await processImage(file, options);
+  
+  // Call the upload function with the processed file
   return uploadFn(fileToUpload);
 };

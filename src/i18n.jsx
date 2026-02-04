@@ -123,7 +123,7 @@ const resources = {
           title: "Erreur de Chargement des Données",
           description:
             "Nous n'avons pas pu charger les données nécessaires. Veuillez vérifier votre connexion et réessayer.",
-          retry: "Réessayer",
+       
         },
       },
       sponsors: {
@@ -175,10 +175,7 @@ cookie_banner: {
         reject: "Refuser",
       },
 
- common: {
-        loading: "Chargement...",
-        error: "Une erreur est survenue",
-      },
+
 
 
     faq: {
@@ -368,9 +365,7 @@ cookie_banner: {
             'Vous pouvez maintenant voir les détails de "{{title}}".',
         },
 
-        common: {
-          whatsapp_community: "Rejoindre la communauté WhatsApp",
-        },
+        
       },
 
       // ===== PROFILE PAGE =====
@@ -1595,7 +1590,7 @@ cookie_banner: {
       choose_file: "Choisir un fichier",
       no_file_chosen: "Aucun fichier choisi",
 
-      // ===== COMMUN =====
+      
       common: {
         error_title: "Erreur",
         confirm: "Confirmer",
@@ -1604,13 +1599,15 @@ cookie_banner: {
         close: "Fermer",
         save: "Sauvegarder",
         edit: "Modifier",
-        loading: "Chargement...",
         success_title: "Succès",
         search: "Rechercher...",
         activate: "Activer",
         deactivate: "Désactiver",
         credit: "Créditer",
         retry: "Réessayer",
+        whatsapp_community: "Rejoindre la communauté WhatsApp",
+        loading: "Chargement...",
+        error: "Une erreur est survenue",
       },
 
       // ===== POLITIQUE DE CONFIDENTIALITÉ =====
@@ -2741,11 +2738,7 @@ faq: {
         accept: "Accept",
         reject: "Reject",
       },
- common: {
-        loading: "Loading...",
-        error: "An error occurred",
-      },
-
+ 
  admin_dashboard: {
         meta_title: "Admin Dashboard - BonPlanInfos",
          admin_dashboard: "Admin Dashboard",
@@ -3224,22 +3217,23 @@ faq: {
       no_file_chosen: "No file chosen",
 
       // ===== COMMON =====
-      common: {
-        error_title: "Error",
-        confirm: "Confirm",
-        cancel: "Cancel",
-        delete: "Delete",
-        close: "Close",
-        save: "Save",
-        edit: "Edit",
-        loading: "Loading...",
-        success_title: "Success",
-        search: "Search...",
-        activate: "Activate",
-        deactivate: "Deactivate",
-        credit: "Credit",
-        retry: "Retry",
-      },
+     common: {
+  error_title: "Error",
+  confirm: "Confirm",
+  cancel: "Cancel",
+  delete: "Delete",
+  close: "Close",
+  save: "Save",
+  edit: "Edit",
+  loading: "Loading...",
+  success_title: "Success",
+  search: "Search...",
+  activate: "Activate",
+  deactivate: "Deactivate",
+  credit: "Credit",
+  retry: "Retry",
+  whatsapp_community: "Rejoindre la communauté WhatsApp",
+},
 
       // ===== PRIVACY POLICY =====
       privacy: {
