@@ -9,41 +9,18 @@ import React, {
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import { retrySupabaseRequest } from "@/lib/supabaseHelper";
 
-// Initialize with empty object to prevent destructuring errors if provider is missing
 const DataContext = createContext({});
 
 export const useData = () => {
   return useContext(DataContext);
 };
 
-// Utility for fetch retries with exponential backoff
-const fetchWithRetry = async (
-  fn,
-  retries = 3,
-  delay = 1000,
-  fallbackValue = null,
-) => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries === 0) {
-      console.error("All fetch retries failed:", error);
-      return { data: fallbackValue, error };
-    }
-    console.warn(
-      `Fetch failed, retrying in ${delay}ms... (${retries} attempts left)`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, delay));
-    return fetchWithRetry(fn, retries - 1, delay * 1.5, fallbackValue);
-  }
-};
-
 export const DataProvider = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Core Data State
   const [userProfile, setUserProfile] = useState(null);
   const [welcomePopups, setWelcomePopups] = useState([]);
   const [appSettings, setAppSettings] = useState({
@@ -55,20 +32,18 @@ export const DataProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [notificationBellAnimation, setNotificationBellAnimation] =
-    useState(false);
+  const [notificationBellAnimation, setNotificationBellAnimation] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [globalError, setGlobalError] = useState(null);
 
-  // Cache mechanism
   const profileCache = useRef({ data: null, userId: null, timestamp: 0 });
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const fetchFailureCount = useRef(0); // Circuit breaker counter
+  const CACHE_DURATION = 5 * 60 * 1000; 
 
-  // Visual & Sound Effects State
   const [visualEffects, setVisualEffects] = useState([]);
   const [soundEffect, setSoundEffect] = useState(null);
 
-  // --- Effects Handlers ---
   const addVisualEffect = useCallback((type) => {
     const id = Math.random().toString(36).substr(2, 9);
     setVisualEffects((prev) => [...prev, { id, type }]);
@@ -86,12 +61,15 @@ export const DataProvider = ({ children }) => {
     setSoundEffect(null);
   }, []);
 
-  // --- Fetching Logic ---
-
-  // 1. Fetch User Profile with Cache and Performance Monitoring
   const fetchUserProfile = useCallback(async () => {
     if (!user) {
       setUserProfile(null);
+      return;
+    }
+
+    // Circuit breaker: Stop trying after 3 consecutive failures
+    if (fetchFailureCount.current >= 3) {
+      console.warn("Fetch profile stopped due to repeated failures.");
       return;
     }
 
@@ -101,7 +79,6 @@ export const DataProvider = ({ children }) => {
       profileCache.current.userId === user.id &&
       now - profileCache.current.timestamp < CACHE_DURATION;
 
-    // Use cache if valid and not forced refresh (refreshTrigger increments on force)
     if (isCacheValid && refreshTrigger === 0) {
       console.log("Using cached user profile");
       setUserProfile(profileCache.current.data);
@@ -112,20 +89,28 @@ export const DataProvider = ({ children }) => {
     console.time("fetchUserProfile");
 
     try {
-      // Use .maybeSingle() for safe query handling of potentially missing profiles
-      const { data, error } = await fetchWithRetry(
-        () =>
-          supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-        3,
-        500,
-        null,
+      const { data, error } = await retrySupabaseRequest(
+        () => supabase.from("profiles").select("*").eq("id", user.id).maybeSingle()
       );
 
       if (error) {
         console.error("Error fetching profile:", error);
+        fetchFailureCount.current += 1;
+        
+        if (error.code === "NETWORK_ERROR") {
+           // Only toast on first failure to avoid spam
+           if (fetchFailureCount.current === 1) {
+             toast({
+               title: "Erreur de connexion",
+               description: "Impossible de charger votre profil. Vérifiez votre connexion.",
+               variant: "destructive"
+             });
+           }
+        }
       } else if (data) {
         setUserProfile(data);
-        // Update Cache
+        fetchFailureCount.current = 0; // Reset on success
+        setGlobalError(null);
         profileCache.current = {
           data: data,
           userId: user.id,
@@ -138,20 +123,17 @@ export const DataProvider = ({ children }) => {
       }
     } catch (err) {
       console.error("Exception fetching profile:", err);
+      fetchFailureCount.current += 1;
     } finally {
       console.timeEnd("fetchUserProfile");
       setLoadingProfile(false);
     }
-  }, [user, refreshTrigger]);
+  }, [user?.id, refreshTrigger, toast]); // Depend on user.id, not user object
 
-  // 2. Fetch App Settings
   const fetchAppSettings = useCallback(async () => {
     try {
-      const { data, error } = await fetchWithRetry(
-        () => supabase.from("app_settings").select("*").limit(1).maybeSingle(),
-        2,
-        1000,
-        {},
+      const { data, error } = await retrySupabaseRequest(
+        () => supabase.from("app_settings").select("*").limit(1).maybeSingle()
       );
 
       if (!error && data) {
@@ -162,19 +144,14 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  // 3. Fetch Welcome Popups
   const fetchWelcomePopups = useCallback(async () => {
     try {
-      const { data, error } = await fetchWithRetry(
-        () =>
-          supabase
+      const { data, error } = await retrySupabaseRequest(
+        () => supabase
             .from("welcome_popups")
             .select("*")
             .eq("is_active", true)
-            .order("created_at", { ascending: false }),
-        2,
-        1000,
-        [],
+            .order("created_at", { ascending: false })
       );
 
       if (!error && data) {
@@ -185,15 +162,16 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  // 4. Fetch Notification Count
   const fetchNotificationCount = useCallback(async () => {
     if (!user) return;
     try {
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
+      const { count, error } = await retrySupabaseRequest(
+        () => supabase
+            .from("notifications")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("is_read", false)
+      );
 
       if (!error) {
         setNotificationCount(count || 0);
@@ -201,33 +179,30 @@ export const DataProvider = ({ children }) => {
     } catch (err) {
       console.error("Error fetching notification count:", err);
     }
-  }, [user]);
+  }, [user?.id]); // Depend on user.id
 
-  // 5. Update User Profile Function
   const updateUserProfile = useCallback(
     async (userId, updates) => {
       setLoadingProfile(true);
       console.log("Updating profile:", Object.keys(updates));
       try {
-        // Use RPC for secure update including email/bio
-        const { data, error } = await supabase.rpc("update_user_profile", {
-          p_user_id: userId,
-          p_full_name: updates.full_name,
-          p_email: updates.email,
-          p_phone: updates.phone,
-          p_city: updates.city,
-          p_country: updates.country,
-          p_bio: updates.bio,
-          p_avatar_url: updates.avatar_url,
-        });
+        const { data, error } = await retrySupabaseRequest(
+          () => supabase.rpc("update_user_profile", {
+            p_user_id: userId,
+            p_full_name: updates.full_name,
+            p_email: updates.email,
+            p_phone: updates.phone,
+            p_city: updates.city,
+            p_country: updates.country,
+            p_bio: updates.bio,
+            p_avatar_url: updates.avatar_url,
+          })
+        );
 
         if (error) throw error;
 
         console.log("Profile updated successfully");
-
-        // Force refresh to update local state immediately
         await fetchUserProfile();
-        // Or more aggressively invalidate cache
         profileCache.current = { ...profileCache.current, timestamp: 0 };
         setRefreshTrigger((prev) => prev + 1);
 
@@ -242,7 +217,6 @@ export const DataProvider = ({ children }) => {
     [fetchUserProfile],
   );
 
-  // Initial Data Load (Parallelized)
   useEffect(() => {
     let isMounted = true;
 
@@ -270,19 +244,16 @@ export const DataProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [fetchAppSettings, fetchWelcomePopups]);
+  }, [fetchAppSettings, fetchWelcomePopups, toast]);
 
-  // Profile & Notification Load on User Change
   useEffect(() => {
     fetchUserProfile();
     fetchNotificationCount();
   }, [fetchUserProfile, fetchNotificationCount]);
 
-  // Realtime Subscription for Profile and Notifications
   useEffect(() => {
     if (!user) return;
 
-    // Profile updates
     const profileChannel = supabase
       .channel("public:profiles")
       .on(
@@ -301,7 +272,6 @@ export const DataProvider = ({ children }) => {
       )
       .subscribe();
 
-    // Notification updates (New events, etc.)
     const notificationChannel = supabase
       .channel("public:notifications")
       .on(
@@ -317,7 +287,7 @@ export const DataProvider = ({ children }) => {
           fetchNotificationCount();
           setNotificationBellAnimation(true);
           setTimeout(() => setNotificationBellAnimation(false), 1000);
-          triggerSoundEffect("notification"); // Play sound in app
+          triggerSoundEffect("notification"); 
         },
       )
       .subscribe();
@@ -326,10 +296,10 @@ export const DataProvider = ({ children }) => {
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(notificationChannel);
     };
-  }, [user, fetchUserProfile, fetchNotificationCount, triggerSoundEffect]);
+  }, [user?.id, fetchUserProfile, fetchNotificationCount, triggerSoundEffect]);
 
   const forceRefreshUserProfile = useCallback(() => {
-    // Invalidate cache and trigger refresh
+    fetchFailureCount.current = 0; // Reset circuit breaker on manual refresh
     profileCache.current = { ...profileCache.current, timestamp: 0 };
     setRefreshTrigger((prev) => prev + 1);
   }, []);
@@ -339,7 +309,6 @@ export const DataProvider = ({ children }) => {
     setTimeout(() => setNotificationBellAnimation(false), 1000);
   }, []);
 
-  // Helper to fetch events with optimized selection
   const getEvents = useCallback(async (filters = {}) => {
     try {
       let query = supabase
@@ -356,16 +325,15 @@ export const DataProvider = ({ children }) => {
         query = query.eq("country", filters.country);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await retrySupabaseRequest(() => query);
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (error) {
       console.error("Error fetching events:", error);
       return [];
     }
   }, []);
 
-  // Helper to fetch promotions
   const getPromotions = useCallback(async (filters = {}) => {
     try {
       let query = supabase
@@ -373,9 +341,9 @@ export const DataProvider = ({ children }) => {
         .select("*, organizer:organizer_id(full_name, email)")
         .order("created_at", { ascending: false });
 
-      const { data, error } = await query;
+      const { data, error } = await retrySupabaseRequest(() => query);
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (error) {
       console.error("Error fetching promotions:", error);
       return [];
@@ -408,6 +376,7 @@ export const DataProvider = ({ children }) => {
     soundEffect,
     triggerSoundEffect,
     clearSoundEffect,
+    globalError
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

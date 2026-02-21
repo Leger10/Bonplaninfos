@@ -5,140 +5,95 @@ import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { useData } from "@/contexts/DataContext";
 import {
   Loader2,
-  Ticket,
-  BarChart3,
-  Vote,
-  Store,
-  RefreshCcw,
-  AlertCircle,
-  Wallet,
   Clock,
-  Lock,
-  ArrowRightLeft,
+  Wallet,
   Percent,
+  AlertCircle,
+  Coins,
+  ArrowRight,
+  LogIn
 } from "lucide-react";
 
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileStats from "@/components/profile/ProfileStats";
 import ProfilePageContent from "@/components/profile/ProfilePageContent";
-import EarningsDetailsModal from "@/components/profile/EarningsDetailsModal";
 import TransferModal from "@/components/profile/TransferModal";
+import CoinTransferModal from "@/components/profile/CoinTransferModal";
+import TransferHistory from "@/components/profile/TransferHistory";
 
 import { supabase } from "@/lib/customSupabaseClient";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { fetchWithRetry } from "@/lib/utils";
+import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
 
 const ProfilePage = () => {
   const { t } = useTranslation();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, session } = useAuth();
   const {
     userProfile,
-    loadingProfile,
     getEvents,
     forceRefreshUserProfile,
   } = useData();
+  const navigate = useNavigate();
 
   const [userEvents, setUserEvents] = useState([]);
   const [userTransactions, setUserTransactions] = useState([]);
-  const [referralData, setReferralData] = useState({ count: 0, coins: 0 });
-
-  const [earningsData, setEarningsData] = useState({
-    raffle: [],
-    vote: [],
-    ticket: [],
-    stand: [],
-    protected: [],
-  });
   const [totalPending, setTotalPending] = useState(0);
 
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [coinTransferModalOpen, setCoinTransferModalOpen] = useState(false);
 
   const [isPageLoading, setIsPageLoading] = useState(true);
-  const [loadingEarnings, setLoadingEarnings] = useState(true);
   const [transferring, setTransferring] = useState(false);
-  const [loadError, setLoadError] = useState(null);
-  const [timeoutError, setTimeoutError] = useState(false);
+  const [refreshHistoryTrigger, setRefreshHistoryTrigger] = useState(0);
 
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "events";
-  const loadTimeoutRef = useRef(null);
+
+  // Redirection de sécurité si pas de session
+  useEffect(() => {
+    if (!authLoading && (!user || !session)) {
+        const timer = setTimeout(() => {
+            navigate('/auth?redirect=/profile');
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [user, session, authLoading, navigate]);
 
   /* ===================== GAINS EN ATTENTE ===================== */
   const fetchAllEventEarnings = useCallback(async () => {
-    if (!user) return;
-    setLoadingEarnings(true);
+    if (!user || !session) return;
 
     try {
       const { data, error } = await fetchWithRetry(() =>
         supabase
           .from("organizer_earnings")
-          .select(
-            "id, earnings_coins, transaction_type, created_at, status, event_type, description, fee_percent, platform_fee"
-          )
+          .select("earnings_coins")
           .eq("organizer_id", user.id)
           .eq("status", "pending")
-          .order("created_at", { ascending: false })
       );
 
       if (error) throw error;
 
-      const next = {
-        raffle: [],
-        vote: [],
-        ticket: [],
-        stand: [],
-        protected: [],
-      };
-
-      let total = 0;
-
-      data.forEach((e) => {
-        const amount = Number(e.earnings_coins || 0);
-        total += amount;
-
-        const item = {
-          id: e.id,
-          amount,
-          date: e.created_at,
-          description: e.description,
-          fee_percent: e.fee_percent || 5,
-          platform_fee: e.platform_fee || 0,
-        };
-
-        const type = (e.event_type || e.transaction_type || "").toLowerCase();
-
-        if (type.includes("vote")) next.vote.push(item);
-        else if (type.includes("ticket")) next.ticket.push(item);
-        else if (type.includes("stand")) next.stand.push(item);
-        else if (type.includes("protected")) next.protected.push(item);
-        else next.raffle.push(item);
-      });
-
-      setEarningsData(next);
+      const total = (data || []).reduce((sum, item) => sum + Number(item.earnings_coins || 0), 0);
       setTotalPending(total);
     } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingEarnings(false);
+      console.error("[ProfilePage] Error fetching earnings:", err);
+      setTotalPending(0);
     }
-  }, [user]);
+  }, [user, session]);
 
   /* ===================== PAGE DATA ===================== */
   const fetchPageData = useCallback(async () => {
-    if (!user) return;
+    if (!user || !session) return;
 
     setIsPageLoading(true);
-    setLoadError(null);
-    setTimeoutError(false);
 
     try {
       const [eventsRes, transRes] = await Promise.all([
@@ -153,311 +108,209 @@ const ProfilePage = () => {
         ),
       ]);
 
-      setUserEvents(eventsRes || []);
+      if (transRes.error) console.error("Transaction fetch error:", transRes.error);
       setUserTransactions(transRes.data || []);
+      setUserEvents(eventsRes || []);
     } catch (e) {
-      setLoadError(e.message);
+      console.error("Critical Error:", e);
+      setUserEvents([]);
+      setUserTransactions([]);
     } finally {
       setIsPageLoading(false);
     }
-  }, [user, getEvents]);
+  }, [user, session, getEvents]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && session) {
       fetchAllEventEarnings();
       fetchPageData();
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, session, fetchAllEventEarnings, fetchPageData]);
 
-  /* ===================== TRANSFERT VERS AVAILABLE_EARNINGS ===================== */
+  const handleGlobalRefresh = async () => {
+    if (!user) return;
+    await Promise.all([
+      forceRefreshUserProfile(),
+      fetchAllEventEarnings(),
+      fetchPageData()
+    ]);
+    setRefreshHistoryTrigger(prev => prev + 1);
+  };
+
+  /* ===================== TRANSFERT EARNINGS -> AVAILABLE ===================== */
   const confirmTransfer = async () => {
+    if (!user || !session) {
+        toast({ title: "Erreur", description: "Session expirée", variant: "destructive" });
+        return;
+    }
+    
     setTransferring(true);
-
     try {
-      // 1. Récupérer les gains en attente
-      const { data: earnings, error: earningsError } = await supabase
-        .from("organizer_earnings")
-        .select("id, earnings_coins, fee_percent, platform_fee")
-        .eq("organizer_id", user.id)
-        .eq("status", "pending");
-
-      if (earningsError) throw earningsError;
-      if (!earnings.length) throw new Error("Aucun gain en attente");
-
-      // 2. Calculer le total brut
-      const totalGross = earnings.reduce((sum, e) => sum + Number(e.earnings_coins || 0), 0);
-      
-      // 3. Calculer les frais de plateforme (5%)
-      const platformFeePercent = 5;
-      const platformFee = Math.ceil(totalGross * (platformFeePercent / 100));
-      
-      // 4. Calculer le montant net (après déduction des frais)
-      const totalNet = totalGross - platformFee;
-
-      console.log("Transfert détail:", {
-        totalGross,
-        platformFee,
-        totalNet,
-        platformFeePercent
+      // Appel de la fonction RPC sécurisée avec le bon paramètre
+      const { data, error } = await supabase.rpc('transfer_pending_earnings_to_available', {
+        p_user_id: user.id
       });
 
-      const ids = earnings.map((e) => e.id);
-      const now = new Date().toISOString();
+      if (error) throw error;
 
-      // 5. Mettre à jour le statut des gains (de pending à paid)
-      const { error: updateError } = await supabase
-        .from("organizer_earnings")
-        .update({ 
-          status: "paid", 
-          paid_at: now,
-          platform_fee: platformFee,
-          fee_percent: platformFeePercent
-        })
-        .in("id", ids);
-
-      if (updateError) throw updateError;
-
-      // 6. Récupérer le profil actuel pour obtenir le solde available_earnings
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("available_earnings")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // 7. Calculer le nouveau solde available_earnings
-      const currentAvailableEarnings = Number(profile.available_earnings || 0);
-      const newAvailableEarnings = currentAvailableEarnings + totalNet;
-
-      console.log("Mise à jour available_earnings:", {
-        current: currentAvailableEarnings,
-        added: totalNet,
-        new: newAvailableEarnings
-      });
-
-      // 8. Mettre à jour available_earnings (le portefeuille de retraits)
-      const { error: profileUpdateError } = await supabase
-        .from("profiles")
-        .update({ 
-          available_earnings: newAvailableEarnings
-        })
-        .eq("id", user.id);
-
-      if (profileUpdateError) throw profileUpdateError;
-
-      // 9. Créer une transaction pour le transfert NET vers available_earnings
-      const { error: transferTransactionError } = await supabase.from("transactions").insert({
-        user_id: user.id,
-        transaction_type: "earnings_transfer_to_wallet",
-        amount_pi: totalNet, // Montant NET transféré vers available_earnings
-        amount_fcfa: totalNet * 5,
-        status: "completed",
-        created_at: now,
-        description: `Transfert gains vers portefeuille de retraits (après ${platformFeePercent}% frais)`,
-        metadata: {
-          total_gross: totalGross,
-          platform_fee: platformFee,
-          fee_percent: platformFeePercent,
-          total_net: totalNet,
-          source: "pending_earnings",
-          destination: "available_earnings",
-          earning_ids: ids,
-          earning_count: earnings.length
-        }
-      });
-
-      if (transferTransactionError) throw transferTransactionError;
-
-      // 10. Créer une transaction pour les frais de plateforme
-      const { error: feeTransactionError } = await supabase.from("transactions").insert({
-        user_id: user.id,
-        transaction_type: "platform_fee",
-        amount_pi: -platformFee, // Montant négatif pour les frais
-        amount_fcfa: -platformFee * 5,
-        status: "completed",
-        created_at: now,
-        description: `Frais de plateforme ${platformFeePercent}% sur transfert gains`,
-        metadata: {
-          original_amount: totalGross,
-          net_amount: totalNet,
-          fee_percent: platformFeePercent,
-          source: "organizer_earnings_transfer",
-          deducted_from: "pending_earnings"
-        }
-      });
-
-      if (feeTransactionError) throw feeTransactionError;
-
-      // 11. Optionnel: Essayer d'enregistrer dans platform_commissions si la table existe
-      try {
-        const { error: checkError } = await supabase
-          .from("platform_commissions")
-          .select("id")
-          .limit(1);
-
-        if (!checkError) {
-          await supabase.from("platform_commissions").insert({
-            amount_coins: platformFee,
-            source_type: "organizer_earnings_transfer",
-            source_id: user.id,
-            user_id: user.id,
-            fee_percent: platformFeePercent,
-            created_at: now,
-            description: `Frais sur transfert gains vers available_earnings`,
-            metadata: {
-              total_gross: totalGross,
-              total_net: totalNet,
-              earning_ids: ids
-            }
-          });
-        }
-      } catch (tableError) {
-        console.warn("Table platform_commissions non disponible:", tableError);
-        // On continue sans erreur
+      if (!data.success) {
+        throw new Error(data.message || "Erreur lors du transfert");
       }
 
-      // 12. Rafraîchir les données
-      await Promise.all([
-        fetchAllEventEarnings(),
-        fetchPageData(),
-        forceRefreshUserProfile?.(),
-      ]);
-
-      setTransferModalOpen(false);
-
-      toast({
-        title: "✅ Transfert réussi",
-        description: `${totalNet} pièces transférées vers votre portefeuille de retraits (après déduction de ${platformFee} pièces de frais - ${platformFeePercent}%)`,
-        className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white"
+      toast({ 
+        title: "Succès du transfert", 
+        description: `Brut: ${data.total_gross}π | Frais: ${data.platform_fee}π | Net ajouté: ${data.total_net}π`, 
+        className: "bg-green-600 text-white" 
       });
+
+      await handleGlobalRefresh();
+      setTransferModalOpen(false);
     } catch (err) {
       console.error("Transfer error:", err);
-      toast({
-        title: "❌ Erreur lors du transfert",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
       setTransferring(false);
     }
   };
 
   if (authLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin w-10 h-10" />
-      </div>
-    );
+    return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin w-10 h-10" /></div>;
   }
 
-  // Calcul des montants pour l'affichage
-  const feeAmount = Math.ceil(totalPending * 0.05);
-  const netAmount = totalPending - feeAmount;
+  // Affichage si non connecté (Fallback)
+  if (!user || !session) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4">
+              <div className="text-center space-y-4 max-w-md">
+                  <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
+                  <h1 className="text-2xl font-bold">Connexion requise</h1>
+                  <p className="text-muted-foreground">Votre session a expiré ou vous n'êtes pas connecté. Veuillez vous reconnecter pour accéder à votre profil.</p>
+                  <Button onClick={() => navigate('/auth')} className="w-full">
+                      <LogIn className="mr-2 h-4 w-4" /> Se connecter
+                  </Button>
+              </div>
+          </div>
+      );
+  }
+
+  const pendingFee = Math.ceil(totalPending * 0.05);
+  const pendingNet = totalPending - pendingFee;
+  const balanceCfa = (userProfile?.coin_balance || 0) * COIN_TO_FCFA_RATE;
 
   return (
-    <div className="min-h-screen">
-      <Helmet>
-        <title>{userProfile?.full_name || "Profil"}</title>
-      </Helmet>
+    <div className="min-h-screen pb-20">
+      <Helmet><title>{userProfile?.full_name || "Profil"}</title></Helmet>
 
-      <main className="max-w-7xl mx-auto px-4 py-8 pb-24">
-        <ProfileHeader />
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <ProfileHeader user={userProfile} />
+        <ProfileStats userProfile={userProfile} eventCount={userEvents.length} />
 
-        <ProfileStats
-          userProfile={userProfile}
-          eventCount={userEvents.length}
-        />
+        {/* --- SECTION SOLDE PIÈCES --- */}
+        <Card className="mt-6 border-l-4 border-l-blue-500 shadow-md">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2 text-blue-900">
+                    <Coins className="w-6 h-6 text-blue-600" />
+                    Mon Solde de Pièces
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <div className="text-3xl font-extrabold text-blue-700">
+                            {userProfile?.coin_balance || 0} <span className="text-lg text-blue-500">pièces</span>
+                        </div>
+                        <p className="text-sm font-semibold text-blue-600">
+                            ≈ {balanceCfa.toLocaleString()} FCFA
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Pièces achetées ou gagnées, utilisables pour événements ou convertibles en gains.
+                        </p>
+                    </div>
+                    
+                    {userProfile?.coin_balance > 0 && (
+                        <Button 
+                            onClick={() => setCoinTransferModalOpen(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200"
+                        >
+                            Transférer les pièces <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
 
-        <Card className="mt-8">
+        {/* --- SECTION GAINS EN ATTENTE (ORGANISATEUR) --- */}
+        <Card className="mt-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Clock /> Gains en attente de transfert
               </h2>
               <Badge variant="outline" className="flex items-center gap-1">
-                <Percent className="w-3 h-3" />
-                Frais: 5%
+                <Percent className="w-3 h-3" /> Frais: 5%
               </Badge>
             </div>
 
-            {/* Montants détaillés */}
             <div className="space-y-4 mb-6">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Total en attente:</span>
-                <span className="text-2xl font-bold">{totalPending} pièces</span>
+              <div className="flex justify-between items-center text-sm sm:text-base">
+                <span className="text-gray-500">Total en attente:</span>
+                <span className="font-bold">{totalPending} pièces ({(totalPending * COIN_TO_FCFA_RATE).toLocaleString()} F)</span>
               </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Frais de plateforme (5%):</span>
-                <span className="text-xl font-bold text-amber-600">-{feeAmount} pièces</span>
-              </div>
-              
-              <div className="pt-3 border-t border-gray-700">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-400">Net vers votre portefeuille:</span>
-                  <span className="text-3xl font-bold text-green-500">{netAmount} pièces</span>
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Ce montant sera ajouté à votre <strong>portefeuille de retraits</strong> ({userProfile?.available_earnings || 0} pièces actuellement)
-                </p>
+              <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                <span className="text-gray-600 font-medium">Net à recevoir:</span>
+                <span className="text-2xl font-bold text-green-600">{pendingNet} pièces ({(pendingNet * COIN_TO_FCFA_RATE).toLocaleString()} F)</span>
               </div>
             </div>
 
             <Button
               onClick={() => setTransferModalOpen(true)}
-              disabled={!totalPending || transferring}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              disabled={!totalPending || totalPending <= 0 || transferring}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
             >
-              {transferring ? (
-                <>
-                  <Loader2 className="animate-spin mr-2" />
-                  Transfert en cours...
-                </>
-              ) : (
-                <>
-                  <Wallet className="mr-2" />
-                  Transférer vers mon portefeuille
-                </>
-              )}
+              {transferring ? <Loader2 className="animate-spin mr-2" /> : <Wallet className="mr-2" />}
+              {totalPending > 0 ? "Transférer vers mon portefeuille" : "Aucun gain à transférer"}
             </Button>
             
             {totalPending === 0 && (
-              <Alert className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Aucun gain en attente</AlertTitle>
-                <AlertDescription>
-                  Vos gains futurs apparaîtront ici une fois vos événements terminés.
+              <Alert className="mt-4 bg-gray-50 border-gray-200">
+                <AlertCircle className="h-4 w-4 text-gray-400" />
+                <AlertTitle className="text-gray-600">Aucun gain en attente</AlertTitle>
+                <AlertDescription className="text-gray-500">
+                  Les revenus de vos événements terminés apparaîtront ici.
                 </AlertDescription>
               </Alert>
             )}
-
-            <div className="mt-4 text-sm text-gray-500">
-              <p className="flex items-center gap-1">
-                <Lock className="w-3 h-3" />
-                Les frais de 5% sont prélevés par la plateforme pour les frais de service.
-              </p>
-            </div>
           </CardContent>
         </Card>
 
-        <ProfilePageContent
-          userProfile={userProfile}
-          userEvents={userEvents}
-          userTransactions={userTransactions}
-          activeTab={activeTab}
-        />
+        {/* --- HISTORIQUE DES TRANSFERTS (NOUVEAU) --- */}
+        <TransferHistory refreshTrigger={refreshHistoryTrigger} />
+
+        {/* --- RESTE DU CONTENU --- */}
+        <div className="mt-8">
+            <ProfilePageContent
+            userProfile={userProfile}
+            userEvents={userEvents}
+            userTransactions={userTransactions}
+            activeTab={activeTab}
+            />
+        </div>
       </main>
 
       <TransferModal
         isOpen={transferModalOpen}
         onClose={() => setTransferModalOpen(false)}
         totalAmount={totalPending}
+        totalNetAmount={pendingNet}
         loading={transferring}
         onConfirm={confirmTransfer}
-        feePercent={5}
-        destinationWallet="available_earnings"
-        currentWalletBalance={userProfile?.available_earnings || 0}
+      />
+
+      <CoinTransferModal 
+        isOpen={coinTransferModalOpen}
+        onClose={() => setCoinTransferModalOpen(false)}
+        balance={userProfile?.coin_balance || 0}
+        onSuccess={handleGlobalRefresh}
       />
     </div>
   );

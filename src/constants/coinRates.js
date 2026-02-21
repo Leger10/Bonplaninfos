@@ -1,0 +1,1 @@
+export const COIN_TO_FCFA_RATE = 10;

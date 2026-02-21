@@ -1,10 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { isPushSupported, subscribeUserToPush, getExistingSubscription, askNotificationPermission, syncSubscription } from '@/utils/pushNotifications';
-import { supabase } from '@/lib/customSupabaseClient';
+import { 
+  isPushSupported, 
+  subscribeUserToPush, 
+  askNotificationPermission, 
+  syncSubscription, 
+  savePushTokenToSupabase 
+} from '@/utils/pushNotifications';
 import { Button } from '@/components/ui/button';
-import { Bell, BellRing, X } from 'lucide-react';
+import { BellRing, X, Loader2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const PushNotificationManager = () => {
@@ -12,22 +17,29 @@ const PushNotificationManager = () => {
   const { toast } = useToast();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [permissionState, setPermissionState] = useState('default'); // 'default', 'granted', 'denied'
+  
+  // 'default', 'granted', 'denied'
+  const [permissionState, setPermissionState] = useState('default');
 
   // Check current status on mount
   useEffect(() => {
     if (!isPushSupported()) return;
     
+    // Check permission status directly from Notification API
     setPermissionState(Notification.permission);
 
     // If permission is already granted, ensure we are synced
     if (Notification.permission === 'granted' && user) {
-        syncSubscription(user);
+        syncSubscription(user).catch(err => console.error("Sync failed silently:", err));
     } 
     // If permission is default and user is logged in, show prompt after a delay
     else if (Notification.permission === 'default' && user) {
-        const timer = setTimeout(() => setShowPrompt(true), 3000);
-        return () => clearTimeout(timer);
+        // Check if user dismissed it previously in this session
+        const isDismissed = sessionStorage.getItem('push_prompt_dismissed') === 'true';
+        if (!isDismissed) {
+            const timer = setTimeout(() => setShowPrompt(true), 3000);
+            return () => clearTimeout(timer);
+        }
     }
   }, [user]);
 
@@ -38,21 +50,34 @@ const PushNotificationManager = () => {
       setPermissionState(permission);
 
       if (permission === 'granted') {
-        const sub = await subscribeUserToPush();
-        if (sub && user) {
-            await syncSubscription(user);
-            toast({
-                title: "Notifications activées !",
-                description: "Vous serez informé des nouveaux événements.",
-                variant: "success"
-            });
+        // Subscribe the user via Service Worker
+        const subscription = await subscribeUserToPush();
+        
+        if (subscription && user) {
+            // Save to database
+            const { error } = await savePushTokenToSupabase(user, subscription);
+            
+            if (error) {
+                console.error("Database save error:", error);
+                toast({
+                    title: "Erreur technique",
+                    description: "Notifications activées sur l'appareil, mais échec de l'enregistrement serveur.",
+                    variant: "destructive"
+                });
+            } else {
+                toast({
+                    title: "Notifications activées !",
+                    description: "Vous serez informé des nouveaux événements.",
+                    className: "bg-green-600 text-white"
+                });
+            }
         }
         setShowPrompt(false);
       } else {
         toast({
             title: "Notifications bloquées",
-            description: "Vous devez autoriser les notifications dans votre navigateur pour recevoir les alertes.",
-            variant: "warning"
+            description: "Vous devez autoriser les notifications dans les paramètres de votre navigateur.",
+            variant: "destructive"
         });
         setShowPrompt(false);
       }
@@ -60,7 +85,7 @@ const PushNotificationManager = () => {
       console.error('Error enabling notifications:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'activer les notifications.",
+        description: "Impossible d'activer les notifications : " + (error.message || "Erreur inconnue"),
         variant: "destructive"
       });
     } finally {
@@ -70,14 +95,11 @@ const PushNotificationManager = () => {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    // Optionally save preference to not show again for this session
     sessionStorage.setItem('push_prompt_dismissed', 'true');
   };
 
-  // Don't show if dismissed in session
-  if (sessionStorage.getItem('push_prompt_dismissed') === 'true' && !isLoading) {
-      return null;
-  }
+  // Don't render if not supported
+  if (!isPushSupported()) return null;
 
   return (
     <AnimatePresence>
@@ -102,9 +124,16 @@ const PushNotificationManager = () => {
                     size="sm" 
                     onClick={handleEnableNotifications} 
                     disabled={isLoading}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {isLoading ? 'Activation...' : 'Activer'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Activation...
+                    </>
+                  ) : (
+                    'Activer'
+                  )}
                 </Button>
                 <Button 
                     size="sm" 
@@ -116,7 +145,11 @@ const PushNotificationManager = () => {
                 </Button>
               </div>
             </div>
-            <button onClick={handleDismiss} className="text-muted-foreground hover:text-foreground">
+            <button 
+                onClick={handleDismiss} 
+                className="text-muted-foreground hover:text-foreground p-1"
+                aria-label="Fermer"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>

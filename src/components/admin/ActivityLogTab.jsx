@@ -43,7 +43,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from "xlsx";
+
 
 const ITEMS_PER_PAGE = 10;
 

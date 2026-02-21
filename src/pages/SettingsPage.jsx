@@ -17,8 +17,8 @@ const SettingsPage = () => {
       </Helmet>
       <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold">{t('settings.title')}</h1>
-          <p className="text-muted-foreground">{t('settings.subtitle')}</p>
+          <h1 className="text-3xl font-bold">{t('Paramètres')}</h1>
+          <p className="text-muted-foreground">{t('détails')}</p>
         </header>
 
         <div className="grid grid-cols-1 gap-8">

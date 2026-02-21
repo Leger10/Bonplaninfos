@@ -43,11 +43,13 @@ const Footer = () => {
             { to: '/how-it-works', text: t('footer.how_it_works') },
             { to: '/aide', text: t('footer.help') },
             { to: '/faq', text: t('footer.faq') },
+            { to: '/documentation', text: t('footer.documentation') }, // Ajout Documentation
+            { to: '/help-center', text: t('footer.help_center') }, // Ajout Centre d'aide
         ],
         company: [
             { to: '/about', text: t('footer.about') },
             { to: '/partner-signup', text: t('footer.partnership') },
-            { to: '/sponsors', text: t('footer.sponsors') }, // Added Sponsors link here
+            { to: '/sponsors', text: t('footer.sponsors') },
             { href: 'mailto:support@bonplaninfos.net', text: 'support@bonplaninfos.net' },
             { href: 'https://chat.whatsapp.com/IcR0TttLYpU1lJXr3ifyvH', text: t('whatsapp_Groupe'), },
             { href: 'tel:+2250712275374', text: 'Tel: 002250712275374' },

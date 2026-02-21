@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider, useAuth } from '@/contexts/SupabaseAuthContext';
 import { DataProvider, useData } from '@/contexts/DataContext';
@@ -12,7 +12,7 @@ import EventsPage from '@/pages/EventsPage';
 import CreateEventPage from '@/pages/CreateEventPage';
 import EventDetailPage from '@/pages/EventDetailPage';
 import AdminDashboard from '@/pages/AdminDashboard';
-import AdminUsersPage from '@/pages/AdminUsersPage'; // Import AdminUsersPage
+import AdminUsersPage from '@/pages/AdminUsersPage';
 import SecretaryDashboard from '@/pages/SecretaryDashboard';
 import WalletPage from '@/pages/WalletPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -50,31 +50,51 @@ import VerifyTicketPage from '@/pages/VerifyTicketPage';
 import DataProtectionPage from '@/pages/DataProtectionPage';
 import UserGuidePage from '@/pages/UserGuidePage';
 import FaqPage from '@/pages/FaqPage';
+import DocumentationPage from '@/pages/DocumentationPage';
+import HelpCenterPageView from '@/pages/HelpCenterPageView';
 import SponsorsPage from '@/pages/SponsorsPage';
 import PushNotificationManager from '@/components/PushNotificationManager';
 import WelcomePopup from '@/components/WelcomePopup';
 import FloatingActionButton from '@/components/layout/FloatingActionButton';
 
-// Component to sync auth state with data context
+// Composant pour synchroniser l'état d'authentification avec le contexte de données
 const AuthSync = () => {
   const { setForceRefresh } = useAuth();
   const { forceRefreshUserProfile } = useData();
 
   useEffect(() => {
-    setForceRefresh(() => forceRefreshUserProfile);
+    if (setForceRefresh && forceRefreshUserProfile) {
+      setForceRefresh(() => forceRefreshUserProfile);
+    }
   }, [setForceRefresh, forceRefreshUserProfile]);
 
   return null;
 };
 
+// Composant de chargement pour Suspense
+const LoadingFallback = () => (
+  <div className="h-screen w-full flex items-center justify-center bg-background">
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" 
+         role="status" 
+         aria-label="Chargement">
+      <span className="sr-only">Chargement en cours...</span>
+    </div>
+  </div>
+);
+
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <ThemeProvider>
         <AuthProvider>
           <DataProvider>
             <AuthSync />
-            <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+            <Suspense fallback={<LoadingFallback />}>
               <MainLayout>
                 <Routes>
                   <Route path="/" element={<HomePage />} />
@@ -91,6 +111,8 @@ function App() {
                   <Route path="/create-ticketing-event" element={<CreateTicketingEventPage />} />
                   <Route path="/event/:id" element={<EventDetailPage />} />
                   <Route path="/contests" element={<ContestsPage />} />
+                  <Route path="/documentation" element={<DocumentationPage />} />
+                  <Route path="/help-center" element={<HelpCenterPageView />} />
                   <Route path="/contest/:id" element={<ContestDetailPage />} />
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />

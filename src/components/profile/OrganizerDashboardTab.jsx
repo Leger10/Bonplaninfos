@@ -12,7 +12,8 @@ import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
 import { toast } from '@/components/ui/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import WithdrawalModal from '@/components/common/WithdrawalModal';
-import { generateEarningsSlip } from '@/utils/pdfGenerator'; // ← IMPORT AJOUTÉ ICI
+import { generateEarningsSlip } from '@/utils/pdfGenerator';
+import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
 
 const OrganizerDashboardTab = () => {
   const { user } = useAuth();
@@ -59,19 +60,21 @@ const OrganizerDashboardTab = () => {
   };
 
   const availableBalanceCoins = stats?.wallet?.available_balance_coins || 0;
-  const availableBalanceFcfa = availableBalanceCoins * 10;
+  const availableBalanceFcfa = availableBalanceCoins * COIN_TO_FCFA_RATE;
+  
+  const pendingNetCoins = stats?.pending?.total_net || 0;
+  const pendingNetFcfa = pendingNetCoins * COIN_TO_FCFA_RATE;
   
   const handleDownloadSlip = () => {
       const totalEarned = stats?.summary?.total_earned || 0;
-      // Approximation for PDF
       const grossEst = Math.floor(totalEarned / 0.95); 
       
       generateEarningsSlip({
           organizerName: user?.email || "Organisateur",
           period: format(new Date(), 'MMMM yyyy', { locale: fr }),
-          totalRevenue: grossEst * 10, // FCFA
-          fees: (grossEst - totalEarned) * 10,
-          netEarnings: totalEarned * 10,
+          totalRevenue: grossEst * COIN_TO_FCFA_RATE, 
+          fees: (grossEst - totalEarned) * COIN_TO_FCFA_RATE,
+          netEarnings: totalEarned * COIN_TO_FCFA_RATE,
           date: new Date()
       });
       toast({ title: "Document généré", description: "Le relevé de gains a été téléchargé." });
@@ -95,7 +98,7 @@ const OrganizerDashboardTab = () => {
               {availableBalanceFcfa.toLocaleString()} <span className="text-lg opacity-80">FCFA</span>
             </div>
             <p className="text-sm opacity-80 mb-6 font-mono">
-              ({availableBalanceCoins.toLocaleString()} pièces)
+              ({availableBalanceCoins.toLocaleString()} π)
             </p>
             <div className="flex gap-2">
                 <Button 
@@ -126,8 +129,9 @@ const OrganizerDashboardTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-800">
-              {((stats?.pending?.total_net || 0) * 10).toLocaleString()} <span className="text-lg text-gray-500">FCFA</span>
+              {pendingNetFcfa.toLocaleString()} <span className="text-lg text-gray-500">FCFA</span>
             </div>
+            <p className="text-sm text-gray-600 font-mono mt-1">({pendingNetCoins.toLocaleString()} π)</p>
             <p className="text-xs text-gray-500 mt-2">
               Ces gains doivent être transférés vers votre solde disponible.
             </p>
@@ -148,7 +152,7 @@ const OrganizerDashboardTab = () => {
              </div>
              <div className="flex justify-between items-center">
                  <span className="text-sm text-gray-500">Total Retiré</span>
-                 <span className="font-bold text-green-600">{(stats?.summary?.total_earned * 10 || 0).toLocaleString()} F</span>
+                 <span className="font-bold text-green-600">{(stats?.summary?.total_earned * COIN_TO_FCFA_RATE || 0).toLocaleString()} F</span>
              </div>
           </CardContent>
         </Card>

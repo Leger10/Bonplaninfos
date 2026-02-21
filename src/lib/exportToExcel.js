@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from "xlsx";
 
 export const exportToExcel = ({ data, headers, sheetName = 'Export', fileName = 'export.xlsx' }) => {
   // 1. Convert data to worksheet format

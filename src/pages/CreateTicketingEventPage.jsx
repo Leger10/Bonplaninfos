@@ -37,11 +37,14 @@ import {
   ArrowLeft,
   CheckCircle,
   MessageSquare,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import ImageUpload from "@/components/ImageUpload";
 import { Checkbox } from "@/components/ui/checkbox";
 import { checkAuthentication } from "@/lib/authUtils";
+import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
 
 const TICKET_COLORS = [
   { name: "Bleu (Standard)", value: "blue", hex: "bg-blue-500" },
@@ -61,6 +64,9 @@ const CreateTicketingEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState(1);
+  
+  // Contract Modal State
+  const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Pricing Configuration
@@ -107,6 +113,57 @@ const CreateTicketingEventPage = () => {
     fetchCategories();
   }, []);
 
+  // Restaurer les données du brouillon si disponible
+  useEffect(() => {
+    const restoreDraft = () => {
+      const draft = localStorage.getItem("draftEvent");
+      if (draft) {
+        try {
+          const draftData = JSON.parse(draft);
+
+          setTitle(draftData.title || "");
+          setDescription(draftData.description || "");
+          setEventDate(draftData.eventDate || "");
+          setEndDate(draftData.endDate || "");
+          setCity(draftData.city || "");
+          setCountry(draftData.country || "");
+          setAddress(draftData.address || "");
+          setCategoryId(draftData.categoryId || "");
+          setMaxAttendees(draftData.maxAttendees || 1000);
+          setIsPublic(
+            draftData.isPublic !== undefined ? draftData.isPublic : true,
+          );
+          setRequiresApproval(draftData.requiresApproval || false);
+          setCoverImage(draftData.coverImage || "");
+
+          if (draftData.ticketTypes && draftData.ticketTypes.length > 0) {
+            setTicketTypes(
+              draftData.ticketTypes.map((tt) => ({
+                ...tt,
+                id: tt.id || uuidv4(),
+              })),
+            );
+          }
+
+          // Afficher un message informatif
+          toast({
+            title: "Brouillon restauré",
+            description:
+              "Votre brouillon précédent a été restauré. Vous pouvez continuer votre création.",
+            duration: 4000,
+          });
+        } catch (error) {
+          console.error("Error restoring draft:", error);
+        }
+      }
+    };
+
+    // Restaurer le brouillon seulement si l'utilisateur est authentifié
+    if (user) {
+      restoreDraft();
+    }
+  }, [user]);
+
   const handleTicketTypeChange = (id, field, value) => {
     setTicketTypes(
       ticketTypes.map((tt) => (tt.id === id ? { ...tt, [field]: value } : tt)),
@@ -144,6 +201,20 @@ const CreateTicketingEventPage = () => {
 
   const convertToCoins = (fcfa) =>
     Math.ceil(parseInt(fcfa || 0, 10) / COIN_RATE);
+
+  const handleContractAccept = () => {
+    setTermsAccepted(true);
+    setShowContractModal(false);
+    toast({
+      title: "Contrat accepté",
+      description: "Vous pouvez maintenant publier votre événement",
+      className: "bg-green-600 text-white",
+    });
+  };
+
+  const handleOpenContract = () => {
+    setShowContractModal(true);
+  };
 
   const performSubmission = async () => {
     // Vérifier l'authentification avant de continuer
@@ -184,6 +255,19 @@ const CreateTicketingEventPage = () => {
         description: "Vous devez être connecté.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Vérifier que le contrat est accepté
+    if (!termsAccepted) {
+      toast({
+        title: "Contrat requis",
+        description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        variant: "destructive",
+      });
+      
+      // Ouvrir automatiquement le modal du contrat
+      setShowContractModal(true);
       return;
     }
 
@@ -234,36 +318,36 @@ const CreateTicketingEventPage = () => {
 
     try {
       console.log("Creating event with image:", title);
-    // Normalisation des dates
-const eventStartAt = new Date(eventDate);
-const eventEndAt = endDate
-  ? new Date(endDate)
-  : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000); // +1 jour
+      
+      // Normalisation des dates
+      const eventStartAt = new Date(eventDate);
+      const eventEndAt = endDate
+        ? new Date(endDate)
+        : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000); // +1 jour
 
-const { data: eventData, error: eventError } = await supabase
-  .from('events')
-  .insert({
-    title,
-    description,
-    event_start_at: eventStartAt.toISOString(),
-    event_end_at: eventEndAt.toISOString(),
-    city,
-    country,
-    address,
-    cover_image: coverImage,
-    organizer_id: user.id,
-    event_type: 'ticketing',
-    category_id: categoryId,
-    status: 'active',
-    max_attendees: parseInt(maxAttendees, 10) || null,
-    is_public: isPublic,
-    requires_approval: requiresApproval,
-    contract_accepted_at: new Date().toISOString(),
-    contract_version: 'v1.0'
-  })
-  .select()
-  .single();
-
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .insert({
+          title,
+          description,
+          event_start_at: eventStartAt.toISOString(),
+          event_end_at: eventEndAt.toISOString(),
+          city,
+          country,
+          address,
+          cover_image: coverImage,
+          organizer_id: user.id,
+          event_type: 'ticketing',
+          category_id: categoryId,
+          status: 'active',
+          max_attendees: parseInt(maxAttendees, 10) || null,
+          is_public: isPublic,
+          requires_approval: requiresApproval,
+          contract_accepted_at: new Date().toISOString(),
+          contract_version: 'v1.0'
+        })
+        .select()
+        .single();
 
       if (eventError) {
         // Vérifier si l'erreur est liée à l'authentification
@@ -277,6 +361,17 @@ const { data: eventData, error: eventError } = await supabase
       }
 
       const newEventId = eventData.id;
+
+      // Sauvegarder l'acceptation du contrat dans la table dédiée
+      await supabase
+        .from('user_contract_acceptances')
+        .insert({
+          user_id: user.id,
+          event_id: newEventId,
+          contract_type: 'organizer',
+          accepted_at: new Date().toISOString(),
+          contract_version: 'v1.0'
+        });
 
       const totalTickets = ticketTypes.reduce(
         (acc, tt) => acc + parseInt(tt.quantity_available || 0, 10),
@@ -293,26 +388,25 @@ const { data: eventData, error: eventError } = await supabase
         });
       if (ticketingError) throw ticketingError;
 
-    const ticketTypesToInsert = ticketTypes.map(tt => ({
-  event_id: newEventId,
-  name: tt.name,
-  description: tt.description,
-  quantity_available: parseInt(tt.quantity_available, 10),
-  price: parseInt(tt.price, 10),
-  price_coins: convertToCoins(tt.price),
-  price_pi: convertToCoins(tt.price),
-  presale_price_fcfa: parseInt(tt.presale_price, 10),
-  presale_price_pi: convertToCoins(tt.presale_price),
-  sales_start: tt.sales_start_date
-    ? new Date(tt.sales_start_date).toISOString()
-    : new Date().toISOString(),
-  sales_end: tt.sales_event_end_at
-    ? new Date(tt.sales_event_end_at).toISOString()
-    : eventEndAt.toISOString(),
-  is_active: true,
-  color: tt.color || 'blue'
-}));
-
+      const ticketTypesToInsert = ticketTypes.map(tt => ({
+        event_id: newEventId,
+        name: tt.name,
+        description: tt.description,
+        quantity_available: parseInt(tt.quantity_available, 10),
+        price: parseInt(tt.price, 10),
+        price_coins: convertToCoins(tt.price),
+        price_pi: convertToCoins(tt.price),
+        presale_price_fcfa: parseInt(tt.presale_price, 10),
+        presale_price_pi: convertToCoins(tt.presale_price),
+        sales_start: tt.sales_start_date
+          ? new Date(tt.sales_start_date).toISOString()
+          : new Date().toISOString(),
+        sales_end: tt.sales_event_end_at
+          ? new Date(tt.sales_event_end_at).toISOString()
+          : eventEndAt.toISOString(),
+        is_active: true,
+        color: tt.color || 'blue'
+      }));
 
       const { error: typesError } = await supabase
         .from("ticket_types")
@@ -381,57 +475,6 @@ const { data: eventData, error: eventError } = await supabase
     }
   };
 
-  // Restaurer les données du brouillon si disponible
-  useEffect(() => {
-    const restoreDraft = () => {
-      const draft = localStorage.getItem("draftEvent");
-      if (draft) {
-        try {
-          const draftData = JSON.parse(draft);
-
-          setTitle(draftData.title || "");
-          setDescription(draftData.description || "");
-          setEventDate(draftData.eventDate || "");
-          setEndDate(draftData.endDate || "");
-          setCity(draftData.city || "");
-          setCountry(draftData.country || "");
-          setAddress(draftData.address || "");
-          setCategoryId(draftData.categoryId || "");
-          setMaxAttendees(draftData.maxAttendees || 1000);
-          setIsPublic(
-            draftData.isPublic !== undefined ? draftData.isPublic : true,
-          );
-          setRequiresApproval(draftData.requiresApproval || false);
-          setCoverImage(draftData.coverImage || "");
-
-          if (draftData.ticketTypes && draftData.ticketTypes.length > 0) {
-            setTicketTypes(
-              draftData.ticketTypes.map((tt) => ({
-                ...tt,
-                id: tt.id || uuidv4(),
-              })),
-            );
-          }
-
-          // Afficher un message informatif
-          toast({
-            title: "Brouillon restauré",
-            description:
-              "Votre brouillon précédent a été restauré. Vous pouvez continuer votre création.",
-            duration: 4000,
-          });
-        } catch (error) {
-          console.error("Error restoring draft:", error);
-        }
-      }
-    };
-
-    // Restaurer le brouillon seulement si l'utilisateur est authentifié
-    if (user) {
-      restoreDraft();
-    }
-  }, [user]);
-
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 pb-20">
       <Helmet>
@@ -441,6 +484,16 @@ const { data: eventData, error: eventError } = await supabase
           content="Créez votre événement billetterie et configurez vos billets"
         />
       </Helmet>
+
+      {/* Contract Modal */}
+      <OrganizerContractModal 
+        open={showContractModal} 
+        onOpenChange={setShowContractModal} 
+        onAccept={handleContractAccept}
+        eventTitle={title || "votre événement"}
+        eventId="new-event"
+      />
+
       <Card className="max-w-4xl mx-auto glass-effect shadow-xl border-none">
         <CardHeader className="border-b border-border/50 pb-6">
           <div className="flex items-center gap-3">
@@ -904,7 +957,7 @@ const { data: eventData, error: eventError } = await supabase
                       <span className="font-medium">
                         {ticketTypes.reduce(
                           (acc, t) => acc + parseInt(t.quantity_available || 0),
-                          0,
+                          0
                         )}{" "}
                         total
                       </span>
@@ -913,28 +966,58 @@ const { data: eventData, error: eventError } = await supabase
                 </CardContent>
               </Card>
 
-              {/* Checkbox d'acceptation */}
+              {/* Contract Acceptance Section with Modal Trigger */}
               <div className="bg-muted/20 border border-border p-4 rounded-lg">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-start space-x-3">
                   <Checkbox
                     id="terms"
                     checked={termsAccepted}
-                    onCheckedChange={setTermsAccepted}
-                    className="border-primary/50 data-[state=checked]:bg-primary"
+                    onCheckedChange={(checked) => {
+                      if (checked && !termsAccepted) {
+                        // Si on veut cocher, on ouvre d'abord le modal
+                        handleOpenContract();
+                      } else {
+                        // Si on veut décocher, on peut le faire directement
+                        setTermsAccepted(checked);
+                      }
+                    }}
+                    className="border-primary/50 data-[state=checked]:bg-primary mt-1"
                     required
                   />
-                  <div className="grid gap-1.5 leading-none">
-                    <label
-                      htmlFor="terms"
-                      className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      J'ai lu et j'accepte le contrat Organisateur
-                    </label>
+                  <div className="grid gap-1.5 leading-none flex-1">
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor="terms"
+                        className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        J'accepte le contrat Organisateur *
+                      </label>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={handleOpenContract}
+                        className="text-primary h-auto p-0 text-xs font-medium"
+                      >
+                        <FileText className="w-3 h-3 mr-1" />
+                        Lire le contrat
+                        <ChevronRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       En publiant cet événement, vous acceptez de respecter le
                       règlement de la billetterie et les conditions générales
                       d'utilisation.
                     </p>
+                    
+                    {/* Contract Status Indicator */}
+                    {termsAccepted && (
+                      <div className="flex items-center gap-2 mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          <strong>Contrat accepté</strong> - Vous avez accepté les conditions organisateur.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,242 +1,128 @@
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
 
 export function cn(...inputs) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
 /**
- * Utility function for retrying failed fetch operations
- * @param {Function} fn - The async function to retry
- * @param {number} retries - Number of retries (default: 3)
- * @param {number} delay - Base delay in milliseconds (default: 1000)
- * @returns {Promise<any>} - Result of the function
+ * Vérifie si l'utilisateur a les permissions pour effectuer un remboursement.
+ * Autorisé uniquement pour :
+ * 1. Super Admin
+ * 2. Secrétaire nommé par un Super Admin (appointed_by_super_admin = true)
+ * 
+ * @param {Object} user - Le profil utilisateur (userProfile)
+ * @returns {boolean} - True si autorisé, sinon false
  */
-export const fetchWithRetry = async (fn, retries = 3, delay = 1000) => {
+export function checkRefundPermissions(user) {
+  if (!user) return false;
+  
+  // Cas 1: Super Admin
+  if (user.user_type === 'super_admin') return true;
+  
+  // Cas 2: Secrétaire créé par un Super Admin
+  if (user.user_type === 'secretary' && user.appointed_by_super_admin === true) return true;
+  
+  return false;
+}
+
+/**
+ * Formate une durée en jours en format lisible (ex: "1 an" ou "30 jours")
+ * @param {number} days - Nombre de jours
+ * @returns {string} - Durée formatée
+ */
+export function formatContractDuration(days) {
+  if (!days) return "0 jour";
+  if (days === 365 || days === 366) return "1 an";
+  if (days === 730 || days === 731) return "2 ans";
+  return `${days} jours`;
+}
+
+/**
+ * Exécute une fonction asynchrone avec tentatives multiples en cas d'échec
+ * Inclut un backoff exponentiel et une gestion d'erreur robuste.
+ * 
+ * @param {Function} fn - Fonction à exécuter (doit retourner une Promise)
+ * @param {number} retries - Nombre de tentatives (défaut: 3)
+ * @param {number} delay - Délai initial en ms (défaut: 1000)
+ * @returns {Promise<any>} - Résultat de la fonction ou objet d'erreur standardisé
+ */
+export async function fetchWithRetry(fn, retries = 3, delay = 1000) {
   try {
     return await fn();
-  } catch (error) {
-    if (retries <= 0) throw error;
+  } catch (err) {
+    console.error(`[fetchWithRetry] Erreur détectée: ${err.message || err}. Tentatives restantes: ${retries}`);
+    
+    if (retries <= 0) {
+      console.error('[fetchWithRetry] Nombre maximum de tentatives atteint. Retour d\'une erreur par défaut.');
+      // Retourne une structure compatible avec Supabase { data, error } pour éviter les crashs de déstructuration
+      return { data: null, error: err };
+    }
+    
     await new Promise(resolve => setTimeout(resolve, delay));
-    return fetchWithRetry(fn, retries - 1, delay * 1.5);
+    // Backoff exponentiel : on double le délai à chaque tentative
+    return fetchWithRetry(fn, retries - 1, delay * 2);
   }
-};
+}
 
 /**
- * Extracts the bucket and path from a Supabase public URL
- * @param {string} url - The public URL of the file
- * @returns {{ bucket: string, path: string } | null}
+ * Formate un montant avec séparateur de milliers et devise FCFA
+ * @param {number} amount - Montant à formater
+ * @param {string} currency - Devise (défaut: "FCFA")
+ * @returns {string} - Montant formaté (ex: "1 000 FCFA")
+ */
+export function formatCurrency(amount, currency = 'FCFA') {
+  if (amount === undefined || amount === null) return '0 ' + currency;
+  return new Intl.NumberFormat('fr-FR').format(amount) + ' ' + currency;
+}
+
+/**
+ * Formate un montant avec séparateur de milliers sans devise
+ * @param {number} amount - Montant à formater
+ * @returns {string} - Montant formaté (ex: "1 000")
+ */
+export function formatCurrencySimple(amount) {
+  if (amount === undefined || amount === null) return '0';
+  return new Intl.NumberFormat('fr-FR').format(amount);
+}
+
+/**
+ * Formate une date en format français complet
+ * @param {string|Date} date - Date à formater
+ * @returns {string} - Date formatée (ex: "19 février 2026")
+ */
+export function formatDate(date) {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+/**
+ * Extrait le chemin relatif d'un fichier à partir d'une URL Supabase Storage
+ * Supprime le domaine et le nom du bucket pour ne garder que le chemin du fichier
+ * Ex: .../bucket/path/file.jpg -> path/file.jpg
+ * @param {string} url - URL complète du fichier
+ * @returns {string} - Chemin relatif du fichier
  */
 export function extractStoragePath(url) {
-  if (!url) return null;
+  if (!url) return '';
   try {
     const urlObj = new URL(url);
-    // Pattern: .../storage/v1/object/public/[bucket]/[path]
-    const pathParts = urlObj.pathname.split('/public/');
+    const pathParts = urlObj.pathname.split('/');
     
-    if (pathParts.length < 2) return null;
+    // Structure typique Supabase: /storage/v1/object/public/:bucket/:path*
+    // On cherche 'public' et on prend tout ce qui est après le bucket (index + 2)
+    const publicIndex = pathParts.indexOf('public');
+    if (publicIndex !== -1 && pathParts.length > publicIndex + 2) {
+      return decodeURIComponent(pathParts.slice(publicIndex + 2).join('/'));
+    }
     
-    const fullPath = pathParts[1]; // e.g., "media/folder/image.jpg" or "media/image.jpg"
-    
-    // The bucket is the first segment
-    const firstSlashIndex = fullPath.indexOf('/');
-    if (firstSlashIndex === -1) return null;
-
-    const bucket = fullPath.substring(0, firstSlashIndex);
-    const path = fullPath.substring(firstSlashIndex + 1);
-    
-    return { bucket, path: decodeURIComponent(path) };
+    // Fallback simple si la structure ne correspond pas exactement
+    return urlObj.pathname.substring(1); 
   } catch (e) {
-    console.error("Error parsing storage URL", e);
-    return null;
+    return url;
   }
-}
-
-/**
- * Formate un montant en devise
- * @param {number|string} amount - Montant à formater
- * @param {string} currency - Code devise (par défaut: FCFA)
- * @param {string} locale - Locale (par défaut: fr-FR)
- * @returns {string} Montant formaté
- */
-export function formatCurrency(amount, currency = "FCFA", locale = "fr-FR") {
-  try {
-    if (amount === null || amount === undefined) return "0 " + currency;
-
-    const numAmount =
-      typeof amount === "string"
-        ? parseFloat(amount.replace(/\s/g, "").replace(",", "."))
-        : amount;
-
-    if (isNaN(numAmount)) {
-      return "0 " + currency;
-    }
-
-    // Pour le FCFA, on ne veut pas de décimales
-    if (currency === "FCFA" || currency === "XOF") {
-      return (
-        new Intl.NumberFormat(locale, {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0,
-        }).format(numAmount) +
-        " " +
-        currency
-      );
-    }
-
-    // Pour les autres devises
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(numAmount);
-  } catch (error) {
-    console.error("Error formatting currency:", error);
-    return String(amount) + " " + currency;
-  }
-}
-
-export function generateEventStructuredData(event) {
-  if (!event) return null;
-
-  const price = event.starting_price_pi || event.price_pi;
-  const currency = "pièces";
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Event",
-    name: event.title,
-    startDate: event.event_start_at
-      ? new Date(event.event_start_at).toISOString()
-      : undefined,
-    endDate: event.event_end_at
-      ? new Date(event.event_end_at).toISOString()
-      : undefined,
-    eventAttendanceMode: "https://schema.org/MixedEventAttendanceMode",
-    eventStatus: "https://schema.org/EventScheduled",
-    location: {
-      "@type": "Place",
-      name: event.location,
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: event.address,
-        addressLocality: event.city,
-        addressCountry: event.country,
-      },
-      geo:
-        event.latitude && event.longitude
-          ? {
-              "@type": "GeoCoordinates",
-              latitude: event.latitude,
-              longitude: event.longitude,
-            }
-          : undefined,
-    },
-    image: [event.cover_image],
-    description: event.description,
-    offers:
-      price !== null && price !== undefined
-        ? {
-            "@type": "Offer",
-            url: `https://www.bonplaninfos.net/event/${event.id}`,
-            price: price,
-            priceCurrency: currency,
-            availability: "https://schema.org/InStock",
-            validFrom: event.created_at
-              ? new Date(event.created_at).toISOString()
-              : undefined,
-          }
-        : undefined,
-    organizer: {
-      "@type": "Person",
-      name: event.organizer_name || "Organisateur BonPlanInfos",
-    },
-    performer:
-      event.event_type === "contest"
-        ? {
-            "@type": "PerformingGroup",
-            name: "Participants au concours",
-          }
-        : undefined,
-  };
-
-  // Cleanup undefined fields
-  Object.keys(structuredData).forEach((key) => {
-    if (structuredData[key] === undefined) {
-      delete structuredData[key];
-    }
-  });
-
-  return structuredData;
-}
-
-export function generateBreadcrumbStructuredData(items) {
-  if (!items || items.length === 0) return null;
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: item.name,
-      item: `https://www.bonplaninfos.net${item.href}`,
-    })),
-  };
-}
-
-/**
- * Formate un nombre avec séparateurs de milliers
- * @param {number|string} num - Nombre à formater
- * @param {string} locale - Locale (par défaut: fr-FR)
- * @returns {string} Nombre formaté
- */
-export function formatNumber(num, locale = "fr-FR") {
-  if (num === null || num === undefined) return "0";
-  const number = typeof num === "string" ? parseFloat(num) : num;
-  if (isNaN(number)) return "0";
-  return new Intl.NumberFormat(locale).format(number);
-}
-
-/**
- * Formate une date
- * @param {Date|string} date - Date à formater
- * @param {string} format - Format de date (par défaut: 'dd/MM/yyyy')
- * @returns {string} Date formatée
- */
-export function formatDate(date, format = "dd/MM/yyyy") {
-  if (!date) return "";
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return "";
-
-  const day = d.getDate().toString().padStart(2, "0");
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  const year = d.getFullYear();
-
-  return format.replace("dd", day).replace("MM", month).replace("yyyy", year);
-}
-
-/**
- * Tronque un texte avec une longueur maximale
- * @param {string} text - Texte à tronquer
- * @param {number} maxLength - Longueur maximale (par défaut: 100)
- * @returns {string} Texte tronqué
- */
-export function truncateText(text, maxLength = 100) {
-  if (!text) return "";
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-}
-
-/**
- * Version simplifiée de formatCurrency (alternative)
- * @param {number|string} amount - Montant à formater
- * @param {string} currency - Code devise (par défaut: FCFA)
- * @returns {string} Montant formaté
- */
-export function formatCurrencySimple(amount, currency = "FCFA") {
-  if (amount === null || amount === undefined) return "0 " + currency;
-  const num = typeof amount === "string" ? parseFloat(amount) : amount;
-  if (isNaN(num)) return "0 " + currency;
-  return num.toLocaleString("fr-FR") + " " + currency;
 }

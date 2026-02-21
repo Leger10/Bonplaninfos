@@ -4,81 +4,96 @@ import { useToast } from '@/components/ui/use-toast';
 
 const AuthContext = createContext(undefined);
 
-// Helper for retrying promises with exponential backoff
-const retryPromise = async (fn, retries = 3, delay = 500) => {
-  try {
-    return await fn();
-  } catch (error) {
-    // Critical: Catch Refresh Token errors immediately
-    const errorMessage = error?.message || '';
-    const errorCode = error?.code || '';
-    const errorStatus = error?.status || '';
-    const apiErrorCode = error?.error_code || ''; // Supabase specific
-    
-    const isRefreshTokenError = 
-        errorMessage.includes('refresh_token_not_found') || 
-        errorMessage.includes('Invalid Refresh Token') ||
-        errorCode === 'refresh_token_not_found' ||
-        apiErrorCode === 'refresh_token_not_found';
-
-    if (isRefreshTokenError) {
-        // Throw a specific error that we can catch and handle by logging out
-        throw new Error('CRITICAL_AUTH_ERROR: Refresh Token Invalid');
-    }
-
-    // Don't retry 4xx errors (client errors)
-    const isAuthError = errorStatus === 400 || errorStatus === 401 || errorStatus === 403 || 
-                        (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt' || errorCode === 'session_not_found')) ||
-                        (errorMessage && (errorMessage.includes('bad_jwt') || errorMessage.includes('invalid claim') || errorMessage.includes('session_id')));
-
-    if (isAuthError) {
-      throw error;
-    }
-
-    if (retries <= 0) throw error;
-    
-    const isNetworkError = errorMessage && (
-      errorMessage.includes('Failed to fetch') || 
-      errorMessage.includes('Network request failed') ||
-      errorMessage.includes('NetworkError') ||
-      errorMessage.includes('Load failed')
-    );
-    
-    if (isNetworkError) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return retryPromise(fn, retries - 1, delay * 1.5);
-    }
-    throw error;
-  }
-};
-
 export const AuthProvider = ({ children }) => {
   const { toast } = useToast();
 
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [session, setSession] = useState(null);
   const [license, setLicense] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasFetchError, setHasFetchError] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(() => () => { });
 
+  // Helper for retrying promises with exponential backoff
+  const retryPromise = useCallback(async (fn, retries = 3, delay = 500, operationName = 'Supabase Operation') => {
+    try {
+      return await fn();
+    } catch (error) {
+      const errorMessage = error?.message || '';
+      const errorCode = error?.code || '';
+      const errorStatus = error?.status || '';
+      const apiErrorCode = error?.error_code || ''; // Supabase specific
+      
+      const isRefreshTokenError = 
+          errorMessage.includes('refresh_token_not_found') || 
+          errorMessage.includes('Invalid Refresh Token') ||
+          errorCode === 'refresh_token_not_found' ||
+          apiErrorCode === 'refresh_token_not_found';
+
+      if (isRefreshTokenError) {
+          throw new Error('CRITICAL_AUTH_ERROR: Refresh Token Invalid');
+      }
+
+      const isAuthError = errorStatus === 400 || errorStatus === 401 || errorStatus === 403 || 
+                          (errorCode && (errorCode === 403 || errorCode === '403' || errorCode === 'bad_jwt' || errorCode === 'session_not_found')) ||
+                          (errorMessage && (errorMessage.includes('bad_jwt') || errorMessage.includes('invalid claim') || errorMessage.includes('session_id')));
+
+      if (isAuthError) {
+        throw error;
+      }
+
+      console.warn(`[${operationName}] Attempt failed. Retries left: ${retries}. Error:`, {
+          message: errorMessage,
+          code: errorCode,
+          status: errorStatus
+      });
+
+      if (retries <= 0) {
+          if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network request failed')) {
+              console.error(`[${operationName}] Network error persisted after retries.`);
+              if (!hasFetchError) {
+                  toast({
+                      variant: "destructive",
+                      title: "Erreur de connexion",
+                      description: "Impossible de se connecter au serveur. Veuillez vérifier votre connexion internet."
+                  });
+              }
+          }
+          throw error;
+      }
+      
+      const isNetworkError = errorMessage && (
+        errorMessage.includes('Failed to fetch') || 
+        errorMessage.includes('Network request failed') ||
+        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('Load failed') ||
+        errorStatus === 500 || 
+        errorStatus === 502 || 
+        errorStatus === 503 || 
+        errorStatus === 504
+      );
+      
+      if (isNetworkError) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return retryPromise(fn, retries - 1, delay * 1.5, operationName);
+      }
+      throw error;
+    }
+  }, [toast, hasFetchError]);
+
   const clearSessionData = useCallback(() => {
     console.log("Cleaning session data due to auth error...");
     try {
-        // Clear all Supabase related items
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (key && key.startsWith('sb-')) {
                 localStorage.removeItem(key);
             }
         }
-        // Also clear supabase.auth.token if it exists (legacy)
         localStorage.removeItem('supabase.auth.token');
-        
-        // Clear session storage as well
         sessionStorage.clear();
         
-        // Clear cookies
         document.cookie.split(";").forEach((c) => {
             document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
         });
@@ -87,6 +102,7 @@ export const AuthProvider = ({ children }) => {
     }
     
     setUser(null);
+    setUserProfile(null);
     setSession(null);
     setLicense(null);
   }, []);
@@ -94,11 +110,13 @@ export const AuthProvider = ({ children }) => {
   const fetchLicense = useCallback(async (userId) => {
     if (!userId) return;
     try {
-        const { data: activeLicenseData } = await supabase
+        const { data: activeLicenseData, error } = await retryPromise(() => supabase
             .from('admin_licences')
             .select('*')
             .eq('admin_id', userId)
-            .eq('statut', 'actif');
+            .eq('statut', 'actif'), 3, 500, 'Fetch License');
+
+        if (error) throw error;
 
         if (activeLicenseData && activeLicenseData.length > 0) {
             const bestLicense = activeLicenseData.sort((a, b) => new Date(b.date_fin) - new Date(a.date_fin))[0];
@@ -120,7 +138,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
         console.error("License fetch error:", err);
     }
-  }, []);
+  }, [retryPromise]);
 
   const handleSession = useCallback(async (currentSession, error = null) => {
     const sessionError = error || currentSession?.error;
@@ -129,7 +147,6 @@ export const AuthProvider = ({ children }) => {
         const errorMessage = sessionError.message || '';
         const errorCode = sessionError.code || sessionError.error_code || '';
         
-        // Handle Critical Auth Errors
         if (errorMessage.includes('CRITICAL_AUTH_ERROR') || 
             errorMessage.includes('refresh_token_not_found') || 
             errorMessage.includes('Invalid Refresh Token') ||
@@ -162,7 +179,9 @@ export const AuthProvider = ({ children }) => {
         if (isBadJwtError) {
             clearSessionData();
         } else {
-            setHasFetchError(true);
+            if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network request failed')) {
+                setHasFetchError(true);
+            }
         }
         setLoading(false);
         return;
@@ -170,36 +189,51 @@ export const AuthProvider = ({ children }) => {
 
     if (currentSession?.user) {
         const currentUser = currentSession.user;
+        let profileData = null;
         
-        // CHECK IF USER IS ACTIVE
         try {
-            const { data: profile } = await supabase
+            const { data: profile, error: profileError } = await retryPromise(() => supabase
                 .from('profiles')
-                .select('is_active')
+                .select('*')
                 .eq('id', currentUser.id)
-                .maybeSingle();
+                .maybeSingle(), 3, 500, 'Fetch Profile Status');
             
-            if (profile && profile.is_active === false) {
-                console.warn("User is deactivated. Logging out.");
-                await supabase.auth.signOut();
-                clearSessionData();
-                setLoading(false);
-                return; 
+            if (profileError) throw profileError;
+
+            if (profile) {
+                if (profile.is_active === false) {
+                    console.warn("User is deactivated. Logging out.");
+                    await supabase.auth.signOut();
+                    clearSessionData();
+                    setLoading(false);
+                    return; 
+                }
+                profileData = profile;
             }
         } catch (e) {
             console.error("Profile active check failed", e);
+            if (e.message?.includes('Failed to fetch')) {
+                 toast({
+                    variant: "destructive",
+                    title: "Erreur Réseau",
+                    description: "Impossible de vérifier le profil utilisateur. Vérifiez votre connexion."
+                });
+            }
         }
 
         try {
-            // Ensure profile exists
-            const { error: profileError } = await supabase.rpc('ensure_user_profile_exists', {
-                p_user_id: currentUser.id,
-                p_email: currentUser.email,
-                p_full_name: currentUser.user_metadata?.full_name
-            });
+            if (!profileData) {
+                const { data: rpcProfile, error: profileError } = await retryPromise(() => supabase.rpc('ensure_user_profile_exists', {
+                    p_user_id: currentUser.id,
+                    p_email: currentUser.email,
+                    p_full_name: currentUser.user_metadata?.full_name
+                }), 2, 500, 'Ensure Profile Exists');
 
-            if (profileError) {
-                console.error("Profile check error:", profileError);
+                if (profileError) {
+                    console.error("Profile check error:", profileError);
+                } else if (rpcProfile?.profile) {
+                    profileData = rpcProfile.profile;
+                }
             }
         } catch (e) {
             console.error("Profile verification exception:", e);
@@ -207,6 +241,7 @@ export const AuthProvider = ({ children }) => {
 
         setSession(currentSession);
         setUser(currentUser);
+        setUserProfile(profileData);
         setHasFetchError(false);
         await fetchLicense(currentUser.id);
         
@@ -216,18 +251,17 @@ export const AuthProvider = ({ children }) => {
     } else {
         setSession(null);
         setUser(null);
+        setUserProfile(null);
         setLicense(null);
     }
 
     setLoading(false);
-  }, [forceRefresh, clearSessionData, fetchLicense]);
+  }, [forceRefresh, clearSessionData, fetchLicense, retryPromise, toast]);
 
-  // Global Error Handler for Edge Functions Auth
   useEffect(() => {
     const handleUnhandledRejection = async (event) => {
       const reason = event.reason;
       
-      // Detect Supabase Edge Function Auth Errors
       const isAuthError = 
         reason?.message?.includes('AuthSessionMissingError') || 
         reason?.message?.includes('Invalid token') ||
@@ -237,9 +271,8 @@ export const AuthProvider = ({ children }) => {
 
       if (isAuthError) {
         console.warn("Caught unhandled auth error (likely Edge Function). Attempting recovery...", reason);
-        event.preventDefault(); // Prevent browser console error if possible
+        event.preventDefault();
         
-        // Attempt to refresh the session
         const { data, error } = await supabase.auth.refreshSession();
         
         if (error) {
@@ -248,7 +281,6 @@ export const AuthProvider = ({ children }) => {
             window.location.href = '/auth';
         } else if (data.session) {
             console.log("Session successfully recovered.");
-            // Update context state
             handleSession(data.session);
         }
       }
@@ -261,12 +293,31 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
+    if (!supabase || !supabase.supabaseUrl || !supabase.supabaseKey) {
+        console.error("Supabase client is not properly initialized. Missing URL or Key.");
+        toast({
+            variant: "destructive",
+            title: "Configuration Error",
+            description: "Application is missing database configuration. Please contact support."
+        });
+        setLoading(false);
+        return;
+    }
+
     const initSession = async () => {
         try {
             setLoading(true);
             
-            // Attempt to get session
-            const { data: { session: localSession }, error: sessionError } = await retryPromise(() => supabase.auth.getSession());
+            if (!navigator.onLine) {
+                console.warn("Offline detected during initSession");
+            }
+
+            const { data: { session: localSession }, error: sessionError } = await retryPromise(
+                () => supabase.auth.getSession(), 
+                3, 
+                500, 
+                'Get Session'
+            );
             
             if (sessionError) {
                 if (mounted) handleSession(null, sessionError);
@@ -274,8 +325,12 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (localSession) {
-                // Verify user with getUser to ensure token is valid on server
-                const { data: { user: verifiedUser }, error: userError } = await retryPromise(() => supabase.auth.getUser());
+                const { data: { user: verifiedUser }, error: userError } = await retryPromise(
+                    () => supabase.auth.getUser(), 
+                    3, 
+                    500, 
+                    'Get User'
+                );
                 
                 if (userError) {
                     if (mounted) handleSession(null, userError);
@@ -286,6 +341,7 @@ export const AuthProvider = ({ children }) => {
                 if (mounted) handleSession(null);
             }
         } catch (err) {
+            console.error("Session initialization error:", err);
             if (mounted) handleSession(null, err);
         }
     };
@@ -311,7 +367,7 @@ export const AuthProvider = ({ children }) => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [handleSession, clearSessionData]);
+  }, [handleSession, clearSessionData, retryPromise, toast]);
 
   const signUp = useCallback(async (email, password, metadata) => {
     try {
@@ -332,14 +388,15 @@ export const AuthProvider = ({ children }) => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        // Force check profile status immediately after sign in
         if (data?.user) {
-            const { data: profile } = await supabase
+            const { data: profile, error: profileError } = await retryPromise(() => supabase
                 .from('profiles')
                 .select('is_active')
                 .eq('id', data.user.id)
-                .maybeSingle();
+                .maybeSingle(), 3, 500, 'Sign In Profile Check');
             
+            if (profileError) throw profileError;
+
             if (profile && profile.is_active === false) {
                 await supabase.auth.signOut();
                 throw new Error('ACCOUNT_DEACTIVATED');
@@ -350,14 +407,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
         return { data: null, error };
     }
-  }, []);
+  }, [retryPromise]);
 
   const signOut = useCallback(async () => {
     console.log("Logout started");
     try {
         const { error } = await supabase.auth.signOut();
         if (error) {
-            // Ignore specific errors during logout
             if (error.message?.includes('session_id claim') || error.message?.includes('JWT') || error.status === 403) {
                 console.log("JWT error caught and ignored during logout");
             } else {
@@ -368,7 +424,6 @@ export const AuthProvider = ({ children }) => {
         console.log("Logout exception caught and ignored:", error);
     } finally {
         clearSessionData();
-        // Force reload to clear any in-memory state
         window.location.href = '/auth';
     }
   }, [clearSessionData]);
@@ -379,31 +434,28 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, fetchLicense]);
 
-  // Helper to invoke functions with auto-retry on auth error
   const invokeFunction = useCallback(async (functionName, options = {}) => {
-    // Wrap the invoke call in retryPromise to handle network errors
     return retryPromise(async () => {
         try {
             const { data, error } = await supabase.functions.invoke(functionName, options);
             if (error) throw error;
             return { data, error: null };
         } catch (error) {
-            // Handle auth errors specifically
             if (error.message?.includes('AuthSessionMissingError') || error.context?.json?.error === 'Unauthorized: Invalid token') {
                  console.log("Auth error in invokeFunction, attempting refresh...");
                  const { error: refreshError } = await supabase.auth.refreshSession();
                  if (!refreshError) {
-                     // Retry once
                      return await supabase.functions.invoke(functionName, options);
                  }
             }
             throw error;
         }
-    });
-  }, []);
+    }, 3, 500, `Invoke ${functionName}`);
+  }, [retryPromise]);
 
   const value = useMemo(() => ({
     user,
+    userProfile,
     session,
     license,
     loading,
@@ -414,7 +466,7 @@ export const AuthProvider = ({ children }) => {
     setForceRefresh,
     refreshLicense,
     invokeFunction
-  }), [user, session, license, loading, hasFetchError, signUp, signIn, signOut, setForceRefresh, refreshLicense, invokeFunction]);
+  }), [user, userProfile, session, license, loading, hasFetchError, signUp, signIn, signOut, setForceRefresh, refreshLicense, invokeFunction]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -425,4 +477,18 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Hook named export as requested
+export const useSupabaseAuth = () => {
+  const context = useAuth();
+  return {
+    ...context,
+    user: context.user,
+    userProfile: context.userProfile,
+    role: context.userProfile?.user_type,
+    created_by: context.userProfile?.appointed_by,
+    logout: context.signOut,
+    loading: context.loading
+  };
 };

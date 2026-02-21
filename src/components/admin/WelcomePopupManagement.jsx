@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Loader2,
   PlusCircle,
@@ -14,32 +16,25 @@ import {
   Power,
   PowerOff,
   RefreshCw,
+  AlertTriangle,
+  Lock
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+
+// NOTE: RLS Policies on 'welcome_popups' table must allow INSERT/UPDATE/DELETE 
+// for 'admin' and 'super_admin' roles in the 'profiles' table.
 
 const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
   const { user } = useAuth();
+  const { userProfile } = useData();
   const { toast } = useToast();
 
-  // État local pour les popups
   const [popups, setPopups] = useState(initialPopups || []);
   const [loading, setLoading] = useState(false);
 
   const [editingPopup, setEditingPopup] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [popupToDelete, setPopupToDelete] = useState(null);
   const [file, setFile] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -48,7 +43,9 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
     is_active: true,
   });
 
-  // Charger les popups au montage si initialPopups est vide
+  // Task 6: Check user role
+  const isAdmin = ['super_admin', 'admin'].includes(userProfile?.user_type);
+
   useEffect(() => {
     if (!initialPopups || initialPopups.length === 0) {
       fetchPopups();
@@ -57,10 +54,10 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
     }
   }, [initialPopups]);
 
-  // Fonction pour charger les popups
   const fetchPopups = async () => {
     setLoading(true);
     try {
+      // Fetch all popups (inactive ones are visible to admins via RLS)
       const { data, error } = await supabase
         .from("welcome_popups")
         .select("*")
@@ -70,23 +67,104 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
 
       setPopups(data || []);
     } catch (error) {
-      console.error("Erreur lors du chargement des popups:", error);
+      console.error("Erreur fetchPopups:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les popups.",
+        title: "Erreur de chargement",
+        description: error.message || "Impossible de charger les popups.",
         variant: "destructive",
       });
+      setPopups([]); 
     } finally {
       setLoading(false);
     }
   };
 
-  // Rafraîchir les données
+  const togglePopupStatus = async (popup) => {
+    if (!isAdmin) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les droits d'administration nécessaires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newStatus = !popup.is_active;
+      
+      const { error } = await supabase
+        .from("welcome_popups")
+        .update({
+          is_active: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", popup.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: `Popup ${newStatus ? "activé" : "désactivé"} avec succès.`,
+        className: "bg-green-600 text-white",
+      });
+
+      await fetchPopups();
+      if (onRefresh) onRefresh();
+
+    } catch (error) {
+      console.error("Erreur togglePopupStatus:", error);
+      toast({
+        title: "Erreur de mise à jour",
+        description: `Échec: ${error.message}. Vérifiez vos droits.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deletePopup = async (popupId) => {
+    if (!isAdmin) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les droits d'administration nécessaires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce popup ?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("welcome_popups")
+        .delete()
+        .eq("id", popupId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Popup supprimé avec succès.",
+        className: "bg-green-600 text-white",
+      });
+
+      await fetchPopups();
+      if (onRefresh) onRefresh();
+
+    } catch (error) {
+      console.error("Erreur deletePopup:", error);
+      toast({
+        title: "Erreur de suppression",
+        description: `Échec: ${error.message}. Vérifiez vos droits.`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRefresh = async () => {
     await fetchPopups();
-    if (onRefresh) {
-      onRefresh();
-    }
+    if (onRefresh) onRefresh();
   };
 
   const resetForm = () => {
@@ -101,6 +179,7 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
   };
 
   const handleEdit = (popup) => {
+    if (!isAdmin) return;
     setEditingPopup(popup);
     setFormData({
       alt_text: popup.alt_text || "",
@@ -112,18 +191,20 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isAdmin) {
+      toast({ title: "Accès refusé", variant: "destructive" });
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
       let imageUrl = formData.image_url;
 
-      // Téléverser un nouveau fichier si fourni
       if (file) {
         const fileExt = file.name.split(".").pop();
         const fileName = `popup_${Date.now()}.${fileExt}`;
         const filePath = `welcome-popups/${fileName}`;
-
-        console.log("Téléversement du fichier:", filePath);
 
         const { error: uploadError } = await supabase.storage
           .from("media")
@@ -139,65 +220,57 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
           .getPublicUrl(filePath);
 
         imageUrl = publicUrlData.publicUrl;
-        console.log("URL publique générée:", imageUrl);
       }
 
-      // S'assurer d'avoir une URL d'image
       if (!imageUrl && !formData.image_url) {
         throw new Error("L'URL de l'image ou un fichier téléversé est requis.");
       }
 
-      const dataToSave = {
+      // Task 3: Corriger la logique d'insertion (uploaded_by, updated_at)
+      const commonData = {
         alt_text: formData.alt_text || "",
         image_url: imageUrl || formData.image_url,
         is_active: formData.is_active,
-        uploaded_by: user.id,
         updated_at: new Date().toISOString(),
       };
 
-      console.log("Données à sauvegarder:", dataToSave);
-
       let result;
       if (editingPopup) {
-        // Mise à jour
         result = await supabase
           .from("welcome_popups")
-          .update(dataToSave)
+          .update(commonData)
           .eq("id", editingPopup.id)
           .select();
       } else {
-        // Création
+        // Pour l'insertion, on ajoute uploaded_by
         result = await supabase
           .from("welcome_popups")
-          .insert(dataToSave)
+          .insert({
+            ...commonData,
+            uploaded_by: user.id, // ID de l'utilisateur connecté
+          })
           .select();
       }
 
-      const { data, error } = result;
-
-      if (error) {
-        console.error("Erreur Supabase:", error);
-        throw error;
-      }
-
-      console.log("Popup sauvegardé avec succès:", data);
+      const { error } = result;
+      if (error) throw error;
 
       toast({
         title: "Succès",
-        description: `Popup ${
-          editingPopup ? "mis à jour" : "créé"
-        } avec succès.`,
+        description: `Popup ${editingPopup ? "mis à jour" : "créé"} avec succès.`,
+        className: "bg-green-600 text-white",
       });
 
       resetForm();
+      await fetchPopups();
+      if (onRefresh) onRefresh();
 
-      // Mettre à jour la liste locale
-      await handleRefresh();
     } catch (error) {
-      console.error("Erreur de sauvegarde:", error);
+      console.error("Erreur sauvegarde:", error);
+      // Task 4: Logging frontend et affichage UI
       toast({
-        title: "Erreur",
-        description: `La sauvegarde a échoué: ${error.message}`,
+        title: "Erreur de sauvegarde",
+        description: `La sauvegarde a échoué: ${error.message || error.details || "Erreur inconnue"}`,
         variant: "destructive",
       });
     } finally {
@@ -205,82 +278,21 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
     }
   };
 
-  const confirmDelete = (popupId) => {
-    setPopupToDelete(popupId);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDelete = async () => {
-    if (!popupToDelete) return;
-
-    try {
-      const { error } = await supabase
-        .from("welcome_popups")
-        .delete()
-        .eq("id", popupToDelete);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Popup supprimé avec succès.",
-      });
-
-      // Mettre à jour la liste locale
-      setPopups((prev) => prev.filter((popup) => popup.id !== popupToDelete));
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error("Erreur de suppression:", error);
-      toast({
-        title: "Erreur",
-        description: "La suppression a échoué.",
-        variant: "destructive",
-      });
-    } finally {
-      setShowDeleteConfirm(false);
-      setPopupToDelete(null);
-    }
-  };
-
-  const toggleActive = async (popup) => {
-    try {
-      const { error } = await supabase
-        .from("welcome_popups")
-        .update({
-          is_active: !popup.is_active,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", popup.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: `Popup ${!popup.is_active ? "activé" : "désactivé"}.`,
-      });
-
-      // Mettre à jour l'état local
-      setPopups((prev) =>
-        prev.map((p) =>
-          p.id === popup.id ? { ...p, is_active: !popup.is_active } : p
-        )
-      );
-
-      if (onRefresh) {
-        onRefresh();
-      }
-    } catch (error) {
-      console.error("Erreur de changement de statut:", error);
-      toast({
-        title: "Erreur",
-        description: "Le changement de statut a échoué.",
-        variant: "destructive",
-      });
-    }
-  };
+  if (!isAdmin && !loading) {
+    return (
+      <Card className="glass-effect border-red-500/20">
+        <CardContent className="p-6 text-center">
+          <div className="flex justify-center mb-4">
+            <Lock className="w-12 h-12 text-red-400" />
+          </div>
+          <h3 className="text-xl font-bold text-red-400 mb-2">Accès Restreint</h3>
+          <p className="text-gray-400">
+            Vous devez être administrateur pour gérer les popups de bienvenue.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="glass-effect shadow-lg rounded-xl border-primary/20">
@@ -305,6 +317,7 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
               setShowForm(true);
             }}
             className="flex items-center gap-2"
+            disabled={!isAdmin}
           >
             <PlusCircle className="w-4 h-4" />
             Nouveau Popup
@@ -322,7 +335,7 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
             </h3>
             <div className="space-y-2">
               <Label htmlFor="alt_text" className="text-white">
-                Texte alternatif (pour le SEO)
+                Texte alternatif
               </Label>
               <Input
                 id="alt_text"
@@ -330,7 +343,7 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                 onChange={(e) =>
                   setFormData({ ...formData, alt_text: e.target.value })
                 }
-                placeholder="Description de l'image"
+                placeholder="Description"
                 className="bg-white/10 border-white/20 text-white"
               />
             </div>
@@ -359,18 +372,6 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                 onChange={(e) => setFile(e.target.files[0])}
                 className="bg-white/10 border-white/20 text-white file:text-white"
               />
-              {file && (
-                <div className="mt-2">
-                  <p className="text-sm text-green-300">
-                    Fichier sélectionné: {file.name}
-                  </p>
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt="Aperçu"
-                    className="w-32 h-32 object-contain mt-2 rounded border border-white/20"
-                  />
-                </div>
-              )}
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -418,17 +419,19 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
             <p className="text-white/70 mb-4">
               Aucun popup de bienvenue configuré
             </p>
-            <Button
-              onClick={() => {
-                resetForm();
-                setShowForm(true);
-              }}
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Créer votre premier popup
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setShowForm(true);
+                }}
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Créer votre premier popup
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -436,24 +439,21 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
               {popups.map((popup) => (
                 <div
                   key={popup.id}
-                  className={`flex flex-col p-4 rounded-xl shadow-sm gap-4 transition-all ${
-                    popup.is_active
+                  className={`flex flex-col p-4 rounded-xl shadow-sm gap-4 transition-all ${popup.is_active
                       ? "bg-gradient-to-br from-green-900/20 to-green-900/5 border border-green-500/30"
                       : "bg-gradient-to-br from-red-900/20 to-red-900/5 border border-red-500/30"
-                  }`}
+                    }`}
                 >
                   <div className="flex-grow">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-3 h-3 rounded-full ${
-                            popup.is_active ? "bg-green-500" : "bg-red-500"
-                          }`}
+                          className={`w-3 h-3 rounded-full ${popup.is_active ? "bg-green-500" : "bg-red-500"
+                            }`}
                         ></div>
                         <span
-                          className={`text-sm font-medium ${
-                            popup.is_active ? "text-green-300" : "text-red-300"
-                          }`}
+                          className={`text-sm font-medium ${popup.is_active ? "text-green-300" : "text-red-300"
+                            }`}
                         >
                           {popup.is_active ? "Actif" : "Inactif"}
                         </span>
@@ -477,9 +477,6 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                     <p className="font-medium text-white mb-1 truncate">
                       {popup.alt_text || "Image sans description"}
                     </p>
-                    <p className="text-xs text-white/60 truncate">
-                      URL: {popup.image_url.substring(0, 30)}...
-                    </p>
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-white/10">
@@ -487,9 +484,10 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => toggleActive(popup)}
+                        onClick={() => togglePopupStatus(popup)}
                         className="h-8 w-8 hover:bg-white/20"
                         title={popup.is_active ? "Désactiver" : "Activer"}
+                        disabled={!isAdmin}
                       >
                         {popup.is_active ? (
                           <PowerOff className="h-4 w-4 text-yellow-400" />
@@ -503,15 +501,17 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                         onClick={() => handleEdit(popup)}
                         className="h-8 w-8 hover:bg-white/20"
                         title="Modifier"
+                        disabled={!isAdmin}
                       >
                         <Edit className="h-4 w-4 text-blue-400" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => confirmDelete(popup.id)}
+                        onClick={() => deletePopup(popup.id)}
                         className="h-8 w-8 hover:bg-white/20"
                         title="Supprimer"
+                        disabled={!isAdmin}
                       >
                         <Trash2 className="h-4 w-4 text-red-400" />
                       </Button>
@@ -523,45 +523,9 @@ const WelcomePopupManagement = ({ popups: initialPopups, onRefresh }) => {
                 </div>
               ))}
             </div>
-
-            <div className="flex items-center justify-between text-sm text-white/60 pt-4 border-t border-white/10">
-              <div>
-                Total: {popups.length} popup{popups.length > 1 ? "s" : ""} •
-                Actifs: {popups.filter((p) => p.is_active).length} • Inactifs:{" "}
-                {popups.filter((p) => !p.is_active).length}
-              </div>
-              <div className="text-xs">
-                Dernière mise à jour: {new Date().toLocaleTimeString()}
-              </div>
-            </div>
           </div>
         )}
       </CardContent>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="bg-gray-900 border border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">
-              Êtes-vous sûr ?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Cette action est irréversible. Le popup sera définitivement
-              supprimé de la base de données.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 };

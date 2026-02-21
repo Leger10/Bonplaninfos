@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from "xlsx";
+
 
 const AdminPaymentsTab = () => {
   const [payments, setPayments] = useState([]);

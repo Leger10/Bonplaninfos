@@ -6,6 +6,7 @@ import { CheckCircle2, AlertOctagon, Users, ExternalLink, ShieldCheck, ThumbsUp,
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 const CommunityVerification = ({ eventId, eventDate }) => {
   const { user } = useAuth();
@@ -166,7 +167,13 @@ const CommunityVerification = ({ eventId, eventDate }) => {
                         {positiveCount}/{MIN_VERIFICATIONS} confirmations requises
                     </span>
                 </div>
-                <Progress value={progressPercentage} className="h-3 bg-secondary" indicatorClassName={positiveCount >= MIN_VERIFICATIONS ? "bg-green-500" : "bg-amber-500"} />
+                <Progress 
+                  value={progressPercentage} 
+                  className={cn(
+                    "h-3 bg-secondary",
+                    positiveCount >= MIN_VERIFICATIONS ? "[&>div]:bg-green-500" : "[&>div]:bg-amber-500"
+                  )}
+                />
                 <p className="text-xs text-muted-foreground">
                     {positiveCount >= MIN_VERIFICATIONS 
                         ? "✅ L'événement est vérifié. Les retraits sont autorisés." 

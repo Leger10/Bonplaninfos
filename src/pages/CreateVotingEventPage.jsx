@@ -37,12 +37,16 @@ import {
   MapPin,
   Building,
   Map,
+  CheckCircle,
+  ChevronRight,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 // Import des données de pays depuis votre fichier
 import { COUNTRIES, CITIES_BY_COUNTRY } from "@/constants/countries";
+// Import du modal de contrat
+import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
 
 const CreateVotingEventPage = () => {
   const { user } = useAuth();
@@ -53,7 +57,8 @@ const CreateVotingEventPage = () => {
   const [categoriesList, setCategoriesList] = useState([]); // Catégories depuis la base
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Terms Acceptance State
+  // Contract Modal State (EXACTEMENT COMME DANS TICKETING)
+  const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Form State
@@ -117,6 +122,21 @@ const CreateVotingEventPage = () => {
   // Suggestions de villes basées sur le pays sélectionné
   const [citySuggestions, setCitySuggestions] = useState([]);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+
+  // Contract handlers (EXACTEMENT COMME DANS TICKETING)
+  const handleContractAccept = () => {
+    setTermsAccepted(true);
+    setShowContractModal(false);
+    toast({
+      title: "Contrat accepté",
+      description: "Vous pouvez maintenant publier votre concours",
+      className: "bg-green-600 text-white",
+    });
+  };
+
+  const handleOpenContract = () => {
+    setShowContractModal(true);
+  };
 
   // Mettre à jour les suggestions de villes quand le pays change
   useEffect(() => {
@@ -347,8 +367,9 @@ const CreateVotingEventPage = () => {
 
     if (!termsAccepted) {
       toast({
-        title: "Conditions non acceptées",
-        description: "Veuillez accepter les conditions pour continuer.",
+        title: "Contrat requis",
+        description:
+          "Veuillez lire et accepter le contrat organisateur avant de publier.",
         variant: "destructive",
       });
       return false;
@@ -365,6 +386,18 @@ const CreateVotingEventPage = () => {
         description: "Veuillez vous connecter pour créer un événement.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Vérifier que le contrat est accepté (COMME DANS TICKETING)
+    if (!termsAccepted) {
+      toast({
+        title: "Contrat requis",
+        description:
+          "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        variant: "destructive",
+      });
+      setShowContractModal(true);
       return;
     }
 
@@ -445,7 +478,7 @@ const CreateVotingEventPage = () => {
         allows_reentry: false,
         is_sales_closed: false,
 
-        // Contrat
+        // Contrat (COMME DANS TICKETING)
         contract_accepted_at: new Date().toISOString(),
         contract_version: "v1.0",
 
@@ -476,6 +509,15 @@ const CreateVotingEventPage = () => {
         console.error("Erreur création événement:", eventError);
         throw new Error(`Erreur création événement: ${eventError.message}`);
       }
+
+      // Sauvegarder l'acceptation du contrat dans la table dédiée (COMME DANS TICKETING)
+      await supabase.from("user_contract_acceptances").insert({
+        user_id: user.id,
+        event_id: event.id,
+        contract_type: "organizer",
+        accepted_at: new Date().toISOString(),
+        contract_version: "v1.0",
+      });
 
       // 2. Create Event Settings (Specific Voting Logic)
       const { error: settingsError } = await supabase
@@ -557,6 +599,15 @@ const CreateVotingEventPage = () => {
       <Helmet>
         <title>Créer un vote - BonPlanInfos</title>
       </Helmet>
+
+      {/* Contract Modal (EXACTEMENT COMME DANS TICKETING) */}
+      <OrganizerContractModal
+        open={showContractModal}
+        onOpenChange={setShowContractModal}
+        onAccept={handleContractAccept}
+        eventTitle={title || "votre concours"}
+        eventId="new-event"
+      />
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
@@ -1069,7 +1120,7 @@ const CreateVotingEventPage = () => {
                     >
                       <CardContent className="p-4">
                         <div className="flex gap-4 items-start">
-                          <div className="w-24 h-24 bg-gray-900 rounded-lg flex-shrink-0 relative overflow-hidden border border-gray-800 group-hover:border-gray-700">
+                          <div className="w-24 h-24 bg-gray-900 rounded-lg flex-shrink-0 relative overflow-hidden border-2 border-dashed border-gray-700 group-hover:border-emerald-500/50 transition-all">
                             {c.photo_url ? (
                               <img
                                 src={c.photo_url}
@@ -1077,23 +1128,33 @@ const CreateVotingEventPage = () => {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-600">
-                                <Upload className="w-8 h-8" />
+                              <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 bg-gray-800/50 group-hover:bg-gray-800 transition-colors">
+                                <Upload className="w-6 h-6 mb-1 text-gray-500 group-hover:text-emerald-400 transition-colors" />
+                                <span className="text-[10px] font-medium text-gray-500 group-hover:text-emerald-400 text-center px-1">
+                                  Ajouter photo
+                                </span>
                               </div>
                             )}
                             <Input
                               type="file"
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                               accept="image/*"
                               onChange={(e) =>
                                 e.target.files[0] &&
                                 handleImageUpload(e.target.files[0], c.id)
                               }
                               disabled={uploadingImage}
+                              title="Cliquez pour ajouter une photo"
                             />
+
+                            {/* Indicateur visuel pour attirer l'attention */}
+                            {!c.photo_url && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                            )}
+
                             {uploadingImage && (
-                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                              <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+                                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
                               </div>
                             )}
                           </div>
@@ -1198,27 +1259,77 @@ const CreateVotingEventPage = () => {
                   </Button>
                 </div>
 
-                {/* Checkbox d'acceptation du contrat */}
+                {/* Message d'information pour les photos */}
+                <div className="bg-blue-950/30 border border-blue-900/50 p-4 rounded-lg text-blue-300 text-sm flex items-center gap-3">
+                  <div className="p-2 bg-blue-900/30 rounded-full">
+                    <Upload className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium mb-1">📸 Photos des candidats</p>
+                    <p className="text-xs text-blue-400/80">
+                      Cliquez sur le cadre "
+                      <span className="font-bold text-emerald-400">
+                        Ajouter photo
+                      </span>
+                      " pour télécharger une photo. Un point vert clignotant
+                      vous indique les photos manquantes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contract Acceptance Section with Modal Trigger - EXACTEMENT COMME DANS TICKETING */}
                 <div className="bg-gray-900/50 border border-gray-800 p-4 rounded-lg mt-6">
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-start space-x-3">
                     <Checkbox
                       id="terms"
                       checked={termsAccepted}
-                      onCheckedChange={setTermsAccepted}
-                      className="border-gray-600 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                      onCheckedChange={(checked) => {
+                        if (checked && !termsAccepted) {
+                          // Si on veut cocher, on ouvre d'abord le modal
+                          handleOpenContract();
+                        } else {
+                          // Si on veut décocher, on peut le faire directement
+                          setTermsAccepted(checked);
+                        }
+                      }}
+                      className="border-gray-600 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 mt-1"
+                      required
                     />
-                    <div className="grid gap-1.5 leading-none">
-                      <label
-                        htmlFor="terms"
-                        className="text-sm font-medium leading-none text-gray-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        J'ai lu et j'accepte le contrat Organisateur{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
+                    <div className="grid gap-1.5 leading-none flex-1">
+                      <div className="flex items-center justify-between">
+                        <label
+                          htmlFor="terms"
+                          className="text-sm font-medium leading-none text-gray-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          J'accepte le contrat Organisateur{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={handleOpenContract}
+                          className="text-emerald-400 h-auto p-0 text-xs font-medium hover:text-emerald-300"
+                        >
+                          <FileText className="w-3 h-3 mr-1" />
+                          Lire le contrat
+                          <ChevronRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </div>
                       <p className="text-xs text-gray-500">
                         En publiant ce concours, vous acceptez les conditions de
                         service et le règlement de la plateforme.
                       </p>
+
+                      {/* Contract Status Indicator */}
+                      {termsAccepted && (
+                        <div className="flex items-center gap-2 mt-2 text-xs text-green-400 bg-green-950/30 p-2 rounded border border-green-900/50">
+                          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                          <span>
+                            <strong>Contrat accepté</strong> - Vous avez accepté
+                            les conditions organisateur.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1286,6 +1397,14 @@ const CreateVotingEventPage = () => {
                         !candidates.some((c) => !c.name.trim())
                           ? "✓ Valides"
                           : "✗ Vérifiez"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                      <span className="font-semibold">Contrat:</span>
+                      <span
+                        className={`font-medium ${termsAccepted ? "text-emerald-400" : "text-yellow-500"}`}
+                      >
+                        {termsAccepted ? "✓ Accepté" : "⏳ En attente"}
                       </span>
                     </div>
                   </div>
