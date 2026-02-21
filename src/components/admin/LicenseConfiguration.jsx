@@ -89,10 +89,10 @@ const LicenseConfiguration = ({ onUpdate }) => {
           revenue_share_percent: 2, // 2% des 5%
           duration_days: 2 * 365,
           is_active: true,
-          description: 'Concession Ville - 2 ans',
+          description: 'Concession Ville - 1 ans',
           level: 'starter',
           display_order: 1,
-          benefits: JSON.stringify(["Exclusivité Ville", "2% sur la commission plateforme (5%)", "Durée 2 ans", "Support standard"])
+          benefits: JSON.stringify(["Exclusivité Ville", "2% sur la commission plateforme (5%)", "Durée 1 ans", "Support standard"])
         },
         {
           name: 'BUSINESS',
@@ -102,10 +102,10 @@ const LicenseConfiguration = ({ onUpdate }) => {
           revenue_share_percent: 3, // 3% des 5%
           duration_days: 3 * 365,
           is_active: true,
-          description: 'Concession Régionale - 3 ans',
+          description: 'Concession Régionale - 2 ans',
           level: 'business',
           display_order: 2,
-          benefits: JSON.stringify(["Exclusivité Région", "3% sur la commission plateforme (5%)", "Durée 3 ans", "Support prioritaire"])
+          benefits: JSON.stringify(["Exclusivité Région", "3% sur la commission plateforme (5%)", "Durée 2 ans", "Support prioritaire"])
         },
         {
           name: 'PREMIUM',
@@ -115,10 +115,10 @@ const LicenseConfiguration = ({ onUpdate }) => {
           revenue_share_percent: 4, // 4% des 5%
           duration_days: 5 * 365,
           is_active: true,
-          description: 'Concession Nationale - 5 ans',
+          description: 'Concession Nationale - 3 ans',
           level: 'premium',
           display_order: 3,
-          benefits: JSON.stringify(["Exclusivité Pays", "4% sur la commission plateforme (5%)", "Durée 5 ans", "Support VIP"])
+          benefits: JSON.stringify(["Exclusivité Pays", "4% sur la commission plateforme (5%)", "Durée 3 ans", "Support VIP"])
         }
       ];
 

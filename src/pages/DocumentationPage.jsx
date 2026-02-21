@@ -1282,7 +1282,7 @@ const DocumentationPage = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Durée</span>
-                      <span className="text-white font-medium">2 ans</span>
+                      <span className="text-white font-medium">1 ans</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Droit d'entrée</span>
@@ -1336,7 +1336,7 @@ const DocumentationPage = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Durée</span>
-                      <span className="text-white font-medium">3 ans</span>
+                      <span className="text-white font-medium">2 ans</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Droit d'entrée</span>
@@ -1390,7 +1390,7 @@ const DocumentationPage = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Durée</span>
-                      <span className="text-white font-medium">5 ans</span>
+                      <span className="text-white font-medium">3 ans</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Droit d'entrée</span>

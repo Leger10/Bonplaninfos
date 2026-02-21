@@ -11,21 +11,21 @@ export const generateContractPDF = (tier, userProfile) => {
       zone: "Ville",
       commission: "40% des commissions",
       entry_fee: "1 000 000 FCFA",
-      duration: "2 ans (730 jours)"
+      duration: "1 ans (730 jours)"
     },
     business: {
       title: "CONTRAT DE PARTENARIAT - BUSINESS (RÉGION)",
       zone: "Région",
       commission: "40% des commissions",
       entry_fee: "3 000 000 FCFA",
-      duration: "3 ans (1095 jours)"
+      duration: "2 ans (1095 jours)"
     },
     premium: {
       title: "CONTRAT DE PARTENARIAT - PREMIUM (PAYS)",
       zone: "Pays",
       commission: "40% des commissions",
       entry_fee: "5 000 000 FCFA",
-      duration: "5 ans (1825 jours)"
+      duration: "3 ans (1825 jours)"
     }
   }[tier] || { title: "CONTRAT", zone: "N/A", commission: "0%", entry_fee: "0", duration: "N/A" };
 
