@@ -153,7 +153,7 @@ const CreatorDashboardTab = () => {
                 ) : (
                   <Download className="h-4 w-4" />
                 )}
-                {downloading ? 'Téléchargement...' : 'Télécharger le relevé'}
+                {downloading ? 'Téléchargement...' : 'Télécharger'}
               </Button>
             </div>
           </CardContent>
