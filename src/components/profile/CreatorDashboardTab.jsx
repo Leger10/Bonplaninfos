@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Loader2, DollarSign, Wallet, TrendingUp, ArrowUpRight, FileDown, Clock, } from 'lucide-react';
+import { Loader2, DollarSign, Wallet,  Loader2, Receipt, TrendingUp, ArrowUpRight, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import WithdrawalModal from '@/components/common/WithdrawalModal';
@@ -21,14 +21,25 @@ const CreatorDashboardTab = () => {
   const [isWithdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [availableBalanceFcfa, setAvailableBalanceFcfa] = useState(0);
   const [availableBalanceCoins, setAvailableBalanceCoins] = useState(0);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchData();
       
       const channel = supabase.channel('creator-dashboard-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'organizer_withdrawal_requests', filter: `organizer_id=eq.${user.id}` }, () => fetchData(false))
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => fetchData(false))
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'organizer_withdrawal_requests', 
+          filter: `organizer_id=eq.${user.id}` 
+        }, () => fetchData(false))
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'profiles', 
+          filter: `id=eq.${user.id}` 
+        }, () => fetchData(false))
         .subscribe();
         
       return () => { supabase.removeChannel(channel); };
@@ -64,21 +75,37 @@ const CreatorDashboardTab = () => {
       if (showLoading) setLoading(false);
     }
   };
-  
-  const handleDownloadSlip = () => {
+
+  const handleDownloadSlip = async () => {
+    setDownloading(true);
+    try {
       const netEarnings = availableBalanceFcfa || 0;
       const grossRevenue = Math.round(netEarnings / 0.95);
       const fees = grossRevenue - netEarnings;
       
       generateEarningsSlip({
-          organizerName: user?.user_metadata?.full_name || user?.email || "Créateur",
-          period: format(new Date(), 'MMMM yyyy', { locale: fr }),
-          totalRevenue: grossRevenue, // En FCFA
-          fees: fees,                 // En FCFA
-          netEarnings: netEarnings,   // En FCFA
-          date: new Date()
+        organizerName: user?.user_metadata?.full_name || user?.email || "Créateur",
+        period: format(new Date(), 'MMMM yyyy', { locale: fr }),
+        totalRevenue: grossRevenue,
+        fees: fees,
+        netEarnings: netEarnings,
+        date: new Date()
       });
-      toast({ title: "Document généré", description: "Le relevé de gains a été téléchargé." });
+      
+      toast({ 
+        title: "Document généré", 
+        description: "Le relevé de gains a été téléchargé." 
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de générer le relevé de gains.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const pendingNetCoins = stats?.pending?.total_net || 0;
@@ -91,7 +118,9 @@ const CreatorDashboardTab = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Available Balance Card */}
         <Card className="bg-gradient-to-br from-purple-600 to-indigo-800 text-white border-0 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10"><Wallet className="w-24 h-24" /></div>
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Wallet className="w-24 h-24" />
+          </div>
           <CardHeader className="pb-2 relative z-10">
             <CardTitle className="text-lg font-medium opacity-90 flex items-center gap-2">
               <DollarSign className="w-5 h-5" /> Solde Disponible
@@ -105,80 +134,85 @@ const CreatorDashboardTab = () => {
               ({availableBalanceCoins.toLocaleString()} π)
             </p>
             <div className="flex gap-2">
-                <Button 
-                    onClick={() => setWithdrawalModalOpen(true)} 
-                    className="flex-1 bg-white text-indigo-800 hover:bg-indigo-50 font-bold shadow-sm"
-                    disabled={availableBalanceFcfa < 500} 
-                >
-                    <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer mon argent
-                </Button>
-                <Button 
-                    variant="outline"
-                    className="bg-indigo-700/50 border-indigo-500 text-white hover:bg-indigo-600"
-                    onClick={handleDownloadSlip}
-                    title="Télécharger Relevé"
-                >
-                    <FileDown className="h-4 w-4" />
-                </Button>
+              <Button 
+                onClick={() => setWithdrawalModalOpen(true)} 
+                className="flex-1 bg-white text-indigo-800 hover:bg-indigo-50 font-bold shadow-sm"
+                disabled={availableBalanceFcfa < 500} 
+              >
+                <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer mon argent
+              </Button>
+   <Button
+  className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-3 px-4 py-2 rounded-xl shadow-lg"
+  onClick={handleDownloadSlip}
+  disabled={downloading || availableBalanceFcfa === 0}
+>
+  <span className="bg-white/20 p-1 rounded-full">
+    {downloading ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <Receipt className="h-4 w-4" />
+    )}
+  </span>
+  {downloading ? "Téléchargement..." : "Télécharger le relevé"}
+</Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Pending Balance Card */}
-        {/* Gains en attente - Carte avec meilleure lisibilité */}
-<Card className="bg-gradient-to-br from-amber-400 to-orange-500 text-white border-0 shadow-lg relative overflow-hidden">
-  {/* Éléments décoratifs */}
-  <div className="absolute top-0 right-0 p-3 opacity-20">
-    <TrendingUp className="w-20 h-20" />
-  </div>
-  <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
-  
-  <CardHeader className="pb-2 relative z-10">
-    <CardTitle className="text-lg font-medium text-white/90 flex items-center gap-2">
-      <TrendingUp className="w-5 h-5" /> Gains en attente
-    </CardTitle>
-  </CardHeader>
-  
-  <CardContent className="relative z-10">
-    <div className="text-3xl font-bold text-white mb-1">
-      {pendingNetFcfa.toLocaleString()} <span className="text-base text-white/80">FCFA</span>
-    </div>
-    
-    <div className="flex items-center gap-2 mt-2">
-      <div className="bg-white/20 px-3 py-1 rounded-full">
-        <p className="text-sm font-mono text-white">
-          {pendingNetCoins.toLocaleString()} π
-        </p>
-      </div>
-      <div className="bg-amber-600/40 px-3 py-1 rounded-full">
-        <p className="text-xs text-white/90">
-          En attente
-        </p>
-      </div>
-    </div>
-    
-    <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
-      <p className="text-sm text-white/90 flex items-start gap-2">
-        <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-        <span>
-          Gains non encore transférés vers votre solde. 
+        <Card className="bg-gradient-to-br from-amber-400 to-orange-500 text-white border-0 shadow-lg relative overflow-hidden">
+          {/* Éléments décoratifs */}
+          <div className="absolute top-0 right-0 p-3 opacity-20">
+            <TrendingUp className="w-20 h-20" />
+          </div>
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full blur-3xl"></div>
           
-        </span>
-      </p>
-    </div>
-    
-    {/* Barre de progression suggestive */}
-    <div className="mt-4">
-      <div className="flex justify-between text-xs text-white/80 mb-1">
-        <span>Cliquer sur </span>
-        <span>Transferer vers mon portefeuille</span>
-      </div>
-      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-        <div className="w-2/3 h-full bg-white/50 rounded-full animate-pulse"></div>
-      </div>
-    </div>
-  </CardContent>
-</Card>
+          <CardHeader className="pb-2 relative z-10">
+            <CardTitle className="text-lg font-medium text-white/90 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Gains en attente
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="relative z-10">
+            <div className="text-3xl font-bold text-white mb-1">
+              {pendingNetFcfa.toLocaleString()} <span className="text-base text-white/80">FCFA</span>
+            </div>
+            
+            <div className="flex items-center gap-2 mt-2">
+              <div className="bg-white/20 px-3 py-1 rounded-full">
+                <p className="text-sm font-mono text-white">
+                  {pendingNetCoins.toLocaleString()} π
+                </p>
+              </div>
+              <div className="bg-amber-600/40 px-3 py-1 rounded-full">
+                <p className="text-xs text-white/90">
+                  En attente
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
+              <p className="text-sm text-white/90 flex items-start gap-2">
+                <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>
+                  Gains non encore transférés vers votre solde.
+                </span>
+              </p>
+            </div>
+            
+            {/* Barre de progression suggestive */}
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-white/80 mb-1">
+                <span>Cliquer sur </span>
+                <span>Transferer vers mon portefeuille</span>
+              </div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div className="w-2/3 h-full bg-white/50 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Total Stats */}
         <Card>
           <CardHeader className="pb-2">
@@ -187,12 +221,12 @@ const CreatorDashboardTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-3xl font-bold text-green-600">
-                 {(stats?.summary?.total_earned * COIN_TO_FCFA_RATE || 0).toLocaleString()} <span className="text-lg text-gray-500">FCFA</span>
-             </div>
-             <p className="text-xs text-gray-500 mt-2">
-                 Total historique versé
-             </p>
+            <div className="text-3xl font-bold text-green-600">
+              {(stats?.summary?.total_earned * COIN_TO_FCFA_RATE || 0).toLocaleString()} <span className="text-lg text-gray-500">FCFA</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Total historique versé
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -222,28 +256,28 @@ const CreatorDashboardTab = () => {
                 </TableRow>
               ) : (
                 withdrawals.map((req) => {
-                    const gross = req.amount_fcfa || 0;
-                    const fees = req.fees || Math.floor(gross * 0.05);
-                    const net = req.net_amount || (gross - fees);
-                    
-                    return (
-                      <TableRow key={req.id}>
-                        <TableCell>{format(new Date(req.requested_at), 'dd MMM yyyy HH:mm', { locale: fr })}</TableCell>
-                        <TableCell>{gross.toLocaleString()} F</TableCell>
-                        <TableCell className="text-red-500">-{fees.toLocaleString()} F</TableCell>
-                        <TableCell className="font-bold text-emerald-600">{net.toLocaleString()} F</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            req.status === 'paid' || req.status === 'approved' ? 'success' : 
-                            req.status === 'rejected' ? 'destructive' : 'secondary'
-                          }>
-                            {req.status === 'paid' ? 'Payé' : 
-                             req.status === 'approved' ? 'Validé' : 
-                             req.status === 'rejected' ? 'Rejeté' : 'En attente'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
+                  const gross = req.amount_fcfa || 0;
+                  const fees = req.fees || Math.floor(gross * 0.05);
+                  const net = req.net_amount || (gross - fees);
+                  
+                  return (
+                    <TableRow key={req.id}>
+                      <TableCell>{format(new Date(req.requested_at), 'dd MMM yyyy HH:mm', { locale: fr })}</TableCell>
+                      <TableCell>{gross.toLocaleString()} F</TableCell>
+                      <TableCell className="text-red-500">-{fees.toLocaleString()} F</TableCell>
+                      <TableCell className="font-bold text-emerald-600">{net.toLocaleString()} F</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          req.status === 'paid' || req.status === 'approved' ? 'success' : 
+                          req.status === 'rejected' ? 'destructive' : 'secondary'
+                        }>
+                          {req.status === 'paid' ? 'Payé' : 
+                           req.status === 'approved' ? 'Validé' : 
+                           req.status === 'rejected' ? 'Rejeté' : 'En attente'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
                 })
               )}
             </TableBody>

@@ -654,7 +654,7 @@ export const generatePaymentReceipt = (data) => {
   
   // Informations de base
   doc.text(`Date: ${format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr })}`, margin, y);
-  doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
+  // doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
   y += 8;
   
   doc.text(`Type: ${paymentType || 'Paiement'}`, margin, y);

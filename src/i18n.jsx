@@ -431,6 +431,7 @@ const resources = {
           revenue_title: "Chiffres affaires (Zone)",
         },
         license: {
+          "status_critical": "Expiration critique",
           partner_error_title: "Erreur de chargement du partenaire",
           status_title: "Statut de la licence",
           status_active: "Active",
@@ -2758,6 +2759,7 @@ const resources = {
           revenue_title: "Chiffres affaires zone)",
         },
         license: {
+          "status_critical": "Expiration critique",
           partner_error_title: "Error loading partner",
           status_title: "License Status",
           status_active: "Active",

@@ -103,27 +103,14 @@ const PartnerContractCard = ({ partner, onRenew }) => {
             <div className="relative pt-1">
               <Progress value={progress} className={`h-2 bg-white/10 ${isExpiringSoon ? 'text-amber-500' : 'text-emerald-500'}`} />
             </div>
-            <div className="flex justify-between items-center mt-1">
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span>
-                  {expiryDate ? (isExpired 
-                    ? `Expiré depuis ${Math.abs(daysLeft)} jours` 
-                    : `${daysLeft} jours restants`) : 'Durée indéterminée'
-                  }
-                </span>
-              </div>
-              
-              {(isExpiringSoon || isExpired) && (
-                <Button 
-                  size="sm" 
-                  onClick={() => setRenewalOpen(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-lg shadow-indigo-900/20"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Demander le renouvellement
-                </Button>
-              )}
+            <div className="flex items-center gap-2 text-sm mt-1">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span>
+                {expiryDate ? (isExpired 
+                  ? `Expiré depuis ${Math.abs(daysLeft)} jours` 
+                  : `${daysLeft} jours restants`) : 'Durée indéterminée'
+                }
+              </span>
             </div>
           </div>
         </CardContent>

@@ -47,7 +47,6 @@ import WithdrawalManagementDashboard from "@/components/admin/withdrawals/Withdr
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ImpersonationBanner from "@/components/layout/ImpersonationBanner";
 import { retrySupabaseRequest } from "@/lib/supabaseHelper";
-import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
 
 const AdminStats = ({ userProfile }) => {
   const { t } = useTranslation();
@@ -68,9 +67,18 @@ const AdminStats = ({ userProfile }) => {
     setLoading(true);
     try {
       const today = new Date();
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const firstDayOfMonth = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1
+      );
+      const lastDayOfMonth = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        0
+      );
 
+      // 1. Pièces CRÉDITÉES MANUELLEMENT (manual_credit) dans la zone ce mois-ci
       let creditedQuery = supabase
         .from("transactions")
         .select("amount_pi")
@@ -91,9 +99,15 @@ const AdminStats = ({ userProfile }) => {
         0
       );
 
+      // 2. Pièces ACHETÉES (user_coin_transactions - coin_pack, partner_license, etc.)
       let purchasedQuery = supabase
         .from("user_coin_transactions")
-        .select(`amount_fcfa, user:user_id!inner(country, city)`)
+        .select(
+          `
+                    amount_fcfa,
+                    user:user_id!inner(country, city)
+                `
+        )
         .eq("user.country", userProfile.country)
         .gte("created_at", firstDayOfMonth.toISOString())
         .lte("created_at", lastDayOfMonth.toISOString())
@@ -103,7 +117,8 @@ const AdminStats = ({ userProfile }) => {
         purchasedQuery = purchasedQuery.eq("user.city", userProfile.city);
       }
 
-      const { data: purchasedData, error: purchasedError } = await retrySupabaseRequest(() => purchasedQuery);
+      const { data: purchasedData, error: purchasedError } =
+        await retrySupabaseRequest(() => purchasedQuery);
       if (purchasedError) throw purchasedError;
 
       const totalPurchasedFCFA = purchasedData.reduce(
@@ -111,6 +126,7 @@ const AdminStats = ({ userProfile }) => {
         0
       );
 
+      // 3. Nombre d'utilisateurs actifs dans la zone
       let usersQuery = supabase
         .from("profiles")
         .select("id", { count: "exact" })
@@ -124,7 +140,9 @@ const AdminStats = ({ userProfile }) => {
       const { count: activeUsers, error: usersError } = await retrySupabaseRequest(() => usersQuery);
       if (usersError) throw usersError;
 
-      const revenueFromCredits = totalManualCredited * COIN_TO_FCFA_RATE;
+      // 4. Calcul du revenu mensuel Total
+      const piToFcfaRate = 10;
+      const revenueFromCredits = totalManualCredited * piToFcfaRate;
       const totalMonthlyRevenue = revenueFromCredits + totalPurchasedFCFA;
 
       setStats({
@@ -135,6 +153,7 @@ const AdminStats = ({ userProfile }) => {
       });
     } catch (error) {
       console.error("Failed to fetch admin stats:", error);
+      // Don't toast here to avoid spamming if parent component handles errors
     } finally {
       setLoading(false);
     }
@@ -178,7 +197,8 @@ const AdminStats = ({ userProfile }) => {
               Achats: {stats.purchased.toLocaleString("fr-FR")} FCFA
             </span>
             <span className="block">
-              Crédits: {(stats.credited * COIN_TO_FCFA_RATE).toLocaleString("fr-FR")} FCFA ({stats.credited} π)
+              Crédits: {(stats.credited * 10).toLocaleString("fr-FR")} FCFA (
+              {stats.credited} π)
             </span>
           </div>
         </CardContent>
@@ -288,7 +308,7 @@ const LicenseStatus = ({ user }) => {
             <p className="font-bold text-lg">{t("admin_dashboard.license.status_title")}:<span className={`ml-2 px-2 py-1 rounded-md ${daysRemaining > 30 ? "bg-green-500 text-white" : daysRemaining > 7 ? "bg-yellow-500 text-white" : daysRemaining > 0 ? "bg-orange-500 text-white" : "bg-red-500 text-white"}`}>{partner.license.name} - {statusText}</span></p>
             <div className="text-xs mt-2 space-y-1 text-gray-300">
               <p>{t("admin_dashboard.license.activated_on")}: {activationDate.toLocaleDateString("fr-FR")}</p>
-              <p>{t("admin_dashboard.license.expires_on")}: {expirationDate.toLocaleDateString("fr-FR")}</p>
+              {/* <p>{t("admin_dashboard.license.expires_on")}: {expirationDate.toLocaleDateString("fr-FR")}</p> */}
               {partner.license.commission_rate && (<p>Taux de commission: <strong>{partner.license.commission_rate}%</strong></p>)}
             </div>
           </div>
@@ -297,7 +317,7 @@ const LicenseStatus = ({ user }) => {
           {expired ? (<div><p className="font-bold text-lg text-red-600">{t("admin_dashboard.license.expired_since", { count: Math.floor(Math.abs(totalSeconds) / (3600 * 24)) })}</p><p className="text-xs mt-2">Licence expirée</p></div>) : (<div><div className="flex items-center justify-center gap-2 mb-2">{formatTimeUnit(days, "Jours")}<span className="text-xl font-bold">:</span>{formatTimeUnit(hours, "Heures")}<span className="text-xl font-bold">:</span>{formatTimeUnit(minutes, "Minutes")}<span className="text-xl font-bold">:</span>{formatTimeUnit(seconds, "Secondes")}</div><p className="text-xs text-muted-foreground">{t("admin_dashboard.license.days_remaining")}</p></div>)}
         </div>
         <AlertDialog>
-          <AlertDialogTrigger asChild><Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" disabled={renewalLoading}>{renewalLoading ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<RefreshCwIcon className="mr-2 h-4 w-4" />)}{t("admin_dashboard.license.renew_button")}</Button></AlertDialogTrigger>
+          {/* <AlertDialogTrigger asChild><Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" disabled={renewalLoading}>{renewalLoading ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (<RefreshCwIcon className="mr-2 h-4 w-4" />)}{t("admin_dashboard.license.renew_button")}</Button></AlertDialogTrigger> */}
           <AlertDialogContent>
             <AlertDialogHeader><AlertDialogTitle>{t("admin_dashboard.license.confirm_renewal_title")}</AlertDialogTitle><AlertDialogDescription>{t("admin_dashboard.license.confirm_renewal_desc")}</AlertDialogDescription></AlertDialogHeader>
             <AlertDialogFooter><AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel><AlertDialogAction onClick={handleRenewalRequest} disabled={renewalLoading}>{renewalLoading ? (<Loader2 className="mr-2 h-4 w-4 animate-spin" />) : (t("common.confirm"))}</AlertDialogAction></AlertDialogFooter>
@@ -370,9 +390,11 @@ const AdminDashboard = () => {
       let transactionsQuery;
       if (isSuperAdmin) { transactionsQuery = supabase.from("transactions").select(`id, amount_pi, amount_fcfa, description, created_at, transaction_type, user:user_id (full_name, email)`).order("created_at", { ascending: false }); }
       
+      // Use Promise.all to fetch all data in parallel, but handle errors individually via retrySupabaseRequest which now returns { data, error }
       const results = await Promise.all([
           retrySupabaseRequest(fetchUsers), 
           retrySupabaseRequest(() => supabase.from("announcements").select("*").order("created_at", { ascending: false })), 
+          // getEvents and getPromotions handle their own errors and return arrays
           getEvents(countryFilter ? { country: countryFilter } : {}), 
           getPromotions(countryFilter ? { country: countryFilter } : {}), 
           retrySupabaseRequest(() => supabase.from("welcome_popups").select("*").order("created_at", { ascending: false })), 
@@ -381,8 +403,10 @@ const AdminDashboard = () => {
 
       const [usersRes, announcementsRes, eventsData, promotionsData, popupsRes, transactionsRes] = results;
 
+      // Handle partial failures gracefully
       if (usersRes.error) {
         console.error("Users fetch error:", usersRes.error);
+        // Only set fatal error if critical data fails
         if (usersRes.error.isNetworkError) setFetchError("Erreur réseau critique");
       }
       setAllUsers(usersRes.data || []);
@@ -466,7 +490,7 @@ const AdminDashboard = () => {
             <>
               <TabsTrigger value="analytics"><BarChart2 className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.analytics")}</TabsTrigger>
               <TabsTrigger value="credit_stats"><AreaChart className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.credit_stats")}</TabsTrigger>
-              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger>
+              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger> {/* NEW TAB */}
               <TabsTrigger value="activity_log"><BookOpen className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.activity_log")}</TabsTrigger>
               <TabsTrigger value="transactions"><History className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.transactions")}</TabsTrigger>
               <TabsTrigger value="payments"><DollarSign className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.payments")}</TabsTrigger>
@@ -493,7 +517,7 @@ const AdminDashboard = () => {
           {isAdmin && isFunctionalityActive && (
             <>
               <TabsTrigger value="salary"><Wallet className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.salary") || "Salaire"}</TabsTrigger>
-              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger>
+              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger> {/* NEW TAB */}
               <TabsTrigger value="events"><Calendar className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.events")}</TabsTrigger>
               <TabsTrigger value="locations"><MapPin className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.locations")}</TabsTrigger>
               <TabsTrigger value="promotions"><Target className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.promotions")}</TabsTrigger>
@@ -508,7 +532,7 @@ const AdminDashboard = () => {
 
           {isSecretaryBySuperAdmin && (
             <>
-              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger>
+              <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger> {/* NEW TAB */}
               <TabsTrigger value="credits"><CreditCard className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.credits")}</TabsTrigger>
               <TabsTrigger value="reversed_credits"><RotateCcw className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.reversed_credits")}</TabsTrigger>
               <TabsTrigger value="withdrawals"><Wallet className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.withdrawals")}</TabsTrigger>
@@ -521,7 +545,7 @@ const AdminDashboard = () => {
           <>
             <TabsContent value="analytics"><AnalyticsDashboard /></TabsContent>
             <TabsContent value="credit_stats"><CreditStatsTab /></TabsContent>
-            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent>
+            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent> {/* NEW CONTENT */}
             <TabsContent value="activity_log"><ActivityLogTab /></TabsContent>
             <TabsContent value="transactions"><TransactionsTable transactions={allTransactions} /></TabsContent>
             <TabsContent value="payments"><AdminPaymentsTab /></TabsContent>
@@ -548,7 +572,7 @@ const AdminDashboard = () => {
         {isAdmin && isFunctionalityActive && (
           <>
             <TabsContent value="salary"><AdminSalaryDashboard userProfile={userProfile} /></TabsContent>
-            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent>
+            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent> {/* NEW CONTENT */}
             <TabsContent value="events"><EventsManagement events={allEvents} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
             <TabsContent value="locations"><LocationManagementTab userProfile={userProfile} /></TabsContent>
             <TabsContent value="promotions"><PromotionsManagement promotions={allPromotions} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
@@ -563,7 +587,7 @@ const AdminDashboard = () => {
 
         {isSecretaryBySuperAdmin && (
           <>
-            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent>
+            <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent> {/* NEW CONTENT */}
             <TabsContent value="credits"><CreditManagement onRefresh={fetchData} userProfile={userProfile} /></TabsContent>
             <TabsContent value="reversed_credits"><ReversedCreditsTab isSuperAdmin={false} actorId={userProfile.id} userProfile={userProfile} /></TabsContent>
             <TabsContent value="withdrawals"><WithdrawalManagement userProfile={userProfile} /></TabsContent>

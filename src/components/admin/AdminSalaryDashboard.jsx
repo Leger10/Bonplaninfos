@@ -13,6 +13,7 @@ import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
 import AdminSalaryWithdrawalModal from './AdminSalaryWithdrawalModal';
 import { toast } from '@/components/ui/use-toast';
 import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
+import { generatePaymentReceipt, generateSalarySlip } from '@/utils/pdfGenerator'; // IMPORT AJOUTÉ
 
 const AdminSalaryDashboard = () => {
     const { user } = useAuth();
@@ -57,20 +58,83 @@ const AdminSalaryDashboard = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // Fonction corrigée pour générer le reçu de paiement
     const generateReceipt = async (withdrawal) => {
         if (!withdrawal) return;
         setGeneratingPdf(withdrawal.id);
         try {
-            const { jsPDF } = await import('jspdf');
-            const doc = new jsPDF();
-            // ... (PDF generation logic preserved) ...
-            doc.save(`recu_paiement_${format(new Date(withdrawal.requested_at), 'yyyyMMdd')}.pdf`);
-            toast({ title: "Reçu téléchargé", description: "Votre reçu a été généré avec succès." });
+            // Récupérer les informations du bénéficiaire
+            const { data: adminProfile } = await supabase
+                .from('profiles')
+                .select('full_name, email')
+                .eq('id', user.id)
+                .single();
+
+            // Préparer les données pour le reçu
+            const receiptData = {
+                recipientName: adminProfile?.full_name || adminProfile?.email || 'Administrateur',
+                amount: withdrawal.amount_fcfa || 0,
+                paymentType: 'Salaire Administrateur',
+                reference: withdrawal.reference || withdrawal.id,
+                date: new Date(withdrawal.processed_at || withdrawal.requested_at),
+                description: `Paiement de salaire - ${withdrawal.period || format(new Date(withdrawal.requested_at), 'MMMM yyyy', { locale: fr })}`
+            };
+
+            // Utiliser votre fonction de génération de reçu
+            generatePaymentReceipt(receiptData);
+            
+            toast({ 
+                title: "Reçu téléchargé", 
+                description: "Votre reçu de paiement a été généré avec succès." 
+            });
         } catch (err) {
             console.error("Erreur génération PDF:", err);
-            toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" });
+            toast({ 
+                title: "Erreur", 
+                description: "Impossible de générer le PDF.", 
+                variant: "destructive" 
+            });
         } finally {
             setGeneratingPdf(null);
+        }
+    };
+
+    // Nouvelle fonction pour générer le bulletin de salaire complet
+    const generateSalarySlipPDF = async () => {
+        if (!salaryStats) return;
+        
+        try {
+            const { data: adminProfile } = await supabase
+                .from('profiles')
+                .select('full_name, country, city')
+                .eq('id', user.id)
+                .single();
+
+            const salaryData = {
+                adminName: adminProfile?.full_name || 'Administrateur',
+                zone: `${salaryStats.country || ''}${salaryStats.city ? `, ${salaryStats.city}` : ''}`,
+                period: format(new Date(), 'MMMM yyyy', { locale: fr }),
+                volumeZone: salaryStats.total_volume_fcfa || 0,
+                commissionBase: salaryStats.platform_revenue_fcfa || 0,
+                licenseRate: salaryStats.license_commission_rate || 0,
+                personalScore: salaryStats.personal_score || 1.0,
+                netSalary: salaryStats.total_salary_fcfa || 0,
+                date: new Date()
+            };
+
+            generateSalarySlip(salaryData);
+            
+            toast({ 
+                title: "Bulletin généré", 
+                description: "Votre bulletin de salaire a été généré avec succès." 
+            });
+        } catch (err) {
+            console.error("Erreur génération bulletin:", err);
+            toast({ 
+                title: "Erreur", 
+                description: "Impossible de générer le bulletin de salaire.", 
+                variant: "destructive" 
+            });
         }
     };
 
@@ -173,14 +237,26 @@ const AdminSalaryDashboard = () => {
                 </Card>
 
                 <Card className="flex flex-col justify-center items-center p-6 bg-gray-900 border-gray-800">
-                    <Button 
-                        size="lg" 
-                        className="w-full max-w-xs h-14 text-lg bg-gray-800 hover:bg-gray-700 text-white border border-gray-700" 
-                        disabled={!canWithdraw || estimatedSalary < 1000}
-                        onClick={() => setIsWithdrawalModalOpen(true)}
-                    >
-                        {canWithdraw ? "Demander le Retrait" : "Retraits Fermés"}
-                    </Button>
+                    <div className="flex gap-4 w-full max-w-xs">
+                        <Button 
+                            size="lg" 
+                            className="flex-1 h-14 text-lg bg-gray-800 hover:bg-gray-700 text-white border border-gray-700" 
+                            disabled={!canWithdraw || estimatedSalary < 1000}
+                            onClick={() => setIsWithdrawalModalOpen(true)}
+                        >
+                            {canWithdraw ? "Retrait" : "Fermé"}
+                        </Button>
+                        <Button 
+                            size="lg" 
+                            variant="outline"
+                            className="flex-1 h-14 text-lg border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800"
+                            onClick={generateSalarySlipPDF}
+                            disabled={estimatedSalary === 0}
+                        >
+                            <FileText className="w-5 h-5 mr-2" />
+                            Bulletin
+                        </Button>
+                    </div>
                     <p className="text-xs text-gray-400 mt-2">
                         Disponible uniquement les : {withdrawalConfig.withdrawal_dates?.join(', ')} du mois.
                     </p>

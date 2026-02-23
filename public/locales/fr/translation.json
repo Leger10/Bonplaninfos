@@ -1,0 +1,23 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "discover": "Découvrir",
+    "events": "Événements",
+    "partnership": "Partenariat",
+    "profile": "Profil",
+    "wallet": "Portefeuille",
+    "logout": "Déconnexion",
+    "create_event": "Créer un événement"
+  },
+  "auth": {
+    "login": {
+      "button": "Se connecter"
+    }
+  },
+  "events_page": {
+    "apply_filters": "Appliquer les filtres"
+  },
+  "security": {
+    "screenshot_warning_watermark": "© BonPlanInfos - Capture d'écran non autorisée"
+  }
+}

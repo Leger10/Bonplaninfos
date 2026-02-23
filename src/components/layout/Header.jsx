@@ -13,9 +13,9 @@ import ThemeToggle from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import NotificationBell from '@/components/NotificationBell';
 import logo from '@/assets/logo.png';
+
 const AppLogo = () => {
-  console.log('Logo path:', logo); // Vérifiez ce qui s'affiche dans la console
-  
+  // ✅ LOG SUPPRIMÉ - Plus de console.log
   return (
     <NavLink to="/" className="flex items-center gap-2">
       <img src={logo} alt="BonPlanInfos Logo" className="h-8 w-auto" />

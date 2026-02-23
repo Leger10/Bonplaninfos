@@ -1,4 +1,7 @@
 {
+  "events_page": {
+    "apply_filters": "Appliquer les filtres"
+  },
   "security": {
     "screenshot_warning_watermark": "© BonPlanInfos - Capture d'écran non autorisée"
   }
