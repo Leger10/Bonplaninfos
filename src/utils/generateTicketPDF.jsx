@@ -27,6 +27,195 @@ const getBase64ImageFromURL = (url) => {
   });
 };
 
+/* =====================================================
+   SAUVEGARDE PDF MULTI-PLATEFORME
+===================================================== */
+const savePDFUniversally = (doc, fileName) => {
+  // Nettoyer le nom du fichier
+  const safeName = fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
+  
+  // Obtenir le blob
+  const blob = doc.output('blob');
+  
+  // Créer une URL pour le blob
+  const blobUrl = URL.createObjectURL(blob);
+  
+  // Détecter iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  if (isIOS) {
+    // Pour iOS: ouvrir dans un nouvel onglet avec une interface de téléchargement
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <title>Téléchargement PDF</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                background: #f3f4f6;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                text-align: center;
+              }
+              .container {
+                max-width: 400px;
+                padding: 30px 20px;
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                margin: 20px;
+              }
+              h1 {
+                font-size: 24px;
+                color: #1f2937;
+                margin-bottom: 10px;
+                font-weight: 600;
+              }
+              p {
+                color: #6b7280;
+                margin-bottom: 30px;
+                font-size: 16px;
+                line-height: 1.5;
+              }
+              .button {
+                background: #3b82f6;
+                color: white;
+                border: none;
+                padding: 16px 32px;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: 600;
+                margin: 10px;
+                cursor: pointer;
+                display: inline-block;
+                text-decoration: none;
+                box-shadow: 0 4px 6px rgba(59,130,246,0.3);
+                transition: all 0.2s;
+                -webkit-tap-highlight-color: transparent;
+                width: 80%;
+                max-width: 300px;
+              }
+              .button:active {
+                transform: scale(0.98);
+                background: #2563eb;
+              }
+              .button.secondary {
+                background: #9ca3af;
+                box-shadow: 0 4px 6px rgba(156,163,175,0.3);
+              }
+              .button.secondary:active {
+                background: #6b7280;
+              }
+              .info {
+                margin-top: 30px;
+                font-size: 14px;
+                color: #9ca3af;
+              }
+              .qr-placeholder {
+                width: 150px;
+                height: 150px;
+                background: #f3f4f6;
+                margin: 20px auto;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #9ca3af;
+                font-size: 14px;
+              }
+              iframe {
+                width: 1px;
+                height: 1px;
+                opacity: 0;
+                position: absolute;
+                pointer-events: none;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>📱 Votre billet est prêt !</h1>
+              <p>Choisissez comment vous souhaitez accéder à votre billet</p>
+              
+              <a href="${blobUrl}" download="${safeName}" class="button">
+                📥 Télécharger le PDF
+              </a>
+              
+              <button onclick="window.open('${blobUrl}', '_blank')" class="button secondary">
+                👁️ Voir dans le navigateur
+              </button>
+              
+              <div class="info">
+                <strong>💡 Astuce :</strong> Sur iPhone, appuyez sur "Voir" puis sur "Partager" 
+                <br>pour enregistrer dans Fichiers ou Livres.
+              </div>
+              
+              <iframe src="${blobUrl}"></iframe>
+            </div>
+            
+            <script>
+              // Essayer d'ouvrir automatiquement dans un nouvel onglet après 500ms
+              setTimeout(() => {
+                window.open('${blobUrl}', '_blank');
+              }, 500);
+            </script>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    } else {
+      // Fallback: téléchargement direct
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+    }
+  } else if (/android/i.test(navigator.userAgent)) {
+    // Pour Android: utiliser une combinaison de téléchargement et d'aperçu
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = safeName;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Sur Android, on peut aussi proposer l'ouverture
+    setTimeout(() => {
+      window.open(blobUrl, '_blank');
+    }, 1000);
+    
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 2000);
+  } else {
+    // Desktop: téléchargement standard
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = safeName;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+  }
+};
+
 // Colors Map for Ticket Types
 const DB_COLOR_MAP = {
     blue: [59, 130, 246],     // #3b82f6
@@ -419,8 +608,8 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
     
     const fileName = `Billet_${cleanTitle}_${Date.now()}.pdf`;
     
-    // Sauvegarder le PDF
-    doc.save(fileName);
+    // Utiliser la fonction de sauvegarde universelle au lieu de doc.save()
+    savePDFUniversally(doc, fileName);
     
     return true;
   } catch (error) {

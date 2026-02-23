@@ -26,7 +26,7 @@ const CreatorDashboardTab = () => {
   useEffect(() => {
     if (user) {
       fetchData();
-      
+
       const channel = supabase.channel('creator-dashboard-changes')
         .on('postgres_changes', { 
           event: '*', 
@@ -77,31 +77,40 @@ const CreatorDashboardTab = () => {
   };
 
   const handleDownloadSlip = async () => {
+    if (availableBalanceFcfa === 0) {
+      toast({
+        title: "Aucun gain",
+        description: "Vous n'avez pas encore de gains à télécharger.",
+        variant: "warning"
+      });
+      return;
+    }
+
     setDownloading(true);
     try {
       const netEarnings = availableBalanceFcfa || 0;
       const grossRevenue = Math.round(netEarnings / 0.95);
       const fees = grossRevenue - netEarnings;
-      
-      generateEarningsSlip({
-        organizerName: user?.user_metadata?.full_name || user?.email || "Créateur",
-        period: format(new Date(), 'MMMM yyyy', { locale: fr }),
+
+      await generateEarningsSlip({
+        organizerName: user?.user_metadata?.full_name || 'Créateur', 
         totalRevenue: grossRevenue,
         fees: fees,
         netEarnings: netEarnings,
-        date: new Date()
+        date: new Date(),
+        eventCount: stats?.creator_stats?.events_count || 0
       });
-      
-      toast({ 
-        title: "Document généré", 
-        description: "Le relevé de gains a été téléchargé." 
+
+      toast({
+        title: "Document prêt",
+        description: "Votre relevé a été téléchargé.",
       });
     } catch (error) {
       console.error("Error generating PDF:", error);
-      toast({ 
-        title: "Erreur", 
-        description: "Impossible de générer le relevé de gains.", 
-        variant: "destructive" 
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le relevé. Veuillez réessayer.",
+        variant: "destructive"
       });
     } finally {
       setDownloading(false);
@@ -139,21 +148,21 @@ const CreatorDashboardTab = () => {
                 className="flex-1 bg-white text-indigo-800 hover:bg-indigo-50 font-bold shadow-sm"
                 disabled={availableBalanceFcfa < 500} 
               >
-                <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer mon argent
+                <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer
               </Button>
               <Button 
                 variant="outline"
                 className="bg-indigo-700/50 border-indigo-500 text-white hover:bg-indigo-600 flex items-center gap-2"
                 onClick={handleDownloadSlip}
                 disabled={downloading || availableBalanceFcfa === 0}
-                title="Télécharger Relevé"
+                title="Télécharger le relevé de gains"
               >
                 {downloading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Download className="h-4 w-4" />
                 )}
-                {downloading ? 'Téléchargement...' : 'Télécharger'}
+                Relevé
               </Button>
             </div>
           </CardContent>
@@ -161,7 +170,6 @@ const CreatorDashboardTab = () => {
 
         {/* Pending Balance Card */}
         <Card className="bg-gradient-to-br from-amber-400 to-orange-500 text-white border-0 shadow-lg relative overflow-hidden">
-          {/* Éléments décoratifs */}
           <div className="absolute top-0 right-0 p-3 opacity-20">
             <TrendingUp className="w-20 h-20" />
           </div>
@@ -185,30 +193,15 @@ const CreatorDashboardTab = () => {
                 </p>
               </div>
               <div className="bg-amber-600/40 px-3 py-1 rounded-full">
-                <p className="text-xs text-white/90">
-                  En attente
-                </p>
+                <p className="text-xs text-white/90">En attente</p>
               </div>
             </div>
             
             <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
               <p className="text-sm text-white/90 flex items-start gap-2">
                 <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>
-                  Gains non encore transférés vers votre solde.
-                </span>
+                <span>Gains en cours de traitement</span>
               </p>
-            </div>
-            
-            {/* Barre de progression suggestive */}
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-white/80 mb-1">
-                <span>Cliquer sur </span>
-                <span>Transferer vers mon portefeuille</span>
-              </div>
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div className="w-2/3 h-full bg-white/50 rounded-full animate-pulse"></div>
-              </div>
             </div>
           </CardContent>
         </Card>

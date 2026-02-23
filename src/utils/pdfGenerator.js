@@ -2,6 +2,117 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+/* =====================================================
+   SAUVEGARDE PDF MULTI-PLATEFORME
+===================================================== */
+const savePDFUniversally = (doc, fileName) => {
+  // Nettoyer le nom du fichier
+  const safeName = fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
+  
+  // Obtenir le blob
+  const blob = doc.output('blob');
+  
+  // Créer une URL pour le blob
+  const blobUrl = URL.createObjectURL(blob);
+  
+  // Détecter iOS
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  
+  if (isIOS) {
+    // Pour iOS: ouvrir dans un nouvel onglet avec une interface de téléchargement
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <title>Téléchargement PDF</title>
+            <style>
+              body { margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+              .container { max-width: 400px; padding: 30px 20px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin: 20px; text-align: center; }
+              h1 { font-size: 24px; color: #1f2937; margin-bottom: 10px; font-weight: 600; }
+              p { color: #6b7280; margin-bottom: 30px; font-size: 16px; }
+              .button { background: #3b82f6; color: white; border: none; padding: 16px 32px; border-radius: 12px; font-size: 18px; font-weight: 600; margin: 10px; cursor: pointer; display: inline-block; text-decoration: none; box-shadow: 0 4px 6px rgba(59,130,246,0.3); width: 80%; max-width: 300px; }
+              .button.secondary { background: #9ca3af; box-shadow: 0 4px 6px rgba(156,163,175,0.3); }
+              .info { margin-top: 30px; font-size: 14px; color: #9ca3af; }
+              iframe { width: 1px; height: 1px; opacity: 0; position: absolute; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>📱 Votre document est prêt !</h1>
+              <p>Choisissez comment vous souhaitez accéder à votre document</p>
+              
+              <a href="${blobUrl}" download="${safeName}" class="button">
+                📥 Télécharger le PDF
+              </a>
+              
+              <button onclick="window.open('${blobUrl}', '_blank')" class="button secondary">
+                👁️ Voir dans le navigateur
+              </button>
+              
+              <div class="info">
+                <strong>💡 Astuce :</strong> Sur iPhone, appuyez sur "Voir" puis sur "Partager" 
+                <br>pour enregistrer dans Fichiers.
+              </div>
+              
+              <iframe src="${blobUrl}"></iframe>
+            </div>
+            
+            <script>
+              setTimeout(() => {
+                window.open('${blobUrl}', '_blank');
+              }, 500);
+            </script>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
+    } else {
+      // Fallback: téléchargement direct
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = safeName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+    }
+  } else if (isAndroid) {
+    // Pour Android: combinaison téléchargement + aperçu
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = safeName;
+    document.body.appendChild(link);
+    link.click();
+    
+    setTimeout(() => {
+      window.open(blobUrl, '_blank');
+    }, 1000);
+    
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 2000);
+  } else {
+    // Desktop: téléchargement standard
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = safeName;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+  }
+};
+
 // Helper pour formater les montants avec séparateur de milliers (espace)
 const formatCurrency = (amount) => {
   if (amount === undefined || amount === null) return '0';
@@ -95,7 +206,8 @@ export const generateSalarySlip = (data) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a4',
+    compress: true
   });
   
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -124,9 +236,8 @@ export const generateSalarySlip = (data) => {
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 45, 'F');
   
-  // Logo - MODIFIÉ ICI
-  // Au lieu du cercle blanc avec BPI, on utilise votre logo
-  addLogo(doc, 18, 10, 24, 24); // Position x=18, y=10, taille 24x24mm
+  // Logo
+  addLogo(doc, 18, 10, 24, 24);
   
   // Titres
   doc.setTextColor(255, 255, 255);
@@ -325,7 +436,7 @@ export const generateSalarySlip = (data) => {
   
   // ============ SAUVEGARDE ============
   const fileName = `bulletin_salaire_${adminName?.replace(/\s+/g, '_') || 'admin'}_${format(new Date(), 'yyyy_MM')}.pdf`;
-  doc.save(fileName);
+  savePDFUniversally(doc, fileName);
 };
 
 // Helper pour ajouter une ligne de tableau
@@ -362,7 +473,8 @@ export const generateEarningsSlip = (data) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a4',
+    compress: true
   });
   
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -389,7 +501,7 @@ export const generateEarningsSlip = (data) => {
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 45, 'F');
   
-  // Logo - MODIFIÉ ICI
+  // Logo
   addLogo(doc, 18, 10, 24, 24);
   
   // Titres
@@ -519,18 +631,6 @@ export const generateEarningsSlip = (data) => {
   doc.setTextColor(...primaryColor);
   doc.text(`${formatCurrency(netEarnings)} FCFA`, pageWidth - margin - 10, y, { align: 'right' });
   
-  // // Conversion en euros
-  // if (netEarnings > 0) {
-  //   const amountEuro = (netEarnings / 656).toLocaleString('fr-FR', {
-  //     minimumFractionDigits: 2,
-  //     maximumFractionDigits: 2
-  //   });
-  //   doc.setFontSize(11);
-  //   doc.setFont('helvetica', 'italic');
-  //   doc.setTextColor(100, 100, 100);
-  //   doc.text(`(≈ ${amountEuro} €)`, pageWidth - margin - 10, y + 8, { align: 'right' });
-  // }
-  
   y += 30;
   
   // ============ SIGNATURE ET VALIDATION ============
@@ -592,7 +692,7 @@ export const generateEarningsSlip = (data) => {
   
   // ============ SAUVEGARDE ============
   const fileName = `releve_gains_${organizerName?.replace(/\s+/g, '_') || 'organisateur'}_${format(new Date(), 'yyyy_MM')}.pdf`;
-  doc.save(fileName);
+  savePDFUniversally(doc, fileName);
 };
 
 // Fonction pour générer un reçu de paiement simplifié
@@ -600,7 +700,8 @@ export const generatePaymentReceipt = (data) => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a4',
+    compress: true
   });
   
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -624,7 +725,7 @@ export const generatePaymentReceipt = (data) => {
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 40, 'F');
   
-  // Logo - MODIFIÉ ICI
+  // Logo
   addLogo(doc, 18, 8, 20, 20);
   
   // Titres
@@ -654,7 +755,7 @@ export const generatePaymentReceipt = (data) => {
   
   // Informations de base
   doc.text(`Date: ${format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr })}`, margin, y);
-  // doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
+  doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
   y += 8;
   
   doc.text(`Type: ${paymentType || 'Paiement'}`, margin, y);
@@ -733,5 +834,5 @@ export const generatePaymentReceipt = (data) => {
   
   // Sauvegarde
   const fileName = `recu_paiement_${reference || format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
-  doc.save(fileName);
+  savePDFUniversally(doc, fileName);
 };
