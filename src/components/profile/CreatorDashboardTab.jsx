@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Loader2, DollarSign, Wallet,  Loader2, Receipt, TrendingUp, ArrowUpRight, Clock } from 'lucide-react';
+import { Loader2, DollarSign, Wallet, Download, TrendingUp, ArrowUpRight, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import WithdrawalModal from '@/components/common/WithdrawalModal';
@@ -141,20 +141,20 @@ const CreatorDashboardTab = () => {
               >
                 <ArrowUpRight className="mr-2 h-4 w-4" /> Retirer mon argent
               </Button>
-   <Button
-  className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-3 px-4 py-2 rounded-xl shadow-lg"
-  onClick={handleDownloadSlip}
-  disabled={downloading || availableBalanceFcfa === 0}
->
-  <span className="bg-white/20 p-1 rounded-full">
-    {downloading ? (
-      <Loader2 className="h-4 w-4 animate-spin" />
-    ) : (
-      <Receipt className="h-4 w-4" />
-    )}
-  </span>
-  {downloading ? "Téléchargement..." : "Télécharger le relevé"}
-</Button>
+              <Button 
+                variant="outline"
+                className="bg-indigo-700/50 border-indigo-500 text-white hover:bg-indigo-600 flex items-center gap-2"
+                onClick={handleDownloadSlip}
+                disabled={downloading || availableBalanceFcfa === 0}
+                title="Télécharger Relevé"
+              >
+                {downloading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {downloading ? 'Téléchargement...' : 'Télécharger le relevé'}
+              </Button>
             </div>
           </CardContent>
         </Card>
