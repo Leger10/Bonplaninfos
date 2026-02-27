@@ -15,7 +15,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   
   const staticPages = [
     "/", "/discover", "/events", "/promotions", "/news", 
-    "/contests", "/sponsors", "/about", "/how-it-works",
+    "/events", "/sponsors", "/about", "/how-it-works",
     "/pricing", "/packs", "/wallet", "/create-event",
     "/boost", "/help-center", "/faq", "/terms",
     "/privacy-policy", "/legal-mentions", "/partner-signup",
@@ -50,7 +50,7 @@ console.log("✅ Connecté à Supabase (Netlify)");
 const BASE_URL = "https://bonplaninfos.net";
 const africanCountries = ["ci", "sn", "cm", "ml", "bf", "bj", "tg", "ga", "cg", "cd", "gn", "ne", "td", "cf", "mg", "gh", "ng", "ke"];
 const languages = ["fr", "en"];
-const staticPages = ["/", "/discover", "/events", "/promotions", "/news", "/contests", "/sponsors", "/about", "/how-it-works", "/pricing", "/packs", "/wallet", "/create-event", "/boost", "/help-center", "/faq", "/terms", "/privacy-policy", "/legal-mentions", "/partner-signup", "/marketing"];
+const staticPages = ["/", "/discover", "/events", "/promotions", "/news", "/events", "/sponsors", "/about", "/how-it-works", "/pricing", "/packs", "/wallet", "/create-event", "/boost", "/help-center", "/faq", "/terms", "/privacy-policy", "/legal-mentions", "/partner-signup", "/marketing"];
 
 async function fetchDynamicRoutes() {
   const dynamicRoutes = [];

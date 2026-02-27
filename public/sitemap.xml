@@ -217,47 +217,47 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/news"/>
   </url>
   <url>
-    <loc>https://bonplaninfos.net/contests</loc>
+    <loc>https://bonplaninfos.net/events</loc>
     <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/contests"/>
-    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/contests"/>
-    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/contests"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/contests"/>
+    <xhtml:link rel="alternate" hreflang="fr-CI" href="https://bonplaninfos.net/fr/ci/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-SN" href="https://bonplaninfos.net/fr/sn/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-CM" href="https://bonplaninfos.net/fr/cm/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-ML" href="https://bonplaninfos.net/fr/ml/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-BF" href="https://bonplaninfos.net/fr/bf/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-BJ" href="https://bonplaninfos.net/fr/bj/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-TG" href="https://bonplaninfos.net/fr/tg/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-GA" href="https://bonplaninfos.net/fr/ga/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-CG" href="https://bonplaninfos.net/fr/cg/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-CD" href="https://bonplaninfos.net/fr/cd/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-GN" href="https://bonplaninfos.net/fr/gn/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-NE" href="https://bonplaninfos.net/fr/ne/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-TD" href="https://bonplaninfos.net/fr/td/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-CF" href="https://bonplaninfos.net/fr/cf/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-MG" href="https://bonplaninfos.net/fr/mg/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-GH" href="https://bonplaninfos.net/fr/gh/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-NG" href="https://bonplaninfos.net/fr/ng/events"/>
+    <xhtml:link rel="alternate" hreflang="fr-KE" href="https://bonplaninfos.net/fr/ke/events"/>
+    <xhtml:link rel="alternate" hreflang="en-CI" href="https://bonplaninfos.net/en/ci/events"/>
+    <xhtml:link rel="alternate" hreflang="en-SN" href="https://bonplaninfos.net/en/sn/events"/>
+    <xhtml:link rel="alternate" hreflang="en-CM" href="https://bonplaninfos.net/en/cm/events"/>
+    <xhtml:link rel="alternate" hreflang="en-ML" href="https://bonplaninfos.net/en/ml/events"/>
+    <xhtml:link rel="alternate" hreflang="en-BF" href="https://bonplaninfos.net/en/bf/events"/>
+    <xhtml:link rel="alternate" hreflang="en-BJ" href="https://bonplaninfos.net/en/bj/events"/>
+    <xhtml:link rel="alternate" hreflang="en-TG" href="https://bonplaninfos.net/en/tg/events"/>
+    <xhtml:link rel="alternate" hreflang="en-GA" href="https://bonplaninfos.net/en/ga/events"/>
+    <xhtml:link rel="alternate" hreflang="en-CG" href="https://bonplaninfos.net/en/cg/events"/>
+    <xhtml:link rel="alternate" hreflang="en-CD" href="https://bonplaninfos.net/en/cd/events"/>
+    <xhtml:link rel="alternate" hreflang="en-GN" href="https://bonplaninfos.net/en/gn/events"/>
+    <xhtml:link rel="alternate" hreflang="en-NE" href="https://bonplaninfos.net/en/ne/events"/>
+    <xhtml:link rel="alternate" hreflang="en-TD" href="https://bonplaninfos.net/en/td/events"/>
+    <xhtml:link rel="alternate" hreflang="en-CF" href="https://bonplaninfos.net/en/cf/events"/>
+    <xhtml:link rel="alternate" hreflang="en-MG" href="https://bonplaninfos.net/en/mg/events"/>
+    <xhtml:link rel="alternate" hreflang="en-GH" href="https://bonplaninfos.net/en/gh/events"/>
+    <xhtml:link rel="alternate" hreflang="en-NG" href="https://bonplaninfos.net/en/ng/events"/>
+    <xhtml:link rel="alternate" hreflang="en-KE" href="https://bonplaninfos.net/en/ke/events"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://bonplaninfos.net/fr/ci/events"/>
   </url>
   <url>
     <loc>https://bonplaninfos.net/sponsors</loc>

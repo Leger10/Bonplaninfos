@@ -4,16 +4,22 @@ import { Button } from '@/components/ui/button';
 import { 
   Book, Shield, DollarSign, AlertCircle, Users, HelpCircle, 
   ChevronRight, FileText, MapPin, Landmark, Globe2, Download,
-  QrCode, Gift, Vote, Ticket, Store, Scale, Upload 
+  QrCode, Gift, Vote, Ticket, Store, Scale, Upload, Menu, X
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { jsPDF } from 'jspdf';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 const DocumentationPage = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
-    if (element) element.scrollIntoView({ behavior: 'smooth' });
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setMobileMenuOpen(false);
+    }
   };
 
   const sections = [
@@ -956,8 +962,57 @@ const DocumentationPage = () => {
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex flex-col md:flex-row text-gray-200">
       
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-72 bg-[#111111] border-r border-gray-800 h-auto md:h-screen sticky top-0 overflow-y-auto hidden md:block">
+      {/* Mobile Header avec menu burger */}
+      <div className="md:hidden sticky top-0 z-50 bg-[#111111] border-b border-gray-800 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-blue-400">
+            <Book className="w-5 h-5" />
+            <span className="font-bold text-lg">Documentation</span>
+          </div>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-gray-400">
+                <Menu className="w-6 h-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="bg-[#111111] border-r border-gray-800 w-[280px] p-0">
+              <SheetHeader className="p-6 border-b border-gray-800">
+                <SheetTitle className="text-white flex items-center gap-2">
+                  <Book className="w-5 h-5 text-blue-400" />
+                  <span>Documentation</span>
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="p-4 space-y-1">
+                {sections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => scrollToSection(section.id)}
+                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-medium text-gray-400 rounded-md hover:bg-gray-800 hover:text-blue-400 transition-colors text-left"
+                  >
+                    {section.icon}
+                    {section.title}
+                  </button>
+                ))}
+              </nav>
+              <div className="p-4 mt-auto border-t border-gray-800">
+                <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 p-4 rounded-lg border border-blue-800/30">
+                  <p className="text-xs text-blue-300 mb-2 font-bold">Besoin d'aide ?</p>
+                  <Button 
+                    size="sm" 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white" 
+                    onClick={() => window.location.href='/help-center'}
+                  >
+                    Centre d'aide
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+      
+      {/* Sidebar Navigation - Desktop */}
+      <aside className="hidden md:block w-72 bg-[#111111] border-r border-gray-800 h-screen sticky top-0 overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8 text-blue-400">
             <Book className="w-6 h-6" />
@@ -986,44 +1041,44 @@ const DocumentationPage = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto bg-[#0A0A0A]">
-        <div className="max-w-5xl mx-auto space-y-12">
+      {/* Main Content - Responsive */}
+      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto bg-[#0A0A0A]">
+        <div className="max-w-5xl mx-auto space-y-8 md:space-y-12">
           
-          {/* Header */}
-          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-[#0A0A0A] to-gray-900 border border-gray-800 p-8 md:p-12 mb-12">
+          {/* Header - Responsive */}
+          <div className="relative rounded-xl md:rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-[#0A0A0A] to-gray-900 border border-gray-800 p-6 md:p-8 lg:p-12 mb-6 md:mb-12">
             <div className="absolute inset-0 opacity-5">
               <img src="https://images.unsplash.com/photo-1663124178716-2078c384c24a" alt="Documentation Background" className="w-full h-full object-cover" />
             </div>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full filter blur-3xl opacity-10"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500 rounded-full filter blur-3xl opacity-10"></div>
+            <div className="absolute top-0 right-0 w-48 md:w-64 h-48 md:h-64 bg-blue-500 rounded-full filter blur-3xl opacity-10"></div>
+            <div className="absolute bottom-0 left-0 w-48 md:w-64 h-48 md:h-64 bg-purple-500 rounded-full filter blur-3xl opacity-10"></div>
             <div className="relative z-10">
-              <Badge className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-500/50 mb-4">
+              <Badge className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border-blue-500/50 mb-3 md:mb-4 text-xs md:text-sm">
                 Guide Officiel & Documents Légaux
               </Badge>
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-white to-purple-400 text-transparent bg-clip-text">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-400 via-white to-purple-400 text-transparent bg-clip-text">
                 Documentation Juridique
               </h1>
-              <p className="text-lg text-gray-400 max-w-2xl">
+              <p className="text-sm md:text-base lg:text-lg text-gray-400 max-w-2xl">
                 Tout savoir sur le fonctionnement, les règles financières et les protocoles de sécurité de BonPlanInfos.
               </p>
-              <div className="mt-4 p-3 bg-blue-900/30 border border-blue-500/30 rounded-lg inline-block">
-                <p className="text-sm text-blue-300">
+              <div className="mt-3 md:mt-4 p-2 md:p-3 bg-blue-900/30 border border-blue-500/30 rounded-lg inline-block">
+                <p className="text-xs md:text-sm text-blue-300">
                   <span className="font-bold">Responsable légal :</span> {BONPLANINFOS_INFO.responsable} - {BONPLANINFOS_INFO.fonction}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Section Vue d'ensemble */}
-          <section id="overview" className="space-y-4">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400 border border-blue-500/30">
-                <Book className="w-6 h-6" />
+          {/* Section Vue d'ensemble - Responsive */}
+          <section id="overview" className="space-y-3 md:space-y-4 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-blue-500/20 rounded-lg text-blue-400 border border-blue-500/30">
+                <Book className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Vue d'ensemble
             </h2>
-            <p className="text-lg text-gray-400 leading-relaxed">
+            <p className="text-sm md:text-base lg:text-lg text-gray-400 leading-relaxed">
               BonPlanInfos est une plateforme sécurisée panafricaine permettant l'organisation d'événements (billetterie, tombola, votes, location de stands). 
               Pour garantir la sécurité des fonds et la confiance des utilisateurs, nous appliquons un protocole strict de validation et de déblocage progressif des fonds.
               Notre modèle économique repose sur une commission de <span className="text-blue-400 font-semibold">5%</span> prélevée sur chaque transaction.
@@ -1032,44 +1087,44 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section Déblocage des Fonds */}
-          <section id="fund-release" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-lg text-green-400 border border-green-500/30">
-                <DollarSign className="w-6 h-6" />
+          {/* Section Déblocage des Fonds - Responsive */}
+          <section id="fund-release" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-green-500/20 rounded-lg text-green-400 border border-green-500/30">
+                <DollarSign className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Déblocage des Fonds
             </h2>
-            <p className="text-gray-400">
+            <p className="text-sm md:text-base text-gray-400">
               Les revenus générés sont placés sous séquestre (Escrow) et débloqués progressivement selon des critères stricts.
             </p>
             
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               <Card className="bg-[#111111] border-gray-800 hover:border-blue-500/30 transition-colors">
-                <CardContent className="pt-6">
-                  <Badge variant="outline" className="border-blue-500/30 text-blue-400 bg-blue-500/10 mb-2">
+                <CardContent className="p-4 md:p-6">
+                  <Badge variant="outline" className="border-blue-500/30 text-blue-400 bg-blue-500/10 mb-2 text-xs">
                     Étape 1
                   </Badge>
-                  <h3 className="font-bold text-lg text-white mb-2">Démarrage (20-30%)</h3>
-                  <p className="text-sm text-gray-400">Débloqué après vérification d'identité (KYC) et début des ventes significatives.</p>
+                  <h3 className="font-bold text-base md:text-lg text-white mb-1 md:mb-2">Démarrage (20-30%)</h3>
+                  <p className="text-xs md:text-sm text-gray-400">Débloqué après vérification d'identité (KYC) et début des ventes significatives.</p>
                 </CardContent>
               </Card>
               <Card className="bg-[#111111] border-gray-800 hover:border-purple-500/30 transition-colors">
-                <CardContent className="pt-6">
-                  <Badge variant="outline" className="border-purple-500/30 text-purple-400 bg-purple-500/10 mb-2">
+                <CardContent className="p-4 md:p-6">
+                  <Badge variant="outline" className="border-purple-500/30 text-purple-400 bg-purple-500/10 mb-2 text-xs">
                     Étape 2
                   </Badge>
-                  <h3 className="font-bold text-lg text-white mb-2">Mi-Parcours (40%)</h3>
-                  <p className="text-sm text-gray-400">Débloqué le jour de l'événement ou après atteinte de 50% des objectifs de vente.</p>
+                  <h3 className="font-bold text-base md:text-lg text-white mb-1 md:mb-2">Mi-Parcours (40%)</h3>
+                  <p className="text-xs md:text-sm text-gray-400">Débloqué le jour de l'événement ou après atteinte de 50% des objectifs de vente.</p>
                 </CardContent>
               </Card>
-              <Card className="bg-[#111111] border-gray-800 hover:border-green-500/30 transition-colors">
-                <CardContent className="pt-6">
-                  <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 mb-2">
+              <Card className="bg-[#111111] border-gray-800 hover:border-green-500/30 transition-colors sm:col-span-2 lg:col-span-1">
+                <CardContent className="p-4 md:p-6">
+                  <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 mb-2 text-xs">
                     Étape 3
                   </Badge>
-                  <h3 className="font-bold text-lg text-white mb-2">Finalisation (Solde)</h3>
-                  <p className="text-sm text-gray-400">Débloqué après validation des critères spécifiques à chaque type d'événement.</p>
+                  <h3 className="font-bold text-base md:text-lg text-white mb-1 md:mb-2">Finalisation (Solde)</h3>
+                  <p className="text-xs md:text-sm text-gray-400">Débloqué après validation des critères spécifiques à chaque type d'événement.</p>
                 </CardContent>
               </Card>
             </div>
@@ -1077,166 +1132,168 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section Validation par type d'événement */}
-          <section id="validation" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400 border border-purple-500/30">
-                <Shield className="w-6 h-6" />
+          {/* Section Validation par type d'événement - Responsive */}
+          <section id="validation" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-purple-500/20 rounded-lg text-purple-400 border border-purple-500/30">
+                <Shield className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Validation par type d'événement
             </h2>
             
             <Tabs defaultValue="ticketing" className="w-full">
-              <TabsList className="bg-[#111111] border border-gray-800 p-1">
-                <TabsTrigger value="ticketing" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  <Ticket className="w-4 h-4 mr-2" />
-                  Billetterie
+              <TabsList className="bg-[#111111] border border-gray-800 p-1 flex flex-wrap h-auto">
+                <TabsTrigger value="ticketing" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs md:text-sm py-1.5 px-2 md:px-3">
+                  <Ticket className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                  <span className="hidden xs:inline">Billetterie</span>
+                  <span className="xs:hidden">Billet</span>
                 </TabsTrigger>
-                <TabsTrigger value="stands" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  <Store className="w-4 h-4 mr-2" />
-                  Stands
+                <TabsTrigger value="stands" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs md:text-sm py-1.5 px-2 md:px-3">
+                  <Store className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                  <span className="hidden xs:inline">Stands</span>
+                  <span className="xs:hidden">Stand</span>
                 </TabsTrigger>
-                <TabsTrigger value="tombola" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  <Gift className="w-4 h-4 mr-2" />
+                <TabsTrigger value="tombola" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs md:text-sm py-1.5 px-2 md:px-3">
+                  <Gift className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                   Tombola
                 </TabsTrigger>
-                <TabsTrigger value="vote" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  <Vote className="w-4 h-4 mr-2" />
+                <TabsTrigger value="vote" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-xs md:text-sm py-1.5 px-2 md:px-3">
+                  <Vote className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                   Votes
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="ticketing" className="mt-4">
+              <TabsContent value="ticketing" className="mt-3 md:mt-4">
                 <Card className="bg-[#111111] border-gray-800">
-                  <CardContent className="pt-6">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <QrCode className="w-5 h-5 text-blue-400" />
+                  <CardContent className="p-4 md:p-6">
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                      <QrCode className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                       Conditions de validation - Billetterie
                     </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Seuil obligatoire :</span> Minimum 30% des billets vendus doivent être scannés (QR code unique)</p>
+                    <div className="space-y-2 md:space-y-3">
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Seuil obligatoire :</span> Minimum 30% des billets vendus doivent être scannés (QR code unique)</p>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Si seuil non atteint :</span> Statut = EN_VÉRIFICATION, fonds bloqués</p>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-yellow-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Si seuil non atteint :</span> Statut = EN_VÉRIFICATION, fonds bloqués</p>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Si seuil atteint :</span> Statut = VALIDÉ, déblocage des fonds</p>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Si seuil atteint :</span> Statut = VALIDÉ, déblocage des fonds</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="stands" className="mt-4">
+              <TabsContent value="stands" className="mt-3 md:mt-4">
                 <Card className="bg-[#111111] border-gray-800">
-                  <CardContent className="pt-6">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <Store className="w-5 h-5 text-purple-400" />
+                  <CardContent className="p-4 md:p-6">
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                      <Store className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
                       Conditions de validation - Location de stands
                     </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Check-in exposants :</span> Validation via réservation, code ou numéro</p>
+                    <div className="space-y-2 md:space-y-3">
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-purple-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Check-in exposants :</span> Validation via réservation, code ou numéro</p>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Confirmation :</span> Bouton "Présent" activé par l'exposant</p>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-purple-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Confirmation :</span> Bouton "Présent" activé par l'exposant</p>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Validation :</span> Seuil minimum de présences atteint</p>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Validation :</span> Seuil minimum de présences atteint</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="tombola" className="mt-4">
+              <TabsContent value="tombola" className="mt-3 md:mt-4">
                 <Card className="bg-[#111111] border-gray-800">
-                  <CardContent className="pt-6">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <Gift className="w-5 h-5 text-yellow-400" />
+                  <CardContent className="p-4 md:p-6">
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                      <Gift className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
                       Conditions de validation - Tombola/Tirage au sort
                     </h3>
-                    <div className="space-y-4">
-                      <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-500/50">
+                    <div className="space-y-3 md:space-y-4">
+                      <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-500/50 text-xs md:text-sm">
                         Dépôt du lot OBLIGATOIRE avant tirage
                       </Badge>
-                      <div className="bg-gray-800/50 p-4 rounded-lg">
-                        <h4 className="font-bold text-white mb-3">🔒 Workflow sécurisé :</h4>
-                        <ol className="space-y-3">
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">1</span>
+                      <div className="bg-gray-800/50 p-3 md:p-4 rounded-lg">
+                        <h4 className="font-bold text-white mb-2 md:mb-3 text-sm md:text-base">🔒 Workflow sécurisé :</h4>
+                        <ol className="space-y-2 md:space-y-3">
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">1</span>
                             <span className="text-gray-400">Vente des tickets activée</span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">2</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">2</span>
                             <span className="text-gray-400">Dépôt du lot physique au siège BonPlanInfos <span className="text-yellow-400">OU</span> versement de la valeur financière équivalente</span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">3</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">3</span>
                             <span className="text-gray-400">Admin confirme le dépôt → <span className="text-green-400">Statut = DEPOT_VALIDÉ</span></span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">4</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">4</span>
                             <span className="text-gray-400">Bouton "Lancer le tirage" activé</span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">5</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">5</span>
                             <span className="text-gray-400">Tirage effectué</span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">6</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">6</span>
                             <span className="text-gray-400">Remise du lot par équipe BonPlanInfos + organisateur</span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">7</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">7</span>
                             <span className="text-gray-400">Gagnant marqué = <span className="text-green-400">LOT_REÇU</span></span>
                           </li>
-                          <li className="flex items-start gap-3">
-                            <span className="bg-gray-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0">8</span>
+                          <li className="flex items-start gap-2 md:gap-3 text-xs md:text-sm">
+                            <span className="bg-gray-700 text-white w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0">8</span>
                             <span className="text-gray-400 font-semibold">Autorisation du retrait final des fonds</span>
                           </li>
                         </ol>
                       </div>
-                      <p className="text-red-400 text-sm flex items-center gap-2 mt-2">
-                        <AlertCircle className="w-4 h-4" />
-                        Sans dépôt confirmé, le bouton "Lancer le tirage" reste désactivé
+                      <p className="text-red-400 text-xs md:text-sm flex items-center gap-1 md:gap-2 mt-1 md:mt-2">
+                        <AlertCircle className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                        <span>Sans dépôt du lot, vos gains disponibles ne peuvent pas être retirés sans la remise du lot aux gagnantx "Les retraits"seront validé après remise du lot aux gagnants.</span>
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              <TabsContent value="vote" className="mt-4">
+              <TabsContent value="vote" className="mt-3 md:mt-4">
                 <Card className="bg-[#111111] border-gray-800">
-                  <CardContent className="pt-6">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <Vote className="w-5 h-5 text-blue-400" />
+                  <CardContent className="p-4 md:p-6">
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4 flex items-center gap-2">
+                      <Vote className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                       Conditions de validation - Votes en ligne
                     </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Escrow :</span> Les votes payants sont placés sous séquestre</p>
+                    <div className="space-y-2 md:space-y-3">
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Escrow :</span> Les votes payants sont placés sous séquestre</p>
                       </div>
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <p className="text-gray-400"><span className="text-white font-semibold">Aucun retrait avant :</span></p>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-blue-500 rounded-full mt-1.5 md:mt-2"></div>
+                        <p className="text-xs md:text-sm text-gray-400"><span className="text-white font-semibold">Aucun retrait avant :</span></p>
                       </div>
-                      <div className="ml-6 space-y-2">
-                        <p className="text-gray-400">• Fin officielle du vote</p>
-                        <p className="text-gray-400">• Vérification absence de fraude</p>
-                        <p className="text-gray-400">• Validation administrateur</p>
+                      <div className="ml-4 md:ml-6 space-y-1 md:space-y-2">
+                        <p className="text-xs md:text-sm text-gray-400">• Fin officielle du vote</p>
+                        <p className="text-xs md:text-sm text-gray-400">• Vérification absence de fraude</p>
+                        <p className="text-xs md:text-sm text-gray-400">• Validation administrateur</p>
                       </div>
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mt-2">
-                        <p className="text-red-400 text-sm flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 md:p-3 mt-2">
+                        <p className="text-red-400 text-xs md:text-sm flex items-center gap-1 md:gap-2">
+                          <AlertCircle className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
                           Événement ou vote non tenu → Remboursement automatique intégral
                         </p>
                       </div>
@@ -1249,46 +1306,46 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section Contrats de Licence Partenaires */}
-          <section id="contracts" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-orange-500/20 rounded-lg text-orange-400 border border-orange-500/30">
-                <FileText className="w-6 h-6" />
+          {/* Section Contrats de Licence Partenaires - Responsive */}
+          <section id="contracts" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-orange-500/20 rounded-lg text-orange-400 border border-orange-500/30">
+                <FileText className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Contrats de Licence - Partenaires Territoriaux
             </h2>
-            <p className="text-gray-400">
+            <p className="text-xs md:text-sm lg:text-base text-gray-400">
               Modèle économique : <span className="text-blue-400 font-semibold">Commission plateforme de 5%</span> sur toutes les transactions. 
               Redistribution aux partenaires selon leur niveau territorial : <span className="text-green-400">20% (Ville)</span>, <span className="text-purple-400">30% (Région)</span>, <span className="text-yellow-400">40% (Pays)</span>.
             </p>
-            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-300">
-                <span className="font-bold">✅ Contrats complets multi-pages :</span> Les PDF générés contiennent désormais l'intégralité du contrat sur plusieurs pages. Aucune information n'est coupée.
+            <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 md:p-4 mb-4">
+              <p className="text-xs md:text-sm text-blue-300">
+                <span className="font-bold">✅ Contrats complets multi-pages :</span> Les PDF générés contiennent l'intégralité du contrat sur plusieurs pages.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Licence Starter - Ville */}
               <Card className="bg-[#111111] border-gray-800 hover:border-blue-500/50 transition-all">
-                <CardContent className="pt-6 space-y-4">
+                <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge className="bg-blue-600/20 text-blue-300 border-blue-500/50">STARTER</Badge>
-                    <MapPin className="w-5 h-5 text-blue-400" />
+                    <Badge className="bg-blue-600/20 text-blue-300 border-blue-500/50 text-xs">STARTER</Badge>
+                    <MapPin className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-xl text-white mb-1">Licence Ville</h3>
-                    <p className="text-sm text-gray-400">Exclusivité territoriale urbaine</p>
+                    <h3 className="font-bold text-base md:text-xl text-white mb-0.5 md:mb-1">Licence Ville</h3>
+                    <p className="text-xs md:text-sm text-gray-400">Exclusivité territoriale urbaine</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Durée</span>
-                      <span className="text-white font-medium">1 ans</span>
+                      <span className="text-white font-medium">1 an</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Droit d'entrée</span>
                       <span className="text-white font-bold">1 000 000 FCFA</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">20% des 5%</span>
                     </div>
@@ -1298,24 +1355,24 @@ const DocumentationPage = () => {
                   </div>
                   <Button 
                     onClick={() => downloadContract('ville')}
-                    className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/50"
+                    className="w-full bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/50 text-xs md:text-sm py-1.5 md:py-2"
+                    size="sm"
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Télécharger contrat (3-4 pages)
                   </Button>
                   
-                  {/* Bouton de soumission - CORRIGÉ et bien placé */}
-                  <div className="mt-2 pt-2 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2">
+                  <div className="mt-1 md:mt-2 pt-2 md:pt-2 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 mb-1 md:mb-2">
                       <span className="text-yellow-400">⬆️ Après avoir rempli et signé</span>
                     </p>
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50"
+                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50 text-xs md:text-sm py-1.5 md:py-2"
                       onClick={() => window.location.href = '/help-center?tab=contracts'}
                     >
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                       Soumettre le contrat signé
                     </Button>
                   </div>
@@ -1324,25 +1381,25 @@ const DocumentationPage = () => {
 
               {/* Licence Business - Région */}
               <Card className="bg-[#111111] border-gray-800 hover:border-purple-500/50 transition-all">
-                <CardContent className="pt-6 space-y-4">
+                <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge className="bg-purple-600/20 text-purple-300 border-purple-500/50">BUSINESS</Badge>
-                    <Landmark className="w-5 h-5 text-purple-400" />
+                    <Badge className="bg-purple-600/20 text-purple-300 border-purple-500/50 text-xs">BUSINESS</Badge>
+                    <Landmark className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-xl text-white mb-1">Licence Région</h3>
-                    <p className="text-sm text-gray-400">Exclusivité régionale + encadrement villes</p>
+                    <h3 className="font-bold text-base md:text-xl text-white mb-0.5 md:mb-1">Licence Région</h3>
+                    <p className="text-xs md:text-sm text-gray-400">Exclusivité régionale + encadrement villes</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Durée</span>
                       <span className="text-white font-medium">2 ans</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Droit d'entrée</span>
                       <span className="text-white font-bold">3 000 000 FCFA</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">30% des 5%</span>
                     </div>
@@ -1352,24 +1409,24 @@ const DocumentationPage = () => {
                   </div>
                   <Button 
                     onClick={() => downloadContract('region')}
-                    className="w-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/50"
+                    className="w-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/50 text-xs md:text-sm py-1.5 md:py-2"
+                    size="sm"
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Télécharger contrat (3-4 pages)
                   </Button>
                   
-                  {/* Bouton de soumission - CORRIGÉ et bien placé */}
-                  <div className="mt-2 pt-2 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2">
+                  <div className="mt-1 md:mt-2 pt-2 md:pt-2 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 mb-1 md:mb-2">
                       <span className="text-yellow-400">⬆️ Après avoir rempli et signé</span>
                     </p>
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50"
+                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50 text-xs md:text-sm py-1.5 md:py-2"
                       onClick={() => window.location.href = '/help-center?tab=contracts'}
                     >
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                       Soumettre le contrat signé
                     </Button>
                   </div>
@@ -1377,26 +1434,26 @@ const DocumentationPage = () => {
               </Card>
 
               {/* Licence Premium - Pays */}
-              <Card className="bg-[#111111] border-gray-800 hover:border-yellow-500/50 transition-all">
-                <CardContent className="pt-6 space-y-4">
+              <Card className="bg-[#111111] border-gray-800 hover:border-yellow-500/50 transition-all md:col-span-2 lg:col-span-1">
+                <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-500/50">PREMIUM</Badge>
-                    <Globe2 className="w-5 h-5 text-yellow-400" />
+                    <Badge className="bg-yellow-600/20 text-yellow-300 border-yellow-500/50 text-xs">PREMIUM</Badge>
+                    <Globe2 className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-xl text-white mb-1">Franchise Nationale</h3>
-                    <p className="text-sm text-gray-400">Exclusivité pays + supervision nationale</p>
+                    <h3 className="font-bold text-base md:text-xl text-white mb-0.5 md:mb-1">Franchise Nationale</h3>
+                    <p className="text-xs md:text-sm text-gray-400">Exclusivité pays + supervision nationale</p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
+                  <div className="space-y-1.5 md:space-y-2">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Durée</span>
                       <span className="text-white font-medium">3 ans</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Droit d'entrée</span>
                       <span className="text-white font-bold">5M - 10M FCFA</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">40% des 5%</span>
                     </div>
@@ -1406,24 +1463,24 @@ const DocumentationPage = () => {
                   </div>
                   <Button 
                     onClick={() => downloadContract('pays')}
-                    className="w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 border border-yellow-500/50"
+                    className="w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 border border-yellow-500/50 text-xs md:text-sm py-1.5 md:py-2"
+                    size="sm"
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                     Télécharger contrat (4-5 pages)
                   </Button>
                   
-                  {/* Bouton de soumission - AJOUTÉ pour la licence Premium */}
-                  <div className="mt-2 pt-2 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2">
+                  <div className="mt-1 md:mt-2 pt-2 md:pt-2 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 mb-1 md:mb-2">
                       <span className="text-yellow-400">⬆️ Après avoir rempli et signé</span>
                     </p>
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50"
+                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50 text-xs md:text-sm py-1.5 md:py-2"
                       onClick={() => window.location.href = '/help-center?tab=contracts'}
                     >
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                       Soumettre le contrat signé
                     </Button>
                   </div>
@@ -1431,139 +1488,141 @@ const DocumentationPage = () => {
               </Card>
             </div>
 
-            {/* Détails des obligations contractuelles */}
-            <Card className="bg-[#111111] border-gray-800 mt-4">
-              <CardContent className="pt-6">
-                <h4 className="font-bold text-white mb-4">📋 Obligations contractuelles par niveau</h4>
-                <div className="grid md:grid-cols-3 gap-6">
+            {/* Détails des obligations contractuelles - Responsive */}
+            <Card className="bg-[#111111] border-gray-800 mt-3 md:mt-4">
+              <CardContent className="p-4 md:p-6">
+                <h4 className="font-bold text-white mb-3 md:mb-4 text-sm md:text-base">📋 Obligations contractuelles par niveau</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   <div>
-                    <h5 className="text-blue-400 font-semibold mb-2 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
+                    <h5 className="text-blue-400 font-semibold mb-2 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                      <MapPin className="w-3 h-3 md:w-4 md:h-4" />
                       Licence Ville
                     </h5>
-                    <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="flex items-start gap-2">• Point de représentation physique</li>
-                      <li className="flex items-start gap-2">• Responsable local désigné</li>
-                      <li className="flex items-start gap-2">• Promotion active</li>
-                      <li className="flex items-start gap-2">• Rapports mensuels</li>
+                    <ul className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-400">
+                      <li className="flex items-start gap-1 md:gap-2">• Point de représentation physique</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Responsable local désigné</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Promotion active</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Rapports mensuels</li>
                     </ul>
                   </div>
                   <div>
-                    <h5 className="text-purple-400 font-semibold mb-2 flex items-center gap-2">
-                      <Landmark className="w-4 h-4" />
+                    <h5 className="text-purple-400 font-semibold mb-2 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                      <Landmark className="w-3 h-3 md:w-4 md:h-4" />
                       Licence Région
                     </h5>
-                    <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="flex items-start gap-2">• Bureau régional</li>
-                      <li className="flex items-start gap-2">• Minimum 2 agents</li>
-                      <li className="flex items-start gap-2">• Encadrement concessions villes</li>
-                      <li className="flex items-start gap-2">• Partenariats régionaux</li>
+                    <ul className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-400">
+                      <li className="flex items-start gap-1 md:gap-2">• Bureau régional</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Minimum 2 agents</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Encadrement concessions villes</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Partenariats régionaux</li>
                     </ul>
                   </div>
-                  <div>
-                    <h5 className="text-yellow-400 font-semibold mb-2 flex items-center gap-2">
-                      <Globe2 className="w-4 h-4" />
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <h5 className="text-yellow-400 font-semibold mb-2 flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                      <Globe2 className="w-3 h-3 md:w-4 md:h-4" />
                       Franchise Nationale
                     </h5>
-                    <ul className="space-y-2 text-sm text-gray-400">
-                      <li className="flex items-start gap-2">• Siège national</li>
-                      <li className="flex items-start gap-2">• 3-5 employés minimum</li>
-                      <li className="flex items-start gap-2">• Représentation officielle</li>
-                      <li className="flex items-start gap-2">• Conformité légale locale</li>
+                    <ul className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-400">
+                      <li className="flex items-start gap-1 md:gap-2">• Siège national</li>
+                      <li className="flex items-start gap-1 md:gap-2">• 3-5 employés minimum</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Représentation officielle</li>
+                      <li className="flex items-start gap-1 md:gap-2">• Conformité légale locale</li>
                     </ul>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Clause de révocation et remboursement */}
-            <Card className="bg-[#111111] border-2 border-orange-500/30 mt-6">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-orange-500/20 rounded-lg">
-                    <AlertCircle className="w-6 h-6 text-orange-400" />
+            {/* Clause de révocation et remboursement - Responsive */}
+            <Card className="bg-[#111111] border-2 border-orange-500/30 mt-4 md:mt-6">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
+                  <div className="p-2 md:p-3 bg-orange-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5 md:w-6 md:h-6 text-orange-400" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                    <h4 className="text-base md:text-xl font-bold text-white mb-2 md:mb-3 flex flex-wrap items-center gap-1 md:gap-2">
                       Clause de révocation et conditions de remboursement
-                      <Badge className="bg-orange-600/20 text-orange-300 border-orange-500/50 ml-2">LECTURE OBLIGATOIRE</Badge>
+                      <Badge className="bg-orange-600/20 text-orange-300 border-orange-500/50 ml-0 md:ml-2 text-xs">LECTURE OBLIGATOIRE</Badge>
                     </h4>
                     
-                    <div className="space-y-6">
+                    <div className="space-y-4 md:space-y-6">
                       {/* Cas 1 : Révocation pour inaction ou sous-performance */}
-                      <div className="bg-red-500/10 border border-red-500/30 p-5 rounded-lg">
-                        <h5 className="font-bold text-white mb-3 flex items-center gap-2">
-                          <span className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-sm">1</span>
+                      <div className="bg-red-500/10 border border-red-500/30 p-3 md:p-5 rounded-lg">
+                        <h5 className="font-bold text-white mb-2 md:mb-3 flex items-center gap-1 md:gap-2 text-sm md:text-base">
+                          <span className="w-5 h-5 md:w-6 md:h-6 bg-red-500/20 rounded-full flex items-center justify-center text-xs">1</span>
                           Révocation pour inaction ou sous-performance
                         </h5>
-                        <p className="text-gray-300 mb-3">
+                        <p className="text-xs md:text-sm text-gray-300 mb-2 md:mb-3">
                           Tout partenaire territorial (Ville, Région ou Pays) qui, après avoir acquitté son droit d'entrée, 
                           ne développe pas activement sa zone ou n'atteint pas les objectifs contractuels pendant une période 
                           de <span className="text-white font-semibold">6 mois consécutifs</span> pourra être révoqué par la direction de BonPlanInfos.
                         </p>
-                        <div className="bg-gray-800/50 p-4 rounded-md mt-2">
-                          <p className="text-orange-300 font-medium mb-2">➡️ Conditions de remboursement :</p>
-                          <p className="text-gray-300">
+                        <div className="bg-gray-800/50 p-3 md:p-4 rounded-md mt-1 md:mt-2">
+                          <p className="text-orange-300 font-medium mb-1 md:mb-2 text-xs md:text-sm">➡️ Conditions de remboursement :</p>
+                          <p className="text-xs md:text-sm text-gray-300">
                             Le partenaire révoqué pour inaction ou sous-performance percevra <span className="text-green-400 font-bold">50% de son droit d'entrée</span> à titre de dédommagement. 
                             Les 50% restants sont conservés par BonPlanInfos pour couvrir les frais d'administration, 
                             de recherche d'un nouveau concessionnaire et de transition opérationnelle.
                           </p>
-                          <p className="text-gray-400 text-sm mt-3 border-t border-gray-700 pt-3">
+                          <p className="text-gray-400 text-xs mt-2 md:mt-3 border-t border-gray-700 pt-2 md:pt-3">
                             ⚡ Sa zone sera immédiatement réattribuée à un nouveau partenaire sélectionné pour son dynamisme et sa capacité à développer le territoire.
                           </p>
                         </div>
                       </div>
 
                       {/* Cas 2 : Démission volontaire */}
-                      <div className="bg-blue-500/10 border border-blue-500/30 p-5 rounded-lg">
-                        <h5 className="font-bold text-white mb-3 flex items-center gap-2">
-                          <span className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-sm">2</span>
+                      <div className="bg-blue-500/10 border border-blue-500/30 p-3 md:p-5 rounded-lg">
+                        <h5 className="font-bold text-white mb-2 md:mb-3 flex items-center gap-1 md:gap-2 text-sm md:text-base">
+                          <span className="w-5 h-5 md:w-6 md:h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-xs">2</span>
                           Démission volontaire
                         </h5>
-                        <p className="text-gray-300 mb-3">
+                        <p className="text-xs md:text-sm text-gray-300 mb-2 md:mb-3">
                           Un partenaire qui, après avoir acquitté son droit d'entrée, décide de ne plus représenter BonPlanInfos 
                           pour des raisons personnelles ou stratégiques.
                         </p>
-                        <div className="bg-gray-800/50 p-4 rounded-md mt-2">
-                          <p className="text-orange-300 font-medium mb-2">➡️ Conditions de remboursement :</p>
-                          <p className="text-gray-300">
+                        <div className="bg-gray-800/50 p-3 md:p-4 rounded-md mt-1 md:mt-2">
+                          <p className="text-orange-300 font-medium mb-1 md:mb-2 text-xs md:text-sm">➡️ Conditions de remboursement :</p>
+                          <p className="text-xs md:text-sm text-gray-300">
                             <span className="text-red-400 font-bold">Aucun remboursement du droit d'entrée.</span> La démission volontaire est considérée comme 
                             une rupture unilatérale du contrat par le partenaire. BonPlanInfos ne procède à aucun remboursement, 
                             partiel ou total, quelle que soit la date de la démission.
                           </p>
-                          <p className="text-gray-400 text-sm mt-3 border-t border-gray-700 pt-3">
+                          <p className="text-gray-400 text-xs mt-2 md:mt-3 border-t border-gray-700 pt-2 md:pt-3">
                             📌 Le partenaire démissionnaire perd immédiatement son exclusivité territoriale et ses droits sur les commissions futures.
                           </p>
                         </div>
                       </div>
 
-                      {/* Tableau récapitulatif */}
-                      <div className="bg-gray-800/30 p-5 rounded-lg border border-gray-700">
-                        <h5 className="font-bold text-white mb-3">📊 Récapitulatif des conditions de remboursement</h5>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-gray-700">
-                                <th className="text-left py-2 text-gray-300">Situation</th>
-                                <th className="text-left py-2 text-gray-300">Remboursement</th>
-                                <th className="text-left py-2 text-gray-300">Réattribution zone</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr className="border-b border-gray-800">
-                                <td className="py-3 text-gray-400">Révocation pour inaction / sous-performance</td>
-                                <td className="py-3 text-green-400 font-medium">50% du droit d'entrée</td>
-                                <td className="py-3 text-white">Oui - Nouveau partenaire dynamique</td>
-                              </tr>
-                              <tr>
-                                <td className="py-3 text-gray-400">Démission volontaire</td>
-                                <td className="py-3 text-red-400 font-medium">0% - Aucun remboursement</td>
-                                <td className="py-3 text-white">Oui - Nouveau partenaire</td>
-                              </tr>
-                            </tbody>
-                          </table>
+                      {/* Tableau récapitulatif - Responsive */}
+                      <div className="bg-gray-800/30 p-3 md:p-5 rounded-lg border border-gray-700">
+                        <h5 className="font-bold text-white mb-2 md:mb-3 text-sm md:text-base">📊 Récapitulatif des conditions de remboursement</h5>
+                        <div className="overflow-x-auto -mx-3 md:mx-0">
+                          <div className="inline-block min-w-full align-middle">
+                            <table className="min-w-full text-xs md:text-sm">
+                              <thead>
+                                <tr className="border-b border-gray-700">
+                                  <th className="text-left py-1.5 md:py-2 pr-2 md:pr-4 text-gray-300">Situation</th>
+                                  <th className="text-left py-1.5 md:py-2 px-2 md:px-4 text-gray-300">Remboursement</th>
+                                  <th className="text-left py-1.5 md:py-2 pl-2 md:pl-4 text-gray-300">Réattribution zone</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr className="border-b border-gray-800">
+                                  <td className="py-2 md:py-3 pr-2 md:pr-4 text-gray-400">Révocation pour inaction / sous-performance</td>
+                                  <td className="py-2 md:py-3 px-2 md:px-4 text-green-400 font-medium">50% du droit d'entrée</td>
+                                  <td className="py-2 md:py-3 pl-2 md:pl-4 text-white">Oui</td>
+                                </tr>
+                                <tr>
+                                  <td className="py-2 md:py-3 pr-2 md:pr-4 text-gray-400">Démission volontaire</td>
+                                  <td className="py-2 md:py-3 px-2 md:px-4 text-red-400 font-medium">0% - Aucun</td>
+                                  <td className="py-2 md:py-3 pl-2 md:pl-4 text-white">Oui</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-4 italic">
+                        <p className="text-xs text-gray-500 mt-3 md:mt-4 italic">
                           * Tout remboursement partiel (50%) intervient uniquement dans le cas d'une révocation décidée par BonPlanInfos 
                           pour manque de résultats. Aucune démission volontaire n'ouvre droit à remboursement.
                         </p>
@@ -1577,104 +1636,105 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section Contrat Organisateur */}
-          <section id="organizer" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400 border border-indigo-500/30">
-                <Scale className="w-6 h-6" />
+          {/* Section Contrat Organisateur - Responsive */}
+          <section id="organizer" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-indigo-500/20 rounded-lg text-indigo-400 border border-indigo-500/30">
+                <Scale className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Contrat Type Organisateur
             </h2>
             
             <Card className="bg-[#111111] border-gray-800">
-              <CardContent className="pt-6">
-                <div className="flex flex-col gap-4">
-                  <div className="flex justify-between items-start">
+              <CardContent className="p-4 md:p-6">
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:items-center">
                     <div>
-                      <Badge className="bg-indigo-600/20 text-indigo-300 border-indigo-500/50 mb-2">
+                      <Badge className="bg-indigo-600/20 text-indigo-300 border-indigo-500/50 mb-1 md:mb-2 text-xs">
                         CGU - Organisateurs
                       </Badge>
-                      <h3 className="text-2xl font-bold text-white">Conditions Générales d'Utilisation</h3>
-                      <p className="text-xs text-indigo-400 mt-1">
+                      <h3 className="text-lg md:text-2xl font-bold text-white">Conditions Générales d'Utilisation</h3>
+                      <p className="text-xs text-indigo-400 mt-0.5 md:mt-1">
                         Contrat complet sur 3-4 pages avec signature préremplie
                       </p>
                     </div>
                     <Button 
                       onClick={downloadOrganizerContract}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs md:text-sm w-full sm:w-auto"
+                      size="sm"
                     >
-                      <Download className="w-4 h-4 mr-2" />
+                      <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                       Télécharger PDF
                     </Button>
                   </div>
                   
-                  {/* Bouton de soumission pour contrat organisateur - CORRIGÉ */}
-                  <div className="mt-2 pt-2 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2">
+                  {/* Bouton de soumission pour contrat organisateur */}
+                  <div className="mt-1 md:mt-2 pt-2 md:pt-2 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 mb-1 md:mb-2">
                       <span className="text-yellow-400">⬆️ Après avoir rempli et signé</span>
                     </p>
                     <Button 
                       variant="outline"
                       size="sm"
-                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50"
+                      className="w-full bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/50 text-xs md:text-sm py-1.5 md:py-2"
                       onClick={() => window.location.href = '/help-center?tab=contracts'}
                     >
-                      <Upload className="w-4 h-4 mr-2" />
+                      <Upload className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                       Soumettre le contrat signé
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-4 custom-scrollbar mt-6">
-                  <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <h4 className="font-bold text-white mb-2">ARTICLE 1 — OBJET DU CONTRAT</h4>
-                    <p className="text-gray-400 text-sm">
+                <div className="space-y-3 md:space-y-4 max-h-60 md:max-h-96 overflow-y-auto pr-2 md:pr-4 custom-scrollbar mt-4 md:mt-6">
+                  <div className="bg-gray-800/30 p-3 md:p-4 rounded-lg">
+                    <h4 className="font-bold text-white mb-1 md:mb-2 text-sm md:text-base">ARTICLE 1 — OBJET DU CONTRAT</h4>
+                    <p className="text-gray-400 text-xs md:text-sm">
                       Le présent contrat a pour objet de définir les conditions dans lesquelles la plateforme BonPlanInfos met à disposition de l'Organisateur des outils digitaux lui permettant :
                     </p>
-                    <ul className="list-disc list-inside text-gray-400 text-sm mt-2 space-y-1">
+                    <ul className="list-disc list-inside text-gray-400 text-xs md:text-sm mt-1 md:mt-2 space-y-0.5 md:space-y-1">
                       <li>d'organiser et publier des événements</li>
                       <li>de vendre des billets en ligne</li>
                       <li>d'organiser des votes, concours et tombolas</li>
                       <li>de proposer la location de stands</li>
                       <li>de collecter les paiements des participants</li>
                     </ul>
-                    <p className="text-gray-400 text-sm mt-2">
+                    <p className="text-gray-400 text-xs md:text-sm mt-1 md:mt-2">
                       BonPlanInfos agit exclusivement en tant que prestataire technique et intermédiaire de paiement.
                     </p>
                   </div>
 
-                  <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <h4 className="font-bold text-white mb-2">ARTICLE 2 — STATUT DES PARTIES</h4>
-                    <p className="text-gray-400 text-sm">
+                  <div className="bg-gray-800/30 p-3 md:p-4 rounded-lg">
+                    <h4 className="font-bold text-white mb-1 md:mb-2 text-sm md:text-base">ARTICLE 2 — STATUT DES PARTIES</h4>
+                    <p className="text-gray-400 text-xs md:text-sm">
                       BonPlanInfos n'est ni organisateur, ni co-organisateur des événements publiés.<br />
                       L'Organisateur est seul responsable de la conception, de l'organisation, du contenu et du bon déroulement de son événement.<br />
                       Aucun lien de subordination, de partenariat juridique ou d'association n'est créé par le présent contrat.
                     </p>
                   </div>
 
-                  <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <h4 className="font-bold text-white mb-2">ARTICLE 4 — COMMISSION ET RÉMUNÉRATION</h4>
-                    <div className="space-y-2">
-                      <p className="text-white font-semibold">4.1 Commission plateforme</p>
-                      <p className="text-gray-400 text-sm">
+                  <div className="bg-gray-800/30 p-3 md:p-4 rounded-lg">
+                    <h4 className="font-bold text-white mb-1 md:mb-2 text-sm md:text-base">ARTICLE 4 — COMMISSION ET RÉMUNÉRATION</h4>
+                    <div className="space-y-1 md:space-y-2">
+                      <p className="text-white font-semibold text-xs md:text-sm">4.1 Commission plateforme</p>
+                      <p className="text-gray-400 text-xs md:text-sm">
                         BonPlanInfos prélève une commission de <span className="text-green-400 font-bold">5%</span> sur :
                       </p>
-                      <ul className="list-disc list-inside text-gray-400 text-sm ml-4">
+                      <ul className="list-disc list-inside text-gray-400 text-xs md:text-sm ml-2 md:ml-4 space-y-0.5 md:space-y-1">
                         <li>chaque participation payante (billet, vote, tombola, stand)</li>
                         <li>chaque retrait effectué par l'Organisateur</li>
                       </ul>
-                      <p className="text-gray-400 text-sm mt-2">
+                      <p className="text-gray-400 text-xs md:text-sm mt-1 md:mt-2">
                         👉 <span className="text-white">L'Organisateur perçoit 95% des montants générés</span>, nets de la commission.
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-800/30 p-4 rounded-lg">
-                    <h4 className="font-bold text-white mb-2">ARTICLE 5 — RESPONSABILITÉS DE L'ORGANISATEUR</h4>
-                    <p className="text-gray-400 text-sm">
+                  <div className="bg-gray-800/30 p-3 md:p-4 rounded-lg">
+                    <h4 className="font-bold text-white mb-1 md:mb-2 text-sm md:text-base">ARTICLE 5 — RESPONSABILITÉS DE L'ORGANISATEUR</h4>
+                    <p className="text-gray-400 text-xs md:text-sm">
                       L'Organisateur est seul responsable :
                     </p>
-                    <ul className="list-disc list-inside text-gray-400 text-sm mt-2 space-y-1">
+                    <ul className="list-disc list-inside text-gray-400 text-xs md:text-sm mt-1 md:mt-2 space-y-0.5 md:space-y-1">
                       <li>de la véracité des informations publiées</li>
                       <li>de la tenue effective de l'événement</li>
                       <li>de la délivrance des prestations promises aux participants</li>
@@ -1683,25 +1743,25 @@ const DocumentationPage = () => {
                     </ul>
                   </div>
 
-                  <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
-                    <h4 className="font-bold text-white mb-2 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-400" />
+                  <div className="bg-red-500/10 border border-red-500/30 p-3 md:p-4 rounded-lg">
+                    <h4 className="font-bold text-white mb-1 md:mb-2 flex items-center gap-1 md:gap-2 text-sm md:text-base">
+                      <AlertCircle className="w-3 h-3 md:w-4 md:h-4 text-red-400" />
                       ARTICLE 10 — LIMITATION DE RESPONSABILITÉ
                     </h4>
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-400 text-xs md:text-sm">
                       BonPlanInfos ne pourra être tenue responsable des pertes indirectes, des dommages liés à l'organisation de l'événement, ou des décisions prises par l'Organisateur.
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                  <p className="text-blue-300 font-semibold mb-2">✅ ACCEPTATION OBLIGATOIRE</p>
-                  <p className="text-gray-400 text-sm mb-4">
+                <div className="mt-4 md:mt-6 p-3 md:p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                  <p className="text-blue-300 font-semibold mb-1 md:mb-2 text-sm md:text-base">✅ ACCEPTATION OBLIGATOIRE</p>
+                  <p className="text-gray-400 text-xs md:text-sm mb-3 md:mb-4">
                     En créant un compte Organisateur et en publiant un événement sur BonPlanInfos, l'Organisateur reconnaît avoir lu, compris et accepté sans réserve le présent contrat.
                   </p>
-                  <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded">
-                    <input type="checkbox" id="accept" className="rounded bg-gray-700 border-gray-600" />
-                    <label htmlFor="accept" className="text-white text-sm">
+                  <div className="flex items-center gap-2 bg-gray-800/50 p-2 md:p-3 rounded">
+                    <input type="checkbox" id="accept" className="rounded bg-gray-700 border-gray-600 w-3 h-3 md:w-4 md:h-4" />
+                    <label htmlFor="accept" className="text-white text-xs md:text-sm">
                       J'ai lu et j'accepte le contrat Organisateur
                     </label>
                   </div>
@@ -1712,19 +1772,19 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section Sécurité & Fraude */}
-          <section id="fraud" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-red-500/20 rounded-lg text-red-400 border border-red-500/30">
-                <AlertCircle className="w-6 h-6" />
+          {/* Section Sécurité & Fraude - Responsive */}
+          <section id="fraud" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-red-500/20 rounded-lg text-red-400 border border-red-500/30">
+                <AlertCircle className="w-5 h-5 md:w-6 md:h-6" />
               </div>
               Sécurité & Fraude
             </h2>
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center gap-3">
-              <AlertCircle className="text-red-400 w-5 h-5" />
-              <span className="font-medium text-red-300">Tolérance Zéro pour la fraude.</span>
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 md:p-4 flex items-center gap-2 md:gap-3">
+              <AlertCircle className="text-red-400 w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+              <span className="font-medium text-red-300 text-xs md:text-sm">Tolérance Zéro pour la fraude.</span>
             </div>
-            <p className="text-gray-400">
+            <p className="text-xs md:text-sm text-gray-400">
               Notre système utilise des algorithmes automatisés pour détecter les comportements suspects (achats massifs par même IP, 
               taux de scan incohérents, plaintes multiples). Tout compte suspecté est immédiatement <span className="text-white font-semibold">gelé</span> 
               le temps de l'investigation. En cas de fraude avérée, les fonds sont bloqués définitivement et reversés aux participants lésés.
@@ -1733,44 +1793,44 @@ const DocumentationPage = () => {
 
           <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-          {/* Section FAQ */}
-          <section id="faq" className="space-y-6">
-            <h2 className="text-3xl font-bold text-white">FAQ</h2>
-            <div className="space-y-4">
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+          {/* Section FAQ - Responsive */}
+          <section id="faq" className="space-y-4 md:space-y-6 scroll-mt-16 md:scroll-mt-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-white">FAQ</h2>
+            <div className="space-y-3 md:space-y-4">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Quand puis-je retirer mes fonds ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <p className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3">
+                <p className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3">
                   Les fonds disponibles (débloqués) peuvent être retirés à tout moment via Mobile Money ou Virement. Le solde bloqué attend la validation de l'étape suivante.
                 </p>
               </details>
               
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Que faire en cas de litige ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <p className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3">
+                <p className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3">
                   Contactez le support via le centre d'aide. Fournissez toutes les preuves. Les fonds liés à l'événement seront gelés jusqu'à résolution.
                 </p>
               </details>
 
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Comment sont calculées les commissions des partenaires territoriaux ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <div className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3 space-y-2">
+                <div className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3 space-y-1 md:space-y-2">
                   <p>La commission plateforme de 5% est redistribuée selon le niveau territorial :</p>
-                  <ul className="list-disc list-inside ml-4">
+                  <ul className="list-disc list-inside ml-2 md:ml-4 space-y-0.5 md:space-y-1">
                     <li>Concessionnaire Ville : 20% des 5% générés dans sa ville</li>
                     <li>Concessionnaire Région : 30% des 5% générés dans sa région</li>
                     <li>Franchisé National : 40% des 5% générés dans son pays</li>
@@ -1778,41 +1838,41 @@ const DocumentationPage = () => {
                 </div>
               </details>
 
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Quelles sont les conditions de remboursement pour une tombola annulée ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <p className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3">
+                <p className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3">
                   Si le tirage n'a pas eu lieu ou si le lot n'a pas été déposé, tous les participants sont automatiquement 
                   remboursés intégralement. Les fonds sont sous séquestre et ne peuvent être débloqués qu'après confirmation 
                   du dépôt et de la remise effective du lot au gagnant.
                 </p>
               </details>
 
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Un partenaire révoqué peut-il être remboursé ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <p className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3">
+                <p className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3">
                   Oui, uniquement en cas de révocation pour inaction ou sous-performance : remboursement de 50% du droit d'entrée. 
                   En cas de démission volontaire, aucun remboursement n'est accordé.
                 </p>
               </details>
 
-              <details className="group bg-[#111111] p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
-                <summary className="flex justify-between items-center font-medium text-white list-none">
+              <details className="group bg-[#111111] p-3 md:p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-gray-700 transition-colors">
+                <summary className="flex justify-between items-center font-medium text-white list-none text-sm md:text-base">
                   Les contrats PDF sont-ils complets ?
                   <span className="transition group-open:rotate-90 text-gray-400">
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </span>
                 </summary>
-                <p className="text-gray-400 mt-3 text-sm border-t border-gray-800 pt-3">
+                <p className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3">
                   Oui, tous les contrats générés contiennent désormais l'intégralité du contenu sur plusieurs pages (3 à 5 pages selon le contrat). 
                   Plus aucune information n'est coupée. La signature de <span className="text-white">{BONPLANINFOS_INFO.responsable}</span> est automatiquement apposée.
                 </p>

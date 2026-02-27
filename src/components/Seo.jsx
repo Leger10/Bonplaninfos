@@ -80,7 +80,7 @@ const Seo = ({
           "description": seo.description,
           "sameAs": [
             "https://www.facebook.com/bonplaninfos",
-            "https://www.instagram.com/bonplaninfos",
+            "https://www.youtube.com/bonplaninfos",
             "https://twitter.com/bonplaninfos"
           ],
           "address": {

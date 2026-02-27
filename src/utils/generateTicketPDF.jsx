@@ -1,219 +1,458 @@
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 
-// Helper to load image for PDF
+// Helper to load image for PDF with timeout and cache busting
 const getBase64ImageFromURL = (url) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
+    
+    // Timeout pour éviter les blocages
+    const timeout = setTimeout(() => {
+      console.warn("Image load timeout for URL:", url);
+      resolve(null);
+    }, 5000);
+    
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      const dataURL = canvas.toDataURL("image/png");
-      resolve(dataURL);
+      clearTimeout(timeout);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/png");
+        resolve(dataURL);
+      } catch (e) {
+        console.error("Canvas error:", e);
+        resolve(null);
+      }
     };
+    
     img.onerror = (error) => {
+      clearTimeout(timeout);
       console.error("Image load error for URL:", url, error);
       resolve(null);
     };
 
     // Add cache buster to prevent cached images
-    const cacheBusterUrl =
-      url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const cacheBusterUrl = url + (url.includes("?") ? "&" : "?") + "t=" + Date.now();
     img.src = cacheBusterUrl;
   });
 };
 
 /* =====================================================
-   SAUVEGARDE PDF MULTI-PLATEFORME
+   SAUVEGARDE PDF MULTI-PLATEFORME AMÉLIORÉE
 ===================================================== */
+
+// Sauvegarde pour Desktop (méthode standard)
+const saveForDesktop = (doc, fileName, blob) => {
+  // Utiliser l'API File System si disponible
+  if ('showSaveFilePicker' in window) {
+    saveWithFilePicker(doc, fileName, blob);
+    return;
+  }
+  
+  // Méthode standard
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  link.rel = 'noopener noreferrer';
+  
+  document.body.appendChild(link);
+  link.click();
+  
+  // Nettoyer
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
+};
+
+// Sauvegarde pour Android
+const saveForAndroid = (doc, fileName, blob) => {
+  // Sur Android, créer un lien et cliquer fonctionne généralement bien
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  link.rel = 'noopener noreferrer';
+  
+  document.body.appendChild(link);
+  
+  // Simuler le clic
+  link.click();
+  
+  // Nettoyer
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
+  
+  // Afficher une notification
+  setTimeout(() => {
+    if (window.toast) {
+      window.toast({
+        title: "✅ Téléchargement démarré",
+        description: "Le billet est en cours de téléchargement",
+      });
+    }
+  }, 500);
+};
+
+// Instructions pour iOS
+const showIOSInstructions = (blobUrl, fileName) => {
+  const newWindow = window.open('', '_blank');
+  
+  if (!newWindow) {
+    // Popup bloquée - essayer une approche directe
+    window.location.href = blobUrl;
+    return;
+  }
+  
+  newWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Billet BonPlanInfos</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+          }
+          
+          .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease-out;
+          }
+          
+          @keyframes slideUp {
+            from { 
+              transform: translateY(40px); 
+              opacity: 0; 
+            }
+            to { 
+              transform: translateY(0); 
+              opacity: 1; 
+            }
+          }
+          
+          h1 {
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-align: center;
+          }
+          
+          .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 16px;
+          }
+          
+          .pdf-preview {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 24px;
+            padding: 32px 24px;
+            margin: 24px 0;
+            border: 2px dashed #dee2e6;
+            text-align: center;
+          }
+          
+          .pdf-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+          }
+          
+          .filename {
+            font-weight: 600;
+            color: #2d3748;
+            word-break: break-word;
+            font-size: 14px;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 100px;
+            display: inline-block;
+            max-width: 100%;
+          }
+          
+          .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 18px 24px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            width: 100%;
+            margin: 8px 0;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+          }
+          
+          .button:active {
+            transform: scale(0.98);
+            background: #2563eb;
+          }
+          
+          .button-secondary {
+            background: #e5e7eb;
+            color: #1f2937;
+          }
+          
+          .button-secondary:active {
+            background: #d1d5db;
+          }
+          
+          .tip-box {
+            background: #fef3c7;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 24px 0;
+            border: 1px solid #fcd34d;
+          }
+          
+          .tip-title {
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          
+          .step {
+            color: #b45309;
+            margin: 10px 0;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+          }
+          
+          .step-number {
+            background: #92400e;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          
+          .info-text {
+            color: #6b7280;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 16px;
+          }
+          
+          iframe {
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            position: absolute;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>🎫 Billet BonPlanInfos</h1>
+          <div class="subtitle">Votre billet est prêt</div>
+          
+          <div class="pdf-preview">
+            <div class="pdf-icon">📄</div>
+            <div class="filename">${fileName.replace('Billet_', '').replace(/_/g, ' ').replace('.pdf', '')}</div>
+          </div>
+          
+          <a href="${blobUrl}" 
+             class="button"
+             target="_blank"
+             rel="noopener noreferrer"
+             onclick="setTimeout(function(){window.close()}, 1000)">
+            <span>📥</span> Ouvrir le PDF
+          </a>
+          
+          <div class="tip-box">
+            <div class="tip-title">
+              <span>💡</span> Comment enregistrer sur iPhone ?
+            </div>
+            <div class="step">
+              <span class="step-number">1</span>
+              Appuyez sur "Ouvrir le PDF"
+            </div>
+            <div class="step">
+              <span class="step-number">2</span>
+              Appuyez sur l'écran pour afficher les options
+            </div>
+            <div class="step">
+              <span class="step-number">3</span>
+              Sélectionnez "Partager" <span style="font-size: 18px;">􀈂</span>
+            </div>
+            <div class="step">
+              <span class="step-number">4</span>
+              Choisissez "Enregistrer dans Livres"
+            </div>
+          </div>
+          
+          <button onclick="window.close()" 
+                  class="button button-secondary">
+            <span>✕</span> Fermer
+          </button>
+          
+          <div class="info-text">
+            Le PDF s'ouvrira automatiquement dans quelques secondes...
+          </div>
+        </div>
+        
+        <iframe src="${blobUrl}" title="PDF Preview"></iframe>
+        
+        <script>
+          // Tentative d'ouverture automatique
+          setTimeout(() => {
+            window.location.href = '${blobUrl}';
+          }, 800);
+        </script>
+      </body>
+    </html>
+  `);
+  newWindow.document.close();
+};
+
+// Sauvegarde pour iOS
+const saveForIOS = (doc, fileName, blob) => {
+  // Méthode 1: Utiliser l'API File System (iOS 14.5+)
+  if ('showSaveFilePicker' in window) {
+    saveWithFilePicker(doc, fileName, blob);
+    return;
+  }
+  
+  // Méthode 2: Convertir en DataURL pour iOS
+  try {
+    // Pour iOS, parfois le DataURL fonctionne mieux que le Blob URL
+    const dataUrl = doc.output('dataurlstring');
+    
+    // Créer un élément <a> avec l'attribut download
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    link.style.display = 'none';
+    link.rel = 'noopener noreferrer';
+    
+    // Pour iOS, il faut que l'élément soit dans le DOM
+    document.body.appendChild(link);
+    
+    // Simuler un clic avec événement natif
+    const event = new MouseEvent('click', {
+      view: window,
+      bubbles: true,
+      cancelable: true
+    });
+    link.dispatchEvent(event);
+    
+    // Nettoyer après un délai
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 1000);
+  } catch (error) {
+    console.error('iOS download error:', error);
+    
+    // Fallback: Ouvrir dans un nouvel onglet avec instructions
+    const blobUrl = URL.createObjectURL(blob);
+    showIOSInstructions(blobUrl, fileName);
+  }
+};
+
+// Méthode moderne avec File System API
+const saveWithFilePicker = async (doc, fileName, blob) => {
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [{
+        description: 'PDF Document',
+        accept: { 'application/pdf': ['.pdf'] },
+      }],
+    });
+    
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('File picker error:', err);
+      // Fallback vers la méthode standard
+      saveForDesktop(doc, fileName, blob);
+    }
+  }
+};
+
+// Fonction principale de sauvegarde universelle
 const savePDFUniversally = (doc, fileName) => {
   // Nettoyer le nom du fichier
   const safeName = fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
   
-  // Obtenir le blob
+  // Obtenir le blob avec le bon type MIME
   const blob = doc.output('blob');
   
-  // Créer une URL pour le blob
-  const blobUrl = URL.createObjectURL(blob);
+  // Détection précise des appareils
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isIOS13 = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS 13+
+  const isIOSDevice = isIOS || isIOS13;
+  const isAndroid = /android/i.test(ua);
   
-  // Détecter iOS
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  
-  if (isIOS) {
-    // Pour iOS: ouvrir dans un nouvel onglet avec une interface de téléchargement
-    const newWindow = window.open();
-    if (newWindow) {
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>Téléchargement PDF</title>
-            <style>
-              body {
-                margin: 0;
-                padding: 0;
-                background: #f3f4f6;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-                text-align: center;
-              }
-              .container {
-                max-width: 400px;
-                padding: 30px 20px;
-                background: white;
-                border-radius: 20px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-                margin: 20px;
-              }
-              h1 {
-                font-size: 24px;
-                color: #1f2937;
-                margin-bottom: 10px;
-                font-weight: 600;
-              }
-              p {
-                color: #6b7280;
-                margin-bottom: 30px;
-                font-size: 16px;
-                line-height: 1.5;
-              }
-              .button {
-                background: #3b82f6;
-                color: white;
-                border: none;
-                padding: 16px 32px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: 600;
-                margin: 10px;
-                cursor: pointer;
-                display: inline-block;
-                text-decoration: none;
-                box-shadow: 0 4px 6px rgba(59,130,246,0.3);
-                transition: all 0.2s;
-                -webkit-tap-highlight-color: transparent;
-                width: 80%;
-                max-width: 300px;
-              }
-              .button:active {
-                transform: scale(0.98);
-                background: #2563eb;
-              }
-              .button.secondary {
-                background: #9ca3af;
-                box-shadow: 0 4px 6px rgba(156,163,175,0.3);
-              }
-              .button.secondary:active {
-                background: #6b7280;
-              }
-              .info {
-                margin-top: 30px;
-                font-size: 14px;
-                color: #9ca3af;
-              }
-              .qr-placeholder {
-                width: 150px;
-                height: 150px;
-                background: #f3f4f6;
-                margin: 20px auto;
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #9ca3af;
-                font-size: 14px;
-              }
-              iframe {
-                width: 1px;
-                height: 1px;
-                opacity: 0;
-                position: absolute;
-                pointer-events: none;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1>📱 Votre billet est prêt !</h1>
-              <p>Choisissez comment vous souhaitez accéder à votre billet</p>
-              
-              <a href="${blobUrl}" download="${safeName}" class="button">
-                📥 Télécharger le PDF
-              </a>
-              
-              <button onclick="window.open('${blobUrl}', '_blank')" class="button secondary">
-                👁️ Voir dans le navigateur
-              </button>
-              
-              <div class="info">
-                <strong>💡 Astuce :</strong> Sur iPhone, appuyez sur "Voir" puis sur "Partager" 
-                <br>pour enregistrer dans Fichiers ou Livres.
-              </div>
-              
-              <iframe src="${blobUrl}"></iframe>
-            </div>
-            
-            <script>
-              // Essayer d'ouvrir automatiquement dans un nouvel onglet après 500ms
-              setTimeout(() => {
-                window.open('${blobUrl}', '_blank');
-              }, 500);
-            </script>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
-    } else {
-      // Fallback: téléchargement direct
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = safeName;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      }, 100);
-    }
-  } else if (/android/i.test(navigator.userAgent)) {
-    // Pour Android: utiliser une combinaison de téléchargement et d'aperçu
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = safeName;
-    document.body.appendChild(link);
-    link.click();
-    
-    // Sur Android, on peut aussi proposer l'ouverture
-    setTimeout(() => {
-      window.open(blobUrl, '_blank');
-    }, 1000);
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    }, 2000);
+  // Choisir la méthode appropriée selon l'appareil
+  if (isIOSDevice) {
+    saveForIOS(doc, safeName, blob);
+  } else if (isAndroid) {
+    saveForAndroid(doc, safeName, blob);
   } else {
-    // Desktop: téléchargement standard
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = safeName;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    }, 100);
+    saveForDesktop(doc, safeName, blob);
   }
+  
+  // Nettoyer l'URL du blob après un délai (pour iOS notamment)
+  setTimeout(() => {
+    // Cette ligne est principalement pour les cas où on a créé une URL blob
+    // Mais comme on la crée dans chaque fonction, on laisse le nettoyage à ces fonctions
+  }, 60000);
 };
 
 // Colors Map for Ticket Types
@@ -333,19 +572,17 @@ const formatPurchaseDate = (dateString) => {
   }
 };
 
-export const generateTicketPDF = async (event, tickets, user, toast) => {
+export const generateTicketPDF = async (event, tickets, user) => {
   try {
-    // Vérification des données essentielles
+    // Validation améliorée
     if (!event || !tickets || tickets.length === 0) {
-      console.error("Missing required data for PDF generation");
-      if (toast) {
-        toast({
-          title: "Erreur",
-          description: "Données manquantes pour générer le billet",
-          variant: "destructive",
-        });
-      }
-      return false;
+      throw new Error("Données manquantes pour générer le PDF");
+    }
+
+    // Vérifier que chaque ticket a les infos nécessaires
+    const validTickets = tickets.filter(t => t.ticket_number && t.ticket_code_short);
+    if (validTickets.length === 0) {
+      throw new Error("Aucun ticket valide à générer");
     }
 
     // A6 Size: 105mm x 148mm (perfect for tickets)
@@ -360,7 +597,7 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
     const pageHeight = doc.internal.pageSize.getHeight(); // 148mm
     const margin = 5;
     const contentWidth = pageWidth - margin * 2; // 95mm
-    const bottomMargin = 15; // Augmenté de 10 à 15mm pour plus d'espace en bas
+    const bottomMargin = 15;
 
     // Charger le logo une seule fois
     const logoUrl = "https://res.cloudinary.com/dprp6vxv6/image/upload/v1722428610/bpi/logo-BPI-v2-transparent_pmsz7v.png";
@@ -377,7 +614,7 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
       const eventDate = formatDate(event?.event_start_at);
       const location = safeText(event?.location || event?.city || "Lieu à confirmer");
       const ticketType = safeText(ticket.type_name || "Standard");
-      const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.created_at);
+      const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.purchased_at);
       
       // Déterminer la couleur
       const ticketColor = getTicketColor(ticketType, ticket.color);
@@ -444,7 +681,7 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
 
       cursorY = 24;
 
-      // --- 2. SECTION PRIX (ajouté en haut) ---
+      // --- 2. SECTION PRIX ---
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...ticketColor);
@@ -517,10 +754,10 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
       
       doc.text(displayName, pageWidth - margin - 4, cursorY + 8, { align: "right" });
 
-      cursorY += 15; // Réduit de 18 à 15 pour gagner de l'espace
+      cursorY += 15;
 
-      // --- 6. ZONE QR CODE (réduite pour faire de la place) ---
-      const qrSize = 45; // Réduit de 50 à 45mm pour gagner encore plus d'espace
+      // --- 6. ZONE QR CODE ---
+      const qrSize = 45;
       const qrX = (pageWidth - qrSize) / 2;
 
       // Ajouter les bordures d'angle pour le QR
@@ -557,7 +794,7 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
         }
       }
 
-      cursorY += qrSize + 8; // Réduit de 8 à 5mm
+      cursorY += qrSize + 8;
 
       // --- 7. CODE DU BILLET ET ID ---
       doc.setFont("courier", "bold");
@@ -575,28 +812,19 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
       }
 
       // --- 9. LIEN DU SITE ---
-      cursorY += (9);
+      cursorY += 9;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.setTextColor(...ticketColor); // Même couleur que le ticket pour cohérence
+      doc.setTextColor(...ticketColor);
       doc.text("www.bonplaninfos.net", pageWidth / 2, cursorY, { align: "center" });
 
-      // --- 10. FOOTER (Repositionné avec plus d'espace) ---
-      // Calculer la position du footer pour qu'il soit toujours à 15mm du bas
-      const footerY = pageHeight - bottomMargin + 5; // 5mm au-dessus de la marge inférieure
+      // --- 10. FOOTER ---
+      const footerY = pageHeight - bottomMargin + 5;
       
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(150, 150, 150);
-      
-      // Placer le footer à la position calculée
-      doc.text("Valable une seule fois • scannez à l'entrée et à la sortie ", pageWidth / 2, footerY, { align: "center" });
-
-      // --- 11. VÉRIFICATION D'ESPACE ---
-      // Vérifier si le contenu dépasse la zone de sécurité
-      if (cursorY > footerY - 10) {
-        console.warn(`Le contenu du ticket ${i+1} est trop proche du footer. Considérer réduire encore les espacements.`);
-      }
+      doc.text("Valable une seule fois • scannez à l'entrée et à la sortie", pageWidth / 2, footerY, { align: "center" });
     }
 
     // Générer un nom de fichier propre
@@ -608,18 +836,18 @@ export const generateTicketPDF = async (event, tickets, user, toast) => {
     
     const fileName = `Billet_${cleanTitle}_${Date.now()}.pdf`;
     
-    // Utiliser la fonction de sauvegarde universelle au lieu de doc.save()
+    // Utiliser la fonction de sauvegarde universelle
     savePDFUniversally(doc, fileName);
     
     return true;
   } catch (error) {
     console.error("Error generating PDF:", error);
     
-    // Afficher un message d'erreur à l'utilisateur
-    if (toast) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de générer le PDF. Veuillez réessayer.",
+    // Afficher une notification à l'utilisateur
+    if (window.toast) {
+      window.toast({
+        title: "❌ Erreur",
+        description: error.message || "Impossible de générer le billet",
         variant: "destructive",
       });
     }

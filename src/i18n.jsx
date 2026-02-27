@@ -89,7 +89,7 @@ const resources = {
       // ===== PAGES PRINCIPALES =====
       home: "Accueil",
       events: "Événements",
-      contests: "Concours",
+      contests: "events et concours",
       discover: "Découvrir",
       login: "Connexion",
       logout: "Déconnexion",

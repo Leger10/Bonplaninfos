@@ -3,113 +3,408 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 /* =====================================================
-   SAUVEGARDE PDF MULTI-PLATEFORME
+   SAUVEGARDE PDF MULTI-PLATEFORME AMÉLIORÉE
 ===================================================== */
-const savePDFUniversally = (doc, fileName) => {
+
+// Sauvegarde pour Desktop
+const saveForDesktop = (doc, fileName, blob) => {
+  // Utiliser l'API File System si disponible
+  if ('showSaveFilePicker' in window) {
+    saveWithFilePicker(doc, fileName, blob);
+    return;
+  }
+  
+  // Méthode standard
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  link.rel = 'noopener noreferrer';
+  
+  document.body.appendChild(link);
+  link.click();
+  
+  // Nettoyer
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
+};
+
+// Sauvegarde pour Android
+const saveForAndroid = (doc, fileName, blob) => {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = fileName;
+  link.style.display = 'none';
+  link.rel = 'noopener noreferrer';
+  
+  document.body.appendChild(link);
+  link.click();
+  
+  setTimeout(() => {
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
+  
+  // Notification
+  setTimeout(() => {
+    if (window.toast) {
+      window.toast({
+        title: "✅ Téléchargement démarré",
+        description: "Le document est en cours de téléchargement",
+      });
+    }
+  }, 500);
+};
+
+// Instructions pour iOS
+const showIOSInstructions = (blobUrl, fileName, documentType = 'document') => {
+  const newWindow = window.open('', '_blank');
+  
+  if (!newWindow) {
+    window.location.href = blobUrl;
+    return;
+  }
+  
+  const titles = {
+    'salary': 'Bulletin de Salaire',
+    'earnings': 'Relevé de Gains',
+    'receipt': 'Reçu de Paiement',
+    'document': 'Document'
+  };
+  
+  const displayTitle = titles[documentType] || titles.document;
+  
+  newWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>${displayTitle} - BonPlanInfos</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
+          body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+          }
+          
+          .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 32px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease-out;
+          }
+          
+          @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+          
+          h1 {
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-align: center;
+          }
+          
+          .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 16px;
+          }
+          
+          .document-preview {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 24px;
+            padding: 32px 24px;
+            margin: 24px 0;
+            border: 2px dashed #dee2e6;
+            text-align: center;
+          }
+          
+          .document-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+          }
+          
+          .filename {
+            font-weight: 600;
+            color: #2d3748;
+            word-break: break-word;
+            font-size: 14px;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 100px;
+            display: inline-block;
+            max-width: 100%;
+          }
+          
+          .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 18px 24px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            width: 100%;
+            margin: 8px 0;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+          }
+          
+          .button:active {
+            transform: scale(0.98);
+            background: #2563eb;
+          }
+          
+          .button-secondary {
+            background: #e5e7eb;
+            color: #1f2937;
+          }
+          
+          .button-secondary:active {
+            background: #d1d5db;
+          }
+          
+          .button-success {
+            background: #10b981;
+          }
+          
+          .button-success:active {
+            background: #059669;
+          }
+          
+          .tip-box {
+            background: #fef3c7;
+            border-radius: 20px;
+            padding: 20px;
+            margin: 24px 0;
+            border: 1px solid #fcd34d;
+          }
+          
+          .tip-title {
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          
+          .step {
+            color: #b45309;
+            margin: 10px 0;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+          }
+          
+          .step-number {
+            background: #92400e;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+          }
+          
+          .info-text {
+            color: #6b7280;
+            font-size: 13px;
+            text-align: center;
+            margin-top: 16px;
+          }
+          
+          iframe {
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            position: absolute;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>📄 ${displayTitle}</h1>
+          <div class="subtitle">Votre document est prêt</div>
+          
+          <div class="document-preview">
+            <div class="document-icon">📄</div>
+            <div class="filename">${fileName.replace(/_/g, ' ').replace('.pdf', '')}</div>
+          </div>
+          
+          <a href="${blobUrl}" 
+             class="button button-success"
+             target="_blank"
+             rel="noopener noreferrer"
+             onclick="setTimeout(function(){window.close()}, 1000)">
+            <span>📥</span> Ouvrir le document
+          </a>
+          
+          <div class="tip-box">
+            <div class="tip-title">
+              <span>💡</span> Comment enregistrer sur iPhone ?
+            </div>
+            <div class="step">
+              <span class="step-number">1</span>
+              Appuyez sur "Ouvrir le document"
+            </div>
+            <div class="step">
+              <span class="step-number">2</span>
+              Appuyez sur l'écran pour afficher les options
+            </div>
+            <div class="step">
+              <span class="step-number">3</span>
+              Sélectionnez "Partager" <span style="font-size: 18px;">􀈂</span>
+            </div>
+            <div class="step">
+              <span class="step-number">4</span>
+              Choisissez "Enregistrer dans Livres" ou "Enregistrer dans Fichiers"
+            </div>
+          </div>
+          
+          <button onclick="window.close()" 
+                  class="button button-secondary">
+            <span>✕</span> Fermer
+          </button>
+          
+          <div class="info-text">
+            Le document s'ouvrira automatiquement dans quelques secondes...
+          </div>
+        </div>
+        
+        <iframe src="${blobUrl}" title="PDF Preview"></iframe>
+        
+        <script>
+          setTimeout(() => {
+            window.location.href = '${blobUrl}';
+          }, 800);
+        </script>
+      </body>
+    </html>
+  `);
+  newWindow.document.close();
+};
+
+// Sauvegarde pour iOS
+const saveForIOS = (doc, fileName, blob, documentType = 'document') => {
+  // Méthode 1: Utiliser l'API File System (iOS 14.5+)
+  if ('showSaveFilePicker' in window) {
+    saveWithFilePicker(doc, fileName, blob);
+    return;
+  }
+  
+  // Méthode 2: DataURL pour iOS
+  try {
+    const dataUrl = doc.output('dataurlstring');
+    
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    link.style.display = 'none';
+    link.rel = 'noopener noreferrer';
+    
+    document.body.appendChild(link);
+    
+    const event = new MouseEvent('click', {
+      view: window,
+      bubbles: true,
+      cancelable: true
+    });
+    link.dispatchEvent(event);
+    
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 1000);
+  } catch (error) {
+    console.error('iOS download error:', error);
+    
+    const blobUrl = URL.createObjectURL(blob);
+    showIOSInstructions(blobUrl, fileName, documentType);
+  }
+};
+
+// Méthode moderne avec File System API
+const saveWithFilePicker = async (doc, fileName, blob) => {
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [{
+        description: 'PDF Document',
+        accept: { 'application/pdf': ['.pdf'] },
+      }],
+    });
+    
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('File picker error:', err);
+      saveForDesktop(doc, fileName, blob);
+    }
+  }
+};
+
+// Fonction principale de sauvegarde universelle
+const savePDFUniversally = (doc, fileName, documentType = 'document') => {
   // Nettoyer le nom du fichier
   const safeName = fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
   
   // Obtenir le blob
   const blob = doc.output('blob');
   
-  // Créer une URL pour le blob
-  const blobUrl = URL.createObjectURL(blob);
+  // Détection précise des appareils
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isIOS13 = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOSDevice = isIOS || isIOS13;
+  const isAndroid = /android/i.test(ua);
   
-  // Détecter iOS
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  const isAndroid = /android/i.test(navigator.userAgent);
-  
-  if (isIOS) {
-    // Pour iOS: ouvrir dans un nouvel onglet avec une interface de téléchargement
-    const newWindow = window.open();
-    if (newWindow) {
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>Téléchargement PDF</title>
-            <style>
-              body { margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-              .container { max-width: 400px; padding: 30px 20px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin: 20px; text-align: center; }
-              h1 { font-size: 24px; color: #1f2937; margin-bottom: 10px; font-weight: 600; }
-              p { color: #6b7280; margin-bottom: 30px; font-size: 16px; }
-              .button { background: #3b82f6; color: white; border: none; padding: 16px 32px; border-radius: 12px; font-size: 18px; font-weight: 600; margin: 10px; cursor: pointer; display: inline-block; text-decoration: none; box-shadow: 0 4px 6px rgba(59,130,246,0.3); width: 80%; max-width: 300px; }
-              .button.secondary { background: #9ca3af; box-shadow: 0 4px 6px rgba(156,163,175,0.3); }
-              .info { margin-top: 30px; font-size: 14px; color: #9ca3af; }
-              iframe { width: 1px; height: 1px; opacity: 0; position: absolute; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h1>📱 Votre document est prêt !</h1>
-              <p>Choisissez comment vous souhaitez accéder à votre document</p>
-              
-              <a href="${blobUrl}" download="${safeName}" class="button">
-                📥 Télécharger le PDF
-              </a>
-              
-              <button onclick="window.open('${blobUrl}', '_blank')" class="button secondary">
-                👁️ Voir dans le navigateur
-              </button>
-              
-              <div class="info">
-                <strong>💡 Astuce :</strong> Sur iPhone, appuyez sur "Voir" puis sur "Partager" 
-                <br>pour enregistrer dans Fichiers.
-              </div>
-              
-              <iframe src="${blobUrl}"></iframe>
-            </div>
-            
-            <script>
-              setTimeout(() => {
-                window.open('${blobUrl}', '_blank');
-              }, 500);
-            </script>
-          </body>
-        </html>
-      `);
-      newWindow.document.close();
-    } else {
-      // Fallback: téléchargement direct
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = safeName;
-      document.body.appendChild(link);
-      link.click();
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      }, 100);
-    }
+  // Choisir la méthode appropriée
+  if (isIOSDevice) {
+    saveForIOS(doc, safeName, blob, documentType);
   } else if (isAndroid) {
-    // Pour Android: combinaison téléchargement + aperçu
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = safeName;
-    document.body.appendChild(link);
-    link.click();
-    
-    setTimeout(() => {
-      window.open(blobUrl, '_blank');
-    }, 1000);
-    
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    }, 2000);
+    saveForAndroid(doc, safeName, blob);
   } else {
-    // Desktop: téléchargement standard
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = safeName;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    }, 100);
+    saveForDesktop(doc, safeName, blob);
   }
 };
 
@@ -200,6 +495,36 @@ const addValidationStamp = (doc, x, y) => {
   doc.text('✓', x, y + 2, { align: 'center' });
   doc.setFontSize(6);
   doc.text('VALIDÉ', x, y + 8, { align: 'center' });
+};
+
+// Helper pour ajouter une ligne de tableau
+const addTableRow = (doc, y, label, rate, amount) => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  
+  // Fond alterné
+  const rowIndex = Math.floor((y - 82) / 8);
+  if (rowIndex % 2 === 0) {
+    doc.setFillColor(248, 250, 252);
+    doc.rect(margin, y - 5, pageWidth - 2 * margin, 8, 'F');
+  }
+  
+  // Label
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(label, margin + 5, y);
+  
+  // Taux
+  doc.setFont('helvetica', 'bold');
+  doc.text(rate, margin + 100, y);
+  
+  // Montant
+  doc.setTextColor(22, 163, 74); // Vert
+  if (amount.includes('×')) {
+    doc.setTextColor(79, 70, 229); // Violet pour le multiplicateur
+  }
+  doc.text(amount, pageWidth - margin - 5, y, { align: 'right' });
 };
 
 export const generateSalarySlip = (data) => {
@@ -436,37 +761,7 @@ export const generateSalarySlip = (data) => {
   
   // ============ SAUVEGARDE ============
   const fileName = `bulletin_salaire_${adminName?.replace(/\s+/g, '_') || 'admin'}_${format(new Date(), 'yyyy_MM')}.pdf`;
-  savePDFUniversally(doc, fileName);
-};
-
-// Helper pour ajouter une ligne de tableau
-const addTableRow = (doc, y, label, rate, amount) => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
-  
-  // Fond alterné
-  const rowIndex = Math.floor((y - 82) / 8);
-  if (rowIndex % 2 === 0) {
-    doc.setFillColor(248, 250, 252);
-    doc.rect(margin, y - 5, pageWidth - 2 * margin, 8, 'F');
-  }
-  
-  // Label
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(label, margin + 5, y);
-  
-  // Taux
-  doc.setFont('helvetica', 'bold');
-  doc.text(rate, margin + 100, y);
-  
-  // Montant
-  doc.setTextColor(22, 163, 74); // Vert
-  if (amount.includes('×')) {
-    doc.setTextColor(79, 70, 229); // Violet pour le multiplicateur
-  }
-  doc.text(amount, pageWidth - margin - 5, y, { align: 'right' });
+  savePDFUniversally(doc, fileName, 'salary');
 };
 
 export const generateEarningsSlip = (data) => {
@@ -556,12 +851,12 @@ export const generateEarningsSlip = (data) => {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...secondaryColor);
   doc.text('Date d\'émission:', pageWidth - margin - 100, y + 8);
-  doc.text('Événements:', pageWidth - margin - 100, y + 16);
+  
   
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
   doc.text(format(new Date(date), 'dd/MM/yyyy', { locale: fr }), pageWidth - margin - 5, y + 8, { align: 'right' });
-  doc.text(eventCount.toString(), pageWidth - margin - 5, y + 16, { align: 'right' });
+ 
   
   y += 30;
   
@@ -692,7 +987,7 @@ export const generateEarningsSlip = (data) => {
   
   // ============ SAUVEGARDE ============
   const fileName = `releve_gains_${organizerName?.replace(/\s+/g, '_') || 'organisateur'}_${format(new Date(), 'yyyy_MM')}.pdf`;
-  savePDFUniversally(doc, fileName);
+  savePDFUniversally(doc, fileName, 'earnings');
 };
 
 // Fonction pour générer un reçu de paiement simplifié
@@ -755,7 +1050,7 @@ export const generatePaymentReceipt = (data) => {
   
   // Informations de base
   doc.text(`Date: ${format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr })}`, margin, y);
-  doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
+  // doc.text(`Référence: ${reference || 'N/A'}`, pageWidth - margin, y, { align: 'right' });
   y += 8;
   
   doc.text(`Type: ${paymentType || 'Paiement'}`, margin, y);
@@ -796,16 +1091,16 @@ export const generatePaymentReceipt = (data) => {
   doc.setTextColor(...primaryColor);
   doc.text(`${formattedAmount} FCFA`, pageWidth / 2, y, { align: 'center' });
   
-  if (amount > 0) {
-    const amountEuro = (amount / 656).toLocaleString('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(100, 100, 100);
-    doc.text(`(≈ ${amountEuro} €)`, pageWidth / 2, y + 8, { align: 'center' });
-  }
+  // if (amount > 0) {
+  //   // const amountEuro = (amount / 656).toLocaleString('fr-FR', {
+  //   //   minimumFractionDigits: 2,
+  //   //   maximumFractionDigits: 2
+  //   // });
+  //   doc.setFontSize(12);
+  //   doc.setFont('helvetica', 'italic');
+  //   doc.setTextColor(100, 100, 100);
+  //   doc.text(`(≈ ${amountEuro} €)`, pageWidth / 2, y + 8, { align: 'center' });
+  // }
   
   y += 40;
   
@@ -834,5 +1129,5 @@ export const generatePaymentReceipt = (data) => {
   
   // Sauvegarde
   const fileName = `recu_paiement_${reference || format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
-  savePDFUniversally(doc, fileName);
+  savePDFUniversally(doc, fileName, 'receipt');
 };

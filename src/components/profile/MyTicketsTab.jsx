@@ -2,17 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Ticket, Loader2, Calendar, MapPin, Coins, AlertCircle, RefreshCw, QrCode } from 'lucide-react';
+import { Download, Ticket, Loader2, Calendar, MapPin, AlertCircle, RefreshCw, QrCode } from 'lucide-react';
 import { generateTicketPDF } from '@/utils/generateTicketPDF';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import QRCode from 'qrcode.react'; 
 
 const MyTicketsTab = () => {
     const { user } = useAuth();
+    const { toast } = useToast();
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState(null);
@@ -29,7 +30,6 @@ const MyTicketsTab = () => {
         setLoading(true);
         setError(null);
         try {
-            // Fetch tickets with event and type details
             const { data, error } = await supabase
                 .from('event_tickets')
                 .select(`
@@ -58,7 +58,6 @@ const MyTicketsTab = () => {
     useEffect(() => {
         fetchTickets();
         
-        // Subscribe to ticket status changes
         const channel = supabase
             .channel('public:event_tickets')
             .on('postgres_changes', 
@@ -74,6 +73,17 @@ const MyTicketsTab = () => {
 
     const handleDownload = async (ticket) => {
         setDownloadingId(ticket.id);
+        
+        // Message pour mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            toast({
+                title: "📱 Génération du billet",
+                description: "Préparation de votre billet pour mobile...",
+                duration: 3000,
+            });
+        }
+        
         try {
             const eventData = ticket.events || {};
             
@@ -84,7 +94,8 @@ const MyTicketsTab = () => {
                 color: ticket.ticket_types?.color || 'blue', 
                 price: Number(ticket.purchase_amount_pi) || 0,
                 price_fcfa: Number(ticket.purchase_amount_fcfa) || 0,
-                purchase_date: ticket.purchased_at // Pass the purchase date
+                purchase_date: ticket.purchased_at,
+                created_at: ticket.created_at
             };
             
             const userData = {
@@ -93,11 +104,25 @@ const MyTicketsTab = () => {
                 id: user?.id
             };
 
-            await generateTicketPDF(eventData, [ticketData], userData);
-            toast({ title: "✅ Succès", description: "Billet téléchargé." });
+            const success = await generateTicketPDF(eventData, [ticketData], userData);
+            
+            if (success) {
+                toast({ 
+                    title: "✅ Succès", 
+                    description: isMobile 
+                        ? "Le billet a été généré. Vérifiez votre navigateur." 
+                        : "Billet téléchargé avec succès.",
+                });
+            } else {
+                throw new Error("Échec de la génération");
+            }
         } catch (e) {
             console.error("Download error", e);
-            toast({ title: "Erreur", description: "Échec du téléchargement PDF.", variant: "destructive" });
+            toast({ 
+                title: "❌ Erreur", 
+                description: "Échec du téléchargement. Veuillez réessayer.", 
+                variant: "destructive" 
+            });
         } finally {
             setDownloadingId(null);
         }
@@ -108,7 +133,6 @@ const MyTicketsTab = () => {
         setShowQrModal(true);
     };
 
-    // Formatter for purchase date display
     const formatPurchaseDate = (dateString) => {
         if (!dateString) return '';
         try {
@@ -127,7 +151,12 @@ const MyTicketsTab = () => {
     if (error) return (
         <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error} <Button variant="link" onClick={fetchTickets} className="p-0 h-auto font-bold ml-2">Réessayer</Button></AlertDescription>
+            <AlertDescription>
+                {error} 
+                <Button variant="link" onClick={fetchTickets} className="p-0 h-auto font-bold ml-2">
+                    Réessayer
+                </Button>
+            </AlertDescription>
         </Alert>
     );
 
@@ -140,7 +169,9 @@ const MyTicketsTab = () => {
                     </div>
                     <h3 className="text-xl font-bold mb-2">Aucun billet</h3>
                     <p className="text-muted-foreground mb-6">Vous n'avez pas encore acheté de billets.</p>
-                    <Button onClick={() => window.location.href = '/events'}>Explorer les événements</Button>
+                    <Button onClick={() => window.location.href = '/events'}>
+                        Explorer les événements
+                    </Button>
                 </CardContent>
             </Card>
         );
@@ -150,15 +181,21 @@ const MyTicketsTab = () => {
         <div className="space-y-4 animate-in fade-in">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Ticket className="text-primary w-5 h-5" /> Mes Billets ({tickets.length})
+                    <Ticket className="text-primary w-5 h-5" /> 
+                    Mes Billets ({tickets.length})
                 </h2>
-                <Button variant="ghost" size="sm" onClick={fetchTickets}><RefreshCw className="w-4 h-4 mr-2" /> Actualiser</Button>
+                <Button variant="ghost" size="sm" onClick={fetchTickets}>
+                    <RefreshCw className="w-4 h-4 mr-2" /> Actualiser
+                </Button>
             </div>
 
             <div className="grid gap-4">
                 {tickets.map(ticket => (
-                    <Card key={ticket.id} className="overflow-hidden border-l-4 hover:shadow-md transition-all" 
-                          style={{ borderLeftColor: getComputedColor(ticket.ticket_types?.color) }}>
+                    <Card 
+                        key={ticket.id} 
+                        className="overflow-hidden border-l-4 hover:shadow-md transition-all" 
+                        style={{ borderLeftColor: getComputedColor(ticket.ticket_types?.color) }}
+                    >
                         <div className="flex flex-col md:flex-row">
                             {/* Date Column */}
                             <div className="bg-muted/30 md:w-32 p-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-border">
@@ -166,10 +203,16 @@ const MyTicketsTab = () => {
                                     {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).getDate() : '--'}
                                 </span>
                                 <span className="text-xs uppercase font-bold text-muted-foreground">
-                                    {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).toLocaleDateString('fr-FR', { month: 'short' }) : '--'}
+                                    {ticket.events?.event_start_at 
+                                        ? new Date(ticket.events.event_start_at).toLocaleDateString('fr-FR', { month: 'short' }) 
+                                        : '--'
+                                    }
                                 </span>
                                 <span className="text-xs text-muted-foreground mt-1">
-                                    {ticket.events?.event_start_at ? new Date(ticket.events.event_start_at).getFullYear() : ''}
+                                    {ticket.events?.event_start_at 
+                                        ? new Date(ticket.events.event_start_at).getFullYear() 
+                                        : ''
+                                    }
                                 </span>
                             </div>
 
@@ -177,12 +220,17 @@ const MyTicketsTab = () => {
                             <div className="flex-1 p-4 flex flex-col justify-between">
                                 <div>
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-lg line-clamp-1">{ticket.events?.title || 'Événement'}</h3>
+                                        <h3 className="font-bold text-lg line-clamp-1">
+                                            {ticket.events?.title || 'Événement'}
+                                        </h3>
                                         <StatusBadge status={ticket.status} verificationStatus={ticket.verification_status} />
                                     </div>
+                                    
                                     <div className="flex items-center text-sm text-muted-foreground mb-3">
                                         <MapPin className="w-3 h-3 mr-1" />
-                                        <span className="line-clamp-1">{ticket.events?.location || ticket.events?.city || 'Lieu non spécifié'}</span>
+                                        <span className="line-clamp-1">
+                                            {ticket.events?.location || ticket.events?.city || 'Lieu non spécifié'}
+                                        </span>
                                     </div>
                                     
                                     {/* Purchase Date */}
@@ -194,8 +242,14 @@ const MyTicketsTab = () => {
                                     )}
                                     
                                     <div className="flex flex-wrap gap-2 mb-2">
-                                        <Badge variant="outline" className="text-xs" 
-                                               style={{ borderColor: getComputedColor(ticket.ticket_types?.color), color: getComputedColor(ticket.ticket_types?.color) }}>
+                                        <Badge 
+                                            variant="outline" 
+                                            className="text-xs" 
+                                            style={{ 
+                                                borderColor: getComputedColor(ticket.ticket_types?.color), 
+                                                color: getComputedColor(ticket.ticket_types?.color) 
+                                            }}
+                                        >
                                             {ticket.ticket_types?.name || 'Standard'}
                                         </Badge>
                                         <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground font-mono">
@@ -207,7 +261,12 @@ const MyTicketsTab = () => {
 
                             {/* Actions Column */}
                             <div className="p-4 bg-muted/10 flex flex-row md:flex-col items-center justify-center gap-2 border-t md:border-t-0 md:border-l border-border">
-                                <Button size="sm" variant="outline" className="flex-1 w-full" onClick={() => openQrModal(ticket)}>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="flex-1 w-full" 
+                                    onClick={() => openQrModal(ticket)}
+                                >
                                     <QrCode className="w-4 h-4 mr-2" /> QR Code
                                 </Button>
                                 <Button 
@@ -216,7 +275,10 @@ const MyTicketsTab = () => {
                                     onClick={() => handleDownload(ticket)}
                                     disabled={downloadingId === ticket.id}
                                 >
-                                    {downloadingId === ticket.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                                    {downloadingId === ticket.id 
+                                        ? <Loader2 className="w-4 h-4 animate-spin" /> 
+                                        : <Download className="w-4 h-4 mr-2" />
+                                    }
                                     PDF
                                 </Button>
                             </div>
@@ -255,7 +317,10 @@ const MyTicketsTab = () => {
                             </p>
                         )}
 
-                        <Badge variant={selectedTicket?.status === 'used' ? 'secondary' : 'default'} className="mt-4">
+                        <Badge 
+                            variant={selectedTicket?.status === 'used' ? 'secondary' : 'default'} 
+                            className="mt-4"
+                        >
                             {selectedTicket?.status === 'active' ? 'Billet Valide' : 'Déjà utilisé'}
                         </Badge>
                     </div>
