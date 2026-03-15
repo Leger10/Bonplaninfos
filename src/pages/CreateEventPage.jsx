@@ -15,13 +15,14 @@ import {
   Gift,
   ShieldCheck
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const CreateEventPage = () => {
   const navigate = useNavigate();
   const { userProfile } = useData();
+  const { t } = useTranslation();
 
   // Roles allowed to see Simple Event (Broadcast)
-  // Simple events are for platform-wide announcements or basic info
   const ALLOWED_ROLES_SIMPLE_EVENT = ['super_admin', 'admin', 'secretary'];
   
   const isAllowedToCreateSimpleEvent = userProfile && (
@@ -33,8 +34,6 @@ const CreateEventPage = () => {
   const eventTypes = [
     {
       id: 'simple',
-      title: 'Annonce / Info',
-      description: 'Publiez une information, une actualité ou un événement simple sans billetterie. Idéal pour informer la communauté.',
       icon: Megaphone,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-blue-600 to-indigo-700',
@@ -44,8 +43,6 @@ const CreateEventPage = () => {
     },
     {
       id: 'ticketing',
-      title: 'Billetterie',
-      description: 'Créez un événement avec vente de billets (QR Code). Gérez les entrées, les types de billets et les revenus.',
       icon: Ticket,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-purple-600 to-pink-700',
@@ -55,8 +52,6 @@ const CreateEventPage = () => {
     },
     {
       id: 'raffle',
-      title: 'Tombola',
-      description: 'Organisez une tombola numérique sécurisée. Vendez des tickets et effectuez des tirages au sort automatiques.',
       icon: Gift,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-emerald-600 to-teal-700',
@@ -66,8 +61,6 @@ const CreateEventPage = () => {
     },
     {
       id: 'vote',
-      title: 'Concours / Vote',
-      description: 'Lancez un concours ou une élection. Les participants peuvent voter pour leurs candidats favoris.',
       icon: Vote,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-orange-600 to-red-700',
@@ -77,8 +70,6 @@ const CreateEventPage = () => {
     },
     {
       id: 'stand',
-      title: 'Location de Stands',
-      description: 'Vous organisez une foire ou un salon ? Gérez la location de vos espaces et stands exposants.',
       icon: Store,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-cyan-600 to-blue-700',
@@ -88,8 +79,6 @@ const CreateEventPage = () => {
     },
     {
       id: 'promotion',
-      title: 'Campagne Publicitaire',
-      description: 'Boostez votre visibilité en créant une campagne promotionnelle ciblée sur l\'application.',
       icon: CalendarDays, 
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-amber-600 to-orange-700',
@@ -102,18 +91,16 @@ const CreateEventPage = () => {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24">
       <Helmet>
-        <title>Créer un événement - BonPlanInfos</title>
+        <title>{t('createEvent.meta_title')}</title>
       </Helmet>
 
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Que souhaitez-vous créer ?</h1>
-          <p className="text-muted-foreground text-lg">
-            Choisissez le type d'événement ou d'activité qui correspond à vos besoins.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t('createEvent.title')}</h1>
+          <p className="text-muted-foreground text-lg">{t('createEvent.subtitle')}</p>
         </div>
 
-        {/* Updated grid layout to display 2 cards per row on mobile */}
+        {/* 2 cards per row on mobile, 2 on md, 3 on lg */}
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {eventTypes.map((type) => {
             // Filter out restricted types if user doesn't have permission
@@ -136,18 +123,18 @@ const CreateEventPage = () => {
                       <type.icon className={`w-7 h-7 ${type.color}`} />
                     </div>
                     <CardTitle className="text-lg flex items-center justify-between">
-                      {type.title}
+                      {t(`createEvent.types.${type.id}.title`)}
                       {type.restricted && (
-                        <ShieldCheck className="w-4 h-4 text-blue-200" title="Réservé Admin" />
+                        <ShieldCheck className="w-4 h-4 text-blue-200" title={t('createEvent.restricted_tooltip')} />
                       )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <CardDescription className="text-sm mb-4 min-h-[60px] text-gray-200">
-                      {type.description}
+                      {t(`createEvent.types.${type.id}.description`)}
                     </CardDescription>
                     <Button variant="outline" className="w-full justify-between group hover:bg-white/20 text-white border-white/50">
-                      Commencer
+                      {t('createEvent.startButton')}
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                     </Button>
                   </CardContent>

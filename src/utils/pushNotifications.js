@@ -1,185 +1,200 @@
 import { supabase } from '@/lib/customSupabaseClient';
+import { toast } from '@/components/ui/use-toast';
 
 /**
- * RLS POLICIES REMINDER (SQL to run in Supabase SQL Editor):
+ * ============================================================================
+ * VAPID KEY INTEGRATION GUIDE (PUSH NOTIFICATIONS)
+ * ============================================================================
+ * Pour que les notifications Web Push fonctionnent, vous devez configurer 
+ * vos clés VAPID (Voluntary Application Server Identification).
  * 
- * -- 1. Enable RLS
- * ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
+ * 1. DANS VOTRE ENVIRONNEMENT LOCAL (.env.local) :
+ *    Ajoutez la ligne suivante à la racine de votre projet frontend :
+ *    VITE_VAPID_PUBLIC_KEY="votre_cle_publique_vapid_ici"
  * 
- * -- 2. Create Policies
- * CREATE POLICY "Users can insert own tokens" ON public.push_tokens FOR INSERT WITH CHECK (auth.uid() = user_id);
- * CREATE POLICY "Users can view own tokens" ON public.push_tokens FOR SELECT USING (auth.uid() = user_id);
- * CREATE POLICY "Users can update own tokens" ON public.push_tokens FOR UPDATE USING (auth.uid() = user_id);
- * CREATE POLICY "Users can delete own tokens" ON public.push_tokens FOR DELETE USING (auth.uid() = user_id);
- * 
- * -- 3. Create Unique Constraint (CRITICAL for upsert/on_conflict)
- * ALTER TABLE public.push_tokens ADD CONSTRAINT push_tokens_token_key UNIQUE (token);
+ * 2. DANS SUPABASE (Edge Functions & Secrets) :
+ *    Stockez vos clés privées et publiques dans le Vault de Supabase :
+ *    - VAPID_PUBLIC_KEY
+ *    - VAPID_PRIVATE_KEY
+ *    - VAPID_SUBJECT (ex: mailto:admin@votre-domaine.com)
+ *    
+ *    Ces secrets seront utilisés par vos Edge Functions pour signer les
+ *    requêtes push envoyées aux serveurs des navigateurs.
+ * ============================================================================
  */
 
-/**
- * Vérifie si le token est valide (format, non vide, etc.)
- */
-export const isPushTokenValid = (token) => {
-  if (!token) return false;
-  if (typeof token === 'string' && token.trim().length > 0) return true;
-  if (typeof token === 'object' && token !== null) {
-    // Cas d'un objet subscription Web Push
-    return !!token.endpoint;
-  }
-  return false;
-};
-
-/**
- * Vérifie si le support push est disponible
- */
 export const isPushSupported = () => {
   return 'serviceWorker' in navigator && 'PushManager' in window;
 };
 
-/**
- * Demande la permission pour les notifications
- */
+// Demander la permission de notification
 export const askNotificationPermission = async () => {
-  if (!isPushSupported()) return 'denied';
-  
-  const permission = await Notification.requestPermission();
-  return permission;
+  try {
+    // Vérifier si le navigateur supporte les notifications
+    if (!('Notification' in window)) {
+      console.warn('Ce navigateur ne supporte pas les notifications');
+      return false;
+    }
+
+    // Si déjà accordé
+    if (Notification.permission === 'granted') {
+      console.log('Permission déjà accordée');
+      return true;
+    }
+
+    // Si déjà refusé
+    if (Notification.permission === 'denied') {
+      console.warn('Permission refusée par l\'utilisateur');
+      return false;
+    }
+
+    // Demander la permission
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      console.log('✅ Permission accordée');
+      return true;
+    } else {
+      console.warn('❌ Permission refusée');
+      return false;
+    }
+  } catch (error) {
+    console.error('Erreur lors de la demande de permission:', error);
+    return false;
+  }
 };
 
 /**
- * Récupère la clé VAPID publique depuis la base de données
+ * Convertit la clé VAPID base64 en Uint8Array (Format requis par l'API Push)
+ * Implémentation corrigée et sécurisée.
  */
-const getVapidPublicKey = async () => {
+export const urlBase64ToUint8Array = (base64String) => {
+  if (!base64String) throw new Error('Base64 string is empty');
+  
+  try {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (error) {
+    console.error('Conversion VAPID échouée. Format invalide:', base64String);
+    throw new Error(`La clé VAPID est mal encodée (Base64 invalide). Détails: ${error.message}`);
+  }
+};
+
+/**
+ * Récupère la clé VAPID publique (Priorité : .env > Supabase RPC)
+ */
+export const getVapidPublicKey = async () => {
+  const envKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  
+  // Log de l'environnement pour débogage (Masqué en prod si nécessaire)
+  console.log('Push Debug - Clé ENV reçue:', envKey ? 'PRÉSENTE' : 'UNDEFINED/NULL');
+
+  if (envKey && envKey.trim() !== '' && envKey !== 'undefined') {
+    return envKey;
+  }
+
+  console.warn('⚠️ VITE_VAPID_PUBLIC_KEY manquante en ENV. Tentative RPC...');
+
   try {
     const { data, error } = await supabase.rpc('get_vapid_public_key');
     if (error) throw error;
-    return data;
+    if (data && data.trim() !== '') {
+      return data;
+    }
   } catch (err) {
-    console.error('Error fetching VAPID key:', err);
-    // Fallback key if RPC fails (should match your env)
-    return 'BNozW3XwT0gB_G_g8Y2iV5GZ3G-sA8f_gZ5eYjJ3Xw8U_cZ6E_bX9V9hYjZkXw8U_cZ6E_bX9V9hYjZkXw8U';
+    console.error('Erreur RPC VAPID:', err);
   }
-};
 
-/**
- * Convertit la clé VAPID base64 en Uint8Array
- */
-const urlBase64ToUint8Array = (base64String) => {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-};
-
-/**
- * Récupère l'abonnement push existant
- */
-export const getExistingSubscription = async () => {
-  if (!isPushSupported()) return null;
-  const registration = await navigator.serviceWorker.ready;
-  return await registration.pushManager.getSubscription();
+  return null;
 };
 
 /**
  * Abonne l'utilisateur aux notifications push
  */
-export const subscribeUserToPush = async () => {
-  if (!isPushSupported()) throw new Error('Push notifications not supported');
-
-  const registration = await navigator.serviceWorker.ready;
-  const vapidPublicKey = await getVapidPublicKey();
-  const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+export const subscribeToPushNotifications = async () => {
+  if (!isPushSupported()) {
+    throw new Error('Push non supporté par ce navigateur.');
+  }
 
   try {
+    const registration = await navigator.serviceWorker.ready;
+    const vapidPublicKey = await getVapidPublicKey();
+    
+    if (!vapidPublicKey) {
+      const msg = '❌ Clé publique VAPID introuvable dans .env.local ou en BDD.';
+      console.error(msg);
+      toast({ title: "Erreur de configuration", description: msg, variant: "destructive" });
+      throw new Error(msg);
+    }
+
+    // Task 2 & 3: Conversion et validation avant subscribe
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+    
+    console.log('⏳ Souscription au PushManager...');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: convertedVapidKey
+      applicationServerKey: applicationServerKey
     });
+    
+    console.log('✅ Abonnement Push réussi.');
     return subscription;
   } catch (error) {
-    console.error('Failed to subscribe the user: ', error);
+    const errorDetail = error.message || 'Erreur inconnue';
+    console.error('Subscription Error:', error);
+    
+    toast({ 
+      title: "Échec de l'abonnement", 
+      description: `Impossible d'activer les notifications : ${errorDetail}`, 
+      variant: "destructive" 
+    });
+    
     throw error;
   }
 };
 
 /**
- * Sauvegarde le token dans Supabase avec gestion d'erreur robuste
+ * Sauvegarde le token dans Supabase
  */
 export const savePushTokenToSupabase = async (user, subscription) => {
-  if (!user || !subscription) {
-    console.error('Missing user or subscription data');
-    return { error: 'Missing data' };
-  }
-
-  // Sérialisation du token (Web Push retourne un objet, mobile peut retourner une string)
-  const tokenString = JSON.stringify(subscription);
-
-  // Validation
-  if (!isPushTokenValid(subscription)) {
-    console.error('Invalid push token structure');
-    return { error: 'Invalid token' };
-  }
-
-  const deviceType = /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
-  const deviceInfo = {
-    userAgent: navigator.userAgent,
-    platform: navigator.platform,
-    language: navigator.language
-  };
-
-  const payload = {
-    user_id: user.id,
-    token: tokenString,
-    device_type: deviceType,
-    is_active: true,
-    device_info: deviceInfo,
-    app_version: '1.0.0', // Peut être dynamique
-    last_used_at: new Date().toISOString(),
-    created_at: new Date().toISOString()
-  };
-
-  console.log('Attempting to save push token to Supabase:', payload);
+  if (!user || !subscription) return { error: 'Missing data' };
 
   try {
-    // Tentative d'insertion avec UPSERT sur la colonne 'token'
-    // NOTE: Cela nécessite une contrainte UNIQUE sur la colonne 'token' dans la table 'push_tokens'
     const { data, error } = await supabase
       .from('push_tokens')
-      .upsert(payload, { onConflict: 'token' })
-      .select();
+      .upsert({
+        user_id: user.id,
+        token: JSON.stringify(subscription),
+        device_type: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+        is_active: true,
+        device_info: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform
+        },
+        last_used_at: new Date().toISOString()
+      }, { onConflict: 'token' });
 
-    if (error) {
-      console.error('Supabase Error saving push token:', error);
-      
-      // Feedback spécifique si la contrainte unique manque
-      if (error.message.includes('constraint') || error.code === '23505') {
-        console.warn('HINT: Vérifiez que la colonne "token" a bien une contrainte UNIQUE dans la base de données.');
-      }
-      
-      throw error;
-    }
-
-    console.log('Push token saved successfully:', data);
+    if (error) throw error;
     return { data };
   } catch (err) {
-    console.error('Exception while saving push token:', err);
-    return { error: err.message || 'Unknown error' };
+    console.error('Save token error:', err);
+    return { error: err.message };
   }
 };
 
-/**
- * Synchronise l'abonnement si l'utilisateur est connecté
- */
 export const syncSubscription = async (user) => {
-  const subscription = await getExistingSubscription();
+  if (!isPushSupported() || !user) return null;
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.getSubscription();
   if (subscription) {
     return await savePushTokenToSupabase(user, subscription);
   }

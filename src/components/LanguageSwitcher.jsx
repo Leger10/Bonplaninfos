@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
@@ -12,13 +12,25 @@ const languages = [
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
 
-  const changeLanguage = (lng) => {
-    if (i18n && i18n.changeLanguage) {
-      i18n.changeLanguage(lng);
-    }
+  // Écouter les changements de langue (debug)
+  useEffect(() => {
+    console.log('🌐 Langue actuelle (LanguageSwitcher) :', i18n.language);
+    const handleLanguageChanged = (lng) => {
+      console.log('🔄 Langue changée en :', lng);
+    };
+    i18n.on('languageChanged', handleLanguageChanged);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChanged);
+    };
+  }, [i18n]);
+
+  const changeLanguage = async (lng) => {
+    console.log('🎯 Demande de changement vers :', lng);
+    await i18n.changeLanguage(lng);
+    console.log('✅ Après changement, langue =', i18n.language);
   };
 
-  const currentLangCode = i18n && i18n.language ? i18n.language.split('-')[0] : 'fr';
+  const currentLangCode = i18n?.language?.split('-')[0] || 'fr';
   const currentLanguage = languages.find(lang => lang.code === currentLangCode) || languages[0];
 
   return (

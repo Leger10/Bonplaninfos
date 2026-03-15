@@ -1316,91 +1316,90 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [availableCategories, setAvailableCategories] = useState(["Tous"]);
   const [rankingFilter, setRankingFilter] = useState("Tous");
 
-  const fetchData = useCallback(async () => {
-    if (!event?.id) return;
+ const fetchData = useCallback(async () => {
+  if (!event?.id) return; // Vérification avant de set loading
+  setLoadingCandidates(true);
+  try {
+    const { data: cData, error: cError } = await supabase
+      .from("candidates")
+      .select("*")
+      .eq("event_id", event.id)
+      .order("vote_count", { ascending: false });
 
-    setLoadingCandidates(true);
-    try {
-      const { data: cData, error: cError } = await supabase
-        .from("candidates")
-        .select("*")
-        .eq("event_id", event.id)
-        .order("vote_count", { ascending: false });
+    if (cError) throw cError;
 
-      if (cError) throw cError;
+    const { data: sData, error: sError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", event.id)
+      .maybeSingle();
 
-      const { data: sData, error: sError } = await supabase
-        .from("events")
-        .select("*")
-        .eq("id", event.id)
-        .maybeSingle();
-
-      if (sError) {
-        console.error("Error loading settings:", sError);
-      }
-
-      if (user) {
-        const { data: uData, error: uError } = await supabase
-          .from("profiles")
-          .select("coin_balance")
-          .eq("id", user.id)
-          .single();
-
-        if (!uError) {
-          setUserPaidBalance(uData?.coin_balance || 0);
-        }
-      }
-
-      if (cData) {
-        setCandidates(cData);
-        const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
-        if (cats.length > 0) {
-          setAvailableCategories(["Tous", ...cats.sort()]);
-        }
-      }
-
-      let votePrice = 1;
-      if (sData) {
-        const possiblePriceColumns = [
-          "price_pi",
-          "vote_price",
-          "price",
-          "vote_cost",
-          "vote_price_fcfa"
-        ];
-
-        for (const col of possiblePriceColumns) {
-          if (sData[col] !== undefined && sData[col] !== null) {
-            votePrice = Number(sData[col]);
-            break;
-          }
-        }
-      }
-
-      const settingsData = {
-        price_pi: votePrice,
-        event_end_at: sData?.event_end_at || new Date(Date.now() + 86400000).toISOString(),
-        start_date: sData?.start_date || new Date().toISOString(),
-      };
-
-      setSettings(settingsData);
-
-      const now = new Date();
-      const endDate = new Date(settingsData.event_end_at);
-      const isExpired = now.getTime() > endDate.getTime();
-
-      setIsVoteFinished(isExpired);
-    } catch (error) {
-      console.error("Error fetching voting data:", error);
-      toast({
-        title: "Erreur de chargement",
-        description: "Impossible de charger les données des candidats.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCandidates(false);
+    if (sError) {
+      console.error("Error loading settings:", sError);
     }
-  }, [event?.id, user]);
+
+    if (user) {
+      const { data: uData, error: uError } = await supabase
+        .from("profiles")
+        .select("coin_balance")
+        .eq("id", user.id)
+        .single();
+
+      if (!uError) {
+        setUserPaidBalance(uData?.coin_balance || 0);
+      }
+    }
+
+    if (cData) {
+      setCandidates(cData);
+      const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
+      if (cats.length > 0) {
+        setAvailableCategories(["Tous", ...cats.sort()]);
+      }
+    }
+
+    let votePrice = 1;
+    if (sData) {
+      const possiblePriceColumns = [
+        "price_pi",
+        "vote_price",
+        "price",
+        "vote_cost",
+        "vote_price_fcfa"
+      ];
+
+      for (const col of possiblePriceColumns) {
+        if (sData[col] !== undefined && sData[col] !== null) {
+          votePrice = Number(sData[col]);
+          break;
+        }
+      }
+    }
+
+    const settingsData = {
+      price_pi: votePrice,
+      event_end_at: sData?.event_end_at || new Date(Date.now() + 86400000).toISOString(),
+      start_date: sData?.start_date || new Date().toISOString(),
+    };
+
+    setSettings(settingsData);
+
+    const now = new Date();
+    const endDate = new Date(settingsData.event_end_at);
+    const isExpired = now.getTime() > endDate.getTime();
+
+    setIsVoteFinished(isExpired);
+  } catch (error) {
+    console.error("Error fetching voting data:", error);
+    toast({
+      title: "Erreur de chargement",
+      description: "Impossible de charger les données des candidats.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoadingCandidates(false);
+  }
+}, [event?.id, user]);
 
   useEffect(() => {
     fetchData();

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -214,7 +214,7 @@ const UserGuidePage = () => {
 
   const prevTestimonial = () => {
     setCurrentTestimonial(
-      (prev) => (prev - 1 + testimonials.length) % testimonials.length
+      (prev) => (prev - 1 + testimonials.length) % testimonials.length,
     );
   };
 
@@ -552,7 +552,7 @@ const UserGuidePage = () => {
                         <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
                         <span>
                           {t(
-                            "user_guide_page.partner_program.benefits.revenue"
+                            "user_guide_page.partner_program.benefits.revenue",
                           )}
                         </span>
                       </li>
@@ -560,7 +560,7 @@ const UserGuidePage = () => {
                         <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
                         <span>
                           {t(
-                            "user_guide_page.partner_program.benefits.training"
+                            "user_guide_page.partner_program.benefits.training",
                           )}
                         </span>
                       </li>
@@ -568,7 +568,7 @@ const UserGuidePage = () => {
                         <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
                         <span>
                           {t(
-                            "user_guide_page.partner_program.benefits.support"
+                            "user_guide_page.partner_program.benefits.support",
                           )}
                         </span>
                       </li>
@@ -576,7 +576,7 @@ const UserGuidePage = () => {
                         <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
                         <span>
                           {t(
-                            "user_guide_page.partner_program.benefits.network"
+                            "user_guide_page.partner_program.benefits.network",
                           )}
                         </span>
                       </li>
@@ -589,7 +589,7 @@ const UserGuidePage = () => {
                       </div>
                       <p className="mb-4">
                         {t(
-                          "user_guide_page.partner_program.partner_description"
+                          "user_guide_page.partner_program.partner_description",
                         )}
                       </p>
                       <Button
@@ -679,8 +679,8 @@ const UserGuidePage = () => {
                       index === currentTestimonial
                         ? 0
                         : index < currentTestimonial
-                        ? -100
-                        : 100,
+                          ? -100
+                          : 100,
                     scale: index === currentTestimonial ? 1 : 0.9,
                   }}
                   transition={{ duration: 0.5 }}

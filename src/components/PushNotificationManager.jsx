@@ -3,8 +3,8 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   isPushSupported, 
-  subscribeUserToPush, 
-  askNotificationPermission, 
+  askNotificationPermission,
+  subscribeToPushNotifications, 
   syncSubscription, 
   savePushTokenToSupabase 
 } from '@/utils/pushNotifications';
@@ -46,12 +46,12 @@ const PushNotificationManager = () => {
   const handleEnableNotifications = async () => {
     setIsLoading(true);
     try {
-      const permission = await askNotificationPermission();
-      setPermissionState(permission);
+      const isGranted = await askNotificationPermission();
+      setPermissionState(isGranted ? 'granted' : 'denied');
 
-      if (permission === 'granted') {
+      if (isGranted) {
         // Subscribe the user via Service Worker
-        const subscription = await subscribeUserToPush();
+        const subscription = await subscribeToPushNotifications();
         
         if (subscription && user) {
             // Save to database

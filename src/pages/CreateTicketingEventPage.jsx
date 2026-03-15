@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
@@ -64,7 +64,7 @@ const CreateTicketingEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [step, setStep] = useState(1);
-  
+
   // Contract Modal State
   const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -262,10 +262,11 @@ const CreateTicketingEventPage = () => {
     if (!termsAccepted) {
       toast({
         title: "Contrat requis",
-        description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        description:
+          "Veuillez lire et accepter le contrat organisateur avant de publier.",
         variant: "destructive",
       });
-      
+
       // Ouvrir automatiquement le modal du contrat
       setShowContractModal(true);
       return;
@@ -318,7 +319,7 @@ const CreateTicketingEventPage = () => {
 
     try {
       console.log("Creating event with image:", title);
-      
+
       // Normalisation des dates
       const eventStartAt = new Date(eventDate);
       const eventEndAt = endDate
@@ -326,7 +327,7 @@ const CreateTicketingEventPage = () => {
         : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000); // +1 jour
 
       const { data: eventData, error: eventError } = await supabase
-        .from('events')
+        .from("events")
         .insert({
           title,
           description,
@@ -337,14 +338,14 @@ const CreateTicketingEventPage = () => {
           address,
           cover_image: coverImage,
           organizer_id: user.id,
-          event_type: 'ticketing',
+          event_type: "ticketing",
           category_id: categoryId,
-          status: 'active',
+          status: "active",
           max_attendees: parseInt(maxAttendees, 10) || null,
           is_public: isPublic,
           requires_approval: requiresApproval,
           contract_accepted_at: new Date().toISOString(),
-          contract_version: 'v1.0'
+          contract_version: "v1.0",
         })
         .select()
         .single();
@@ -363,15 +364,13 @@ const CreateTicketingEventPage = () => {
       const newEventId = eventData.id;
 
       // Sauvegarder l'acceptation du contrat dans la table dédiée
-      await supabase
-        .from('user_contract_acceptances')
-        .insert({
-          user_id: user.id,
-          event_id: newEventId,
-          contract_type: 'organizer',
-          accepted_at: new Date().toISOString(),
-          contract_version: 'v1.0'
-        });
+      await supabase.from("user_contract_acceptances").insert({
+        user_id: user.id,
+        event_id: newEventId,
+        contract_type: "organizer",
+        accepted_at: new Date().toISOString(),
+        contract_version: "v1.0",
+      });
 
       const totalTickets = ticketTypes.reduce(
         (acc, tt) => acc + parseInt(tt.quantity_available || 0, 10),
@@ -388,7 +387,7 @@ const CreateTicketingEventPage = () => {
         });
       if (ticketingError) throw ticketingError;
 
-      const ticketTypesToInsert = ticketTypes.map(tt => ({
+      const ticketTypesToInsert = ticketTypes.map((tt) => ({
         event_id: newEventId,
         name: tt.name,
         description: tt.description,
@@ -405,7 +404,7 @@ const CreateTicketingEventPage = () => {
           ? new Date(tt.sales_event_end_at).toISOString()
           : eventEndAt.toISOString(),
         is_active: true,
-        color: tt.color || 'blue'
+        color: tt.color || "blue",
       }));
 
       const { error: typesError } = await supabase
@@ -486,9 +485,9 @@ const CreateTicketingEventPage = () => {
       </Helmet>
 
       {/* Contract Modal */}
-      <OrganizerContractModal 
-        open={showContractModal} 
-        onOpenChange={setShowContractModal} 
+      <OrganizerContractModal
+        open={showContractModal}
+        onOpenChange={setShowContractModal}
         onAccept={handleContractAccept}
         eventTitle={title || "votre événement"}
         eventId="new-event"
@@ -957,7 +956,7 @@ const CreateTicketingEventPage = () => {
                       <span className="font-medium">
                         {ticketTypes.reduce(
                           (acc, t) => acc + parseInt(t.quantity_available || 0),
-                          0
+                          0,
                         )}{" "}
                         total
                       </span>
@@ -1008,13 +1007,14 @@ const CreateTicketingEventPage = () => {
                       règlement de la billetterie et les conditions générales
                       d'utilisation.
                     </p>
-                    
+
                     {/* Contract Status Indicator */}
                     {termsAccepted && (
                       <div className="flex items-center gap-2 mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
                         <CheckCircle className="w-4 h-4 flex-shrink-0" />
                         <span>
-                          <strong>Contrat accepté</strong> - Vous avez accepté les conditions organisateur.
+                          <strong>Contrat accepté</strong> - Vous avez accepté
+                          les conditions organisateur.
                         </span>
                       </div>
                     )}

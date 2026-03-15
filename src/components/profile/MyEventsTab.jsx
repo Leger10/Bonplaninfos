@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import EventCard from '@/components/EventCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,51 +18,81 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { extractStoragePath } from '@/lib/utils';
 
+/**
+ * Gère l'affichage et la suppression des événements créés par l'utilisateur connecté.
+ * Seul l'organisateur propriétaire peut supprimer ses propres événements.
+ */
+
 const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
   const navigate = useNavigate();
   const [deleteConfirmation, setDeleteConfirmation] = useState({ isOpen: false, event: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const canCreateEvent = userProfile && (userProfile.user_type === 'organizer' || userProfile.user_type === 'admin' || userProfile.user_type === 'super_admin' || userProfile.user_type === 'user');
+  const canCreateEvent = userProfile && ['organizer', 'admin', 'secretary', 'super_admin'].includes(userProfile.user_type);
 
   const handleDeleteClick = (event) => {
-    setDeleteConfirmation({ isOpen: true, event });
+    // Vérification : seul le créateur de l'événement peut initier la suppression
+    if (userProfile?.user_type === 'organizer' && event.organizer_id === userProfile.id) {
+      setDeleteConfirmation({ isOpen: true, event });
+    } else {
+      toast({
+        title: "Action non autorisée",
+        description: "Seul le créateur de l'événement est autorisé à le supprimer.",
+        variant: "destructive"
+      });
+    }
   };
 
   const confirmDelete = async () => {
-    if (!deleteConfirmation.event) return;
-    
-    setIsDeleting(true);
+    if (!deleteConfirmation.event || !userProfile?.id) return;
+
     const event = deleteConfirmation.event;
+    setIsDeleting(true);
 
     try {
-      // 1. Delete cover image from storage if exists
+      // 1. Suppression de l'image de couverture si présente
       if (event.cover_image) {
         const storageInfo = extractStoragePath(event.cover_image);
         if (storageInfo) {
-          const { error: storageError } = await supabase.storage
+          await supabase.storage
             .from(storageInfo.bucket)
             .remove([storageInfo.path]);
-          if (storageError) console.warn("Could not delete image from storage:", storageError);
         }
       }
 
-      // 2. Delete event from DB using RPC which handles cascades
-      const { error: dbError } = await supabase.rpc('delete_event_completely', { p_event_id: event.id });
-      if (dbError) throw dbError;
+      // 2. Appel de la fonction RPC sécurisée pour suppression complète
+      const { data: result, error: dbError } = await supabase.rpc('delete_event_completely', {
+        p_event_id: event.id
+      });
 
-      toast({ title: "Événement supprimé", description: "L'événement a été supprimé avec succès." });
-      
-      // 3. Close modal and refresh list
+      if (dbError) throw dbError;
+      if (!result.success) throw new Error(result.message);
+
+      // 3. Vérification finale que l'événement a bien disparu
+      const { data: checkData, error: checkError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('id', event.id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (checkData) throw new Error("L'événement existe toujours après la suppression.");
+
+      // 4. Notification de succès avec les détails
+      toast({
+        title: "Événement supprimé",
+        description: `"${event.title}" a été supprimé. Votes : ${result.counts?.votes_deleted || 0}, billets : ${result.counts?.tickets_deleted || 0}.`,
+        className: "bg-green-600 text-white border-green-700"
+      });
+
       setDeleteConfirmation({ isOpen: false, event: null });
       if (onRefresh) onRefresh();
 
     } catch (error) {
-      console.error("Delete error:", error);
-      toast({ 
-        title: "Erreur", 
-        description: "Impossible de supprimer l'événement. " + error.message, 
-        variant: "destructive" 
+      toast({
+        title: "Échec de la suppression",
+        description: error.message || "Une erreur est survenue.",
+        variant: "destructive"
       });
     } finally {
       setIsDeleting(false);
@@ -92,15 +122,18 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
 
       {userEvents && userEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {userEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onClick={() => navigate(`/event/${event.id}`)}
-              isUnlocked={true}
-              onDelete={handleDeleteClick}
-            />
-          ))}
+          {userEvents.map((event) => {
+            const canDeleteThisEvent = userProfile?.user_type === 'organizer' && event.organizer_id === userProfile.id;
+            return (
+              <EventCard
+                key={event.id}
+                event={event}
+                onClick={() => navigate(`/event/${event.id}`)}
+                isUnlocked={true}
+                onDelete={canDeleteThisEvent ? handleDeleteClick : undefined}
+              />
+            );
+          })}
         </div>
       ) : (
         <Card className="glass-effect border-primary/20">
@@ -125,20 +158,23 @@ const MyEventsTab = ({ userProfile, userEvents, loadingEvents, onRefresh }) => {
       )}
 
       <AlertDialog open={deleteConfirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setDeleteConfirmation({ isOpen: false, event: null })}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-red-500/20">
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer l'événement ?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Suppression définitive
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer "{deleteConfirmation.event?.title}" ?<br/><br/>
-              Cette action est irréversible et effacera toutes les données associées (billets, votes, statistiques).
+              En tant que créateur, êtes-vous sûr de vouloir supprimer "{deleteConfirmation.event?.title}" ?<br/><br/>
+              Cette action est <strong>irréversible</strong>. Elle effacera l'événement ainsi que tous les votes, billets et candidats associés.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={(e) => { e.preventDefault(); confirmDelete(); }} 
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
               disabled={isDeleting}
-              className="bg-destructive hover:bg-destructive/90"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Supprimer définitivement

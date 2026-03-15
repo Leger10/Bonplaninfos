@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MoreVertical, Trash2, Edit, ToggleLeft, ToggleRight, Download, Loader2, Eye, Filter, Ticket, Vote, Gift, Store, Shield, FileText } from 'lucide-react';
+import { Search, MoreVertical, Trash2, Edit, ToggleLeft, ToggleRight, Download, Loader2, Eye, Filter, Ticket, Vote, Gift, Store, Shield, FileText, AlertTriangle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +29,12 @@ import { exportToExcel } from '@/lib/exportToExcel';
 import { useNavigate } from 'react-router-dom';
 import { extractStoragePath } from '@/lib/utils';
 
-const EventsManagement = ({ events, onRefresh }) => {
+/**
+ * Gestion des événements pour les administrateurs (super_admin, admin, secretary).
+ * Ces rôles peuvent supprimer n'importe quel événement (y compris ceux des organisateurs).
+ */
+
+const EventsManagement = ({ events, userProfile, onRefresh }) => {
   const [filteredEvents, setFilteredEvents] = useState(events);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -42,7 +47,6 @@ const EventsManagement = ({ events, onRefresh }) => {
   useEffect(() => {
     let result = events;
 
-    // Filter by Search Term
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
       result = result.filter(event => 
@@ -52,12 +56,10 @@ const EventsManagement = ({ events, onRefresh }) => {
       );
     }
 
-    // Filter by Status
     if (statusFilter !== 'all') {
       result = result.filter(event => event.status === statusFilter);
     }
 
-    // Filter by Type
     if (typeFilter !== 'all') {
       result = result.filter(event => event.event_type === typeFilter);
     }
@@ -81,34 +83,61 @@ const EventsManagement = ({ events, onRefresh }) => {
   };
 
   const handleDelete = async () => {
-    if (!selectedEventId) return;
+    if (!selectedEventId || !userProfile?.id) return;
+
     setIsDeleting(true);
-    
+
     try {
       const eventToDelete = events.find(e => e.id === selectedEventId);
-      
-      // 1. Clean up storage (cover image)
-      if (eventToDelete && eventToDelete.cover_image) {
+
+      // 1. Suppression de l'image de couverture
+      if (eventToDelete?.cover_image) {
         const storageInfo = extractStoragePath(eventToDelete.cover_image);
         if (storageInfo) {
-          const { error: storageError } = await supabase.storage
+          await supabase.storage
             .from(storageInfo.bucket)
             .remove([storageInfo.path]);
-          if (storageError) console.warn("Storage cleanup warning:", storageError);
         }
       }
 
-      // 2. Delete from DB via RPC (Cascading delete)
-      const { error } = await supabase.rpc('delete_event_completely', { p_event_id: selectedEventId });
-      if (error) throw error;
-      
-      toast({ title: 'Événement supprimé', description: "L'événement et toutes ses données associées ont été supprimés." });
+      // 2. Appel du RPC de suppression
+      const { data: result, error: deleteError } = await supabase.rpc('delete_event_completely', {
+        p_event_id: selectedEventId
+      });
+
+      if (deleteError) throw deleteError;
+      if (!result.success) throw new Error(result.message);
+
+      // 3. Vérification que l'événement a disparu
+      const { data: checkData, error: checkError } = await supabase
+        .from('events')
+        .select('id')
+        .eq('id', selectedEventId)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (checkData) throw new Error("L'événement existe toujours après la suppression.");
+
+      // 4. Notification
+      const roleDisplay = userProfile.user_type === 'super_admin' ? 'Super Administrateur' : 
+                          userProfile.user_type === 'secretary' ? 'Secrétaire' : 'Administrateur';
+
+      toast({ 
+        title: 'Suppression réussie', 
+        description: `Action (${roleDisplay}) : ${result.counts?.votes_deleted || 0} votes, ${result.counts?.tickets_deleted || 0} tickets effacés.`,
+        className: "bg-green-600 text-white border-green-700"
+      });
+
       if (onRefresh) onRefresh();
       setDeleteDialogOpen(false);
       setSelectedEventId(null);
+
     } catch (error) {
-      console.error("Delete error:", error);
-      toast({ title: "Erreur critique", description: "Impossible de supprimer l'événement. " + error.message, variant: "destructive" });
+      toast({ 
+        title: "Échec de la suppression", 
+        description: error.message || "Une erreur est survenue.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -116,28 +145,18 @@ const EventsManagement = ({ events, onRefresh }) => {
 
   const handleExport = () => {
     if (!filteredEvents || filteredEvents.length === 0) {
-      toast({ title: 'Aucune donnée', description: 'Rien à exporter pour le moment.', variant: 'destructive' });
+      toast({ title: 'Aucune donnée', description: 'Rien à exporter.', variant: 'destructive' });
       return;
     }
-
     const dataToExport = filteredEvents.map(e => ({
       ID: e.id,
       Titre: e.title,
       Type: e.event_type,
-      Organisateur: e.organizer?.full_name || 'Inconnu',
-      Date: new Date(e.event_start_at).toLocaleString('fr-FR'),
-      Lieu: `${e.city}, ${e.country}`,
       Statut: e.status,
-      Prix_Pi: e.price_pi,
-      Vues: e.views_count,
-      Interactions: e.interactions_count,
+      Organisateur: e.organizer?.full_name || '',
+      Ville: e.city || ''
     }));
-
-    exportToExcel({
-      data: dataToExport,
-      fileName: `export_evenements_${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName: 'Événements'
-    });
+    exportToExcel({ data: dataToExport, fileName: `evenements.xlsx`, sheetName: 'Événements' });
     toast({ title: "Exportation réussie" });
   };
 
@@ -154,30 +173,35 @@ const EventsManagement = ({ events, onRefresh }) => {
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {
-      case 'active': return 'success'; // Ensure 'success' variant exists in Badge or maps to default green style
+      case 'active': return 'success';
       case 'inactive': return 'secondary';
       case 'completed': return 'default';
       default: return 'outline';
     }
   };
 
+  // Seuls les utilisateurs ayant le rôle super_admin, admin ou secretary peuvent supprimer
+  const canDeleteEvents = userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type);
+
   return (
     <Card className="glass-effect shadow-lg border-none">
       <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border/10 pb-6">
         <div>
           <CardTitle className="text-2xl font-bold">Gestion des Événements</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">Gérez tous les types d'événements de la plateforme</p>
+          <p className="text-sm text-muted-foreground mt-1">Gérez tous les événements de la plateforme</p>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
-          <Button onClick={onRefresh} variant="ghost" size="sm"><Loader2 className={`h-4 w-4 ${false ? 'animate-spin' : ''}`} /></Button>
+          <Button onClick={onRefresh} variant="ghost" size="sm">
+            <Loader2 className={`h-4 w-4 ${false ? 'animate-spin' : ''}`} />
+          </Button>
           <Button onClick={handleExport} variant="outline" size="sm" className="ml-auto">
             <Download className="mr-2 h-4 w-4" /> Exporter
           </Button>
         </div>
       </CardHeader>
-      
+
       <CardContent className="pt-6">
-        {/* Filters */}
+        {/* Filtres */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
           <div className="md:col-span-5 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -188,7 +212,7 @@ const EventsManagement = ({ events, onRefresh }) => {
               className="pl-10"
             />
           </div>
-          
+
           <div className="md:col-span-3">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger>
@@ -200,7 +224,6 @@ const EventsManagement = ({ events, onRefresh }) => {
               <SelectContent>
                 <SelectItem value="all">Tous les types</SelectItem>
                 <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="protected">Protégé</SelectItem>
                 <SelectItem value="ticketing">Billetterie</SelectItem>
                 <SelectItem value="voting">Vote</SelectItem>
                 <SelectItem value="raffle">Tombola</SelectItem>
@@ -224,7 +247,7 @@ const EventsManagement = ({ events, onRefresh }) => {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tableau */}
         <div className="rounded-md border border-border/50 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -233,7 +256,7 @@ const EventsManagement = ({ events, onRefresh }) => {
                   <th className="p-4 font-medium">Événement</th>
                   <th className="p-4 font-medium hidden md:table-cell">Type</th>
                   <th className="p-4 font-medium hidden sm:table-cell">Organisateur</th>
-                  <th className="p-4 font-medium hidden lg:table-cell">Lieu & Date</th>
+                  <th className="p-4 font-medium hidden lg:table-cell">Date</th>
                   <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 font-medium text-right">Actions</th>
                 </tr>
@@ -261,13 +284,12 @@ const EventsManagement = ({ events, onRefresh }) => {
                         {event.organizer?.full_name || 'Inconnu'}
                       </td>
                       <td className="p-4 hidden lg:table-cell">
-                        <div className="flex flex-col text-xs text-muted-foreground">
-                          <span>{new Date(event.event_start_at).toLocaleDateString('fr-FR')}</span>
-                          <span>{event.city}, {event.country}</span>
-                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(event.event_start_at).toLocaleDateString('fr-FR')}
+                        </span>
                       </td>
                       <td className="p-4">
-                        <Badge variant={getStatusBadgeVariant(event.status)} className={event.status === 'active' ? 'bg-green-500/15 text-green-600 hover:bg-green-500/25 border-green-500/20' : ''}>
+                        <Badge variant={getStatusBadgeVariant(event.status)} className={event.status === 'active' ? 'bg-green-500/15 text-green-600' : ''}>
                           {event.status === 'active' ? 'Actif' : event.status === 'inactive' ? 'Inactif' : event.status}
                         </Badge>
                       </td>
@@ -290,13 +312,18 @@ const EventsManagement = ({ events, onRefresh }) => {
                                 <><ToggleRight className="mr-2 h-4 w-4" /> Activer</>
                               }
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20"
-                              onClick={() => { setSelectedEventId(event.id); setDeleteDialogOpen(true); }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                            </DropdownMenuItem>
+                            {/* Suppression réservée aux admins */}
+                            {canDeleteEvents && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20"
+                                  onClick={() => { setSelectedEventId(event.id); setDeleteDialogOpen(true); }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -309,17 +336,26 @@ const EventsManagement = ({ events, onRefresh }) => {
         </div>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="border-red-500/20">
             <AlertDialogHeader>
-              <AlertDialogTitle>Suppression définitive</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Suppression définitive
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Cette action supprimera l'événement sélectionné ainsi que <strong>tous les billets, votes, commentaires et statistiques associés</strong>. Cette action est irréversible.
+                Êtes-vous absolument sûr de vouloir supprimer cet événement ?<br/><br/>
+                Cette action <strong>irréversible</strong> effacera l'événement ainsi que tous les billets, votes, participations et commentaires associés.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2"/> : "Confirmer la suppression"}
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Supprimer définitivement
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -9,6 +9,7 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { isWithdrawalOpen } from '@/lib/dateUtils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useTranslation } from 'react-i18next';
 
 const WithdrawalModal = ({ 
     open, 
@@ -18,6 +19,7 @@ const WithdrawalModal = ({
     userId,
     onSuccess 
 }) => {
+    const { t } = useTranslation();
     const [amount, setAmount] = useState('');
     const [method, setMethod] = useState('');
     const [details, setDetails] = useState('');
@@ -38,6 +40,15 @@ const WithdrawalModal = ({
     
     const feeAmountFCFA = Math.ceil(requestedAmountFCFA * FEE_PERCENT);
     const netAmountFCFA = requestedAmountFCFA - feeAmountFCFA;
+
+    // Payment methods list (using codes for i18n)
+    const paymentMethods = [
+        { code: 'orange', labelKey: 'withdrawalModal.methods.orange' },
+        { code: 'mtn', labelKey: 'withdrawalModal.methods.mtn' },
+        { code: 'moov', labelKey: 'withdrawalModal.methods.moov' },
+        { code: 'wave', labelKey: 'withdrawalModal.methods.wave' },
+        { code: 'bank', labelKey: 'withdrawalModal.methods.bank' }
+    ];
 
     useEffect(() => {
         if (open) {
@@ -63,17 +74,32 @@ const WithdrawalModal = ({
 
     const handleSubmit = async () => {
         if (requestedAmountPI > availableBalancePI) {
-            toast({ title: "Solde insuffisant", description: "Le montant dépasse votre solde disponible.", variant: "destructive" });
+            toast({ 
+                title: t('withdrawalModal.errors.insufficientBalance'), 
+                description: t('withdrawalModal.errors.insufficientBalanceDesc'), 
+                variant: "destructive" 
+            });
             return;
         }
 
         if (requestedAmountPI < MIN_WITHDRAWAL_PI) {
-            toast({ title: "Montant trop faible", description: `Minimum requis : ${MIN_WITHDRAWAL_PI} pièces (${MIN_WITHDRAWAL_PI * RATE} FCFA).`, variant: "destructive" });
+            toast({ 
+                title: t('withdrawalModal.errors.amountTooLow'), 
+                description: t('withdrawalModal.errors.amountTooLowDesc', { 
+                    minPi: MIN_WITHDRAWAL_PI, 
+                    minFcfa: (MIN_WITHDRAWAL_PI * RATE).toLocaleString() 
+                }), 
+                variant: "destructive" 
+            });
             return;
         }
 
         if (!method || !details) {
-            toast({ title: "Champs manquants", description: "Veuillez remplir les informations de paiement.", variant: "destructive" });
+            toast({ 
+                title: t('withdrawalModal.errors.missingFields'), 
+                description: t('withdrawalModal.errors.missingFieldsDesc'), 
+                variant: "destructive" 
+            });
             return;
         }
 
@@ -98,8 +124,8 @@ const WithdrawalModal = ({
             const newBalanceFcfa = newBalancePi * RATE;
 
             toast({ 
-                title: "Succès", 
-                description: `Demande envoyée. Nouveau solde: ${newBalanceFcfa.toLocaleString()} FCFA`, 
+                title: t('withdrawalModal.toast.success'), 
+                description: t('withdrawalModal.toast.successDesc', { newBalanceFcfa: newBalanceFcfa.toLocaleString() }), 
                 variant: "success" 
             });
             
@@ -108,7 +134,11 @@ const WithdrawalModal = ({
             setAmount('');
         } catch (error) {
             console.error("Withdrawal error:", error);
-            toast({ title: "Erreur", description: error.message || "Échec de la demande.", variant: "destructive" });
+            toast({ 
+                title: t('withdrawalModal.toast.error'), 
+                description: error.message || t('withdrawalModal.toast.errorDesc'), 
+                variant: "destructive" 
+            });
         } finally {
             setLoading(false);
         }
@@ -118,9 +148,15 @@ const WithdrawalModal = ({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[450px] w-[95vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Effectuer un retrait</DialogTitle>
+                    <DialogTitle>{t('withdrawalModal.title')}</DialogTitle>
                     <DialogDescription>
-                        Solde disponible : <span className="font-bold text-emerald-600">{availableBalance.toLocaleString()} FCFA</span> ({availableBalancePI} pièces)
+                        {t('withdrawalModal.balanceLabel')}{' '}
+                        <span className="font-bold text-emerald-600">
+                            {t('withdrawalModal.balanceValue', { 
+                                balanceFcfa: availableBalance.toLocaleString(), 
+                                balancePi: availableBalancePI 
+                            })}
+                        </span>
                     </DialogDescription>
                 </DialogHeader>
 
@@ -129,7 +165,7 @@ const WithdrawalModal = ({
                 ) : (
                     <div className="space-y-4 py-2">
 
-                        {/* INFos des retraits des gains pour les vues */}
+                        {/* INFos des retraits des gains pour les vues (optionnel) */}
                         {/* {userType === 'organizer' && !isPoolOpen && (
                             <Alert variant="warning" className="bg-amber-50 border-amber-200 text-amber-800 text-xs">
                                 <CalendarClock className="h-4 w-4" />
@@ -141,65 +177,84 @@ const WithdrawalModal = ({
                         )} */}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="amount">Montant à retirer (en Pièces pièces)</Label>
+                            <Label htmlFor="amount">{t('withdrawalModal.amountLabel')}</Label>
                             <div className="flex gap-2">
                                 <Input
                                     id="amount"
                                     type="number"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    placeholder="Ex: 100"
+                                    placeholder={t('withdrawalModal.amountPlaceholder')}
                                     className="flex-1"
                                 />
                                 <div className="bg-muted px-3 py-2 rounded-md border flex items-center min-w-[80px] justify-center font-medium text-xs sm:text-sm">
                                     {requestedAmountFCFA.toLocaleString()} F
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">1 pièces = {RATE} FCFA</p>
+                            <p className="text-xs text-muted-foreground">
+                                {t('withdrawalModal.rateInfo', { rate: RATE })}
+                            </p>
                         </div>
 
                         {requestedAmountPI > 0 && (
                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2 text-sm">
                                 <div className="flex justify-between text-muted-foreground">
-                                    <span>Montant Brut:</span>
+                                    <span>{t('withdrawalModal.calculation.gross')}:</span>
                                     <span>{requestedAmountFCFA.toLocaleString()} FCFA</span>
                                 </div>
                                 <div className="flex justify-between text-red-500">
-                                    <span className="flex items-center gap-1"><Calculator className="w-3 h-3" /> Frais (5%):</span>
+                                    <span className="flex items-center gap-1">
+                                        <Calculator className="w-3 h-3" /> 
+                                        {t('withdrawalModal.calculation.fee', { percent: Math.round(FEE_PERCENT * 100) })}:
+                                    </span>
                                     <span>- {feeAmountFCFA.toLocaleString()} FCFA</span>
                                 </div>
                                 <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-emerald-700 text-base">
-                                    <span>Net à recevoir:</span>
+                                    <span>{t('withdrawalModal.calculation.net')}:</span>
                                     <span>{netAmountFCFA.toLocaleString()} FCFA</span>
                                 </div>
                             </div>
                         )}
 
                         <div className="grid gap-2">
-                            <Label htmlFor="method">Méthode de paiement</Label>
-                            <Select onValueChange={setMethod}>
-                                <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                            <Label htmlFor="method">{t('withdrawalModal.methodLabel')}</Label>
+                            <Select onValueChange={setMethod} value={method}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={t('withdrawalModal.methodPlaceholder')} />
+                                </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Orange Money">Orange Money</SelectItem>
-                                    <SelectItem value="MTN Money">MTN Money</SelectItem>
-                                    <SelectItem value="Moov Money">Moov Money</SelectItem>
-                                    <SelectItem value="Wave">Wave</SelectItem>
-                                    <SelectItem value="Bank Transfer">Virement Bancaire</SelectItem>
+                                    {paymentMethods.map((pm) => (
+                                        <SelectItem key={pm.code} value={pm.code}>
+                                            {t(pm.labelKey)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="details">Numéro / Compte</Label>
-                            <Input id="details" value={details} onChange={(e) => setDetails(e.target.value)} placeholder="0707..." />
+                            <Label htmlFor="details">{t('withdrawalModal.detailsLabel')}</Label>
+                            <Input 
+                                id="details" 
+                                value={details} 
+                                onChange={(e) => setDetails(e.target.value)} 
+                                placeholder={t('withdrawalModal.detailsPlaceholder')} 
+                            />
                         </div>
                     </div>
                 )}
 
                 <DialogFooter className="gap-2 sm:gap-0">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-                    <Button onClick={handleSubmit} disabled={loading || !amount || !method || requestedAmountPI <= 0} className="bg-emerald-600 text-white w-full sm:w-auto">
-                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Confirmer le retrait
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        {t('withdrawalModal.buttons.cancel')}
+                    </Button>
+                    <Button 
+                        onClick={handleSubmit} 
+                        disabled={loading || !amount || !method || requestedAmountPI <= 0} 
+                        className="bg-emerald-600 text-white w-full sm:w-auto"
+                    >
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {t('withdrawalModal.buttons.confirm')}
                     </Button>
                 </DialogFooter>
             </DialogContent>

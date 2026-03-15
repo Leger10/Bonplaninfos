@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 
 const CommunityVerification = ({ eventId, eventDate }) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [hasVerified, setHasVerified] = useState(false);
   const [positiveCount, setPositiveCount] = useState(0);
@@ -76,7 +78,11 @@ const CommunityVerification = ({ eventId, eventDate }) => {
 
   const handleVerify = async (type) => {
     if (!user) {
-      toast({ title: "Connexion requise", description: "Connectez-vous pour vérifier cet événement.", variant: "destructive" });
+      toast({
+        title: t('communityVerification.toast.loginRequired.title'),
+        description: t('communityVerification.toast.loginRequired.description'),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -92,15 +98,21 @@ const CommunityVerification = ({ eventId, eventDate }) => {
 
       if (error) {
         if (error.code === '23505') { // Unique violation
-          toast({ title: "Déjà voté", description: "Vous avez déjà donné votre avis sur cet événement.", variant: "warning" });
+          toast({
+            title: t('communityVerification.toast.alreadyVoted.title'),
+            description: t('communityVerification.toast.alreadyVoted.description'),
+            variant: "warning",
+          });
         } else {
           throw error;
         }
       } else {
-        toast({ 
-          title: type === 'event_occurred' ? "Merci !" : "Signalement reçu", 
-          description: "Votre contribution aide à sécuriser la communauté.",
-          className: "bg-green-600 text-white"
+        toast({
+          title: type === 'event_occurred' 
+            ? t('communityVerification.toast.success.title')
+            : t('communityVerification.toast.success.title'),
+          description: t('communityVerification.toast.success.description'),
+          className: "bg-green-600 text-white",
         });
         setHasVerified(true);
         setUserVerificationType(type);
@@ -108,7 +120,11 @@ const CommunityVerification = ({ eventId, eventDate }) => {
       }
     } catch (err) {
       console.error("Verification error:", err);
-      toast({ title: "Erreur", description: "Impossible d'enregistrer votre vérification.", variant: "destructive" });
+      toast({
+        title: t('communityVerification.toast.error.title'),
+        description: t('communityVerification.toast.error.description'),
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -122,101 +138,106 @@ const CommunityVerification = ({ eventId, eventDate }) => {
     <Card className="mt-8 border-l-4 border-l-blue-500 bg-background shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
-            <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-blue-500" />
-                Vérification Communautaire
-                </CardTitle>
-                <CardDescription>
-                Confirmez la tenue de l'événement pour débloquer les fonds de l'organisateur.
-                </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" className="gap-2 text-green-600 border-green-200 hover:bg-green-50" onClick={() => window.open(WHATSAPP_COMMUNITY_LINK, '_blank')}>
-                <ExternalLink className="h-4 w-4" /> Communauté WhatsApp
-            </Button>
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-blue-500" />
+              {t('communityVerification.title')}
+            </CardTitle>
+            <CardDescription>
+              {t('communityVerification.description')}
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-green-600 border-green-200 hover:bg-green-50"
+            onClick={() => window.open(WHATSAPP_COMMUNITY_LINK, '_blank')}
+          >
+            <ExternalLink className="h-4 w-4" /> {t('communityVerification.whatsappButton')}
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <ThumbsUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-800">Avis favorables</span>
-                </div>
-                <div className="text-2xl font-bold text-green-700">{positiveCount}</div>
-                <div className="text-xs text-green-600 mt-1">ont confirmé la tenue</div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <div className="flex items-center gap-2 mb-1">
+                <ThumbsUp className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium text-green-800">{t('communityVerification.positiveLabel')}</span>
               </div>
-              
-              <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                <div className="flex items-center gap-2 mb-1">
-                  <ThumbsDown className="h-4 w-4 text-red-600" />
-                  <span className="text-sm font-medium text-red-800">Signalements</span>
-                </div>
-                <div className="text-2xl font-bold text-red-700">{negativeCount}</div>
-                <div className="text-xs text-red-600 mt-1">ont signalé un problème</div>
-              </div>
+              <div className="text-2xl font-bold text-green-700">{positiveCount}</div>
+              <div className="text-xs text-green-600 mt-1">{t('communityVerification.positiveConfirmedText')}</div>
             </div>
+            
+            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+              <div className="flex items-center gap-2 mb-1">
+                <ThumbsDown className="h-4 w-4 text-red-600" />
+                <span className="text-sm font-medium text-red-800">{t('communityVerification.negativeLabel')}</span>
+              </div>
+              <div className="text-2xl font-bold text-red-700">{negativeCount}</div>
+              <div className="text-xs text-red-600 mt-1">{t('communityVerification.negativeReportedText')}</div>
+            </div>
+          </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-2">
-                <div className="flex justify-between text-sm font-medium">
-                    <span>Progression de la validation</span>
-                    <span className={positiveCount >= MIN_VERIFICATIONS ? "text-green-600" : "text-amber-600"}>
-                        {positiveCount}/{MIN_VERIFICATIONS} confirmations requises
-                    </span>
-                </div>
-                <Progress 
-                  value={progressPercentage} 
-                  className={cn(
-                    "h-3 bg-secondary",
-                    positiveCount >= MIN_VERIFICATIONS ? "[&>div]:bg-green-500" : "[&>div]:bg-amber-500"
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                    {positiveCount >= MIN_VERIFICATIONS 
-                        ? "✅ L'événement est vérifié. Les retraits sont autorisés." 
-                        : `⚠️ En attente de ${MIN_VERIFICATIONS - positiveCount} confirmation(s) supplémentaire(s) pour autoriser les retraits.`}
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm font-medium">
+              <span>{t('communityVerification.progressLabel')}</span>
+              <span className={positiveCount >= MIN_VERIFICATIONS ? "text-green-600" : "text-amber-600"}>
+                {t('communityVerification.progressCountText', { count: positiveCount, required: MIN_VERIFICATIONS })}
+              </span>
+            </div>
+            <Progress 
+              value={progressPercentage} 
+              className={cn(
+                "h-3 bg-secondary",
+                positiveCount >= MIN_VERIFICATIONS ? "[&>div]:bg-green-500" : "[&>div]:bg-amber-500"
+              )}
+            />
+            <p className="text-xs text-muted-foreground">
+              {positiveCount >= MIN_VERIFICATIONS 
+                ? t('communityVerification.verifiedMessage')
+                : t('communityVerification.pendingMessage', { remaining: MIN_VERIFICATIONS - positiveCount })}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            {hasVerified ? (
+              <div className="w-full">
+                <Button variant="outline" disabled className="w-full bg-green-50 text-green-700 border-green-200">
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  {userVerificationType === 'event_occurred' 
+                    ? t('communityVerification.alreadyConfirmedMessage')
+                    : t('communityVerification.alreadyReportedMessage')}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  {t('communityVerification.thanksMessage')}
                 </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                {hasVerified ? (
-                  <div className="w-full">
-                    <Button variant="outline" disabled className="w-full bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      {userVerificationType === 'event_occurred' 
-                        ? "Vous avez confirmé la tenue de l'événement"
-                        : "Vous avez signalé un problème avec cet événement"}
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                      Merci pour votre contribution à la vérification communautaire.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex gap-3 w-full">
-                    <Button 
-                      onClick={() => handleVerify('event_occurred')} 
-                      disabled={loading}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      J'y étais, c'est valide
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={() => handleVerify('fraud_report')} 
-                      disabled={loading}
-                      className="flex-1"
-                    >
-                      <AlertOctagon className="mr-2 h-4 w-4" />
-                      Signaler un problème
-                    </Button>
-                  </div>
-                )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full">
+                <Button 
+                  onClick={() => handleVerify('event_occurred')} 
+                  disabled={loading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  {t('communityVerification.confirmButton')}
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => handleVerify('fraud_report')} 
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  <AlertOctagon className="mr-2 h-4 w-4" />
+                  {t('communityVerification.reportButton')}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

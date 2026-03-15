@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useData } from '@/contexts/DataContext';
@@ -24,6 +24,9 @@ const ZoneUsersList = ({ event, onCredit, onRefresh }) => {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [isCrediting, setIsCrediting] = useState(false);
+
+    // Générer un ID unique pour le titre du dialogue
+    const titleId = useId();
 
     useEffect(() => {
         if(event?.title) {
@@ -96,10 +99,17 @@ const ZoneUsersList = ({ event, onCredit, onRefresh }) => {
     };
 
     return (
-        <DialogContent className="sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] bg-background text-foreground">
+        <DialogContent 
+            className="sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] bg-background text-foreground"
+            aria-labelledby={titleId}  // Lier le titre au contenu
+        >
             <DialogHeader>
-                <DialogTitle>{t('secretary_dashboard.event_moderation.credit_user_for_event_title', { eventName: event?.title })}</DialogTitle>
-                <DialogDescription>{t('secretary_dashboard.event_moderation.credit_user_for_event_desc')}</DialogDescription>
+                <DialogTitle id={titleId}>  {/* ID unique pour le titre */}
+                    {t('secretary_dashboard.event_moderation.credit_user_for_event_title', { eventName: event?.title })}
+                </DialogTitle>
+                <DialogDescription>
+                    {t('secretary_dashboard.event_moderation.credit_user_for_event_desc')}
+                </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
                 <div className="flex flex-col gap-4">

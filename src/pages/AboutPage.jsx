@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import {
   Target,
@@ -119,7 +119,7 @@ const AboutPage = () => {
   const handleWhatsAppDirect = () => {
     const phoneNumber = "2250712275374";
     const message = encodeURIComponent(
-      "Bonjour BonPlanInfos, je souhaite en savoir plus sur vos services."
+      "Bonjour BonPlanInfos, je souhaite en savoir plus sur vos services.",
     );
     window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
   };

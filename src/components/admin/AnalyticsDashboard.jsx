@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Users, 
   CreditCard, 
@@ -12,7 +14,8 @@ import {
   Wallet,
   ArrowUpRight,
   Activity,
-  Coins
+  Coins,
+  RotateCcw
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -21,15 +24,15 @@ import {
 import { supabase } from '@/lib/customSupabaseClient';
 import { format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
 import { fetchWithRetry, formatCurrency } from '@/lib/utils';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca6d'];
 
 const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastReset, setLastReset] = useState(null);
   
   // Data States
   const [stats, setStats] = useState({
@@ -53,12 +56,20 @@ const AnalyticsDashboard = () => {
     setError(null);
 
     try {
-      // 1. Fetch Key Stats from new RPC
+      // 1. Fetch Key Stats from RPC
       const { data: rpcData, error: rpcError } = await fetchWithRetry(() => 
         supabase.rpc('get_super_admin_dashboard_stats')
       );
 
       if (rpcError) throw rpcError;
+
+      // Vérification après reset
+      if (rpcData && 
+          rpcData.total_commissions === 0 && 
+          rpcData.total_user_balance === 0 && 
+          rpcData.total_transactions === 0) {
+        console.log('📊 Dashboard stats have been reset to zero');
+      }
 
       // 2. Fetch Recent Transactions
       const { data: transactionsData } = await fetchWithRetry(() => 
@@ -75,7 +86,7 @@ const AnalyticsDashboard = () => {
           .gte('created_at', subDays(new Date(), 30).toISOString())
       );
 
-      // 4. Fetch Revenue Breakdown (Simulated from coin_spending for now or use existing rpc if available)
+      // 4. Fetch Revenue Breakdown
       const { data: spendingData } = await fetchWithRetry(() => 
         supabase.from('coin_spending')
           .select('purpose, amount')
@@ -118,7 +129,7 @@ const AnalyticsDashboard = () => {
       // Update State
       setStats({
         totalCommissions: rpcData?.total_commissions || 0,
-        estimatedRevenue: rpcData?.total_user_balance || 0, // Corresponds to user balance sum (Circulating Supply)
+        estimatedRevenue: rpcData?.total_user_balance || 0,
         totalTransactions: rpcData?.total_transactions || 0,
         pendingWithdrawals: rpcData?.pending_withdrawals || 0,
         totalUsers: rpcData?.total_users || 0,
@@ -139,6 +150,35 @@ const AnalyticsDashboard = () => {
       setRefreshing(false);
     }
   }, []);
+
+  // Écouter les événements de réinitialisation
+  useEffect(() => {
+    const handleZoneReset = (event) => {
+      console.log('🔄 Zone reset detected, refreshing dashboard...', event.detail);
+      
+      setLastReset({
+        time: new Date().toLocaleTimeString(),
+        zone: event.detail.country === 'ALL' ? 'toutes les zones' : event.detail.country,
+        resetCredits: event.detail.resetCredits,
+        resetRevenue: event.detail.resetRevenue
+      });
+
+      toast({
+        title: "🔄 Mise à jour détectée",
+        description: `Réinitialisation effectuée pour ${event.detail.country === 'ALL' ? 'toutes les zones' : event.detail.country}`,
+        variant: "default"
+      });
+      
+      // Rafraîchir les données
+      fetchDashboardData(true);
+    };
+
+    window.addEventListener('zone-reset-completed', handleZoneReset);
+
+    return () => {
+      window.removeEventListener('zone-reset-completed', handleZoneReset);
+    };
+  }, [fetchDashboardData]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -177,6 +217,14 @@ const AnalyticsDashboard = () => {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Super Admin Dashboard</h2>
           <p className="text-muted-foreground">Vue d'ensemble et métriques clés de la plateforme.</p>
+          {lastReset && (
+            <Badge variant="outline" className="mt-2 bg-orange-50 text-orange-700 border-orange-200">
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Dernier reset: {lastReset.time} ({lastReset.zone})
+              {lastReset.resetCredits && <span className="ml-1">• Crédits</span>}
+              {lastReset.resetRevenue && <span className="ml-1">• Revenus</span>}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button 

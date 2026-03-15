@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import ResetDataModal from './ResetDataModal';
 import LicenseConfiguration from './LicenseConfiguration';
 import WithdrawalScheduleSettings from './WithdrawalScheduleSettings';
-
+import PinResetRequestsManager from './PinResetRequestsManager';
 const ConfigTab = () => {
   const { appSettings, loading, refreshData } = useData();
   const { user } = useAuth();
@@ -226,6 +226,7 @@ const ConfigTab = () => {
 
       {/* Withdrawal Schedule Settings */}
       <WithdrawalScheduleSettings />
+      <PinResetRequestsManager />
 
       {/* Danger Zones */}
       <Card className="border-orange-500/50 shadow-lg rounded-xl mt-8 bg-orange-500/5">

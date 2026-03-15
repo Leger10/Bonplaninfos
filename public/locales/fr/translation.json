@@ -1,4 +1,5 @@
 {
+  "_comment_nav": "🚀 Navigation - Barre de navigation principale",
   "nav": {
     "home": "Accueil",
     "discover": "Découvrir",
@@ -6,18 +7,2042 @@
     "partnership": "Partenariat",
     "profile": "Profil",
     "wallet": "Portefeuille",
+    "create_event": "Créer un Événement",
     "logout": "Déconnexion",
-    "create_event": "Créer un événement"
+    "notifications": "Notifications"
   },
+
+  "_comment_createEvent": "🎫 Page de création d'événement - Choix du type",
+  "createEvent": {
+    "title": "Que souhaitez-vous créer ?",
+    "subtitle": "Choisissez le type d'événement ou d'activité qui correspond à vos besoins.",
+    "types": {
+      "simple": {
+        "title": "Annonce / Info",
+        "description": "Publiez une information, une actualité ou un événement simple sans billetterie. Idéal pour informer la communauté."
+      },
+      "ticketing": {
+        "title": "Billetterie",
+        "description": "Créez un événement avec vente de billets (QR Code). Gérez les entrées, les types de billets et les revenus."
+      },
+      "raffle": {
+        "title": "Tombola",
+        "description": "Organisez une tombola numérique sécurisée. Vendez des tickets et effectuez des tirages au sort automatiques."
+      },
+      "vote": {
+        "title": "Concours / Vote",
+        "description": "Lancez un concours ou une élection. Les participants peuvent voter pour leurs candidats favoris."
+      },
+      "stand": {
+        "title": "Location de Stands",
+        "description": "Vous organisez une foire ou un salon ? Gérez la location de vos espaces et stands exposants."
+      },
+      "promotion": {
+        "title": "Campagne Publicitaire",
+        "description": "Boostez votre visibilité en créant une campagne promotionnelle ciblée sur l'application."
+      }
+    },
+    "startButton": "Commencer"
+  },
+
+  "reset_info": {
+    "timestamp": "Horodatage",
+    "free_reset": "Réinitialisation gratuite",
+    "paid_reset": "Réinitialisation payante",
+    "reset_type": "Type de réinitialisation",
+    "earnings_reset": "Réinitialisation des gains"
+  },
+
+  "Theme": "Thème",
+  "Language": "Langue",
+
   "auth": {
+    "fetch_error": {
+      "title": "Erreur de Connexion",
+      "description": "Impossible de récupérer les données. Veuillez vérifier votre connexion internet et rafraîchir la page."
+    },
     "login": {
-      "button": "Se connecter"
+      "meta_title": "Connexion",
+      "meta_description": "Connectez-vous à votre compte BonPlanInfos.",
+      "title": "Connexion",
+      "subtitle": "Connectez-vous pour continuer.",
+      "button": "Se connecter",
+      "switch_text": "Pas encore de compte ?",
+      "switch_button": "Se connecter ici",
+      "error_invalid_credentials": "Email ou mot de passe incorrect."
+    },
+    "register": {
+      "meta_title": "Inscription",
+      "meta_description": "Créez un compte sur BonPlanInfos et commencez à découvrir les meilleurs plans.",
+      "title": "Connectez-vous ici",
+      "subtitle": "Créez votre compte.",
+      "button": "S'inscrire",
+      "country_city_required": "Veuillez sélectionner un pays et une ville.",
+      "switch_text": "Déjà un compte ?",
+      "switch_button": "S'inscrire ici",
+      "confirmation_email_title": "Vérifiez vos emails !",
+      "confirmation_email_description": "Nous vous avons envoyé un email de confirmation. Veuillez consulter votre boîte de réception et cliquer sur le lien pour activer votre compte.",
+      "terms_agreement": "J'accepte les <1>Conditions Générales d'Utilisation</1>",
+      "terms_required": "Vous devez accepter les conditions d'utilisation."
+    },
+    "full_name": "Nom complet",
+    "country": "Pays",
+    "select_country_placeholder": "Sélectionnez votre pays",
+    "city": "Ville",
+    "select_city_placeholder": "Sélectionnez votre ville",
+    "choose_role": "Choisir un rôle",
+    "choose_role_placeholder": "Choisissez votre rôle",
+    "role_user": "Utilisateur( ne peut pas publier d'événements )",
+    "role_organizer": "Organisateur( peut publier des événements )",
+    "email": "Email",
+    "password": "Mot de passe",
+    "referral_code_optional": "Code de parrainage (Optionnel)"
+  },
+
+  "home": "Accueil",
+  "events": "Événements",
+  "contests": "events et concours",
+  "discover": "Découvrir",
+  "login": "Connexion",
+  "logout": "Déconnexion",
+  "profile": "Profil",
+  "wallet": "Portefeuille",
+  "settings": "Paramètres",
+
+  "home_page": {
+    "sponsored_events": "Événements Sponsorisés",
+    "boost_event": "Booster un événement",
+    "explore_by_type": {
+      "title": "Explorer par Type d'Événement",
+      "subtitle": "Trouvez l'expérience qui vous convient."
+    },
+    "event_types": {
+      "standard": "Standard",
+      "ticketing": "Billetterie",
+      "raffles": "Tombolas",
+      "voting": "Votes",
+      "stands": "Stands"
+    },
+    "no_sponsored_events": {
+      "title": "Aucun Événement Sponsorisé Actuellement",
+      "description": "Soyez le premier à promouvoir un événement et à toucher un public plus large.",
+      "button": "Booster un Événement"
+    },
+    "view_all_events": "Voir tous les événements",
+    "loading_error": {
+      "title": "Erreur de Chargement des Données",
+      "description": "Nous n'avons pas pu charger les données nécessaires. Veuillez vérifier votre connexion et réessayer."
     }
   },
-  "events_page": {
-    "apply_filters": "Appliquer les filtres"
+
+  "sponsors": {
+    "meta_title": "Nos Sponsors et Partenaires",
+    "meta_description": "Découvrez les sponsors et partenaires qui soutiennent BonPlanInfos dans sa mission de révolutionner les événements en Afrique",
+    "title": "Nos Sponsors & Partenaires",
+    "subtitle": "Des entreprises visionnaires qui partagent notre engagement pour l'innovation et le développement du secteur événementiel africain",
+    "list": {
+      "orange": {
+        "name": "Orange Côte d'Ivoire",
+        "description": "Leader des télécommunications en Afrique, Orange soutient l'innovation numérique et l'entreprenariat jeune à travers le continent"
+      },
+      "mtn": {
+        "name": "MTN Group",
+        "description": "Opérateur panafricain engagé dans la transformation digitale et le développement des communautés locales"
+      },
+      "moov": {
+        "name": "Moov Africa",
+        "description": "Acteur majeur des télécommunications, promoteur des solutions de paiement mobile adaptées au marché africain"
+      },
+      "wave": {
+        "name": "Wave Mobile Money",
+        "description": "Solution de paiement mobile innovante facilitant les transactions financières sécurisées pour les événements"
+      },
+      "ontbf": {
+        "name": "ONTBF",
+        "description": "Organisation nationale promouvant la technologie et l'innovation en Afrique"
+      },
+      "moneyfusion": {
+        "name": "MoneyFusion",
+        "description": "Plateforme de fusion de paiements facilitant les transactions multicanal pour les événements"
+      }
+    }
   },
+
+  "cookie_banner": {
+    "message": "Nous utilisons des cookies pour améliorer votre expérience. ",
+    "learn_more": "En savoir plus",
+    "accept": "Accepter",
+    "reject": "Refuser"
+  },
+
+  "faq": {
+    "meta_title": "Questions Fréquentes - BonPlanInfos.net",
+    "meta_description": "Trouvez des réponses sur BonPlanInfos.net, la plateforme africaine d'événements, monétisation et profits réels avec seulement 5% de commission",
+    "title": "Questions Fréquentes",
+    "subtitle": "Trouvez rapidement des réponses sur notre plateforme événementielle africaine",
+    "questions": {
+      "general": {
+        "title": "Questions Générales sur BonPlanInfos",
+        "q1": "Qu'est-ce que BonPlanInfos.net exactement ?",
+        "a1": "<b>BonPlanInfos.net</b> est la première plateforme africaine dédiée aux événements et à leur monétisation. Nous offrons aux organisateurs d'événements, artistes, promoteurs culturels et entrepreneurs des outils professionnels pour créer, gérer et monétiser leurs activités avec seulement <b>5% de commission plateforme</b>.",
+        "q2": "Comment la plateforme est-elle différente des autres ?",
+        "a2": "Notre différence : <b>Commission ultra-basse de 5%</b> (vous gardez 95%), <b>focus sur l'Afrique</b>, <b>paiements réels garantis</b>, et <b>suite complète d'outils</b> (billeterie, votes, tombolas, location de stands). Nous ne sommes pas juste une plateforme, mais une opportunité de business concret.",
+        "q3": "Qui peut utiliser BonPlanInfos.net ?",
+        "a3": "Notre plateforme est conçue pour : <b>Organisateurs d'événements</b>, <b>Promoteurs culturels</b>, <b>Artistes et managers</b>, <b>Associations</b>, <b>Écoles</b>, <b>Responsables de foires et expositions</b>. Tout créateur voulant monétiser ses activités événementielles en Afrique.",
+        "q4": "La plateforme est-elle sécurisée ?",
+        "a4": "Absolument ! Nous utilisons : <b>Tickets sécurisés avec QR codes</b>, <b>Paiements cryptés</b>, <b>Scan de vérification le jour J</b>, <b>Protection contre la fraude</b>. Les tickets invalides sont automatiquement refusés, garantissant l'authenticité de chaque participant.",
+        "q5": "Comment créer un compte organisateur ?",
+        "a5": "Pour créer votre compte : <b>1) Inscrivez-vous gratuitement</b> sur la plateforme, <b>2) Complétez votre profil organisateur</b>, <b>3) Acceptez notre contrat organisateur</b>, <b>4) Commencez à créer vos événements</b>. En cas de difficulté, contactez notre support via WhatsApp : +225 0712275374.",
+        "q6": "Quelles sont les conditions générales d'utilisation ?",
+        "a6": "En créant un compte, vous acceptez notre <b>Contrat Organisateur</b> qui précise : Vous êtes seul responsable de vos événements, nous sommes un prestataire technique. La commission est de 5%, les retraits sont simples, et vous gardez 95% de vos revenus. Téléchargez le contrat complet depuis votre tableau de bord.",
+        "q7": "Comment fonctionnent les paiements et retraits ?",
+        "a7": "<b>Paiements</b> : Collectés via moyens locaux (mobile money, cartes). <b>Retraits</b> : Disponibles sur votre compte organisateur. <b>Commission</b> : 5% prélevés sur chaque participation. <b>Exemple</b> : Pour 1 000 000 FCFA de ventes → Vous recevez 950 000 FCFA, nous prenons 50 000 FCFA.",
+        "q8": "Où puis-je obtenir de l'aide ou du support ?",
+        "a8": "Plusieurs canaux : <b>1) Support WhatsApp</b> : +225 0712275374, <b>2) Email</b> : support@bonplaninfos.net, <b>3) Chat en direct</b> sur la plateforme. Réponse sous 24h."
+      },
+      "features": {
+        "title": "Fonctionnalités et Services",
+        "q1": "Comment fonctionne la vente de billets en ligne ?",
+        "a1": "Notre système de billeterie : <b>1) Créez votre événement</b> avec détails et prix, <b>2) Générez des tickets uniques avec QR code</b>, <b>3) Partagez le lien</b> sur réseaux sociaux, <b>4) Les participants achètent en ligne</b>, <b>5) Scan QR le jour J</b> pour validation. <b>Commission</b> : 5% seulement, vous gardez 95%.",
+        "q2": "Puis-je organiser des concours de votes ?",
+        "a2": "Oui ! Notre système de votes permet : <b>Élections en temps réel</b>, <b>Classements interactifs</b>, <b>Lien unique par candidat</b>, <b>Résultats visibles instantanément</b>. <b>Exemple</b> : Recettes 500 000 FCFA → Vous recevez 475 000 FCFA, commission 25 000 FCFA.",
+        "q3": "Comment organiser des tirages au sort et tombolas ?",
+        "a3": "Fonctionnalité tombola : <b>1) Configurez votre jeu</b>, <b>2) Vendez des tickets de participation</b>, <b>3) Tirage en direct transparent</b>, <b>4) Participants voient les gagnants en temps réel</b>. <b>Exemple</b> : 200 000 FCFA de recettes → 190 000 FCFA pour vous, 10 000 FCFA commission.",
+        "q4": "Comment louer des stands pour événements ?",
+        "a4": "Système de location de stands : <b>1) Listez vos stands disponibles</b>, <b>2) Fixez prix et conditions</b>, <b>3) Réservation en ligne</b>, <b>4) Organisation professionnelle</b>, <b>5) Moins de désordre le jour J</b>. <b>Exemple</b> : 1 000 000 FCFA → Vous gardez 950 000 FCFA.",
+        "q5": "Comment booster la visibilité de mon commerce ?",
+        "a5": "Section 'Découvrir' : <b>1) Ajoutez votre commerce</b> avec photos et descriptions, <b>2) Augmentez votre trafic</b>, <b>3) Boostez vos événements en choisissant un pack boost</b>, <b>4) Attirez plus de visiteurs</b>.",
+        "q6": "Quels types d'événements puis-je organiser ?",
+        "a6": "Tous types : <b>Concerts et spectacles</b>, <b>Conférences et séminaires</b>, <b>Festivals culturels</b>, <b>Événements sportifs</b>, <b>Expositions commerciales</b>, <b>Événements privés</b>, <b>Ateliers et formations</b>. La plateforme s'adapte à vos besoins.",
+        "q7": "Puis-je protéger mon affiche événementielle ?",
+        "a7": "Oui ! Fonctionnalité exclusive : <b>1) Publiez votre affiche</b> sur la plateforme, <b>2) Copiez le lien sécurisé</b>, <b>3) Partagez sur réseaux sociaux</b>, <b>4) Monétisez les vues et engagements</b>. Votre contenu reste protégé tout en étant largement diffusé.",
+        "q8": "Y a-t-il des limites de transactions ou d'événements ?",
+        "a8": "Aucune limite ! Vous pouvez : <b>Organiser autant d'événements que vous voulez</b>, <b>Vendre un nombre illimité de billets</b>, <b>Gérer plusieurs événements simultanément</b>, <b>Effectuer des retraits quotidiens si besoin</b>. Seule limite : respecter nos conditions d'utilisation."
+      },
+      "partnerships": {
+        "title": "Licences et Partenariats",
+        "q1": "Comment devenir concessionnaire BonPlanInfos ?",
+        "a1": "Devenir concessionnaire : <b>1) Choisissez votre niveau</b> (Ville, Région, Pays), <b>2) Contactez-nous pour candidature</b>, <b>3) Fournissez documents requis</b>, <b>4) Passez entretien</b>, <b>5) Signez contrat</b>, <b>6) Payez droit d'entrée</b>. Opportunité de carrière avec revenus mensuels garantis.",
+        "q2": "Quels sont les niveaux de concession disponibles ?",
+        "a2": "3 niveaux : <b>1) STARTER – VILLE</b> : 1 ans, 1M FCFA droit d'entrée, 20% des commissions, <b>2) BUSINESS – RÉGION</b> : 2 ans, 3M FCFA, 30% des commissions, <b>3) PREMIUM – PAYS</b> : 3 ans, 5-10M FCFA, 40% des commissions. Voir détails dans onglet 'Partenariats'.",
+        "q3": "Comment sont calculés les revenus des concessionnaires ?",
+        "a3": "Les concessionnaires perçoivent un pourcentage des <b>5% de commission plateforme</b> générés dans leur zone : <b>Ville</b> : 20% (soit 1% des transactions), <b>Région</b> : 30% (1.5% des transactions), <b>Pays</b> : 40% (2% des transactions). Revenus sur : billets, votes, tombolas, locations.",
+        "q4": "Quelles sont les obligations d'un concessionnaire ?",
+        "a4": "Selon niveau : <b>Ville</b> : Point de représentation, responsable local, promotion active, <b>Région</b> : Bureau régional, minimum 2 agents, encadrement villes, <b>Pays</b> : Siège national, 3-5 employés, supervision nationale, conformité légale. Rapports mensuels obligatoires.",
+        "q5": "Puis-je transférer ma concession à quelqu'un d'autre ?",
+        "a5": "Oui, sous conditions : <b>1) Accord écrit de BonPlanInfos</b>, <b>2) Nouveau concessionnaire éligible</b>, <b>3) Paiement frais de transfert</b> (10% valeur résiduelle), <b>4) Signature avenant au contrat</b>. Priorité donnée aux repreneurs recommandés par le concessionnaire sortant.",
+        "q6": "Comment se passe le renouvellement de concession ?",
+        "a6": "Procédure : <b>Démarre 3 mois avant expiration</b> → <b>Évaluation des performances</b> → <b>Renégociation si nécessaire</b> → <b>Signature nouveau contrat</b>. Priorité aux concessionnaires performants. Durées : Ville 1 ans, Région 2 ans, Pays 3 ans, tous renouvelables.",
+        "q7": "Quelle est la durée des contrats de concession ?",
+        "a7": "Durées contractuelles : <b>Contrat STARTER (Ville)</b> : 1 ans renouvelables, <b>Contrat BUSINESS (Région)</b> : 2 ans renouvelables, <b>Contrat PREMIUM (Pays)</b> : 3 ans renouvelables. Exclusivité territoriale garantie pendant toute la durée.",
+        "q8": "Quels sont les avantages d'être concessionnaire ?",
+        "a8": "Avantages clés : <b>Revenus mensuels stables</b>, <b>Exclusivité territoriale</b>, <b>Support technique complet</b>, <b>Formation continue</b>, <b>Opportunité de croissance</b>, <b>Bureau local possible</b>, <b>Réseau de partenaires</b>, <b>Branding officiel BonPlanInfos</b>."
+      },
+      "technical": {
+        "title": "Support Technique et Paiements",
+        "q1": "Comment récupérer mes revenus après un événement ?",
+        "a1": "Procédure de retrait : <b>1) Connectez-vous à votre compte organisateur</b>, <b>2) Allez dans 'Mes revenus'</b>, <b>3) Vérifiez le solde disponible</b>, <b>4) Sélectionnez mode de retrait</b> (mobile money, virement), <b>5) Confirmez la demande</b>. Délai : 24-72h selon méthode.",
+        "q2": "Que faire si un participant a un problème avec son ticket ?",
+        "a2": "En cas de problème : <b>1) Le participant montre le QR code</b>, <b>2) Vous scannez via l'appli organisateur</b>, <b>3) Vérifiez la validité</b>, <b>4) Si valide → accès accordé</b>, <b>Si invalide → contactez support</b>. En cas de fraude, nous remboursons l'organisateur.",
+        "q3": "Comment fonctionne le scan QR code le jour J ?",
+        "a3": "Système de scan : <b>1) Rendez-vous sur  l'appli</b>, <b>2) Connectez-vous avec vos identifiants de votre compte organisateur</b>, <b>3) Sélectionnez l'événement</b>, <b>4) Scannez chaque QR code via le scanne de votre Téléphone</b>, <b>5) Validation instantanée</b> (valide/invalide). Fonctionnalié 100% sécuriser ",
+        "q4": "Quels moyens de paiement sont acceptés ?",
+        "a4": "Nous acceptons : <b>Mobile Money</b> (Orange Money, MTN Mobile Money, Moov Money), <b>Cartes bancaires</b> (Visa, Mastercard), <b>Virements bancaires</b>, <b>Paiements en espèces</b> (via points de paiement partenaires). En développement : crypto-monnaies locales.",
+        "q5": "Comment contester une transaction ou signaler une fraude ?",
+        "a5": "Procédure contestation : <b>1) Contactez support sous 7 jours</b>, <b>2) Fournissez preuves</b> (screenshots, emails), <b>3) Notre équipe enquête sous 72h</b>, <b>4) Résolution et compensation si fraude avérée</b>. Nous avons système anti-fraude intelligent.",
+        "q7": "La plateforme fonctionne-t-elle hors connexion ?",
+        "a7": "Non la plateforme est 100% disponible  en ligne  : <b>Scan QR codes</b> (après synchronisation), <b>Vérification tickets</b>, <b>Liste participants</b>. Pour ventes et créations, connexion requise. Application organisateur optimisée pour connexions instables.",
+        "q8": "Quelle est votre politique de confidentialité des données ?",
+        "a8": "Nous respectons : <b>RGPD adapté Afrique</b>, <b>Données cryptées</b>, <b>Pas de vente à des tiers</b>, <b>Accès restreint</b>, <b>Droit à l'oubli</b>, <b>Transparence totale</b>. Consultez notre charte confidentialité complète dans la page marketing, page de partenariat."
+      }
+    }
+  },
+
+  "secretary_dashboard": {
+    "title": "Tableau de bord Secrétaire",
+    "welcome": "Bienvenue, {{name}}",
+    "competence_zone": "Zone de compétence : {{country}}",
+    "tabs": {
+      "user_management": "Gestion Utilisateurs",
+      "event_management": "Gestion Événements",
+      "location_management": "Gestion Lieux",
+      "credit_management": "Gestion pièces",
+      "reversed_credits": "pièces Annulés",
+      "withdrawal_management": "Gestion Retraits",
+      "withdrawal_history": "Historique Retraits",
+      "event_moderation": "Modération Événements & Lieux"
+    },
+    "credit_form": {
+      "title": "Créditer un utilisateur",
+      "search_user_label": "Rechercher un utilisateur",
+      "search_user_placeholder": "Nom ou email...",
+      "user_label": "Utilisateur",
+      "select_user_placeholder": "Sélectionner un utilisateur",
+      "amount_label": "Montant (pièces)",
+      "amount_placeholder": "ex: 100",
+      "reason_label": "Raison (optionnel)",
+      "reason_placeholder": "ex: Récompense",
+      "submit_button": "Créditer l'utilisateur"
+    },
+    "event_moderation": {
+      "title": "Modération des Événements",
+      "zone_country": "Zone: {{country}}",
+      "filter_all": "Tous",
+      "filter_active": "Actifs",
+      "filter_inactive": "Inactifs",
+      "credit_participants_button": "Créditer Participants",
+      "confirm_delete_title": "Êtes-vous sûr ?",
+      "confirm_delete_desc": "Cette action est irréversible. L'événement et toutes ses données associées (tickets, votes, etc.) seront définitivement supprimés.",
+      "event_deleted_success": "Événement supprimé avec succès.",
+      "event_deleted_error": "Impossible de supprimer l'événement.",
+      "status_updated_success": "Statut de l'événement mis à jour.",
+      "status_updated_error": "Impossible de mettre à jour le statut.",
+      "credit_user_for_event_title": "Créditer pour l'événement : {{eventName}}",
+      "credit_user_for_event_desc": "Sélectionnez un utilisateur de votre zone pour lui attribuer des pièces pour sa participation.",
+      "user_search_placeholder": "Rechercher par nom ou email...",
+      "credit_amount_label": "Montant (pièces)",
+      "credit_reason_label": "Raison du crédit",
+      "credit_reason_placeholder": "Participation à l'événement : {{eventName}}",
+      "no_users_found": "Aucun utilisateur trouvé dans votre zone.",
+      "credit_success_message": "{{userName}} a été crédité de {{amount}} pièces.",
+      "credit_error_generic": "Une erreur est survenue lors du crédit."
+    }
+  },
+
+  "events_page": {
+    "clear_all": "Tout effacer",
+    "title": "Explorer les Événements",
+    "subtitle": "Découvrez ce qui se passe près de chez vous et au-delà.",
+    "search_placeholder": "Rechercher par nom, ville, catégorie...",
+    "filters": "Filtres",
+    "quick_filters": {
+      "trending": "Tendances",
+      "popular_by_category": "Populaires par catégorie",
+      "free_weekend": "Gratuits ce week-end",
+      "ending_soon": "Bientôt terminés"
+    },
+    "event_types": "Types d'événement",
+    "categories": "Catégories",
+    "countries": "Pays",
+    "cities": "Villes",
+    "reset": "Réinitialiser",
+    "no_events_found": {
+      "title": "Aucun événement trouvé",
+      "description": "Essayez d'ajuster vos filtres de recherche ou d'élargir votre zone de recherche.",
+      "reset_button": "Réinitialiser les filtres"
+    },
+    "unlock_modal": {
+      "title": "Débloquer cet Événement",
+      "description": "Pour voir les détails de \"{{title}}\", un coût de {{cost}}pièces (environ {{costFcfa}} FCFA) sera déduit de votre solde.",
+      "info": "Cette action est unique. Une fois débloqué, vous aurez un accès permanent à cet événement.",
+      "cancel": "Annuler",
+      "confirm": "Confirmer et Débloquer",
+      "success_title": "Accès débloqué!",
+      "success_desc": "Vous pouvez maintenant voir les détails de \"{{title}}\"."
+    }
+  },
+
+  "profile_page": {
+    "helmet_title": "Profil de {{name}}",
+    "helmet_desc": "Gérez votre profil, vos événements et vos transactions sur BonPlanInfos.",
+    "unauthorized_title": "Accès Refusé",
+    "unauthorized_desc": "Vous devez être connecté pour voir votre profil.",
+    "go_to_login": "Aller à la page de connexion",
+    "connection_failed_title": "Échec de la Connexion",
+    "connection_failed_desc": "Nous n'avons pas pu charger votre profil. Veuillez réessayer de vous connecter.",
+    "loading_error_title": "Erreur de Chargement des Données",
+    "loading_error_desc": "Nous n'avons pas pu charger toutes les données de votre profil. Certaines informations peuvent être manquantes."
+  },
+
+  "wallet_page": {
+    "title": "Mon Portefeuille",
+    "total_balance": "Solde Total de Pièces",
+    "free_coins": "Pièces Gratuites",
+    "paid_coins": "Pièces Achetées",
+    "available_earnings": "Gains Disponibles (Pièces)",
+    "earnings_in_fcfa": "≈ {{amount}} FCFA",
+    "buy_coins_title": "Acheter des pièces",
+    "buy_coins_desc": "Rechargez votre solde pour ne rien manquer !",
+    "buy_coins_button": "Voir les packs",
+    "balance_details_title": "Détails du Solde de Pièces",
+    "free_coins_desc": "Les pièces gratuites sont utilisées en priorité pour les interactions. Les pièces achetées sont utilisées ensuite et une partie est reversée aux organisateurs.",
+    "withdrawal_title": "Retrait des Gains",
+    "withdrawal_desc": "Convertissez vos gains en argent réel.",
+    "request_withdrawal_button": "Demander un retrait",
+    "withdrawal_minimum": "Minimum pour un retrait : {{amount}} pièces."
+  },
+
+  "admin_dashboard": {
+    "unauthorized_title": "Accès non autorisé",
+    "unauthorized_desc": "Vous n'avez pas les permissions nécessaires pour accéder à cette page.",
+    "loading_error_title": "Erreur de chargement",
+    "super_admin_title": "Tableau de bord Super Administrateur",
+    "admin_title": "Tableau de bord Admin - {{country}}",
+    "secretary_title": "Tableau de bord Secrétaire",
+    "welcome": "Bienvenue, {{name}}",
+    "tabs": {
+      "analytics": "Analyses",
+      "users": "Utilisateurs",
+      "secretaries": "Secrétaires",
+      "config": "Configuration",
+      "videos": "Vidéos",
+      "partners": "Partenaires",
+      "withdrawals": "Retraits",
+      "salary_withdrawals": "Retraits Salaires",
+      "withdrawal_history": "Historique Retraits",
+      "announcements": "Annonces",
+      "events": "Événements",
+      "promotions": "Promotions",
+      "popups": "Popups",
+      "credits": "pièces",
+      "credit_management": "Gestion pièces",
+      "reversed_credits": "pièces Annulés",
+      "transactions": "Transactions",
+      "activity_log": "Activités",
+      "payments": "Paiements",
+      "locations": "Lieux",
+      "badges": "Badges",
+      "credit_stats": "Stats pièces",
+      "salary": "Mon Salaire",
+      "credits_history": "Historique pièces"
+    },
+    "stats": {
+      "error_title": "Erreur de statistiques",
+      "revenue_title": "Chiffres affaires (Zone)"
+    },
+    "license": {
+      "status_critical": "Expiration critique",
+      "partner_error_title": "Erreur de chargement du partenaire",
+      "status_title": "Statut de la licence",
+      "status_active": "Active",
+      "status_expired": "Expirée",
+      "activated_on": "Activée le",
+      "expires_on": "Expire le",
+      "expired_since": "Expirée depuis {{count}} jours",
+      "days_remaining": "jours restants",
+      "renew_button": "Demander le renouvellement",
+      "confirm_renewal_title": "Confirmer la demande de renouvellement ?",
+      "confirm_renewal_desc": "Une notification sera envoyée au super administrateur pour examiner votre demande de renouvellement de licence.",
+      "renewal_sent_title": "Demande envoyée",
+      "renewal_sent_desc": "Votre demande de renouvellement a été envoyée avec succès.",
+      "renewal_error_desc": "Erreur lors de l'envoi de la demande de renouvellement : "
+    },
+    "banner": {
+      "pending": "Votre compte admin est en attente de vérification. Certaines fonctionnalités peuvent être limitées.",
+      "suspended": "Votre compte admin a été suspendu. Veuillez contacter le support.",
+      "expired": "Votre licence a expiré. Veuillez la renouveler pour restaurer l'accès complet."
+    },
+    "salary_dashboard": {
+      "title": "Tableau de Bord de Salaire",
+      "current_month_revenue": "Revenu de la zone (Mois en cours)",
+      "personal_score": "Score Personnel",
+      "projected_salary": "Salaire Projeté (Mois en cours)",
+      "request_withdrawal": "Demander un Retrait",
+      "history_title": "Historique des Salaires",
+      "month": "Mois",
+      "revenue": "Revenu Zone",
+      "license_rate": "Taux Licence",
+      "score": "Score",
+      "salary": "Salaire Final",
+      "status": "Statut",
+      "paid": "Payé",
+      "unpaid": "Non Payé"
+    },
+    "withdrawal_form": {
+      "title": "Demande de Retrait de Salaire",
+      "description": "Soumettez une demande pour retirer votre salaire disponible.",
+      "available_salary": "Salaire disponible pour le retrait",
+      "amount_to_withdraw": "Montant",
+      "withdrawal_method": "Méthode",
+      "select_method": "Sélectionner une méthode",
+      "bank_name": "Nom de la banque",
+      "account_holder": "Titulaire du compte",
+      "account_number": "Numéro de compte",
+      "mobile_money_operator": "Opérateur",
+      "phone_number": "Numéro de téléphone",
+      "reason": "Raison (Optionnel)",
+      "submit": "Soumettre la demande"
+    }
+  },
+
+  "notifications_page": {
+    "title": "Notifications",
+    "mark_all_read": "marquer lu",
+    "tabs": {
+      "all": "Toutes",
+      "unread": "Non lues"
+    },
+    "no_notifications": "Vous n'avez aucune notification pour le moment",
+    "no_unread_notifications": "Vous n'avez aucune notification non lue",
+    "update_success": "Notifications mises à jour",
+    "update_success_desc": "Toutes les notifications ont été marquées comme lues",
+    "update_error": "Erreur de mise à jour",
+    "click_to_read": "Cliquez pour marquer comme lu",
+    "mark_as_read": "Marquer comme lu",
+    "delete": "Supprimer",
+    "archive": "Archiver"
+  },
+
+  "navigation": {
+    "home": "Accueil",
+    "events": "Événements",
+    "dashboard": "Tableau de bord",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "login": "Connexion",
+    "register": "Inscription"
+  },
+
+  "footer": {
+    "home": "Accueil",
+    "about": "À propos",
+    "partnership": "Partenariat",
+    "sponsors": "Sponsors",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "contact": "Contact",
+    "tagline": "Votre guide ultime pour les meilleurs événements et divertissements.",
+    "platform": "Plateforme",
+    "company": "Entreprise",
+    "legal": "Légal",
+    "how_it_works": "Comment ça marche ?",
+    "help": "Centre d'aide",
+    "documentation": "Documentation",
+    "help_center": "Centre d'aide et soumission des contrats Partenaires",
+    "faq": "FAQ",
+    "data_protection": "Protection des données",
+    "legal_mentions": "Mentions légales",
+    "message": "Nous utilisons des cookies pour améliorer votre expérience. En continuant à visiter ce site, vous acceptez notre utilisation des cookies. ",
+    "learn_more": "Politique de Confidentialité",
+    "reject": "Rejeter",
+    "accept": "Accepter"
+  },
+
+  "data_protection": {
+    "meta_title": "Protection des Données Personnelles",
+    "meta_description": "Politique de protection des données personnelles de BonPlanInfos. Conforme aux réglementations africaines sur la protection des données.",
+    "title": "Protection des Données Personnelles",
+    "subtitle": "Notre engagement pour la protection de vos données en Afrique",
+    "africa_compliance": "Nos pratiques de protection des données respectent les réglementations nationales dans tous les pays d'opération en Afrique de l'Ouest (Côte d'Ivoire, Burkina Faso, Sénégal, Mali, Bénin, Ghana, Nigeria), Afrique Centrale (Cameroun, Gabon), Afrique du Nord (Tunisie, Maroc) et Afrique Australe (Afrique du Sud), en suivant à la fois les lois locales et les standards de l'Union Africaine.",
+    "contact_title": "Contact Délégué à la Protection des Données",
+    "commitment": {
+      "title": "Notre Engagement",
+      "content": "BonPlanInfos s'engage à protéger vos données personnelles conformément aux lois africaines sur la protection des données. Nous mettons en œuvre des mesures techniques et organisationnelles robustes pour assurer la sécurité et la confidentialité de vos informations."
+    },
+    "dpo": {
+      "title": "Délégué à la Protection des Données",
+      "content": "Notre Délégué à la Protection des Données (DPD) veille au respect des obligations légales et réglementaires concernant la protection des données personnelles dans tous les pays africains où nous opérons."
+    },
+    "data_collected": {
+      "title": "Données Collectées",
+      "content": "Nous collectons uniquement les données nécessaires au bon fonctionnement de nos services événementiels :",
+      "list": [
+        "Informations de profil : nom, prénom, email, téléphone",
+        "Données de transaction : historiques d'achats de billets",
+        "Données d'utilisation : préférences événementielles, interactions avec la plateforme",
+        "Données techniques : adresse IP, type d'appareil, cookies essentiels",
+        "Données de localisation : pays et ville pour personnaliser les événements"
+      ]
+    },
+    "usage": {
+      "title": "Utilisation des Données",
+      "content": "Vos données sont utilisées dans le strict respect des finalités suivantes :",
+      "list": [
+        "Gestion des inscriptions et participations aux événements",
+        "Traitement sécurisé des paiements de billets",
+        "Envoi de confirmations et informations événementielles",
+        "Amélioration de l'expérience utilisateur sur notre plateforme",
+        "Conformité avec les obligations légales africaines",
+        "Personnalisation des recommandations d'événements par pays"
+      ]
+    },
+    "sharing": {
+      "title": "Partage des Données",
+      "content": "Nous ne partageons vos données qu'avec :",
+      "list": [
+        "Prestataires de paiement certifiés (MoneyFusion, PayPal, Mobile Money, Orange Money, MTN Mobile Money, Moov Money, Wave, etc.)",
+        "Organisateurs d'événements (uniquement les données nécessaires à la gestion de leur événement)",
+        "Autorités légales (sur demande formelle conforme aux lois locales)",
+        "Partenaires techniques sous contrat de confidentialité strict"
+      ]
+    },
+    "security": {
+      "screenshot_warning_watermark": "© BonPlanInfos - Capture d'écran non autorisée",
+      "title": "Sécurité des Données",
+      "content": "Nous mettons en œuvre des mesures de sécurité avancées conformes aux standards africains :",
+      "list": [
+        "Chiffrement SSL/TLS pour toutes les transmissions de données",
+        "Stockage sécurisé avec préférence pour les serveurs localisés en Afrique",
+        "Contrôles d'accès stricts et authentification multi-facteurs",
+        "Audits réguliers de sécurité conformes aux lois locales",
+        "Sauvegardes cryptées et plans de reprise d'activité"
+      ]
+    },
+    "retention": {
+      "title": "Conservation des Données",
+      "content": "Vos données sont conservées pour des durées limitées conformément aux lois de chaque pays :",
+      "list": [
+        "Données de compte : 1 ans après dernière activité",
+        "Données transactionnelles : 1 à 2 ans selon les obligations légales locales",
+        "Données de navigation : 13 mois maximum",
+        "Données des événements : 1 ans après la fin de l'événement",
+        "Données marketing : 1 ans après dernier contact"
+      ]
+    },
+    "hosting": {
+      "title": "Hébergement des Données",
+      "content": "Vos données sont principalement hébergées sur des serveurs sécurisés. Nous privilégions les solutions d'hébergement en Afrique lorsque cela est possible, tout en garantissant la même qualité de service et de sécurité. Nos infrastructures respectent les exigences de souveraineté numérique des pays où nous opérons."
+    },
+    "deletion": {
+      "title": "Droit à l'Effacement",
+      "content": "Conformément aux lois africaines sur la protection des données, vous avez le droit de demander la suppression de vos données personnelles. Contactez notre DPD à support@bonplaninfos.net pour toute demande d'effacement. Nous nous engageons à répondre dans les délais légaux de chaque pays."
+    },
+    "last_updated": "Dernière mise à jour : Novembre 2025"
+  },
+
+  "marketing": {
+    "meta_title": "Monétisez Vos Événements - Générez des Revenus à Chaque Interaction",
+    "meta_description": "Créez des événements et gagnez de l'argent avec chaque vue, like et partage. Rejoignez les milliers d'organisateurs qui génèrent déjà des revenus sur notre plateforme.",
+    "badge": "NOUVEAU",
+    "title": "Transformez Vos Événements en Sources de Revenus",
+    "subtitle": "Chaque interaction sur vos événements génère des revenus. Créez, partagez et gagnez de l'argent avec notre plateforme de monétisation innovante.",
+    "createEventCta": "Créer Mon Événement",
+    "becomePartnerCta": "Devenir Partenaire",
+    "trust": "Fiable pour des milliers d'organisateurs à travers l'Afrique",
+    "why": {
+      "title": "Pourquoi Choisir Notre Plateforme ?",
+      "subtitle": "Découvrez les avantages uniques qui font de nous le choix préféré des organisateurs d'événements",
+      "feature1": "Revenus Maximaux",
+      "feature1_desc": "Gardez 95% de vos revenus avec seulement 5% de frais de plateforme",
+      "feature2": "Monétisation Instantanée",
+      "feature2_desc": "Commencez à gagner dès la première vue, like et partage sur vos événements",
+      "feature3": "Outils de Croissance",
+      "feature3_desc": "Des outils avancés de boost et de promotion pour maximiser votre audience",
+      "feature4": "Analyses en Temps Réel",
+      "feature4_desc": "Suivez vos revenus et l'engagement de votre audience en temps réel",
+      "feature5": "Paiements Sécurisés",
+      "feature5_desc": "Sécurité bancaire pour toutes vos transactions et revenus",
+      "feature6": "Support 24/7",
+      "feature6_desc": "Équipe de support dédiée pour vous aider à réussir"
+    },
+    "simulation": {
+      "title": "Calculez Votre Revenu Potentiel",
+      "subtitle": "Simulez combien vous pouvez gagner avec vos événements",
+      "event_type": "Type d'Événement",
+      "ticket_price": "Prix du Billet",
+      "number_of_tickets": "Nombre de Billets",
+      "potential_revenue": "Revenu Potentiel",
+      "platform_fee": "Frais Plateforme (5%)",
+      "your_net_earning": "Votre Gain Net",
+      "cta": "Commencez à Gagner Maintenant",
+      "note": "Simulation basée sur les taux actuels. Les résultats réels peuvent varier.",
+      "number_of_interactions": "Nombre d'Interactions",
+      "interaction_revenue": "Revenu des Interactions",
+      "minimum_withdrawal": "Minimum 50 interactions requis pour le retrait (500 FCFA)"
+    },
+    "testimonials": {
+      "title": "Témoignages de Réussite",
+      "bintou_diallo_name": "Bintou Diallo",
+      "bintou_diallo_role": "Organisatrice d'Événements, Mali",
+      "dj_kerozen_quote": "En seulement 3 mois, j'ai gagné plus de 500 000 FCFA avec mes événements. La plateforme transforme vraiment les passions en revenus !",
+      "kwesi_mensah_name": "Kwesi Mensah",
+      "kwesi_mensah_role": "Entrepreneur Culturel, Ghana",
+      "fatou_sylla_quote": "La simulation de revenus m'a aidé à comprendre mon potentiel. Je gagne maintenant un revenu mensuel stable grâce à mes événements culturels.",
+      "aisha_traore_name": "Aisha Traoré",
+      "aisha_traore_role": "Organisatrice de Festival Musical, Côte d'Ivoire",
+      "eric_b_quote": "95% de rétention de revenus est incroyable ! Mon dernier festival a généré 2,5 millions de FCFA en gains nets.",
+      "amadou_ba_name": "Amadou Ba",
+      "amadou_ba_role": "Fondateur de Startup, Sénégal",
+      "amadou_ba_quote": "En tant que partenaire, j'ai construit une entreprise durable représentant la plateforme dans ma région. Une opportunité qui change la vie !",
+      "chimamanda_ngozi_name": "Chimamanda Ngozi",
+      "chimamanda_ngozi_role": "Commissaire d'Exposition d'Art, Nigeria",
+      "chimamanda_ngozi_quote": "La monétisation basée sur l'engagement est révolutionnaire. Même les petits événements génèrent des revenus significatifs.",
+      "didier_kouame_name": "Didier Kouamé",
+      "didier_kouame_role": "Gestionnaire d'Événements Sportifs, Cameroun",
+      "didier_kouame_quote": "Des tournois locaux aux compétitions majeures, la plateforme s'adapte à vos ambitions. Hautement recommandé !",
+      "mariam_kone_name": "Mariam Koné",
+      "mariam_kone_role": "Community Manager, Burkina Faso",
+      "mariam_kone_quote": "Les analyses m'ont aidé à comprendre quel contenu fonctionne le mieux. Mes revenus ont augmenté de 300% en 6 mois.",
+      "femi_adebayo_name": "Femi Adebayo",
+      "femi_adebayo_role": "Promoteur de Spectacles, Nigeria",
+      "femi_adebayo_quote": "Multiples sources de revenus : ventes de billets, interactions et partenariats. Cette plateforme a tout !",
+      "abena_asante_name": "Abena Asante",
+      "abena_asante_role": "Hôte d'Ateliers Éducatifs, Ghana",
+      "abena_asante_quote": "Mes ateliers atteignent maintenant des audiences dans toute l'Afrique de l'Ouest. La portée de la plateforme est phénoménale.",
+      "yannick_zongo_name": "Yannick Zongo",
+      "yannick_zongo_role": "Consultant en Affaires, RDC",
+      "yannick_zongo_quote": "Le programme partenaire m'a permis de construire un empire régional. La meilleure décision commerciale que j'ai jamais prise."
+    },
+    "cta": {
+      "title": "Prêt à Transformer Vos Événements en Revenus ?",
+      "subtitle": "Rejoignez les milliers d'organisateurs qui réussissent et commencez à monétiser votre passion dès aujourd'hui",
+      "cta": "Devenir Partenaire Maintenant"
+    }
+  },
+
+  "about": {
+    "meta_title": "À propos de BonPlanInfos - La plateforme événementielle africaine",
+    "meta_description": "Découvrez BonPlanInfos, la plateforme qui révolutionne l'organisation et la monétisation d'événements en Afrique avec seulement 5% de commission",
+    "hero": {
+      "title": "Révolutionner les événements en Afrique",
+      "subtitle": "BonPlanInfos est la première plateforme panafricaine dédiée à l'organisation, la promotion et la monétisation d'événements. Nous connectons créateurs, organisateurs et participants dans un écosystème innovant et rentable.",
+      "cta_primary": "Commencer gratuitement",
+      "cta_secondary": "Découvrir les événements"
+    },
+    "vision": {
+      "title": "Notre Vision",
+      "description": "Nous croyons en une Afrique où chaque créateur peut monétiser ses talents et chaque événement peut atteindre son plein potentiel",
+      "global": {
+        "title": "Impact Panafricain",
+        "description": "Connecter les créateurs et organisateurs à travers tout le continent, sans frontières, avec des outils adaptés au marché africain"
+      },
+      "empowerment": {
+        "title": "Autonomisation Économique",
+        "description": "Offrir des revenus réels et stables aux créateurs, organisateurs et partenaires grâce à notre modèle économique innovant"
+      },
+      "innovation": {
+        "title": "Innovation Continue",
+        "description": "Développer constamment de nouvelles fonctionnalités pour répondre aux besoins spécifiques du marché événementiel africain"
+      }
+    },
+    "highlights": {
+      "title": "Notre Impact en Chiffres",
+      "subtitle": "Une croissance rapide au service de la communauté événementielle africaine",
+      "events": {
+        "metric": "5 000+",
+        "label": "Événements organisés"
+      },
+      "community": {
+        "metric": "50 000+",
+        "label": "Membres actifs"
+      },
+      "success": {
+        "metric": "95%",
+        "label": "Revenus conservés"
+      },
+      "growth": {
+        "metric": "10x",
+        "label": "Croissance annuelle"
+      }
+    },
+    "values": {
+      "title": "Nos Valeurs Fondamentales",
+      "description": "Les principes qui guident chacune de nos actions et décisions",
+      "passion": {
+        "title": "Passion Africaine",
+        "description": "Nous sommes animés par la richesse culturelle et créative de l'Afrique, et nous nous engageons à la mettre en valeur"
+      },
+      "trust": {
+        "title": "Confiance & Transparence",
+        "description": "Des transactions sécurisées, des commissions claires (seulement 5%) et une communication ouverte avec notre communauté"
+      },
+      "agility": {
+        "title": "Agilité & Adaptabilité",
+        "description": "Nous évoluons rapidement pour répondre aux besoins changeants du marché événementiel africain"
+      },
+      "impact": {
+        "title": "Impact Social",
+        "description": "Créer des opportunités économiques réelles et durables pour les entrepreneurs culturels et créatifs"
+      }
+    },
+    "cta": {
+      "title": "Rejoignez la Révolution Événementielle",
+      "description": "Que vous soyez organisateur, artiste, partenaire ou simplement passionné d'événements, il y a une place pour vous chez BonPlanInfos",
+      "button_primary": "Créer mon compte gratuit",
+      "call": "Appeler maintenant",
+      "contact_direct": "Ou contactez-nous directement :",
+      "whatsapp_group": "Rejoindre le groupe WhatsApp",
+      "whatsapp_direct": "Discuter sur WhatsApp",
+      "available_hours": "Disponible du lundi au vendredi, 8h-18h"
+    }
+  },
+
+  "wallet_info_modal": {
+    "title": "À quoi servent les pièces (pièces) ?",
+    "intro": "Les pièces sont la monnaie virtuelle de BonPlanInfos. Elles vous permettent d'accéder à des contenus exclusifs et d'interagir avec les événements.",
+    "free_coins_title": "Pièces Gratuites (🎁)",
+    "free_coins_desc": "Vous les gagnez en regardant des vidéos publicitaires ou lors de promotions. Elles vous permettent de réaliser des actions de base.",
+    "paid_coins_title": "Pièces Achetées (💳)",
+    "paid_coins_desc": "Achetées avec de l'argent réel, elles débloquent toutes les fonctionnalités et soutiennent directement les organisateurs.",
+    "usage_title": "Comment les utiliser ?",
+    "usage_item1": "Accéder à des événements protégés.",
+    "usage_item2": "Liker, commenter, télécharger du contenu exclusif.",
+    "usage_item3": "Participer à des votes, tombolas et bien plus.",
+    "cta_button": "Acheter des pièces",
+    "usage_priority": "Les pièces gratuites sont toujours utilisées en premier pour vos actions !"
+  },
+
+  "events_title": "Événements à la Une",
+  "all_events_button": "Tous les événements",
+  "promoted_events": "Événements Sponsorisés",
+  "popular_contests": "Concours Populaires",
+  "see_all_contests": "Voir tous les concours",
+
+  "event_card": {
+    "days_remaining": "{{count}} jour restant",
+    "days_remaining_plural": "{{count}} jours restants",
+    "event_ended": "Terminé",
+    "event_starting_today": "Commence aujourd'hui",
+    "starting_from": "À partir de"
+  },
+
+  "filters": {
+    "all": "Tout",
+    "promoted": "Boostés",
+    "live": "En direct",
+    "today": "Aujourd'hui",
+    "this_week": "Cette semaine",
+    "free": "Gratuits"
+  },
+
+  "event_detail": {
+    "by_organizer": "Par",
+    "share": "Partager",
+    "location": "Lieu",
+    "date_time": "Date et Heure",
+    "get_directions": "Obtenir l'itinéraire",
+    "about_event": "À propos de l'événement",
+    "tags": "Tags",
+    "unlock_event_to_see_content": "Débloquez cet événement pour voir le contenu exclusif !",
+    "unlock_button": "Débloquer pour {{price}}pièces",
+    "unlocking": "Déblocage...",
+    "free_access": "Accès gratuit",
+    "owner_access": "Accès propriétaire",
+    "comments": "Commentaires",
+    "leave_comment": "Laissez un commentaire...",
+    "submit_comment": "Envoyer",
+    "comment_cost": "Commenter pour {{price}}pièces",
+    "ticketing": "Billetterie",
+    "voting": "Vote",
+    "raffle": "Tombola",
+    "stands": "Stands"
+  },
+
+  "social_interactions": {
+    "like": "J'aime",
+    "comment": "SMS",
+    "share": "Partager",
+    "download": "Télécharger",
+    "cost": "{{price}}pièces",
+    "comment_placeholder": "Ajouter un commentaire...",
+    "post_comment": "Publier"
+  },
+
+  "toasts": {
+    "copied_to_clipboard": "Copié dans le presse-papiers !",
+    "feature_not_implemented": "🚧 Cette fonctionnalité n'est pas encore implémentée—mais ne vous inquiétez pas ! Vous pouvez la demander dans votre prochain prompt ! 🚀"
+  },
+
+  "partner_signup": {
+    "meta_title": "Devenir Partenaire - BonPlanInfos",
+    "meta_description": "Devenez partenaire officiel BonPlanInfos et générez des revenus mensuels stables. Programme de concession territoriale avec commission plateforme de 5%.",
+    "unauthorized_title": "Accès non autorisé",
+    "unauthorized_desc": "Vous devez être connecté pour accéder à l'espace partenaire.",
+    "unauthorized_cta": "Se connecter",
+    "loading_licenses": "Chargement des concessions...",
+    "error_loading_licenses": "Erreur lors du chargement des concessions",
+    "your_licenses_title": "Vos Concessions Actives",
+    "available_licenses_title": "Concessions Disponibles",
+    "available_licenses_subtitle": "Choisissez le niveau de concession correspondant à vos ambitions et commencez à générer des revenus sur les commissions plateforme",
+    "license_features": {
+      "premium": {
+        "type": "CONCESSION NATIONALE",
+        "territory": "Pays entier",
+        "duration": "Contrat de 3 ans",
+        "entry_fee": "5 000 000 - 10 000 000 FCFA",
+        "revenue_share": "40% sur les 5% de commission plateforme",
+        "features": [
+          "Exclusivité nationale",
+          "Siège national requis",
+          "Minimum 3-5 employés",
+          "Représentation officielle",
+          "Supervision régions et villes",
+          "Gestion conformité légale"
+        ]
+      },
+      "business": {
+        "type": "CONCESSION RÉGIONALE",
+        "territory": "Région entière",
+        "duration": "Contrat de 2 ans",
+        "entry_fee": "3 000 000 FCFA",
+        "revenue_share": "30% sur les 5% de commission plateforme",
+        "features": [
+          "Exclusivité régionale",
+          "Bureau régional requis",
+          "Minimum 2 agents",
+          "Supervision concessions villes",
+          "Développement partenariats régionaux",
+          "Promotion active"
+        ]
+      },
+      "starter": {
+        "type": "CONCESSION VILLE",
+        "territory": "Ville unique",
+        "duration": "Contrat de 2 ans",
+        "entry_fee": "1 000 000 FCFA",
+        "revenue_share": "20% sur les 5% de commission plateforme",
+        "features": [
+          "Exclusivité urbaine",
+          "Point de représentation physique",
+          "Désignation responsable local",
+          "Promotion active plateforme",
+          "Respect standards marque",
+          "Rapports mensuels"
+        ]
+      },
+      "commission_explanation": "Les partenaires perçoivent un pourcentage des 5% de commission plateforme générés sur leur territoire provenant des : participations aux événements, votes, tirages au sort, billeterie et locations de stands.",
+      "revenue_share_based": "Part des revenus basée sur les 5% de commission plateforme"
+    },
+    "license_card": {
+      "active": "Active",
+      "expired": "Expirée",
+      "revenue_share": "Part de revenus : {{percent}}% sur les 5% commission plateforme",
+      "territory": "Territoire : {{location}}",
+      "purchased_on": "Contraté le",
+      "expires_on": "Expire le",
+      "days_remaining": "{{count}} jour(s) restant(s)",
+      "entry_fee": "Droit d'entrée : {{amount}} FCFA",
+      "contract_duration": "Contrat : {{years}} ans"
+    },
+    "per_month": "/mois",
+    "revenue_label": "Part des revenus (sur 5% commission)",
+    "duration_label": "Contrat de {{years}} ans",
+    "entry_fee_label": "Droit d'entrée",
+    "purchase_cta": "Demander Concession",
+    "download_contract": "Télécharger Formulaire Contrat",
+    "submit_contract": "Soumettre Contrat Rempli",
+    "days_remaining_suffix": "jour(s)",
+    "commission_explanation_title": "Comment fonctionnent les commissions",
+    "commission_explanation_desc": "En tant que partenaire, vous gagnez une part des 5% de commission plateforme générés sur votre territoire. Par exemple, si un événement génère 100 000 FCFA de ventes de billets avec une commission de 5%, soit 5 000 FCFA, et que vous avez une part de revenus de 20%, vous recevrez 1 000 FCFA.",
+    "confirm_purchase_title": "Confirmer la Demande de Concession",
+    "confirm_purchase_desc": "Une fois la demande soumise, notre équipe examinera votre candidature et vous contactera pour finaliser le contrat.",
+    "purchase_success_title": "Demande Soumise",
+    "purchase_success_desc": "Votre demande de concession a été soumise avec succès. Nous vous contacterons sous peu.",
+    "error_toast": {
+      "title": "Erreur",
+      "login_required": "Vous devez être connecté pour demander une concession",
+      "purchase_failed": "Erreur lors du traitement de la demande"
+    },
+    "contract_forms": {
+      "title": "Télécharger les Contrats",
+      "starter_form": "CONTRAT N°1 - CONCESSION STARTER (VILLE)",
+      "business_form": "CONTRAT N°2 - CONCESSION BUSINESS (RÉGION)",
+      "premium_form": "CONTRAT N°3 - CONCESSION PREMIUM (PAYS)",
+      "download": "Télécharger PDF",
+      "instructions": "Téléchargez le contrat, remplissez-le et soumettez-le au super admin pour approbation",
+      "submit_to_admin": "Soumettre au Super Admin"
+    }
+  },
+
+  "create_event_page": {
+    "meta": {
+      "title": "Créer un Événement - Choisir le Type",
+      "description": "Choisissez le type d'événement que vous souhaitez créer sur BonPlanInfos"
+    },
+    "title": "Créer un Événement",
+    "subtitle": "Choisissez le type d'événement que vous souhaitez créer",
+    "types": {
+      "simple": {
+        "title": "Événement Simple",
+        "desc": "Événement basique avec informations générales"
+      },
+      "ticketing": {
+        "title": "Billetterie",
+        "desc": "Vendez des billets pour votre événement"
+      },
+      "voting": {
+        "title": "Vote & Concours",
+        "desc": "Créez un concours avec système de vote"
+      },
+      "raffle": {
+        "title": "Tirage au Sort",
+        "desc": "Organisez un tirage au sort avec lots"
+      },
+      "stand": {
+        "title": "Location de Stands",
+        "desc": "Louez des stands pour un salon ou foire"
+      }
+    },
+    "help": {
+      "title": "Besoin d'aide ?",
+      "description": "Consultez notre guide pour apprendre à créer et gérer vos événements efficacement",
+      "button": "Voir le Guide d'Utilisation"
+    }
+  },
+
+  "user_guide_page": {
+    "meta": {
+      "title": "BonPlanInfos - Plateforme Événementielle 100% Africaine",
+      "description": "Créez, gérez et monétisez vos événements avec BonPlanInfos. La plateforme africaine qui vous reverse 95% de vos revenus."
+    },
+    "hero": {
+      "title": "BonPlanInfos",
+      "subtitle": "Votre Succès Événementiel",
+      "description": "La plateforme africaine qui vous reverse <strong>95% de vos revenus</strong>",
+      "coin_info": "1 pièce = 10F • 1 interaction = 1 pièce",
+      "create_event": "Créer un Événement",
+      "become_partner": "Devenir Partenaire",
+      "features": {
+        "revenue": "95% des revenus reversés",
+        "coin": "1 pièce = 10F CFA",
+        "support": "Support 24/7"
+      }
+    },
+    "features": {
+      "title": "Nos Solutions Événementielles",
+      "subtitle": "Des outils puissants pour maximiser vos revenus et votre visibilité",
+      "ticketing": {
+        "title": "Billetterie Intelligente",
+        "description": "Vendez des billets pour vos concerts et événements. Fixez vos prix et recevez 95% des revenus directement",
+        "stats": "95% de revenus reversés"
+      },
+      "voting": {
+        "title": "Concours & Votes",
+        "description": "Organisez des concours interactifs avec système de vote. Monétisez chaque participation",
+        "stats": "95% sur chaque participation"
+      },
+      "raffle": {
+        "title": "Tirage au Sort",
+        "description": "Créez des tirages au sort avec lots attractifs. Participation payante ou gratuite selon votre choix",
+        "stats": "Gestion automatique avec 95% sur chaque participation"
+      },
+      "stand_rental": {
+        "title": "Location de Stands",
+        "description": "Louez des stands pour salons et foires. Gérez les réservations et paiements en ligne",
+        "stats": "95% du prix de location vous êtes reversés"
+      },
+      "protected_events": {
+        "title": "Événements Protégés",
+        "description": "Contenu exclusif monétisé. Gagnez 1 pièce par interaction (vue, like, commentaire, partage)",
+        "stats": "+1 pièce par interaction"
+      },
+      "boost": {
+        "title": "Boost Instantané",
+        "description": "Augmentez la visibilité de vos événements. Atteignez plus de participants en temps réel en boostant vos évènements sur bonplaninfos.",
+        "stats": "Portée multipliée"
+      }
+    },
+    "simulation": {
+      "title": "Simulation Événement Protégé",
+      "subtitle": "Découvrez comment monétiser chaque interaction sur vos événements",
+      "main_title": "💰 1 Interaction = 1 Pièce = 10F CFA",
+      "description": "Chaque vue, like, commentaire ou partage vous rapporte de l'argent",
+      "views": "Vues",
+      "likes": "Likes",
+      "comments": "Commentaires",
+      "shares": "Partages",
+      "total": "Total: {{amount}} F CFA",
+      "revenue_description": "Revenus générés par un événement avec {{count}} interactions"
+    },
+    "stats": {
+      "revenue": "Revenus reversés aux organisateurs",
+      "coin_cost": "Coût d'1 pièce",
+      "coin_earned": "Pièce gagnée par interaction",
+      "no_fees": "Frais d'inscription"
+    },
+    "partner_program": {
+      "title": "Programme Partenaire",
+      "subtitle": "Représentez BonPlanInfos dans votre région et générez des revenus mensuels",
+      "advantages": "Avantages Partenaire",
+      "benefits": {
+        "revenue": "Revenus mensuels garantis",
+        "training": "Formation complète offerte",
+        "support": "Support prioritaire 24/7",
+        "network": "Réseau de partenaires exclusif"
+      },
+      "become_partner": "Devenez Partenaire",
+      "partner_description": "Représentez BonPlanInfos dans votre ville",
+      "apply_now": "Postuler Maintenant"
+    },
+    "testimonials": {
+      "title": "Ils nous font confiance",
+      "subtitle": "Découvrez les retours d'expérience de nos utilisateurs satisfaits",
+      "play": "Lecture",
+      "pause": "Pause",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "counter": "{{current}} / {{total}}",
+      "testimonial1": {
+        "name": "Marie K.",
+        "role": "Organisatrice de concerts",
+        "content": "Avec BonPlanInfos, mes événements protégés génèrent un revenu passif impressionnant. 1000 vues = 10,000F !"
+      },
+      "testimonial2": {
+        "name": "Jean A.",
+        "role": "Manager d'artistes",
+        "content": "La billetterie est révolutionnaire. 95% des revenus me reviennent directement, sans intermédiaire."
+      },
+      "testimonial3": {
+        "name": "Sophie T.",
+        "role": "Partenaire officielle",
+        "content": "Devenir partenaire m'a permis de générer un revenu mensuel stable tout en développant mon réseau."
+      },
+      "testimonial4": {
+        "name": "Paul D.",
+        "role": "Promoteur événementiel",
+        "content": "Le système de concours a boosté l'engagement de ma communauté. Les revenus ont augmenté de 300% !"
+      },
+      "testimonial5": {
+        "name": "Fatou M.",
+        "role": "Artiste musicienne",
+        "content": "En tant qu'artiste, BonPlanInfos m'a donné une autonomie financière grâce aux événements protégés."
+      },
+      "testimonial6": {
+        "name": "Kevin L.",
+        "role": "Organisateur de festivals",
+        "content": "La location de stands via la plateforme a simplifié toute la logistique de mon festival."
+      },
+      "testimonial7": {
+        "name": "Aïcha B.",
+        "role": "Influenceuse lifestyle",
+        "content": "Mes tirages au sort génèrent un engagement incroyable. Ma communauté adore participer !"
+      },
+      "testimonial8": {
+        "name": "Marc T.",
+        "role": "Entrepreneur événementiel",
+        "content": "Le programme partenaire m'a ouvert des opportunités que je n'aurais jamais imaginées."
+      },
+      "testimonial9": {
+        "name": "Julie N.",
+        "role": "Photographe événements",
+        "content": "Je monétise maintenant mes reportages photos grâce aux événements protégés. Génial !"
+      },
+      "testimonial10": {
+        "name": "David K.",
+        "role": "DJ & Producteur",
+        "content": "Mes lives protégés me rapportent plus que mes anciennes plateformes. Je recommande à 100% !"
+      },
+      "testimonial11": {
+        "name": "Sarah J.",
+        "role": "Organisatrice mariages",
+        "content": "BonPlanInfos a révolutionné ma façon de travailler. Les clients adorent le système de billetterie."
+      },
+      "testimonial12": {
+        "name": "Mohamed C.",
+        "role": "Community Manager",
+        "content": "Je gère plusieurs artistes sur la plateforme. L'interface est intuitive et les revenus transparents."
+      },
+      "testimonial13": {
+        "name": "Laura P.",
+        "role": "Créatrice de contenu",
+        "content": "Mes ateliers en ligne sont maintenant protégés et génèrent des revenus stables chaque mois."
+      },
+      "testimonial14": {
+        "name": "Pierre G.",
+        "role": "Organisateur sportif",
+        "content": "Pour nos tournois, le système de votes et concours a multiplié par 5 notre audience."
+      },
+      "testimonial15": {
+        "name": "Nadia S.",
+        "role": "Agence événementielle",
+        "content": "Nous utilisons BonPlanInfos pour tous nos clients. La satisfaction est toujours au rendez-vous !"
+      }
+    },
+    "cta": {
+      "title": "Prêt à révolutionner vos événements ?",
+      "description": "Rejoignez la communauté BonPlanInfos et commencez à générer des revenus dès aujourd'hui",
+      "create_event": "Créer mon premier événement",
+      "become_partner": "Devenir Partenaire"
+    },
+    "footer": {
+      "description": "La plateforme événementielle africaine qui vous reverse 95% de vos revenus.",
+      "navigation": "Navigation",
+      "home": "Accueil",
+      "events": "Événements",
+      "create_event": "Créer un événement",
+      "become_partner": "Devenir partenaire",
+      "contact": "Contact",
+      "information": "Informations",
+      "copyright": "©2025 BonPlanInfos. Tous droits réservés."
+    }
+  },
+
+  "help_center": {
+    "meta_title": "Centre d'Aide - BonPlanInfos",
+    "meta_description": "Trouvez des réponses à vos questions et contactez notre équipe de support pour toute assistance sur BonPlanInfos",
+    "title": "Centre d'Aide",
+    "subtitle": "Trouvez rapidement des réponses ou contactez notre équipe de support",
+    "searchPlaceholder": "Rechercher une question ou un sujet...",
+    "faq": "Questions Fréquentes",
+    "contact": "Contactez-Nous",
+    "email": "Email",
+    "emailDesc": "Envoyez-nous un email détaillé et nous vous répondrons dans les 24 heures",
+    "writeUs": "Nous Écrire",
+    "chat": "Chat WhatsApp",
+    "chatDesc": "Rejoignez notre groupe WhatsApp pour des réponses rapides et l'entraide communautaire",
+    "startChat": "Rejoindre le Groupe",
+    "phone": "Téléphone",
+    "phoneDesc": "Appelez-nous directement pour une assistance immédiate",
+    "call": "Appeler Maintenant",
+    "faq_sections": {
+      "general": {
+        "title": "Questions Générales",
+        "q1": "Comment créer un compte sur BonPlanInfos ?",
+        "a1": "Pour créer un compte : 1) Cliquez sur 'S'inscrire' en haut à droite, 2) Remplissez vos informations personnelles, 3) Vérifiez votre email, 4) Connectez-vous. C'est gratuit et prend moins de 2 minutes.",
+        "q2": "La plateforme est-elle gratuite ?",
+        "a2": "Oui, la création de compte et l'utilisation de base sont entièrement gratuites. Seuls les services premium (organisation d'événements payants, promotion avancée) peuvent avoir des frais. Les participants ne paient que pour les billets qu'ils achètent.",
+        "q3": "Quels types d'événements puis-je trouver ?",
+        "a3": "Vous trouverez : concerts, festivals, conférences, ateliers, événements sportifs, expositions, soirées, et bien plus. Notre plateforme couvre tous les types d'événements en Afrique.",
+        "q4": "Comment fonctionnent les paiements ?",
+        "a4": "Nous acceptons : mobile money (Orange Money, MTN Mobile Money, Moov Money), cartes bancaires, et virements. Les paiements sont sécurisés et cryptés. Vous recevez 95% du montant, nous prenons 5% de commission."
+      },
+      "organizer": {
+        "title": "Pour les Organisateurs",
+        "q1": "Comment créer un événement ?",
+        "a1": "Pour créer un événement : 1) Connectez-vous, 2) Cliquez sur 'Créer un événement', 3) Remplissez les détails (titre, description, date, lieu), 4) Ajoutez des photos, 5) Configurez les billets et prix, 6) Publiez.",
+        "q2": "Comment vendre des billets en ligne ?",
+        "a2": "Notre système de billeterie vous permet de : créer différents types de billets, fixer des prix, limiter les quantités, générer des codes QR uniques, et suivre les ventes en temps réel.",
+        "q3": "Quand et comment suis-je payé ?",
+        "a3": "Les paiements sont effectués sous 24-72h après votre événement. Vous pouvez retirer vos fonds via mobile money ou virement bancaire depuis votre tableau de bord.",
+        "q4": "Puis-je promouvoir mon événement ?",
+        "a4": "Oui, nous offrons des options de promotion : mise en avant sur la page d'accueil, campagnes email, publicités ciblées. Contactez notre équipe pour plus de détails et tarifs ou cliquer directement sur bouton Promuvoir en bas de votre événement et choisissez la durée du boost."
+      },
+      "technical": {
+        "title": "Support Technique",
+        "q1": "Problèmes de connexion ?",
+        "a1": "Si vous ne pouvez pas vous connecter : 1) Vérifiez votre email/mot de passe, 2) Utilisez 'Mot de passe oublié', 3) Essayez un autre navigateur, 4) Contactez le support si le problème persiste.",
+        "q2": "Comment réinitialiser mon mot de passe ?",
+        "a2": "Cliquez sur 'Mot de passe oublié' sur la page de connexion dans les paramètres, entrez votre email, suivez le lien dans l'email reçu, et créez un nouveau mot de passe.",
+        "q3": "La plateforme est-elle disponible sur mobile ?",
+        "a3": "Oui ! Notre site est entièrement responsive et fonctionne parfaitement sur tous les smartphones et tablettes. Aucune application à télécharger.",
+        "q4": "Que faire en cas d'erreur de paiement ?",
+        "a4": "Si un paiement échoue : 1) Ne retentez pas immédiatement, 2) Vérifiez votre solde, 3) Attendez quelques minutes et réessayer, 4) Contactez le support. Nous traitons ces cas rapidement."
+      },
+      "partnership": {
+        "title": "Partenariats et Licences",
+        "q1": "Comment devenir concessionnaire ?",
+        "a1": "Pour devenir concessionnaire : 1) Choisissez un niveau (Ville, Région, Pays), 2) Contactez-nous via email ou WhatsApp, 3) Fournissez les documents requis, 4) Passez un entretien, 5) Signez le contrat.",
+        "q2": "Quels sont les avantages d'un partenariat ?",
+        "a2": "En tant que concessionnaire, vous bénéficiez de : revenus mensuels stables, exclusivité territoriale, support technique complet, formation et opportunités de croissance.",
+        "q3": "Quels sont les coûts d'entrée ?",
+        "a3": "Les droits d'entrée varient : Ville (1M FCFA), Région (3M FCFA), Pays (5–10M FCFA). Ces investissements donnent droit à un pourcentage des commissions générées dans votre zone.",
+        "q4": "Quelle est la durée des contrats ?",
+        "a4": "Les durées sont : Ville (1 an), Région (2 ans), Pays (3 ans). Tous les contrats sont renouvelables sous réserve de performance."
+      }
+    }
+  },
+
+  "admin": {
+    "tabs": {
+      "analytics": "Analyses",
+      "users": "Utilisateurs",
+      "partners": "Partenaires",
+      "events": "Événements",
+      "locations": "Lieux",
+      "promotions": "Promotions",
+      "credits": "pièces",
+      "config": "Configuration",
+      "withdrawals": "Retraits",
+      "videos": "Vidéos",
+      "announcements": "Annonces",
+      "welcome_popup": "Popup Accueil"
+    }
+  },
+
+  "discover_places": "Découvrir des lieux",
+  "discover_more_places": "Découvrir plus de lieux",
+
+  "discover_page": {
+    "title": "Découvrir des Lieux",
+    "subtitle": "Trouvez de nouveaux lieux recommandés par la communauté.",
+    "search_placeholder": "Rechercher un lieu, une catégorie, une ville...",
+    "filter_by_type": "Filtrer par type",
+    "no_locations_found": "Aucun lieu trouvé.",
+    "no_locations_description": "Essayez d'élargir votre recherche ou de sélectionner moins de filtres.",
+    "add_new_location": "Ajouter un nouveau lieu",
+    "add_place": "Ajouter un Lieu"
+  },
+
+  "add_location": {
+    "title": "Ajouter un nouveau lieu",
+    "subtitle": "Partagez un super endroit avec la communauté.",
+    "location_name": "Nom du lieu",
+    "location_description": "Description",
+    "location_type": "Type de lieu",
+    "address": "Adresse",
+    "city": "Ville",
+    "country": "Pays",
+    "website": "Site web (facultatif)",
+    "phone": "Téléphone (facultatif)",
+    "submit": "Soumettre le lieu",
+    "success_title": "Lieu soumis !",
+    "success_message": "Merci ! Votre lieu a été soumis et sera examiné par notre équipe."
+  },
+
+  "verify_ticket": {
+    "title": "Vérification de Billet",
+    "scan_instruction": "Scannez le code QR du billet ou entrez le code du scanner.",
+    "scanner_code_label": "Code du Scanner",
+    "start_session": "Démarrer la session",
+    "stop_session": "Arrêter la session",
+    "scan_ticket": "Scanner un Billet",
+    "camera_permission_denied": "Permission de la caméra refusée.",
+    "camera_error": "Erreur de caméra :",
+    "scan_result": "Résultat du scan",
+    "scan_again": "Scanner à nouveau",
+    "valid_ticket": "Billet Valide",
+    "invalid_ticket": "Billet Invalide",
+    "ticket_number": "Numéro de billet:",
+    "ticket_type": "Type de billet:",
+    "attendee_name": "Nom du participant:",
+    "event_title": "Titre de l'événement:",
+    "scan_time": "Heure de scan:",
+    "error": "Erreur",
+    "session_active": "Session de vérification active",
+    "session_stopped": "Session de vérification arrêtée",
+    "verifying_ticket": "Vérification du billet...",
+    "enter_scanner_code": "Veuillez entrer un code de scanner valide."
+  },
+
+  "create_event": {
+    "title": "Créer un Événement",
+    "subtitle": "Choisissez le type d'événement que vous souhaitez organiser.",
+    "simple": "Simple",
+    "simple_desc": "Publiez rapidement un événement informatif (gratuit ou payant à l'entrée).",
+    "ticketing": "Billetterie",
+    "ticketing_desc": "Vendez des billets avec différents tarifs et options.",
+    "voting": "Concours de Vote",
+    "voting_desc": "Organisez un concours où les participants votent pour des candidats.",
+    "raffle": "Tombola",
+    "raffle_desc": "Créez une tombola avec des tickets et des prix à gagner.",
+    "stands": "Location de Stands",
+    "stands_desc": "Gérez la location de stands pour un salon ou un marché."
+  },
+
+  "create_ticketing_event": {
+    "title": "Créer un Événement avec Billetterie",
+    "event_details": "Détails de l'Événement",
+    "event_title": "Titre de l'événement",
+    "event_description": "Description",
+    "event_cover_image": "Image de couverture",
+    "upload_image": "Télécharger une image",
+    "event_start_at": "Date de l'événement",
+    "category": "Catégorie",
+    "select_category": "Sélectionner une catégorie",
+    "location": "Lieu",
+    "address": "Adresse",
+    "city": "Ville",
+    "country": "Pays",
+    "ticket_types": "Types de Billets",
+    "add_ticket_type": "Ajouter un type de billet",
+    "ticket_name": "Nom du billet (ex: Standard, VIP)",
+    "ticket_price_fcfa": "Prix (FCFA)",
+    "ticket_quantity": "Quantité disponible",
+    "ticket_benefits": "Avantages (séparés par des virgules)",
+    "remove": "Supprimer",
+    "verification_options": "Options de Vérification",
+    "enable_verification": "Activer la vérification des billets par QR code",
+    "submit": "Créer l'événement",
+    "event_created_success": "Événement créé avec succès !",
+    "editing_event": "Modification de l'événement"
+  },
+
+  "ticketing_interface": {
+    "select_ticket_type": "Sélectionnez vos billets",
+    "total_cost": "Coût Total :",
+    "buy_tickets": "Acheter des Billets",
+    "sold_out": "Épuisé",
+    "sales_ended": "Ventes terminées",
+    "available": "disponibles",
+    "benefits": "Avantages :"
+  },
+
+  "select_country": "Sélectionner un pays",
+  "select_city": "Sélectionner une ville",
+  "choose_file": "Choisir un fichier",
+  "no_file_chosen": "Aucun fichier choisi",
+
+  "common": {
+    "error_title": "Erreur",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "close": "Fermer",
+    "save": "Sauvegarder",
+    "edit": "Modifier",
+    "success_title": "Succès",
+    "search": "Rechercher...",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "credit": "Créditer",
+    "retry": "Réessayer",
+    "whatsapp_community": "Rejoindre la communauté WhatsApp",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "back": "Retour",
+    "share": "Partager",
+    "copyLink": "Lien copié",
+    "success": "Succès"
+  },
+
+  "eventDetail": {
+    "notFound": "Événement non trouvé",
+    "loading": "Chargement...",
+    "about": "À propos",
+    "date": "Date",
+    "dateNotSpecified": "Date non spécifiée",
+    "location": "Lieu",
+    "organizer": "Organisé par",
+    "until": "Jusqu'au",
+    "from": "À partir du",
+    "seeMore": "Voir plus",
+    "seeLess": "Voir moins",
+    "favorites": "Favoris",
+    "comments": "Commentaires",
+    "presaleActive": "Prévente Active",
+    "presaleDescription": "Profitez des tarifs préventes ! Valable jusqu'au {{date}}.",
+    "eventOngoing": "Événement en Cours",
+    "eventOngoingDescription": "L'événement a commencé ! Tarifs normaux applicables.",
+    "eventFinished": "Événement Terminé",
+    "eventFinishedDescription": "Cet événement s'est terminé le {{date}}.",
+    "salesClosed": "Ventes Temporairement Fermées",
+    "salesClosedDescription": "L'organisateur a temporairement suspendu les ventes. Réouverture possible avant la fin de l'événement.",
+    "standDashboard": {
+      "title": "Tableau de bord Stands",
+      "rented": "Stands Loués",
+      "grossRevenue": "Revenus Bruts",
+      "fees": "Frais (5%)",
+      "netEarnings": "Vos Gains Nets (95%)"
+    },
+    "admin": {
+      "title": "Administration",
+      "eventStatus": "Statut Événement",
+      "salesStatus": "Statut Ventes",
+      "status": {
+        "upcoming": "À venir",
+        "ongoing": "En cours",
+        "finished": "Terminé"
+      },
+      "sales": {
+        "open": "Ouvertes",
+        "presale": "Prévente",
+        "closed": "Fermées"
+      },
+      "reopenSales": "Rouvrir les ventes",
+      "closeSales": "Fermer les ventes",
+      "scanTickets": "Scanner Billets",
+      "entryStats": "Statistiques Entrées",
+      "salesClosedPermanent": "L'événement est terminé. Les ventes sont fermées définitivement.",
+      "salesClosedManual": "Ventes manuellement fermées. Réouverture possible.",
+      "salesPresale": "Prévente active - Tarifs avantageux",
+      "salesNormal": "Ventes normales actives"
+    },
+    "deleteDialog": {
+      "title": "Supprimer définitivement ?",
+      "description": "Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible."
+    },
+    "toast": {
+      "error": "Erreur",
+      "sessionExpired": "Session expirée",
+      "transferSuccess": "Succès du transfert",
+      "transferDetails": "Brut : {{gross}}π | Frais : {{fee}}π | Net ajouté : {{net}}π",
+      "loadError": "Impossible de charger les détails de l'événement.",
+      "deleteSuccess": "Événement supprimé avec succès.",
+      "deleteError": "Impossible de supprimer l'événement.",
+      "salesClosed": "Ventes fermées",
+      "salesClosedDesc": "Les participants ne peuvent plus acheter.",
+      "salesReopened": "Ventes rouvertes",
+      "salesReopenedDesc": "Les ventes sont de nouveau ouvertes.",
+      "salesToggleError": "Impossible de modifier le statut des ventes",
+      "copySuccess": "Lien copié dans le presse-papier.",
+      "loginRequired": "Connexion requise",
+      "loginRequiredDesc": "Veuillez vous connecter pour interagir."
+    }
+  },
+
+  "verificationStats": {
+    "title": "Statistiques de validation",
+    "description": "État des entrées en temps réel",
+    "ticketsSold": "Billets vendus",
+    "validated": "Validés / Entrés",
+    "attendanceRate": "Taux de présence",
+    "duplicateScans_one": "{{count}} tentative de doublon détectée",
+    "duplicateScans_other": "{{count}} tentatives de doublons détectées",
+    "noData": "Aucune donnée disponible"
+  },
+
+  "legal_mentions": {
+    "meta_title": "Mentions légales",
+    "meta_description": "Consultez les mentions légales de BonPlanInfos pour obtenir des informations sur l’éditeur du site, l’hébergement et nos obligations légales.",
+    "title": "Mentions légales",
+    "subtitle": "Informations légales relatives à la plateforme BonPlanInfos.",
+    "lastUpdate": "Dernière mise à jour : 02 novembre 2025",
+    "sections": {
+      "editor": {
+        "title": "Éditeur du site",
+        "content": "Le site BonPlanInfos est édité par :",
+        "company": "BON PLAN INFOS (BPI)",
+        "capital": "Société par actions simplifiée (SAS) au capital social compris entre 1 000 000 et 5 000 000 FCFA",
+        "address": "Siège social : Abidjan (Côte d’Ivoire) et Ouagadougou (Burkina Faso)",
+        "phone": "Téléphone : (+225) 07 12 27 53 74",
+        "email": "contact@bonplaninfos.net"
+      },
+      "director": {
+        "title": "Directeur de la publication",
+        "content": "Le directeur de la publication est Monsieur S. Rayane Kibora, en sa qualité de Président de BON PLAN INFOS (BPI)."
+      },
+      "hosting": {
+        "title": "Hébergement",
+        "content": "La plateforme est hébergée par :",
+        "company": "Hostinger International Ltd.",
+        "address": "61 Lordou Vironos Street, 6023 Larnaca, Chypre",
+        "website": "https://www.hostinger.fr"
+      },
+      "data": {
+        "title": "Protection des données personnelles",
+        "content1": "Conformément aux réglementations applicables en matière de protection des données personnelles, vous disposez d’un droit d’accès, de rectification, de suppression et d’opposition concernant vos données personnelles. Pour exercer ces droits, vous pouvez contacter notre Délégué à la Protection des Données (DPO) à l’adresse suivante : contact@bonplaninfos.net.",
+        "content2": "Pour plus d’informations, veuillez consulter notre <1>Politique de confidentialité</1>."
+      },
+      "cookies": {
+        "title": "Cookies",
+        "content1": "Le site BonPlanInfos utilise des cookies afin d’améliorer l’expérience utilisateur et les performances de la plateforme. Ces cookies permettent notamment de :",
+        "item1": "Assurer le bon fonctionnement du site (cookies strictement nécessaires).",
+        "item2": "Mesurer l’audience et analyser les performances (cookies analytiques).",
+        "item3": "Proposer des contenus et publicités personnalisés (cookies marketing).",
+        "content2": "Vous pouvez à tout moment configurer vos préférences en matière de cookies via la bannière de consentement prévue à cet effet."
+      },
+      "ip": {
+        "title": "Propriété intellectuelle",
+        "content": "L’ensemble des contenus présents sur le site BonPlanInfos (textes, images, vidéos, graphismes, logos, icônes, sons, logiciels, code source) est protégé par les lois relatives à la propriété intellectuelle et demeure la propriété exclusive de BON PLAN INFOS (BPI) ou de ses partenaires. Toute reproduction, représentation ou exploitation, même partielle, sans autorisation préalable est strictement interdite."
+      },
+      "liability": {
+        "title": "Limitation de responsabilité",
+        "content": "BonPlanInfos s’efforce de fournir des informations aussi exactes que possible. Toutefois, l’éditeur ne saurait garantir l’exactitude, la complétude ou l’actualité des informations diffusées sur la plateforme. L’utilisation du site se fait sous la seule responsabilité de l’utilisateur."
+      },
+      "links": {
+        "title": "Liens hypertextes",
+        "content": "La plateforme BonPlanInfos peut contenir des liens hypertextes renvoyant vers des sites tiers. BonPlanInfos n’exerce aucun contrôle sur ces sites et décline toute responsabilité quant à leur contenu ou à leur disponibilité."
+      },
+      "applicableLaw": {
+        "title": "Droit applicable",
+        "content": "Les présentes mentions légales et conditions d’utilisation sont régies par le droit applicable. Tout litige relatif à leur interprétation ou à leur exécution relèvera de la compétence exclusive des juridictions compétentes."
+      }
+    }
+  },
+
+  "_comment_profile": "👤 Page de profil - Gestion du compte et des gains",
+  "profile": {
+    "notLoggedIn": {
+      "title": "Connexion requise",
+      "description": "Votre session a expiré ou vous n'êtes pas connecté. Veuillez vous reconnecter pour accéder à votre profil.",
+      "loginButton": "Se connecter"
+    },
+    "balance": {
+      "title": "Mon Solde de Pièces",
+      "coins": "pièces",
+      "approx": "≈ {{balance}} FCFA",
+      "description": "Pièces achetées ou gagnées, utilisables pour événements ou convertibles en gains. Commission de 5% sur les transferts vers gains.",
+      "locked": "🔒 Verrouillé",
+      "lockedDescription": "Déverrouillez votre portefeuille pour voir votre solde.",
+      "unlockButton": "Déverrouiller",
+      "transferButton": "Transférer pour retrait"
+    },
+    "pendingEarnings": {
+      "title": "Gains en attente de transfert",
+      "feeLabel": "Frais: 5%",
+      "totalPending": "Total en attente :",
+      "netReceivable": "Net à recevoir :",
+      "unlockToTransfer": "Déverrouiller pour transférer",
+      "transferButton": "Transférer vers mon portefeuille",
+      "noEarnings": "Aucun gain à transférer",
+      "noEarningsDescription": "Les revenus de vos événements terminés apparaîtront ici."
+    },
+    "toast": {
+      "error": "Erreur",
+      "sessionExpired": "Session expirée",
+      "transferSuccess": "Succès du transfert",
+      "transferDetails": "Brut : {{gross}}π | Frais : {{fee}}π | Net ajouté : {{net}}π"
+    },
+    "helmet": {
+      "title": "Profil"
+    }
+  },
+
+  "_comment_profileStats": "📊 Statistiques du profil (ProfileStats)",
+  "profileStats": {
+    "balance": "Mon solde",
+    "availableEarnings": "Gains disponibles",
+    "events": "Événements",
+    "locked": "Verrouillé",
+    "unlockButton": "Déverrouiller les soldes",
+    "unlockPrompt": "Déverrouiller pour voir"
+  },
+
+  "_comment_profileTabs": "📌 Onglets du profil (ProfilePageContent)",
+  "profileTabs": {
+    "events": "Événements",
+    "creator": "Retraits",
+    "tickets": "Billets",
+    "transactions": "Historique",
+    "referral": "Parrainage",
+    "withdrawals": "Créateur"
+  },
+
+  "_comment_transferHistory": "📜 Historique des transferts (TransferHistory)",
+  "transferHistory": {
+    "title": "Historique des transferts et frais",
+    "loading": "Chargement...",
+    "noHistory": "Aucun historique de transfert",
+    "noHistoryDescription": "Vos futurs transferts vers votre portefeuille apparaîtront ici.",
+    "table": {
+      "date": "Date",
+      "type": "Type",
+      "description": "Description",
+      "amount": "Montant (π)",
+      "amountFcfa": "Montant (FCFA)",
+      "status": "Statut"
+    },
+    "types": {
+      "fee": "Frais",
+      "transfer": "Transfert"
+    },
+    "status": {
+      "completed": "Complété",
+      "pending": "En attente",
+      "failed": "Échoué",
+      "unknown": "Inconnu"
+    },
+    "descriptions": {
+      "fee": "Frais de plateforme",
+      "transfer": "Transfert vers portefeuille"
+    }
+  },
+
+  "_comment_transferModal": "💸 Modal de transfert de gains (TransferModal)",
+  "transferModal": {
+    "title": "Transférer vos gains",
+    "description": "Transférez vos gains en attente vers votre solde disponible. Les frais de {{percent}}% sont déjà déduits.",
+    "netAmount": "Montant net à transférer",
+    "afterFees": "Après déduction des frais",
+    "showDetails": "Voir les détails du calcul",
+    "hideDetails": "Masquer les détails",
+    "details": {
+      "gross": "Montant brut",
+      "fee": "Frais ({{percent}}%)",
+      "net": "Montant net"
+    },
+    "feeInfo": {
+      "button": "Comment fonctionnent les frais ?",
+      "hide": "(masquer)",
+      "show": "(afficher)",
+      "content": {
+        "line1": "Frais de {{percent}}% déjà déduits",
+        "line2": "{{amount}} pièces seront créditées sur votre solde",
+        "line3": "Utilisable pour achats ou retraits"
+      }
+    },
+    "summary": {
+      "gross": "Total brut",
+      "fee": "Frais",
+      "net": "Net à recevoir"
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "transfer": "Transférer {{amount}} pièces",
+      "processing": "Traitement..."
+    }
+  },
+
+  "_comment_coinTransferModal": "🪙 Modal de transfert de pièces (CoinTransferModal)",
+  "coinTransferModal": {
+    "title": "Transférer des Pièces",
+    "description": "Convertissez vos pièces en gains retirables. Une commission de {{percent}}% est appliquée sur le montant transféré.",
+    "balanceLabel": "Solde disponible :",
+    "amountLabel": "Montant à transférer (FCFA)",
+    "equivalent": "Soit {{coinAmount}} pièces (1 pièce = {{rate}} FCFA)",
+    "details": {
+      "gross": "Montant brut (pièces) :",
+      "commission": "Commission ({{percent}}%) :",
+      "net": "Gains Nets :"
+    },
+    "errors": {
+      "invalidAmount": "Le montant doit être supérieur à 0.",
+      "insufficientBalance": "Solde de pièces insuffisant.",
+      "title": "Erreur"
+    },
+    "buttons": {
+      "cancel": "Annuler",
+      "transfer": "Transférer"
+    }
+  },
+
+  "pinVerification": {
+    "setupTitle": "Configurer votre Code PIN",
+    "setupDescription": "Créez un code PIN à 4 chiffres pour sécuriser l'accès à vos fonds.",
+    "verifyTitle": "Déverrouiller le portefeuille",
+    "verifyDescription": "Veuillez saisir votre code PIN pour continuer.",
+    "inputLabel": "Code PIN (4 chiffres)",
+    "inputPlaceholder": "●●●●",
+    "confirmLabel": "Confirmer votre Code PIN",
+    "confirmPlaceholder": "●●●●",
+    "errors": {
+      "pinLength": "Le PIN doit contenir 4 chiffres.",
+      "pinMismatch": "Les codes PIN ne correspondent pas.",
+      "incorrect": "Code PIN incorrect.",
+      "attemptsLeft": "Il vous reste {{count}} tentative.",
+      "attemptsLeft_plural": "Il vous reste {{count}} tentatives.",
+      "lastAttempt": "Dernière tentative !",
+      "tooManyAttempts": "Trop de tentatives échouées. Compte verrouillé pour 20 minutes.",
+      "locked": "Compte temporairement verrouillé. Réessayez dans 20 minutes.",
+      "verificationError": "Erreur lors de la vérification."
+    },
+    "intimidation": {
+      "title": "⚠️ DERNIER AVERTISSEMENT ⚠️",
+      "message": "Vous avez essayé {{count}} fois. Si cette tentative échoue :",
+      "bullet1": "Une photo de votre visage sera prise via la webcam",
+      "bullet2": "La photo sera envoyée au propriétaire du compte",
+      "bullet3": "Votre adresse IP et localisation seront enregistrées",
+      "bullet4": "Le compte sera verrouillé pendant 20 minutes",
+      "footer": "Si vous êtes le propriétaire légitime, continuez."
+    },
+    "locked": {
+      "title": "Compte verrouillé",
+      "message": "Trop de tentatives échouées",
+      "description": "Pour des raisons de sécurité, votre compte est verrouillé pour 20 minutes."
+    },
+    "buttons": {
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "unlock": "Déverrouiller",
+      "close": "Fermer",
+      "forgotPin": "PIN oublié ?"
+    },
+    "toast": {
+      "pinSetupSuccess": "PIN configuré",
+      "pinSetupDescription": "Votre code PIN a été enregistré avec succès.",
+      "securityAlert": "⚠️ ALERTE DE SÉCURITÉ ⚠️",
+      "securityAlertDescription": "Une capture de votre visage a été prise et envoyée au propriétaire du compte."
+    }
+  },
+
+  "_comment_pinResetRequest": "🔐 Demande de réinitialisation de PIN (PinResetRequestModal)",
+  "pinResetRequest": {
+    "step1": {
+      "title": "Réinitialisation du Code PIN",
+      "description": "Veuillez fournir votre numéro et une pièce d'identité."
+    },
+    "step2": {
+      "title": "Demande envoyée",
+      "description": "Votre demande est en cours de traitement.",
+      "successMessage": "Votre demande a bien été envoyée."
+    },
+    "form": {
+      "phoneLabel": "Numéro de téléphone",
+      "idPhotoLabel": "Ajouter la photo de votre pièce d'identité",
+      "uploadHint": "Cliquez ou glissez une image"
+    },
+    "buttons": {
+      "cancel": "Annuler",
+      "submit": "Envoyer",
+      "close": "Fermer"
+    },
+    "errors": {
+      "invalidPhone": "Numéro invalide",
+      "invalidPhoneDescription": "Veuillez entrer un numéro valide.",
+      "photoRequired": "Photo requise",
+      "photoRequiredDescription": "Veuillez ajouter votre pièce d'identité.",
+      "unsupportedFormat": "Format non supporté",
+      "unsupportedFormatDescription": "Veuillez sélectionner une image valide.",
+      "fileTooLarge": "Fichier trop volumineux",
+      "fileTooLargeDescription": "Maximum 5MB autorisé."
+    },
+    "toast": {
+      "requestSent": "Demande envoyée",
+      "requestSentDescription": "Votre demande a été transmise.",
+      "error": "Erreur",
+      "errorDescription": "Impossible d'envoyer la demande."
+    }
+  },
+
+  "_comment_withdrawalModal": "💳 Modal de retrait (WithdrawalModal)",
+  "withdrawalModal": {
+    "title": "Effectuer un retrait",
+    "balanceLabel": "Solde disponible :",
+    "balanceValue": "{{balanceFcfa}} FCFA ({{balancePi}} pièces)",
+    "amountLabel": "Montant à retirer (en pièces)",
+    "amountPlaceholder": "Ex: 100",
+    "rateInfo": "1 pièce = {{rate}} FCFA",
+    "calculation": {
+      "gross": "Montant brut",
+      "fee": "Frais ({{percent}}%)",
+      "net": "Net à recevoir"
+    },
+    "methodLabel": "Méthode de paiement",
+    "methodPlaceholder": "Choisir...",
+    "detailsLabel": "Numéro / Compte",
+    "detailsPlaceholder": "0707...",
+    "methods": {
+      "orange": "Orange Money",
+      "mtn": "MTN Money",
+      "moov": "Moov Money",
+      "moneyFusion": "Money Fusion",
+      "wave": "Wave",
+      "bank": "Virement Bancaire"
+    },
+    "buttons": {
+      "cancel": "Annuler",
+      "confirm": "Confirmer le retrait"
+    },
+    "errors": {
+      "insufficientBalance": "Solde insuffisant",
+      "insufficientBalanceDesc": "Le montant dépasse votre solde disponible.",
+      "amountTooLow": "Montant trop faible",
+      "amountTooLowDesc": "Minimum requis : {{minPi}} pièces ({{minFcfa}} FCFA).",
+      "missingFields": "Champs manquants",
+      "missingFieldsDesc": "Veuillez remplir les informations de paiement."
+    },
+    "toast": {
+      "success": "Succès",
+      "successDesc": "Demande envoyée. Nouveau solde : {{newBalanceFcfa}} FCFA",
+      "error": "Erreur",
+      "errorDesc": "Échec de la demande."
+    }
+  },
+
+  "communityVerification": {
+    "title": "Vérification Communautaire",
+    "description": "Confirmez la tenue de l'événement pour débloquer les fonds de l'organisateur.",
+    "whatsappButton": "Communauté WhatsApp",
+    "positiveLabel": "Avis favorables",
+    "negativeLabel": "Signalements",
+    "positiveConfirmedText": "ont confirmé la tenue",
+    "negativeReportedText": "ont signalé un problème",
+    "progressLabel": "Progression de la validation",
+    "progressCountText": "{{count}}/{{required}} confirmations requises",
+    "verifiedMessage": "✅ L'événement est vérifié. Les retraits sont autorisés.",
+    "pendingMessage": "⚠️ En attente de {{remaining}} confirmation(s) supplémentaire(s) pour autoriser les retraits.",
+    "confirmButton": "J'y étais",
+    "reportButton": "evènement non tenu",
+    "alreadyConfirmedMessage": "Vous avez confirmé la tenue de l'événement",
+    "alreadyReportedMessage": "Vous avez signalé un problème avec cet événement",
+    "thanksMessage": "Merci pour votre contribution à la vérification communautaire.",
+    "toast": {
+      "loginRequired": {
+        "title": "Connexion requise",
+        "description": "Connectez-vous pour vérifier cet événement."
+      },
+      "alreadyVoted": {
+        "title": "Déjà voté",
+        "description": "Vous avez déjà donné votre avis sur cet événement."
+      },
+      "success": {
+        "title": "Merci !",
+        "description": "Votre contribution aide à sécuriser la communauté."
+      },
+      "error": {
+        "title": "Erreur",
+        "description": "Impossible d'enregistrer votre vérification."
+      }
+    }
+  },
+
+  "creatorDashboard": {
+    "toast": {
+      "error": "Erreur",
+      "errorLoadingStats": "Impossible de charger les statistiques",
+      "noEarnings": "Aucun gain disponible",
+      "noEarningsDesc": "Vous n'avez pas encore de gains à télécharger.",
+      "pdfReady": "Reçu prêt",
+      "pdfReadyDesc": "Le téléchargement de votre reçu a commencé.",
+      "pdfError": "Erreur lors de la génération du PDF",
+      "walletUnlocked": "Portefeuille déverrouillé",
+      "walletUnlockedDesc": "Vous pouvez maintenant gérer vos gains.",
+      "withdrawalSuccess": "Demande de retrait envoyée",
+      "withdrawalSuccessDesc": "Votre demande sera traitée dans les plus brefs délais."
+    },
+    "lockedAlert": {
+      "title": "Compte temporairement verrouillé",
+      "description": "Trop de tentatives de code PIN échouées. Veuillez réessayer dans 20 minutes."
+    },
+    "securityAlert": {
+      "title": "Portefeuille verrouillé",
+      "description": "Pour des raisons de sécurité, votre portefeuille est verrouillé. Déverrouillez-le pour accéder à vos gains.",
+      "unlockButton": "Déverrouiller"
+    },
+    "cards": {
+      "availableBalance": {
+        "title": "Solde disponible",
+        "valueFcfa": "{{value}} FCFA",
+        "valueCoins": "{{value}} pièces",
+        "withdrawButton": "Retirer",
+        "downloadButton": "Télécharger reçu",
+        "disabledTooltip": "Déverrouillez pour retirer"
+      },
+      "pendingEarnings": {
+        "title": "Gains en attente",
+        "valueFcfa": "{{value}} FCFA",
+        "valueCoins": "{{value}} pièces"
+      },
+      "overview": {
+        "title": "Aperçu global",
+        "totalEarned": "Total gagné",
+        "totalWithdrawn": "Total retiré",
+        "availableNow": "Disponible maintenant"
+      }
+    },
+    "withdrawalHistory": {
+      "title": "Historique des retraits",
+      "hiddenMessage": "Déverrouillez pour voir l'historique des retraits",
+      "unlockButton": "Déverrouiller",
+      "emptyMessage": "Aucune demande de retrait pour le moment",
+      "table": {
+        "date": "Date",
+        "gross": "Brut (FCFA)",
+        "fee": "Frais (FCFA)",
+        "net": "Net (FCFA)",
+        "status": "Statut"
+      },
+      "status": {
+        "paid": "Payé",
+        "approved": "Approuvé",
+        "rejected": "Rejeté",
+        "pending": "En attente"
+      }
+    }
+  },
+
+  "transactionsTab": {
+    "transfers": {
+      "title": "Historique des transferts et frais",
+      "columns": {
+        "date": "Date",
+        "type": "Type",
+        "description": "Description",
+        "amountPi": "Montant (π)",
+        "amountFcfa": "Montant (FCFA)",
+        "status": "Statut"
+      },
+      "types": {
+        "transfer": "Transfert",
+        "fee": "Frais plateforme"
+      },
+      "status": {
+        "completed": "Complété",
+        "pending": "En attente",
+        "failed": "Échoué",
+        "unknown": "Inconnu"
+      },
+      "empty": {
+        "title": "Aucun transfert ou frais pour le moment",
+        "description": "Vos futurs transferts de gains et frais associés apparaîtront ici."
+      }
+    },
+    "other": {
+      "title": "Autres transactions",
+      "empty": "Aucune autre transaction pour le moment",
+      "types": {
+        "earning": "Gain",
+        "manual_credit": "Crédit manuel",
+        "credit_reversal": "Annulation de crédit",
+        "earnings_transfer_to_wallet": "Transfert vers portefeuille",
+        "platform_fee": "Frais plateforme",
+        "expense": "Dépense : {{purpose}}",
+        "default": "Transaction"
+      }
+    }
+  },
+
+  "settings": {
+    "title": "Paramètres - BonPlanInfos",
+    "description": "Gérez vos préférences et paramètres de compte sur BonPlanInfos.",
+    "pageTitle": "Paramètres",
+    "pageSubtitle": "Personnalisez votre expérience et gérez la sécurité de votre compte."
+  },
+
+  "profileSettings": {
+    "title": "Informations personnelles",
+    "fullName": "Nom complet",
+    "email": "Email",
+    "phone": "Téléphone",
+    "country": "Pays",
+    "city": "Ville",
+    "updateButton": "Mettre à jour",
+    "updateSuccess": "Profil mis à jour avec succès",
+    "updateError": "Erreur lors de la mise à jour du profil"
+  },
+
   "security": {
-    "screenshot_warning_watermark": "© BonPlanInfos - Capture d'écran non autorisée"
+    "title": "Sécurité",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmNewPassword": "Confirmer le nouveau mot de passe",
+    "updateButton": "Mettre à jour le mot de passe",
+    "updateSuccess": "Mot de passe mis à jour avec succès",
+    "updateError": "Erreur lors de la mise à jour du mot de passe"
+  },
+ "privacy": {
+    "meta_title": "Politique de Confidentialité",
+    "meta_description": "Consultez notre politique de confidentialité pour comprendre comment nous collectons, utilisons et protégeons vos données personnelles.",
+    "title": "Politique de Confidentialité",
+    "last_updated": "Dernière mise à jour : 02 Novembre 2025",
+    "introduction": {
+      "title": "1. Introduction",
+      "p1": "Cette politique de confidentialité explique comment BonPlanInfos collecte, utilise et protège vos informations personnelles lorsque vous utilisez notre plateforme."
+    },
+    "data_collected": {
+      "title": "2. Données que nous collectons",
+      "p1": "Nous collectons diverses informations pour fournir et améliorer nos services :",
+      "item1": "<b>Informations de compte :</b> Nom, adresse e-mail, pays, ville, type de compte.",
+      "item2": "<b>Données d'utilisation :</b> Pages visitées, interactions avec les événements, recherches effectuées.",
+      "item3": "<b>Contenu généré par l'utilisateur :</b> Événements créés, commentaires, photos.",
+      "item4": "<b>Données de transaction :</b> Historique des achats de pièces et des retraits de gains."
+    },
+    "data_usage": {
+      "title": "3. Comment nous utilisons vos données",
+      "p1": "Vos données sont utilisées pour :",
+      "item1": "Fournir, maintenir et améliorer la plateforme.",
+      "item2": "Personnaliser votre expérience en vous recommandant des événements pertinents.",
+      "item3": "Traiter les transactions et les paiements.",
+      "item4": "Communiquer avec vous concernant votre compte ou nos services."
+    },
+    "cookies": {
+      "title": "4. Cookies",
+      "p1": "Nous utilisons des cookies pour assurer le bon fonctionnement du site, analyser notre trafic et personnaliser le contenu. Vous pouvez gérer vos préférences de cookies à tout moment."
+    },
+    "data_sharing": {
+      "title": "5. Partage des données",
+      "p1": "Nous ne partageons pas vos informations personnelles avec des tiers, sauf si cela est nécessaire pour fournir le service (par exemple, avec les processeurs de paiement) ou si la loi l'exige."
+    },
+    "security": {
+      "title": "6. Sécurité",
+      "p1": "Nous mettons en œuvre des mesures de sécurité techniques et organisationnelles pour protéger vos données contre l'accès non autorisé, la perte ou la destruction."
+    },
+    "your_rights": {
+      "title": "7. Vos droits",
+      "p1": "Conformément à la réglementation, vous disposez des droits suivants :",
+      "item1": "<b>Droit d'accès :</b> Vous pouvez demander une copie des données que nous détenons sur vous.",
+      "item2": "<b>Droit de rectification :</b> Vous pouvez corriger toute information inexacte.",
+      "item3": "<b>Droit à l'effacement :</b> Vous pouvez demander la suppression de votre compte et de vos données.",
+      "p2": "Pour exercer ces droits, veuillez nous contacter à l'adresse ci-dessous."
+    },
+    "contact": {
+      "title": "8. Contact",
+      "p1": "Pour toute question relative à cette politique de confidentialité, veuillez nous contacter à :",
+      "email": "support@bonplaninfos.net"
+    }
+  }, 
+
+
+  "notificationSettings": {
+    "title": "Préférences de notification",
+    "emailNotifications": "Notifications par email",
+    "whatsappNotifications": "Notifications WhatsApp",
+    "pushNotifications": "Notifications push",
+    "eventReminders": "Rappels d'événements",
+    "promotionalEmails": "Emails promotionnels",
+    "saveButton": "Enregistrer les préférences"
+  },
+
+  "preferencesSettings": {
+    "title": "Préférences",
+    "language": "Langue",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeSystem": "Système",
+    "currency": "Devise",
+    "timezone": "Fuseau horaire",
+    "saveButton": "Enregistrer"
   }
 }

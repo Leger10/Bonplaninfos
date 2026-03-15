@@ -34,7 +34,7 @@ const DocumentationPage = () => {
 
   // Informations préremplies pour BonPlanInfos
   const BONPLANINFOS_INFO = {
-    responsable: 'M. Kibora A. Yacoua',
+    responsable: 'M. Kibora A. Yacouba',
     fonction: 'Président Directeur Général (CEO)',
     societe: 'BONPLANINFOS, plateforme digitale événementielle panafricaine',
     siege: 'Ouagadougou, Burkina Faso',
@@ -147,7 +147,7 @@ const DocumentationPage = () => {
         doc.setFontSize(9);
         doc.text('Le présent contrat est conclu pour une durée de deux (2) ans, à compter du :', 20, y);
         y += 5;
-        doc.text('📅 _________________________, renouvelable sous réserve de performance.', 20, y);
+        doc.text(' _________________________, renouvelable sous réserve de performance.', 20, y);
         y += 10;
         
         y = checkPageBreak(doc, y);

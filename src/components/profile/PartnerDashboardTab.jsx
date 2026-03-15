@@ -5,9 +5,13 @@ import { useData } from '@/contexts/DataContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Users, MapPin, Calendar, Wallet, UserCog, DollarSign, Activity, AlertTriangle, Building } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Users, MapPin, Calendar, Wallet, UserCog, DollarSign, Activity, AlertTriangle, Building, Lock, Unlock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { formatCurrencySimple } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useWalletSecurity } from '@/hooks/useWalletSecurity';
+import PinVerificationModal from '@/components/common/PinVerificationModal';
 
 // Sub-components
 import PartnerOverviewStats from './partner/PartnerOverviewStats';
@@ -36,15 +40,15 @@ const PartnerDashboardTab = () => {
     currentSalary: 0
   });
 
+  const { isWalletUnlocked, showPinModal, openPinModal, closePinModal, unlockWallet } = useWalletSecurity(user?.id);
+
   const fetchDashboardData = useCallback(async () => {
-    // Critical fix: Check if user exists before accessing user.id
     if (!userProfile?.country || !user?.id) return;
     
     setLoading(true);
     try {
       const country = userProfile.country;
 
-      // 0. Fetch Partner Record for Contract Info
       const { data: partnerRecord } = await supabase
         .from('partners')
         .select(`
@@ -57,7 +61,6 @@ const PartnerDashboardTab = () => {
       
       setPartnerData(partnerRecord);
 
-      // 1. Users Stats
       const { count: totalUsers } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
@@ -69,7 +72,6 @@ const PartnerDashboardTab = () => {
         .eq('country', country)
         .eq('is_active', true);
 
-      // New users this month
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0,0,0,0);
@@ -80,7 +82,6 @@ const PartnerDashboardTab = () => {
         .eq('country', country)
         .gte('created_at', startOfMonth.toISOString());
 
-      // 2. Events Stats
       const { count: totalEvents } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
@@ -92,13 +93,11 @@ const PartnerDashboardTab = () => {
         .eq('country', country)
         .eq('status', 'active');
 
-      // 3. Venues Stats
       const { count: totalVenues } = await supabase
         .from('locations')
         .select('*', { count: 'exact', head: true })
         .eq('country', country);
 
-      // 4. Pending Withdrawals
       const { data: withdrawalData } = await supabase
         .from('organizer_withdrawal_requests')
         .select('id, organizer:organizer_id!inner(country)')
@@ -107,7 +106,6 @@ const PartnerDashboardTab = () => {
         
       const pendingWithdrawals = withdrawalData?.length || 0;
 
-      // 5. Calculate estimated salary
       const { data: salaryData } = await supabase
         .rpc('get_admin_salary_stats', { p_admin_id: user.id });
 
@@ -136,7 +134,6 @@ const PartnerDashboardTab = () => {
     }
   }, [fetchDashboardData, user]);
 
-  // Critical fix: Handle null user state to prevent crash
   if (!user) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -151,7 +148,7 @@ const PartnerDashboardTab = () => {
         <CardContent className="pt-6 text-center text-red-700">
           <AlertTriangle className="w-12 h-12 mx-auto mb-2" />
           <h3 className="text-lg font-bold">Configuration incomplète</h3>
-          <p>Votre profil n'est pas associé à une zone (pays). Veuillez contacter le support.</p>
+          <p>Votre profil n'est pas associé à une zone. Veuillez contacter le support.</p>
         </CardContent>
       </Card>
     );
@@ -160,7 +157,19 @@ const PartnerDashboardTab = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       
-      {/* Header & Contract Info */}
+      {!isWalletUnlocked && (
+        <Alert className="bg-blue-500/10 border-blue-500/50">
+          <Lock className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800">Zone Sécurisée</AlertTitle>
+          <AlertDescription className="text-blue-700 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>Certaines données financières et de gestion sont masquées pour votre sécurité.</span>
+            <Button size="sm" variant="outline" className="bg-white text-blue-700" onClick={openPinModal}>
+              <Unlock className="w-3 h-3 mr-1" /> Déverrouiller
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-4">
         <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
           <div className="relative z-10">
@@ -182,7 +191,7 @@ const PartnerDashboardTab = () => {
               <div className="text-right hidden md:block">
                 <p className="text-xs text-blue-300 uppercase font-bold tracking-wider">Salaire estimé (Mois)</p>
                 <div className="text-3xl font-bold text-white flex items-center justify-end gap-1">
-                  {formatCurrencySimple(zoneStats.currentSalary)}
+                  {isWalletUnlocked ? formatCurrencySimple(zoneStats.currentSalary) : '***'}
                 </div>
               </div>
             </div>
@@ -190,7 +199,6 @@ const PartnerDashboardTab = () => {
           <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
         </div>
 
-        {/* Contract Details Card */}
         {partnerData && (
           <PartnerContractCard partner={partnerData} onRenew={fetchDashboardData} />
         )}
@@ -228,7 +236,7 @@ const PartnerDashboardTab = () => {
 
         <div className="mt-6">
           <TabsContent value="overview">
-            <PartnerOverviewStats stats={zoneStats} loading={loading} />
+            <PartnerOverviewStats stats={zoneStats} loading={loading} isUnlocked={isWalletUnlocked} />
           </TabsContent>
           
           <TabsContent value="users">
@@ -244,7 +252,16 @@ const PartnerDashboardTab = () => {
           </TabsContent>
           
           <TabsContent value="withdrawals">
-            <PartnerWithdrawalQueue country={userProfile.country} />
+            {!isWalletUnlocked ? (
+              <Card className="p-12 text-center flex flex-col items-center">
+                <Lock className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-bold mb-2">Gestion des retraits verrouillée</h3>
+                <p className="text-muted-foreground mb-6">Veuillez déverrouiller votre portefeuille pour valider les retraits.</p>
+                <Button onClick={openPinModal}>Déverrouiller</Button>
+              </Card>
+            ) : (
+              <PartnerWithdrawalQueue country={userProfile.country} />
+            )}
           </TabsContent>
           
           <TabsContent value="secretaries">
@@ -252,10 +269,26 @@ const PartnerDashboardTab = () => {
           </TabsContent>
           
           <TabsContent value="salary">
-            <PartnerSalaryHistory userId={user.id} currentSalary={zoneStats.currentSalary} />
+            {!isWalletUnlocked ? (
+              <Card className="p-12 text-center flex flex-col items-center">
+                <Lock className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-bold mb-2">Historique de salaire masqué</h3>
+                <Button onClick={openPinModal}>Déverrouiller</Button>
+              </Card>
+            ) : (
+              <PartnerSalaryHistory userId={user.id} currentSalary={zoneStats.currentSalary} />
+            )}
           </TabsContent>
         </div>
       </Tabs>
+
+      <PinVerificationModal 
+        isOpen={showPinModal}
+        onClose={closePinModal}
+        onSuccess={unlockWallet}
+        userId={user?.id}
+        userProfile={user?.user_metadata}
+      />
     </div>
   );
 };

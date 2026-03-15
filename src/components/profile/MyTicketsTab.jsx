@@ -71,37 +71,40 @@ const MyTicketsTab = () => {
 
         return () => { supabase.removeChannel(channel); };
     }, [user]);
+const handleDownload = async (ticket) => {
+    setDownloadingId(ticket.id);
+    try {
+        const eventData = ticket.events || {};
+        
+        // CORRECTION : Ajouter ticket_number et ticket_code_short dans l'objet
+        const ticketData = {
+            ticket_number: String(ticket.ticket_number || ''),
+            ticket_code_short: String(ticket.ticket_code_short || ''),
+            ticket_code: String(ticket.ticket_code || ticket.ticket_number || ''),
+            type_name: ticket.ticket_types?.name || 'Standard',
+            color: ticket.ticket_types?.color || 'blue', 
+            price: Number(ticket.purchase_amount_pi) || 0,
+            price_fcfa: Number(ticket.purchase_amount_fcfa) || 0,
+            purchase_date: ticket.purchased_at,
+            purchased_at: ticket.purchased_at
+        };
+        
+        const userData = {
+            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur',
+            email: user?.email,
+            id: user?.id
+        };
 
-    const handleDownload = async (ticket) => {
-        setDownloadingId(ticket.id);
-        try {
-            const eventData = ticket.events || {};
-            
-            const ticketData = {
-                ticket_number: String(ticket.ticket_number || ''),
-                ticket_code_short: String(ticket.ticket_code_short || ''),
-                type_name: ticket.ticket_types?.name || 'Standard',
-                color: ticket.ticket_types?.color || 'blue', 
-                price: Number(ticket.purchase_amount_pi) || 0,
-                price_fcfa: Number(ticket.purchase_amount_fcfa) || 0,
-                purchase_date: ticket.purchased_at // Pass the purchase date
-            };
-            
-            const userData = {
-                full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Utilisateur',
-                email: user?.email,
-                id: user?.id
-            };
-
-            await generateTicketPDF(eventData, [ticketData], userData);
-            toast({ title: "✅ Succès", description: "Billet téléchargé." });
-        } catch (e) {
-            console.error("Download error", e);
-            toast({ title: "Erreur", description: "Échec du téléchargement PDF.", variant: "destructive" });
-        } finally {
-            setDownloadingId(null);
-        }
-    };
+        // Passer un tableau de tickets
+        await generateTicketPDF(eventData, [ticketData], userData);
+        toast({ title: "✅ Succès", description: "Billet téléchargé." });
+    } catch (e) {
+        console.error("Download error", e);
+        toast({ title: "Erreur", description: "Échec du téléchargement PDF.", variant: "destructive" });
+    } finally {
+        setDownloadingId(null);
+    }
+};
 
     const openQrModal = (ticket) => {
         setSelectedTicket(ticket);

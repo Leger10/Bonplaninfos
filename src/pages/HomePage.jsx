@@ -26,6 +26,7 @@ import AnimatedBadgesBanner from '@/components/AnimatedBadgesBanner';
 import EventTypeFilters from '@/components/homepage/EventTypeFilters';
 import EventCard from '@/components/EventCard';
 import NearbyEvents from '@/components/NearbyEvents';
+import LanguageTutorial from '@/components/tutorial/LanguageTutorial';
 
 const HomePage = () => {
     const navigate = useNavigate();
@@ -168,6 +169,8 @@ const HomePage = () => {
                 <meta name="description" content={t('footer.tagline')} />
             </Helmet>
 
+            <LanguageTutorial />
+            
             {!hasFetchError && <WelcomePopup />}
             {!hasFetchError && <AnimatedBadgesBanner />}
 

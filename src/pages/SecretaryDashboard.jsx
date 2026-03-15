@@ -96,13 +96,13 @@ const SecretaryDashboard = () => {
                             {t('secretary_dashboard.competence_zone', { country: userProfile.country })}
                         </p>
                     </div>
-                    <Button
+                    {/* <Button
                         onClick={() => setRefundModalOpen(true)}
                         className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white border-0 shadow-lg"
                     >
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Rembourser des participants
-                    </Button>
+                    </Button> */}
                 </div>
             </header>
 

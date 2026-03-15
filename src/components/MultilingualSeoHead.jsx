@@ -1,292 +1,298 @@
-import React from 'react';
-import { Helmet } from 'react-helmet';
-import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
+import { useMemo } from "react";
 
-const africanCountries = [
-  { code: 'ci', name: { fr: "Côte d'Ivoire", en: "Ivory Coast" }, city: "Abidjan" },
-  { code: 'sn', name: { fr: "Sénégal", en: "Senegal" }, city: "Dakar" },
-  { code: 'cm', name: { fr: "Cameroun", en: "Cameroon" }, city: "Douala" },
-  { code: 'ml', name: { fr: "Mali", en: "Mali" }, city: "Bamako" },
-  { code: 'bf', name: { fr: "Burkina Faso", en: "Burkina Faso" }, city: "Ouagadougou" },
-  { code: 'bj', name: { fr: "Bénin", en: "Benin" }, city: "Cotonou" },
-  { code: 'tg', name: { fr: "Togo", en: "Togo" }, city: "Lomé" },
-  { code: 'ga', name: { fr: "Gabon", en: "Gabon" }, city: "Libreville" },
-  { code: 'cg', name: { fr: "Congo", en: "Congo" }, city: "Brazzaville" },
-  { code: 'cd', name: { fr: "RD Congo", en: "DR Congo" }, city: "Kinshasa" },
-  { code: 'gn', name: { fr: "Guinée", en: "Guinea" }, city: "Conakry" },
-  { code: 'ne', name: { fr: "Niger", en: "Niger" }, city: "Niamey" },
-  { code: 'td', name: { fr: "Tchad", en: "Chad" }, city: "N'Djamena" },
-  { code: 'cf', name: { fr: "République Centrafricaine", en: "Central African Republic" }, city: "Bangui" },
-  { code: 'mg', name: { fr: "Madagascar", en: "Madagascar" }, city: "Antananarivo" },
-  { code: 'gh', name: { fr: "Ghana", en: "Ghana" }, city: "Accra" },
-  { code: 'ng', name: { fr: "Nigéria", en: "Nigeria" }, city: "Lagos" },
-  { code: 'ke', name: { fr: "Kenya", en: "Kenya" }, city: "Nairobi" },
+const BASE_URL = "https://bonplaninfos.net";
+const DEFAULT_IMAGE =
+  "https://res.cloudinary.com/dprp6vxv6/image/upload/v1722428610/bpi/logo-BPI-v2-transparent_pmsz7v.png";
+
+const LANGUAGES = ["fr", "en"];
+const AFRICAN_COUNTRIES = [
+  "ci", "sn", "cm", "ml", "bf", "bj", "tg", "ga", "cg", "cd",
+  "gn", "ne", "td", "cf", "mg", "gh", "ng", "ke",
 ];
 
-const languages = ['fr', 'en'];
-
-const getSeoDataForPath = (path, t, pageData = {}) => {
-  const baseTitle = 'BonPlanInfos';
-  const baseDescription = {
-    fr: "La plateforme qui récompense vos découvertes d'événements en Afrique. Trouvez des bons plans, gagnez de l'argent et vivez des expériences uniques.",
-    en: "The platform that rewards your event discoveries in Africa. Find great deals, earn money and live unique experiences."
-  };
-
-  const keywords = {
-    fr: "bons plans, événements afrique, promotions, sorties, concerts, festivals, gagner de l'argent, Abidjan, Dakar, Cotonou, Lomé, Ouagadougou, récompenses, pièces, téléchargement",
-    en: "deals, africa events, promotions, outings, concerts, festivals, earn money, Abidjan, Dakar, Cotonou, Lomé, Ouagadougou, rewards, coins, downloads"
-  };
-
-  const currentLang = t('language') || 'fr';
-  const defaultKeywords = keywords[currentLang] || keywords.fr;
-
-  const routes = {
-    '/': {
-      title: `${t('nav.home', 'Accueil')} - ${baseTitle}`,
-      description: t('home.meta.description', baseDescription[currentLang]),
-      keywords: defaultKeywords,
-    },
-    '/events': {
-      title: `${t('nav.events', 'Événements')} - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Découvrez tous les événements, concerts et activités près de chez vous en Afrique. Réservez vos places et gagnez des récompenses."
-        : "Discover all events, concerts and activities near you in Africa. Book your tickets and earn rewards.",
-      keywords: `événements, concerts, activités, ${defaultKeywords}`,
-    },
-    '/discover': {
-      title: `Découvrir - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Explorez les meilleurs événements et promotions dans votre ville. Ne manquez plus jamais une occasion de vous amuser."
-        : "Explore the best events and promotions in your city. Never miss a chance to have fun again.",
-      keywords: `découvrir, explorer, ${defaultKeywords}`,
-    },
-    '/event': {
-      title: `${pageData.title || t('nav.event', 'Événement')} - ${baseTitle}`,
-      description: pageData.description || (currentLang === 'fr'
-        ? "Découvrez tous les détails de cet événement exclusif. Réservez maintenant et ne manquez pas cette expérience unique."
-        : "Discover all the details of this exclusive event. Book now and don't miss this unique experience."),
-      keywords: `${pageData.title || ''}, ${pageData.category || ''}, ${pageData.city || ''}, ${defaultKeywords}`,
-    },
-    '/marketing': {
-      title: `Partenariat - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Devenez partenaire BonPlanInfos et lancez un business digital rentable dans votre région. Rejoignez notre réseau d'ambassadeurs."
-        : "Become a BonPlanInfos partner and launch a profitable digital business in your region. Join our ambassador network.",
-      keywords: `partenariat, franchise, business, ${defaultKeywords}`,
-    },
-    '/partner-signup': {
-      title: `Devenir Partenaire - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Rejoignez le réseau BonPlanInfos en tant que partenaire. Développez votre business et générez des revenus dans le digital."
-        : "Join the BonPlanInfos network as a partner. Develop your business and generate digital income.",
-      keywords: `devenir partenaire, inscription, ${defaultKeywords}`,
-    },
-    '/pricing': {
-      title: `Tarifs & Packs - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Découvrez nos packs de pièces et nos offres pour les organisateurs et les partenaires. Choisissez la formule qui vous convient."
-        : "Discover our coin packs and offers for organizers and partners. Choose the plan that suits you.",
-      keywords: `tarifs, prix, packs, abonnements, ${defaultKeywords}`,
-    },
-    '/about': {
-      title: `À Propos - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Découvrez la mission, l'équipe et les valeurs de BonPlanInfos, la plateforme d'événements qui vous récompense en Afrique."
-        : "Discover the mission, team and values of BonPlanInfos, the event platform that rewards you in Africa.",
-      keywords: `à propos, mission, équipe, valeurs, ${defaultKeywords}`,
-    },
-    '/wallet': {
-      title: `Portefeuille - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Gérez votre portefeuille BonPlanInfos. Consultez votre solde de pièces, vos transactions et retirez vos gains."
-        : "Manage your BonPlanInfos wallet. Check your coin balance, transactions and withdraw your earnings.",
-      keywords: `portefeuille, pièces, transactions, retraits, ${defaultKeywords}`,
-    },
-    '/profile': {
-      title: `Profil - ${baseTitle}`,
-      description: currentLang === 'fr'
-        ? "Gérez votre profil BonPlanInfos. Personnalisez vos préférences et consultez votre activité."
-        : "Manage your BonPlanInfos profile. Customize your preferences and view your activity.",
-      keywords: `profil, compte, paramètres, ${defaultKeywords}`,
-    }
-  };
-
-  return routes[path] || {
-    title: `${baseTitle} - ${baseDescription[currentLang]?.split('.')[0]}`,
-    description: baseDescription[currentLang],
-    keywords: defaultKeywords,
-  };
+// Nettoyer le chemin en retirant les éventuels préfixes de langue/pays
+const getBasePath = (pathname) => {
+  const segments = pathname.split("/").filter(Boolean);
+  // Si le premier segment est une langue et le second un pays, on les retire
+  if (
+    segments.length >= 2 &&
+    LANGUAGES.includes(segments[0]) &&
+    AFRICAN_COUNTRIES.includes(segments[1])
+  ) {
+    return "/" + segments.slice(2).join("/");
+  }
+  // Si seulement la langue est présente (ex: /fr/...)
+  if (segments.length >= 1 && LANGUAGES.includes(segments[0])) {
+    return "/" + segments.slice(1).join("/");
+  }
+  return pathname;
 };
 
-const MultilingualSeoHead = ({ pageData = {} }) => {
+/**
+ * Génère les données structurées pour une page événement
+ */
+const generateEventStructuredData = (event, url, lang) => {
+  const offers = [];
+
+  if (event.event_type === "ticketing" && Array.isArray(event.ticket_types)) {
+    event.ticket_types.forEach((ticket) => {
+      if (ticket.name && ticket.price_fcfa !== undefined) {
+        offers.push({
+          "@type": "Offer",
+          name: ticket.name,
+          price: ticket.price_fcfa,
+          priceCurrency: "XOF",
+          availability:
+            ticket.quantity > 0
+              ? "https://schema.org/InStock"
+              : "https://schema.org/SoldOut",
+          url,
+        });
+      }
+    });
+  }
+
+  // Si aucune offre n'a été ajoutée, on en crée une par défaut
+  if (offers.length === 0) {
+    offers.push({
+      "@type": "Offer",
+      price: event.price || "0",
+      priceCurrency: "XOF",
+      availability: "https://schema.org/InStock",
+      url,
+    });
+  }
+
+  const eventData = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description: event.description,
+    image: event.cover_image || DEFAULT_IMAGE,
+    startDate: event.event_start_at,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: event.venue || event.city,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: event.address,
+        addressLocality: event.city,
+        addressCountry: event.country,
+      },
+    },
+    offers,
+    organizer: {
+      "@type": "Organization",
+      name: event.organizer_name || "BonPlanInfos",
+      url: BASE_URL,
+    },
+  };
+
+  // N'ajouter endDate que si elle existe
+  if (event.event_end_at) {
+    eventData.endDate = event.event_end_at;
+  }
+
+  return eventData;
+};
+
+export default function MultilingualSeoHead({ pageData = {} }) {
   const { i18n } = useTranslation();
   const location = useLocation();
 
-  // Extraire le chemin principal (premier segment après /)
-  const pathSegments = location.pathname.split('/').filter(segment => segment);
-  const mainPath = pathSegments[0] ? `/${pathSegments[0]}` : '/';
+  const lang = i18n.language?.split("-")[0] || "fr";
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const isEventPage = pathSegments[0] === "event" && pathSegments[1];
+  const event = pageData.event || null;
 
-  // Vérifier si c'est une page de détail d'événement
-  const isEventDetail = pathSegments[0] === 'event' && pathSegments[1];
+  // Métadonnées de base
+  const title = pageData.title || (isEventPage ? event?.title : "BonPlanInfos");
+  const description =
+    pageData.description ||
+    (lang === "fr"
+      ? "Découvrez les meilleurs événements, concerts et bons plans en Afrique. Réservez vos places et gagnez des récompenses."
+      : "Discover the best events, concerts and deals in Africa. Book your tickets and earn rewards.");
+  const keywords =
+    pageData.keywords ||
+    (lang === "fr"
+      ? `événements, concerts, festivals, bons plans, ${AFRICAN_COUNTRIES.map((c) => c.toUpperCase()).join(", ")}`
+      : `events, concerts, festivals, deals, ${AFRICAN_COUNTRIES.map((c) => c.toUpperCase()).join(", ")}`);
 
-  const seoPath = isEventDetail ? '/event' : mainPath;
-  const seo = getSeoDataForPath(seoPath, i18n.t, pageData);
+  // Chemin de base sans préfixe langue/pays
+  const basePath = getBasePath(location.pathname);
+  const canonical = `${BASE_URL}${basePath}`;
+  const ogImage = pageData.ogImage || event?.cover_image || DEFAULT_IMAGE;
 
-  const title = pageData.title || seo.title;
-  const description = pageData.description || seo.description;
-  const keywords = pageData.keywords || seo.keywords;
+  // Génération des liens hreflang (mémorisée)
+  const hreflangLinks = useMemo(() => {
+    const links = [];
+    LANGUAGES.forEach((l) => {
+      AFRICAN_COUNTRIES.forEach((country) => {
+        links.push({
+          rel: "alternate",
+          hrefLang: `${l}-${country.toUpperCase()}`,
+          href: `${BASE_URL}/${l}/${country}${basePath}`,
+        });
+      });
+    });
+    links.push({
+      rel: "alternate",
+      hrefLang: "x-default",
+      href: canonical,
+    });
+    return links;
+  }, [basePath, canonical]);
 
-  // Gestion des images OG
-  const getOgImage = () => {
-    if (pageData.ogImage) {
-      return `https://bonplaninfos.imgix.net/${pageData.ogImage.split('/').pop()}?auto=format&fit=max&w=1200&h=630`;
-    }
-    if (pageData.cover_image) {
-      return `https://bonplaninfos.imgix.net/${pageData.cover_image.split('/').pop()}?auto=format&fit=max&w=1200&h=630`;
-    }
-    return 'https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/08e3ecec378eb185b9bc3412f675f660.png';
-  };
-
-  const ogImage = getOgImage();
-  const canonicalUrl = `https://bonplaninfos.net${location.pathname}`;
-  const currentLang = i18n.language || 'fr';
-
-  // Données structurées Schema.org
-  const getStructuredData = () => {
-    const baseData = {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebSite",
-          "@id": "https://bonplaninfos.net/#website",
-          "url": "https://bonplaninfos.net",
-          "name": "BonPlanInfos",
-          "description": seo.description,
-          "inLanguage": currentLang,
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://bonplaninfos.net/events?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
+  // Données structurées globales
+  const structuredData = useMemo(() => {
+    const graph = [
+      {
+        "@type": "WebSite",
+        "@id": `${BASE_URL}/#website`,
+        url: BASE_URL,
+        name: "BonPlanInfos",
+        description,
+        inLanguage: lang,
+        publisher: { "@id": `${BASE_URL}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${BASE_URL}/events?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
         },
-        {
-          "@type": "Organization",
-          "@id": "https://bonplaninfos.net/#organization",
-          "name": "BonPlanInfos",
-          "url": "https://bonplaninfos.net",
-          "logo": {
-            "@type": "ImageObject",
-            "url": "https://bonplaninfos.net/logo.png",
-            "width": 200,
-            "height": 200
+      },
+      {
+        "@type": "Organization",
+        "@id": `${BASE_URL}/#organization`,
+        name: "BonPlanInfos",
+        url: BASE_URL,
+        logo: {
+          "@type": "ImageObject",
+          url: DEFAULT_IMAGE,
+        },
+        sameAs: [
+          "https://web.facebook.com/Bonolaninfos/",
+          "https://www.tiktok.com/@bonplaninfos",
+          "https://www.youtube.com/@bonplaninfos",
+        ],
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Accueil", item: BASE_URL },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Événements",
+            item: `${BASE_URL}/events`,
           },
-          "description": seo.description
-        }
-      ]
-    };
+        ],
+      },
+    ];
 
-    // Ajouter des données d'événement si disponible
-    if (isEventDetail && pageData && pageData.event) {
-      const event = pageData.event;
-      const startDate = event.event_start_at || event.event_date;
-      const endDate = event.event_end_at || event.event_end_date || startDate;
-      const locationName = event.venue || event.location || event.city;
-      
-      const eventData = {
-        "@type": "Event",
-        "name": event.title || pageData.title,
-        "description": event.description || pageData.description || seo.description,
-        "image": ogImage
-      };
-
-      // Ajouter les dates seulement si elles existent
-      if (startDate) {
-        eventData.startDate = startDate;
-      }
-      if (endDate) {
-        eventData.endDate = endDate;
-      }
-
-      // Ajouter le lieu seulement si des informations de lieu existent
-      if (locationName || event.city) {
-        eventData.location = {
-          "@type": "Place",
-          "name": locationName,
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": event.city || '',
-            "addressCountry": event.country || ''
-          }
-        };
-      }
-
-      // Ajouter l'organisateur si disponible
-      if (event.organizer_name) {
-        eventData.organizer = {
-          "@type": "Organization",
-          "name": event.organizer_name
-        };
-      }
-
-      baseData["@graph"].push(eventData);
+    if (isEventPage && event) {
+      graph.push(generateEventStructuredData(event, canonical, lang));
     }
 
-    return baseData;
-  };
-
-  const structuredData = getStructuredData();
+    return {
+      "@context": "https://schema.org",
+      "@graph": graph,
+    };
+  }, [description, lang, isEventPage, event, canonical]);
 
   return (
     <Helmet>
-      <html lang={currentLang} />
+      {/* Balises de base */}
+      <html lang={lang} />
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+
       <title>{title}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
-      <meta name="robots" content="index, follow" />
+      <meta
+        name="robots"
+        content="index, follow, max-image-preview:large, max-snippet:-1"
+      />
+      <link rel="canonical" href={canonical} />
 
-      {/* Canonical et alternates */}
-      <link rel="canonical" href={canonicalUrl} />
-      {languages.map(lang => (
+      {/* Hreflang */}
+      {hreflangLinks.map((link, i) => (
         <link
-          key={lang}
-          rel="alternate"
-          hrefLang={lang}
-          href={`https://bonplaninfos.net/${lang}${location.pathname}`}
+          key={i}
+          rel={link.rel}
+          hrefLang={link.hrefLang}
+          href={link.href}
         />
       ))}
-      <link rel="alternate" hrefLang="x-default" href={canonicalUrl} />
 
       {/* Open Graph */}
+      <meta property="og:type" content={isEventPage ? "event" : "website"} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
-      <meta property="og:url" content={canonicalUrl} />
-      <meta property="og:site_name" content="BonPlanInfos" />
       <meta property="og:image" content={ogImage} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:type" content={isEventDetail ? "event" : "website"} />
-      <meta property="og:locale" content={currentLang === 'fr' ? 'fr_FR' : 'en_US'} />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:site_name" content="BonPlanInfos" />
+      <meta property="og:locale" content={lang === "fr" ? "fr_FR" : "en_US"} />
 
-      {/* Twitter Card */}
+      {/* Balises spécifiques événement */}
+      {isEventPage && event && (
+        <>
+          <meta property="event:start_time" content={event.event_start_at} />
+          {event.event_end_at && (
+            <meta property="event:end_time" content={event.event_end_at} />
+          )}
+          {event.location?.latitude && (
+            <meta
+              property="event:location:latitude"
+              content={event.location.latitude}
+            />
+          )}
+          {event.location?.longitude && (
+            <meta
+              property="event:location:longitude"
+              content={event.location.longitude}
+            />
+          )}
+        </>
+      )}
+
+      {/* Twitter Card (utilisé aussi par TikTok) */}
       <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:site" content="@bonplaninfos" />
+      <meta name="twitter:creator" content="@bonplaninfos" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
-      <meta name="twitter:site" content="@bonplaninfos" />
+      {isEventPage && event && (
+        <>
+          <meta name="twitter:label1" value="Date" />
+          <meta
+            name="twitter:data1"
+            value={new Date(event.event_start_at).toLocaleDateString(lang)}
+          />
+          <meta name="twitter:label2" value="Lieu" />
+          <meta
+            name="twitter:data2"
+            value={`${event.city}, ${event.country}`}
+          />
+        </>
+      )}
 
-      {/* Schema.org structured data */}
+      {/* Données structurées JSON-LD */}
       <script type="application/ld+json">
         {JSON.stringify(structuredData)}
       </script>
 
-      {/* Additional meta tags */}
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="theme-color" content="#3B82F6" />
-      <meta name="apple-mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      {/* Préconnexions */}
+      <link rel="preconnect" href="https://res.cloudinary.com" />
+      <link rel="dns-prefetch" href="https://res.cloudinary.com" />
     </Helmet>
   );
-};
-
-export default MultilingualSeoHead;
+}

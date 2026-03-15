@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import MyEventsTab from '@/components/profile/MyEventsTab';
 import TransactionsTab from '@/components/profile/TransactionsTab';
 import ReferralTab from '@/components/profile/ReferralTab';
@@ -16,6 +17,7 @@ const ProfilePageContent = ({
   loadingEvents, 
   referralData
 }) => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'events';
 
@@ -31,35 +33,35 @@ const ProfilePageContent = ({
         <TabsList className="inline-flex w-auto min-w-full md:w-full md:grid md:grid-cols-6 mb-4 h-auto p-1 bg-muted/50 rounded-xl gap-1">
           <TabsTrigger value="events" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
             <Calendar className="w-4 h-4 mr-2" />
-            <span>Events</span>
+            <span>{t('profileTabs.events')}</span>
           </TabsTrigger>
           
           {isOrganizer && (
             <TabsTrigger value="creator" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
               <Sparkles className="w-4 h-4 mr-2 text-indigo-500" />
-              <span>Retraits</span>
+              <span>{t('profileTabs.creator')}</span>
             </TabsTrigger>
           )}
           
           <TabsTrigger value="tickets" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
             <Ticket className="w-4 h-4 mr-2" />
-            <span>Billets</span>
+            <span>{t('profileTabs.tickets')}</span>
           </TabsTrigger>
 
           <TabsTrigger value="transactions" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
             <History className="w-4 h-4 mr-2" />
-            <span>Historique</span>
+            <span>{t('profileTabs.transactions')}</span>
           </TabsTrigger>
 
           <TabsTrigger value="referral" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
             <Users className="w-4 h-4 mr-2" />
-            <span>Parrainage</span>
+            <span>{t('profileTabs.referral')}</span>
           </TabsTrigger>
 
           {isOrganizer && (
             <TabsTrigger value="withdrawals" className="flex-1 min-w-[100px] data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-lg py-2 md:py-3">
               <Wallet className="w-4 h-4 mr-2" />
-              <span>Créateur</span>
+              <span>{t('profileTabs.withdrawals')}</span>
             </TabsTrigger>
           )}
         </TabsList>

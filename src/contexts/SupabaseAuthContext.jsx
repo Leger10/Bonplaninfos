@@ -382,33 +382,46 @@ export const AuthProvider = ({ children }) => {
         return { data: null, error };
     }
   }, []);
+const signIn = useCallback(async (email, password) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
 
-  const signIn = useCallback(async (email, password) => {
-    try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+    if (data?.user) {
+        const { data: profile, error: profileError } = await retryPromise(() => supabase
+            .from('profiles')
+            .select('is_active')
+            .eq('id', data.user.id)
+            .maybeSingle(), 3, 500, 'Sign In Profile Check');
+        
+        if (profileError) throw profileError;
 
-        if (data?.user) {
-            const { data: profile, error: profileError } = await retryPromise(() => supabase
-                .from('profiles')
-                .select('is_active')
-                .eq('id', data.user.id)
-                .maybeSingle(), 3, 500, 'Sign In Profile Check');
-            
-            if (profileError) throw profileError;
-
-            if (profile && profile.is_active === false) {
-                await supabase.auth.signOut();
-                throw new Error('ACCOUNT_DEACTIVATED');
-            }
+        if (profile && profile.is_active === false) {
+            await supabase.auth.signOut();
+            throw new Error('ACCOUNT_DEACTIVATED');
         }
-
-        return { data, error: null };
-    } catch (error) {
-        return { data: null, error };
     }
-  }, [retryPromise]);
 
+    return { data, error: null };
+  } catch (error) {
+    // Personnalisation du message d'erreur pour les problèmes réseau
+    let errorMessage = error.message;
+    if (error.message && (
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError') ||
+        error.message.includes('Network request failed') ||
+        error.message.includes('Load failed')
+    )) {
+      errorMessage = "erreur de connexion ; veuillez réessayer";
+    }
+    // Créer une nouvelle erreur avec le message personnalisé
+    const customError = new Error(errorMessage);
+    // Conserver le code d'erreur original si nécessaire
+    customError.code = error.code;
+    customError.status = error.status;
+    return { data: null, error: customError };
+  }
+}, [retryPromise]);
   const signOut = useCallback(async () => {
     console.log("Logout started");
     try {

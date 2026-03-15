@@ -1,15 +1,31 @@
+/*
+  SQL Reference for 'payments' table:
+  CREATE TABLE IF NOT EXISTS public.payments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES public.profiles(id),
+      coins_amount INTEGER NOT NULL,
+      amount_fcfa NUMERIC NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      payment_method TEXT,
+      transaction_id TEXT UNIQUE NOT NULL,
+      processed_at TIMESTAMP WITH TIME ZONE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  );
+*/
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap, Star, Crown, Sparkles, Coins, Check, Calculator, ArrowRight, AlertCircle, Flame, TrendingUp, Rocket, Target, Gift, Shield } from 'lucide-react';
+import { Zap, Star, Crown, Sparkles, Coins, Check, Calculator, Rocket, Target, Gift, Shield, Flame, TrendingUp } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import MultilingualSeoHead from '@/components/MultilingualSeoHead';
 import '@/components/LicensePurchase.css';
 
-// Configuration des packs avec liens MoneyFusion spécifiques UNIQUES pour chaque pack
+// Configuration des packs avec liens MoneyFusion spécifiques
 const CREDIT_PACKS = [
     { 
         id: 'pack_debutant', 
@@ -17,7 +33,7 @@ const CREDIT_PACKS = [
         amount: 500, 
         coins: 50, 
         bonus: 0, 
-        features: ['50 pièces', 'Idéal pour tester', 'Validité illimitée'],
+        features: ['50 Crédits', 'Idéal pour tester', 'Validité illimitée'],
         icon: Coins, 
         color: 'text-yellow-400',
         actionTags: ['Démarrer', 'Essentiel'],
@@ -29,7 +45,7 @@ const CREDIT_PACKS = [
         amount: 1000, 
         coins: 100, 
         bonus: 0, 
-        features: ['100 pièces', 'Participation simple', 'Support standard'],
+        features: ['100 Crédits', 'Participation simple', 'Support standard'],
         icon: Zap, 
         color: 'text-blue-400',
         actionTags: ['Populaire', 'Sans risque'],
@@ -41,7 +57,7 @@ const CREDIT_PACKS = [
         amount: 5000, 
         coins: 500, 
         bonus: 0, 
-        features: ['500 pièces', 'Création d\'événements', 'Boost léger'],
+        features: ['500 Crédits', 'Création d\'événements', 'Boost léger'],
         icon: Star, 
         color: 'text-indigo-400',
         actionTags: ['Recommandé', 'Meilleur rapport'],
@@ -54,7 +70,7 @@ const CREDIT_PACKS = [
         amount: 10000, 
         coins: 1000, 
         bonus: 50, 
-        features: ['1000 pièces', '+50 pièces Bonus', 'Visibilité accrue', 'Support prioritaire'],
+        features: ['1000 Crédits', '+50 Crédits Bonus', 'Visibilité accrue', 'Support prioritaire'],
         icon: Sparkles, 
         color: 'text-purple-400',
         actionTags: ['Boost +50%', 'Prioritaire'],
@@ -67,7 +83,7 @@ const CREDIT_PACKS = [
         amount: 25000, 
         coins: 2500, 
         bonus: 250, 
-        features: ['2500 pièces', '+250 pièces Bonus', 'Statut VIP', 'Support dédié'],
+        features: ['2500 Crédits', '+250 Crédits Bonus', 'Statut VIP', 'Support dédié'],
         icon: Crown, 
         color: 'text-red-400',
         actionTags: ['Exclusif', '+250 Bonus'],
@@ -80,7 +96,7 @@ const CREDIT_PACKS = [
         amount: 50000, 
         coins: 5000, 
         bonus: 500, 
-        features: ['5000 pièces', '+500 pièces Bonus', 'Boost Maximum', 'Partenariat exclusif'],
+        features: ['5000 Crédits', '+500 Crédits Bonus', 'Boost Maximum', 'Partenariat exclusif'],
         icon: Crown, 
         color: 'text-orange-400',
         actionTags: ['Maximum', '+500 Bonus'],
@@ -89,7 +105,6 @@ const CREDIT_PACKS = [
     },
 ];
 
-// Lien UNIQUEMENT pour le paiement personnalisé
 const CUSTOM_PAYMENT_LINK = "https://my.moneyfusion.net/694dfabb98fe6dbde0fc014f";
 
 const CreditPacksPage = () => {
@@ -97,45 +112,79 @@ const CreditPacksPage = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [customAmount, setCustomAmount] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
-    // Fonction pour les packs STANDARDS
-    const handlePurchase = (pack) => {
+    const initPayment = async (amountFcfa, coinsAmount, paymentLink) => {
         if (!user) {
             toast({ 
                 title: "Connexion requise", 
                 description: "Veuillez vous connecter pour acheter des crédits.", 
                 variant: "warning" 
             });
-            navigate('/auth?redirect=/credit-packs');
+            navigate('/auth?redirect=/packs');
             return;
         }
 
-        // CORRECTION IMPORTANTE : Utiliser le lien SPÉCIFIQUE du pack
-        console.log(`Achat pack ${pack.name} - Redirection vers: ${pack.paymentLink}`);
-        window.location.href = pack.paymentLink; // Lien UNIQUE pour chaque pack
+        setIsProcessing(true);
+        const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        try {
+            // Create a payment record in the 'payments' table before redirect
+            const { error } = await supabase.from('payments').insert({
+                user_id: user.id,
+                coins_amount: coinsAmount,
+                amount_fcfa: amountFcfa,
+                status: 'pending',
+                payment_method: 'moneyfusion',
+                transaction_id: txnId
+            });
+
+            if (error) {
+                console.error("[Payment Init] Supabase error:", error);
+                throw new Error("Erreur lors de l'enregistrement de la transaction.");
+            }
+
+            console.info(`[Payment] Record created: ${txnId}, redirecting to MoneyFusion...`);
+
+            // Build precise redirect URLs
+            const successUrl = encodeURIComponent(`${window.location.origin}/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`);
+            const cancelUrl = encodeURIComponent(`${window.location.origin}/payment-cancel`);
+            
+            const finalRedirectLink = `${paymentLink}?transaction_id=${txnId}&success_url=${successUrl}&cancel_url=${cancelUrl}`;
+            window.location.href = finalRedirectLink;
+
+        } catch (err) {
+            console.error("Payment init error:", err);
+            toast({ title: "Erreur", description: "Impossible d'initialiser le paiement.", variant: "destructive" });
+            setIsProcessing(false);
+        }
     };
 
-    // Fonction UNIQUEMENT pour le paiement personnalisé
+    const handlePurchase = (pack) => {
+        initPayment(pack.amount, pack.coins + pack.bonus, pack.paymentLink);
+    };
+
     const handleCustomAmountPurchase = () => {
-        if (!user) {
-            toast({ 
-                title: "Connexion requise", 
-                description: "Veuillez vous connecter pour acheter des crédits.", 
-                variant: "warning" 
-            });
-            navigate('/auth?redirect=/credit-packs');
+        const amount = parseInt(customAmount, 10);
+        if (isNaN(amount) || amount <= 0) {
+            toast({ title: "Erreur", description: "Veuillez entrer un montant valide.", variant: "destructive" });
             return;
         }
         
-        // CORRECTION : Utiliser CUSTOM_PAYMENT_LINK pour le paiement personnalisé
-        console.log(`Paiement personnalisé - Redirection vers: ${CUSTOM_PAYMENT_LINK}`);
-        window.location.href = CUSTOM_PAYMENT_LINK;
+        // Calculate estimated coins (Assuming 10 FCFA = 1 Coin + manual bonus)
+        let estimatedCoins = Math.floor(amount / 10);
+        let bonus = 0;
+        if (amount >= 250000) bonus = Math.floor(estimatedCoins * 0.15);
+        else if (amount >= 50000) bonus = Math.floor(estimatedCoins * 0.10);
+        else if (amount >= 10000) bonus = Math.floor(estimatedCoins * 0.05);
+
+        initPayment(amount, estimatedCoins + bonus, CUSTOM_PAYMENT_LINK);
     };
 
     return (
         <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
             <MultilingualSeoHead pageData={{ 
-                title: "Acheter des pièces - BonPlanInfos", 
+                title: "Acheter des Crédits - BonPlanInfos", 
                 description: "Rechargez votre compte en crédits avec nos packs exclusifs." 
             }} />
             
@@ -147,7 +196,7 @@ const CreditPacksPage = () => {
                     className="text-center space-y-4"
                 >
                     <h1 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-400 to-red-500">
-                        Boutique de pièces
+                        Boutique de Crédits
                     </h1>
                     <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                         Choisissez le pack qui correspond à vos besoins et débloquez instantanément des fonctionnalités premium.
@@ -177,7 +226,7 @@ const CreditPacksPage = () => {
                             <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-xl p-4 text-center">
                                 <div className="flex items-center justify-center gap-2">
                                     <Target className="w-4 h-4 text-red-400" />
-                                    <span className="text-sm font-medium text-gray-300">pièces illimités</span>
+                                    <span className="text-sm font-medium text-gray-300">Crédits illimités</span>
                                 </div>
                             </div>
                         </div>
@@ -225,7 +274,7 @@ const CreditPacksPage = () => {
                                     </div>
                                     <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-4 py-2 rounded-full text-sm font-bold mt-2">
                                         <Coins className="w-4 h-4 mr-2" />
-                                        {pack.coins.toLocaleString()} pièces
+                                        {pack.coins.toLocaleString()} Crédits
                                     </div>
                                 </div>
 
@@ -240,12 +289,13 @@ const CreditPacksPage = () => {
                                         {pack.bonus > 0 && (
                                             <li className="flex items-start text-sm font-bold text-green-400 bg-gray-800/50 p-3 rounded-lg border border-green-500/20">
                                                 <Sparkles className="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-                                                <span>+{pack.bonus} pièces Bonus Offertes</span>
+                                                <span>+{pack.bonus} Crédits Bonus Offerts</span>
                                             </li>
                                         )}
                                     </ul>
 
                                     <Button 
+                                        disabled={isProcessing}
                                         className={`w-full h-14 text-base font-bold shadow-lg transition-all duration-300 group relative overflow-hidden ${
                                             pack.badge 
                                             ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white hover:shadow-purple-500/30' 
@@ -254,8 +304,8 @@ const CreditPacksPage = () => {
                                         onClick={() => handlePurchase(pack)}
                                     >
                                         <span className="relative z-10 flex items-center justify-center">
-                                            Acheter maintenant
-                                            <Rocket className="ml-2 w-4 h-4" />
+                                            {isProcessing ? "Redirection..." : "Acheter maintenant"}
+                                            {!isProcessing && <Rocket className="ml-2 w-4 h-4" />}
                                         </span>
                                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                                     </Button>
@@ -304,18 +354,19 @@ const CreditPacksPage = () => {
                                     </div>
                                     
                                     <Button 
+                                        disabled={isProcessing}
                                         className="w-full sm:w-auto h-12 bg-gradient-to-r from-gray-800 to-gray-900 border border-gray-700 text-white hover:text-white hover:border-yellow-500 hover:bg-gray-800 whitespace-nowrap font-medium shadow-lg"
                                         onClick={handleCustomAmountPurchase}
                                     >
                                         <Target className="mr-2 w-4 h-4" />
-                                        Payer personnalisé
+                                        {isProcessing ? "Patientez..." : "Payer personnalisé"}
                                     </Button>
                                 </div>
                                 
                                 {customAmount > 0 && (
                                     <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                                         <p className="text-sm font-medium text-gray-300">
-                                            Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} pièces</span>
+                                            Vous recevrez environ <span className="font-bold text-yellow-300">{Math.floor(customAmount / 10).toLocaleString()} Crédits</span>
                                         </p>
                                     </div>
                                 )}
@@ -343,8 +394,8 @@ const CreditPacksPage = () => {
                                 <p className="text-sm text-gray-400">Augmentez votre visibilité instantanément</p>
                             </div>
                             <div className="space-y-2">
-                                <div className="text-yellow-400 font-bold">⚡ pièces immédiates</div>
-                                <p className="text-sm text-gray-400">Rechargez et utilisez vos pièces sans délai</p>
+                                <div className="text-yellow-400 font-bold">⚡ Crédits immédiats</div>
+                                <p className="text-sm text-gray-400">Rechargez et utilisez vos crédits sans délai</p>
                             </div>
                             <div className="space-y-2">
                                 <div className="text-yellow-400 font-bold">🎁 Bonus exclusifs</div>

@@ -47,7 +47,11 @@ const HowItWorksPage = () => {
                 >
                     <Card className="overflow-hidden shadow-lg border-primary/20">
                         <CardContent className="p-0">
-                            <img src="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/150a140f02368866d8206eba11ea3767.jpg" alt="Faites vivre vos événements" className="w-full h-auto object-contain" />
+                            <img 
+                                src="/image2.jpg" 
+                                alt="Public participant à un événement" 
+                                className="w-full h-auto object-contain" 
+                            />
                         </CardContent>
                     </Card>
                 </motion.div>

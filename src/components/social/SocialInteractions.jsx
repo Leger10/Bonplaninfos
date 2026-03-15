@@ -230,7 +230,7 @@ const SocialInteractions = ({ event, onInteraction, variant = 'horizontal' }) =>
             ) : (
               <Button variant="ghost" size="sm" className="flex gap-2 text-muted-foreground">
                 <MessageCircle className="w-5 h-5" />
-                <span>{commentsCount || "Commenter"}</span>
+                <span>{commentsCount || "SMS"}</span>
               </Button>
             )}
           </DialogTrigger>

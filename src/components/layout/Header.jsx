@@ -5,24 +5,28 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Menu, User, Wallet, LogOut, PlusCircle, Home, Compass, Calendar, HeartHandshake as Handshake } from 'lucide-react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
-import NotificationBell from '@/components/NotificationBell';
+import NotificationCenter from '@/components/NotificationCenter';
 import logo from '@/assets/logo.png';
 
-const AppLogo = () => {
-  // ✅ LOG SUPPRIMÉ - Plus de console.log
-  return (
-    <NavLink to="/" className="flex items-center gap-2">
-      <img src={logo} alt="BonPlanInfos Logo" className="h-8 w-auto" />
-      <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
-    </NavLink>
-  );
-};
+const AppLogo = () => (
+  <NavLink to="/" className="flex items-center gap-2">
+    <img src={logo} alt="BonPlanInfos Logo" className="h-8 w-auto" />
+    <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
+  </NavLink>
+);
 
 const UserMenu = ({ user, userProfile, handleLogout }) => {
   const { t } = useTranslation();
@@ -72,7 +76,7 @@ const MobileMenu = ({ navLinks, user, userProfile, handleLogout, isMenuOpen, set
     navigate(path);
     setMenuOpen(false);
   };
-  
+
   const canCreateEvent = (profile) => {
     return profile && ['organizer', 'admin', 'super_admin'].includes(profile.user_type);
   };
@@ -117,14 +121,14 @@ const MobileMenu = ({ navLinks, user, userProfile, handleLogout, isMenuOpen, set
           </nav>
         </div>
         <SheetFooter className="p-4 border-t flex-col sm:flex-col sm:space-x-0 gap-4">
-            <div className="flex items-center justify-between w-full">
-                <span className="text-sm text-muted-foreground">{t('Theme')}</span>
-                <ThemeToggle />
-            </div>
-            <div className="flex items-center justify-between w-full">
-                <span className="text-sm text-muted-foreground">{t('Language')}</span>
-                <LanguageSwitcher />
-            </div>
+          <div className="flex items-center justify-between w-full">
+            <span className="text-sm text-muted-foreground">{t('theme')}</span>
+            <ThemeToggle />
+          </div>
+          <div className="flex items-center justify-between w-full">
+            <span className="text-sm text-muted-foreground">{t('language')}</span>
+            <LanguageSwitcher />
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -154,7 +158,14 @@ const Header = () => {
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="md:hidden">
-            <MobileMenu navLinks={navLinks} user={user} userProfile={userProfile} handleLogout={handleLogout} isMenuOpen={isMenuOpen} setMenuOpen={setMenuOpen} />
+            <MobileMenu
+              navLinks={navLinks}
+              user={user}
+              userProfile={userProfile}
+              handleLogout={handleLogout}
+              isMenuOpen={isMenuOpen}
+              setMenuOpen={setMenuOpen}
+            />
           </div>
           <div className="hidden md:flex">
             <AppLogo />
@@ -179,22 +190,24 @@ const Header = () => {
 
         <div className="flex items-center gap-2 sm:gap-4">
           <div className="hidden md:flex items-center gap-2">
-             {canCreateEvent(userProfile) && (
-                  <Button variant="premium" size="sm" onClick={() => navigate('/create-event')}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      {t('nav.create_event')}
-                  </Button>
+            {canCreateEvent(userProfile) && (
+              <Button variant="premium" size="sm" onClick={() => navigate('/create-event')}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                {t('nav.create_event')}
+              </Button>
             )}
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
           {user ? (
             <>
-              <NotificationBell />
+              <NotificationCenter />
               <UserMenu user={user} userProfile={userProfile} handleLogout={handleLogout} />
             </>
           ) : (
-            <Button onClick={() => navigate('/auth')} className="h-11">{t('auth.login.button')}</Button>
+            <Button onClick={() => navigate('/auth')} className="h-11">
+              {t('auth.login.button')}
+            </Button>
           )}
         </div>
       </div>

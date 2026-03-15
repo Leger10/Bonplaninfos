@@ -339,45 +339,57 @@ export const AuthProvider = ({ children }) => {
   }, [handleSession, clearSessionData]);
 
   // Login function
-  const login = useCallback(async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+ const login = useCallback(async (email, password) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Force check profile status immediately after sign in
-      if (data?.user) {
-          const { data: profile } = await supabase
-              .from('profiles')
-              .select('is_active')
-              .eq('id', data.user.id)
-              .maybeSingle();
-          
-          if (profile && profile.is_active === false) {
-              await supabase.auth.signOut();
-              throw new Error('ACCOUNT_DEACTIVATED');
-          }
-      }
-
-      setUser(data.user);
-      setSession(data.session);
-      
-      // Check for redirect path
-      const redirectPath = localStorage.getItem('redirectAfterLogin');
-      if (redirectPath) {
-        localStorage.removeItem('redirectAfterLogin');
-        window.location.href = redirectPath;
-      }
-      
-      return { success: true, user: data.user, session: data.session };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: error.message };
+    // Force check profile status immediately after sign in
+    if (data?.user) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_active')
+            .eq('id', data.user.id)
+            .maybeSingle();
+        
+        if (profile && profile.is_active === false) {
+            await supabase.auth.signOut();
+            throw new Error('ACCOUNT_DEACTIVATED');
+        }
     }
-  }, []);
+
+    setUser(data.user);
+    setSession(data.session);
+    
+    // Check for redirect path
+    const redirectPath = localStorage.getItem('redirectAfterLogin');
+    if (redirectPath) {
+      localStorage.removeItem('redirectAfterLogin');
+      window.location.href = redirectPath;
+    }
+    
+    return { success: true, user: data.user, session: data.session };
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    // Personnalisation du message d'erreur
+    let errorMessage = error.message;
+    if (error.message && (
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError') ||
+        error.message.includes('Network request failed') ||
+        error.message.includes('Load failed')
+    )) {
+      errorMessage = "erreur de connexion ; veuillez réessayer";
+    }
+    
+    return { success: false, error: errorMessage };
+  }
+}, []);
 
   // Signup function
   const signup = useCallback(async (email, password, metadata) => {

@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, DollarSign, History } from 'lucide-react';
+import { Loader2, DollarSign, History, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import WithdrawalModal from '@/components/common/WithdrawalModal';
+import PinVerificationModal from '@/components/common/PinVerificationModal';
+import { useWalletSecurity } from '@/hooks/useWalletSecurity';
 
 const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
     const { user } = useAuth();
@@ -16,10 +18,11 @@ const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
 
+    const { isWalletUnlocked, showPinModal, openPinModal, closePinModal, unlockWallet } = useWalletSecurity(user?.id);
+
     useEffect(() => {
         fetchHistory();
         
-        // Realtime subscription for history updates
         const channel = supabase.channel('withdrawal_updates')
             .on('postgres_changes', { 
                 event: '*', 
@@ -54,6 +57,14 @@ const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
         }
     };
 
+    const handleWithdrawClick = () => {
+        if (!isWalletUnlocked) {
+            openPinModal();
+        } else {
+            setIsModalOpen(true);
+        }
+    };
+
     const handleSuccess = () => {
         fetchHistory();
         if (onRefresh) onRefresh();
@@ -66,12 +77,20 @@ const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
                     <h2 className="text-2xl font-bold">Retraits</h2>
                     <p className="text-muted-foreground">Gérez vos demandes et consultez votre historique.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-                    <DollarSign className="w-4 h-4 mr-2" /> Demander un retrait
+                <Button onClick={handleWithdrawClick} className="bg-emerald-600 hover:bg-emerald-700">
+                    {!isWalletUnlocked ? <Lock className="w-4 h-4 mr-2" /> : <DollarSign className="w-4 h-4 mr-2" />}
+                    Demander un retrait
                 </Button>
             </div>
 
-            <Card>
+            <Card className="relative overflow-hidden">
+                {!isWalletUnlocked && (
+                    <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-4 text-center">
+                        <Lock className="w-10 h-10 text-muted-foreground/40 mb-2" />
+                        <p className="text-sm font-medium text-muted-foreground mb-4">L'historique des transactions est verrouillé.</p>
+                        <Button variant="outline" size="sm" onClick={openPinModal}>Déverrouiller</Button>
+                    </div>
+                )}
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <History className="w-5 h-5" /> Historique des transactions
@@ -98,7 +117,6 @@ const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
                                 </TableHeader>
                                 <TableBody>
                                     {history.map(req => {
-                                        // Fallback calculations if columns are null (legacy records)
                                         const gross = req.amount_fcfa || 0;
                                         const fees = req.fees || Math.floor(gross * 0.05);
                                         const net = req.net_amount || (gross - fees);
@@ -138,6 +156,14 @@ const CreatorWithdrawalTab = ({ availableBalanceFcfa = 0, onRefresh }) => {
                 userId={user?.id}
                 userType="organizer"
                 onSuccess={handleSuccess}
+            />
+
+            <PinVerificationModal 
+                isOpen={showPinModal}
+                onClose={closePinModal}
+                onSuccess={unlockWallet}
+                userId={user?.id}
+                userProfile={user?.user_metadata}
             />
         </div>
     );

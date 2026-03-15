@@ -62,26 +62,43 @@ const AuthSync = () => {
   const { setForceRefresh } = useAuth();
   const { forceRefreshUserProfile } = useData();
 
+  // 1. Synchronisation des fonctions de rafraîchissement (profil)
   useEffect(() => {
     if (setForceRefresh && forceRefreshUserProfile) {
       setForceRefresh(() => forceRefreshUserProfile);
     }
   }, [setForceRefresh, forceRefreshUserProfile]);
 
+  // 2. Activation audio au premier clic utilisateur
+  useEffect(() => {
+    const enableAudio = () => {
+      const audio = new Audio('/sounds/success.mp3');
+      audio.volume = 0.1;
+      audio.play().catch(() => {}); // tentative silencieuse pour débloquer l'audio
+      document.removeEventListener('click', enableAudio);
+    };
+    document.addEventListener('click', enableAudio, { once: true });
+
+    // Nettoyage (optionnel car { once: true })
+    return () => {
+      document.removeEventListener('click', enableAudio);
+    };
+  }, []);
+
   return null;
 };
 
-// Composant de chargement pour Suspense
 const LoadingFallback = () => (
   <div className="h-screen w-full flex items-center justify-center bg-background">
-    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" 
-         role="status" 
-         aria-label="Chargement">
-      <span className="sr-only">Chargement en cours...</span>
+    <div
+      className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
+      role="status"
+      aria-label="Chargement"
+    >
+      <span className="sr-only">Chargement...</span>
     </div>
   </div>
 );
-
 function App() {
   return (
     <BrowserRouter
@@ -143,8 +160,12 @@ function App() {
                   <Route path="/credit-packs" element={<CreditPacksPage />} />
                   <Route path="/buy/:packSlug" element={<PaymentRedirectPage />} />
                   <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />
-                  <Route path="/paiement/success" element={<PaymentSuccessPage />} />
-                  <Route path="/paiement/cancel" element={<PaymentCancelPage />} />
+                    
+                    <Route path="/paiement/success" element={<PaymentSuccessPage />} />
+                    <Route path="/payment-success" element={<PaymentSuccessPage />} />
+                    <Route path="/paiement/cancel" element={<PaymentCancelPage />} />
+                    <Route path="/payment-cancel" element={<PaymentCancelPage />} />
+                    
                   <Route path="/verify-ticket" element={<VerifyTicketPage />} />
                   <Route path="/legal-mentions" element={<LegalMentionsPage />} />
                 </Routes>
@@ -152,6 +173,7 @@ function App() {
                 <MandatoryVideoPopup />
                 <PushNotificationManager />
                 <WelcomePopup />
+               
                 <FloatingActionButton />
               </MainLayout>
             </Suspense>

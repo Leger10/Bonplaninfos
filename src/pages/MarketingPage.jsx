@@ -139,12 +139,12 @@ const MarketingPage = () => {
       const startAutoPlay = () => {
         const currentX = x.get();
         let newX = currentX - 1; // Vitesse de défilement (ajustable)
-        
+
         // Si on arrive à la fin, revenir au début
         if (newX < -width) {
           newX = 0;
         }
-        
+
         x.set(newX);
         autoPlayRef.current = requestAnimationFrame(startAutoPlay);
       };
@@ -191,10 +191,10 @@ const MarketingPage = () => {
             <motion.div
               key={index}
               className="min-w-[85vw] sm:min-w-[60vw] md:min-w-[45vw] lg:min-w-[35vw] flex-shrink-0"
-              whileHover={{ 
+              whileHover={{
                 scale: isDragging ? 1 : 1.03,
                 y: -5,
-                transition: { duration: 0.2 }
+                transition: { duration: 0.2 },
               }}
             >
               <Card className="h-full glass-effect flex flex-col shadow-lg border hover:shadow-xl transition-all duration-300">
@@ -260,7 +260,7 @@ const MarketingPage = () => {
             >
               {t("marketing.badge")}
             </Badge>
-           
+
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-primary via-red-500 to-secondary">
               {t("marketing.title")}
             </h1>
@@ -352,7 +352,7 @@ const MarketingPage = () => {
       </section>
 
       {/* Section Paiements */}
-      <motion.div 
+      <motion.div
         className="my-8 md:my-12 container px-4"
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -366,15 +366,14 @@ const MarketingPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <img 
-              src="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/b4e1bcde8a95f1bcad910ed8862c6c37.jpg" 
-              alt="Méthodes de paiement variées" 
-              className="w-full h-auto object-contain max-h-32 md:max-h-48"
+            <img
+              src="/image1.jpg"
+              alt="Méthodes de paiement variées"
+              className="w-full h-48 md:h-64 object-contain bg-gray-50"
             />
           </CardContent>
         </Card>
       </motion.div>
-
       {/* CTA Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">

@@ -3,9 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Building } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-// Définir les chemins d'images locaux
-const sponsorKeys = ['orange', 'mtn', 'moov', 'wave', 'ontbf', 'moneyfusion'];
+import { supabase } from '@/lib/customSupabaseClient';
 
 const SponsorsPage = () => {
     const { t } = useTranslation();
@@ -13,49 +11,28 @@ const SponsorsPage = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchSponsors = () => {
-            const loadedSponsors = sponsorKeys.map(key => {
-                let imagePath;
-                
-                // Définir les chemins d'images locaux
-                switch(key) {
-                    case 'orange':
-                        imagePath = '/orangeci.png';
-                        break;
-                    case 'mtn':
-                        imagePath = '/MTN-Group.jpg';
-                        break;
-                    case 'moov':
-                        // Si vous n'avez pas d'image pour Moov, utilisez une par défaut
-                        imagePath = '/wave.png'; // Remplacez par l'image Moov si disponible
-                        break;
-                    case 'wave':
-                        imagePath = '/wave.png';
-                        break;
-                    case 'ontbf':
-                        imagePath = '/ONTBF.jpg';
-                        break;
-                    case 'moneyfusion':
-                        imagePath = '/moneyfusion.png';
-                        break;
-                    default:
-                        imagePath = '/wave.png'; // Image par défaut
-                }
-                
-                return {
-                    id: key,
-                    name: t(`sponsors.list.${key}.name`),
-                    logo_url: imagePath,
-                    description: t(`sponsors.list.${key}.description`)
-                };
-            });
-            
-            setSponsors(loadedSponsors);
-            setLoading(false);
+        const fetchSponsors = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('sponsors')
+                    .select('*')
+                    .eq('is_active', true) // seulement les sponsors actifs
+                    .order('display_order', { ascending: true })
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                setSponsors(data || []);
+            } catch (error) {
+                console.error("Erreur lors du chargement des sponsors:", error);
+                // Optionnel : afficher un toast d'erreur
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchSponsors();
-    }, [t]);
+    }, []);
 
     return (
         <>
@@ -76,8 +53,14 @@ const SponsorsPage = () => {
                     </div>
 
                     {loading ? (
-                        <div className="flex justify-center items-center">
+                        <div className="flex justify-center items-center py-20">
                             <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                        </div>
+                    ) : sponsors.length === 0 ? (
+                        <div className="text-center py-20 text-muted-foreground">
+                            <Building className="w-20 h-20 mx-auto mb-4 opacity-50" />
+                            <p className="text-xl">Aucun sponsor pour le moment</p>
+                            <p className="text-sm">Revenez plus tard pour découvrir nos partenaires.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -86,12 +69,11 @@ const SponsorsPage = () => {
                                     <CardHeader className="p-0">
                                         <div className="h-40 flex items-center justify-center bg-white p-4">
                                             <img 
-                                                src={sponsor.logo_url} 
+                                                src={sponsor.logo_url || '/placeholder-logo.png'} 
                                                 alt={sponsor.name} 
                                                 className="max-h-full max-w-full object-contain p-2"
                                                 onError={(e) => {
-                                                    // En cas d'erreur de chargement de l'image
-                                                    e.target.src = '/wave.png';
+                                                    e.target.src = '/placeholder-logo.png';
                                                     e.target.alt = 'Logo non disponible';
                                                 }}
                                             />
@@ -100,6 +82,16 @@ const SponsorsPage = () => {
                                     <CardContent className="p-6">
                                         <CardTitle className="text-xl mb-2">{sponsor.name}</CardTitle>
                                         <p className="text-muted-foreground text-sm">{sponsor.description}</p>
+                                        {sponsor.website_url && (
+                                            <a 
+                                                href={sponsor.website_url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="mt-3 inline-block text-primary hover:underline text-sm"
+                                            >
+                                                Visiter le site →
+                                            </a>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ))}

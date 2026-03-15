@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -17,7 +17,12 @@ import QrScanner from '@/components/event/QrScanner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-export default function TicketScannerDialog({ isOpen, onClose, eventId }) {
+export default function TicketScannerDialog({ 
+  isOpen, 
+  onClose, 
+  eventId,
+  eventEndDate // nouvelle prop optionnelle (ex: "2026-02-20")
+}) {
 
   const [activeTab, setActiveTab] = useState('entry');
   const [scanResult, setScanResult] = useState(null);
@@ -27,6 +32,21 @@ export default function TicketScannerDialog({ isOpen, onClose, eventId }) {
   const [manualCode, setManualCode] = useState('');
 
   const lockedRef = useRef(false);
+
+  // Vérification si l'événement est terminé
+  const isEventFinished = useMemo(() => {
+    if (!eventEndDate) return false;
+    return new Date(eventEndDate) < new Date();
+  }, [eventEndDate]);
+
+  const formattedEndDate = useMemo(() => {
+    if (!eventEndDate) return '';
+    return new Date(eventEndDate).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }, [eventEndDate]);
 
   const sounds = useRef({
     entry: new Audio('/sounds/entry.mp3'),
@@ -58,6 +78,28 @@ export default function TicketScannerDialog({ isOpen, onClose, eventId }) {
   const clearHistory = () => {
     setScanHistory([]);
     localStorage.removeItem('offline_scans');
+  };
+
+  // Fonction pour obtenir le message à afficher selon le contexte
+  const getDisplayMessage = (result) => {
+    if (result.success) {
+      return result.message; // message de succès
+    }
+
+    // Si l'événement est terminé, on priorise ce message
+    if (isEventFinished) {
+      return `Cet événement est terminé depuis le ${formattedEndDate}. Le ticket n'est pas pour cet événement. Merci 🥺`;
+    }
+
+    // Si le message d'erreur indique que le ticket n'appartient pas à cet événement
+    // On utilise une détection simple sur le texte (adaptez selon les messages réels)
+    const lowerMsg = result.message?.toLowerCase() || '';
+    if (lowerMsg.includes('pas pour cet événement') || lowerMsg.includes('n\'appartient pas')) {
+      return `Le ticket n'est pas pour cet événement. Merci 🥺`;
+    }
+
+    // Sinon on retourne le message d'erreur original
+    return result.message;
   };
 
   const processVerification = useCallback(async (code, isManual = false) => {
@@ -109,7 +151,7 @@ export default function TicketScannerDialog({ isOpen, onClose, eventId }) {
       setIsProcessing(false);
       setManualCode('');
     }
-  }, [activeTab, scanResult]);
+  }, [activeTab, scanResult, isEventFinished, formattedEndDate]);
 
   const handleScan = (code) => {
     if (isProcessing || scanResult) return;
@@ -255,7 +297,9 @@ export default function TicketScannerDialog({ isOpen, onClose, eventId }) {
                 <h3 className="font-bold text-lg text-center">
                   {scanResult.success ? 'VALIDÉ' : 'REFUSÉ'}
                 </h3>
-                <p className="text-sm text-center">{scanResult.message}</p>
+                <p className="text-sm text-center">
+                  {getDisplayMessage(scanResult)}
+                </p>
 
                 {scanResult.attendee && (
                   <p className="mt-2 font-semibold text-center">{scanResult.attendee}</p>
