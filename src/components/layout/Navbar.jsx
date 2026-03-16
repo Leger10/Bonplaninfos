@@ -1,13 +1,27 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Home, Calendar, Plus, User, Wallet, Settings, LogOut, Menu, X, Shield, UserCheck, Bell, ShoppingBag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Badge } from '@/components/ui/badge';
-import { useData } from '@/contexts/DataContext';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Home,
+  Calendar,
+  Plus,
+  User,
+  Wallet,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Shield,
+  UserCheck,
+  Bell,
+  ShoppingBag,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { Badge } from "@/components/ui/badge";
+import { useData } from "@/contexts/DataContext";
+import { useTranslation } from "react-i18next";
 
 const Navbar = () => {
   const { t } = useTranslation();
@@ -19,30 +33,33 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/');
+    navigate("/");
     setIsMobileMenuOpen(false);
   };
 
   const navItems = [
-    { path: '/', icon: Home, labelKey: 'nav.home' },
-    { path: '/events', icon: Calendar, labelKey: 'nav.events' },
-    { path: '/promotions', icon: ShoppingBag, labelKey: 'nav.promotions' },
-    ...(user && (permissions?.role === 'organizer' || permissions?.role === 'admin' || permissions?.role === 'super_admin')
-      ? [{ path: '/create-event', icon: Plus, labelKey: 'nav.create_event' }]
+    { path: "/", icon: Home, labelKey: "nav.home" },
+    { path: "/events", icon: Calendar, labelKey: "nav.events" },
+    { path: "/promotions", icon: ShoppingBag, labelKey: "nav.promotions" },
+    ...(user &&
+    (permissions?.role === "organizer" ||
+      permissions?.role === "admin" ||
+      permissions?.role === "super_admin")
+      ? [{ path: "/create-event", icon: Plus, labelKey: "nav.create_event" }]
       : []),
   ];
 
   const userItems = [
-    { path: '/wallet', icon: Wallet, labelKey: 'nav.wallet' },
-    { path: '/profile', icon: User, labelKey: 'nav.profile' },
+    { path: "/wallet", icon: Wallet, labelKey: "nav.wallet" },
+    { path: "/profile", icon: User, labelKey: "nav.profile" },
   ];
 
   const adminItems = [
-    ...(permissions?.role === 'admin' || permissions?.role === 'super_admin'
-      ? [{ path: '/admin', icon: Shield, labelKey: 'nav.admin' }]
+    ...(permissions?.role === "admin" || permissions?.role === "super_admin"
+      ? [{ path: "/admin", icon: Shield, labelKey: "nav.admin" }]
       : []),
-    ...(permissions?.role === 'secretary'
-      ? [{ path: '/secretary', icon: UserCheck, labelKey: 'nav.secretary' }]
+    ...(permissions?.role === "secretary"
+      ? [{ path: "/secretary", icon: UserCheck, labelKey: "nav.secretary" }]
       : []),
   ];
 
@@ -55,10 +72,11 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 gradient-gold rounded-lg flex items-center justify-center">
-              <span className="text-[#0B0B0D] font-bold text-sm">BP</span>
-            </div>
-            <span className="text-xl font-bold text-[#C9A227]">BonPlaninfos</span>
+            <img
+              src="/image1.png"
+              alt="BonPlaninfos"
+              className="h-8 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -69,8 +87,8 @@ const Navbar = () => {
                 to={item.path}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-[#C9A227] text-[#0B0B0D]'
-                    : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'
+                    ? "bg-[#C9A227] text-[#0B0B0D]"
+                    : "text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]"
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -83,8 +101,8 @@ const Navbar = () => {
                 to={item.path}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-[#E53935] text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-[#E53935]'
+                    ? "bg-[#E53935] text-white"
+                    : "text-gray-300 hover:text-white hover:bg-[#E53935]"
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -100,7 +118,7 @@ const Navbar = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate('/notifications')}
+                  onClick={() => navigate("/notifications")}
                   className="relative text-gray-300 hover:text-[#C9A227]"
                 >
                   <Bell className="w-5 h-5" />
@@ -113,17 +131,17 @@ const Navbar = () => {
 
                 <div
                   className="flex items-center space-x-2 bg-[#C9A227]/10 px-3 py-1 rounded-full cursor-pointer"
-                  onClick={() => navigate('/wallet')}
+                  onClick={() => navigate("/wallet")}
                 >
                   <Wallet className="w-4 h-4 text-[#C9A227]" />
                   <span className="text-sm font-medium text-[#C9A227]">
-                    {userProfile.total_coins || 0} {t('wallet.coins')}
+                    {userProfile.total_coins || 0} {t("wallet.coins")}
                   </span>
                 </div>
 
                 <div
                   className="flex items-center space-x-2 cursor-pointer"
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate("/profile")}
                 >
                   <Avatar className="w-8 h-8">
                     <AvatarImage src={userProfile.avatar_url} />
@@ -131,7 +149,9 @@ const Navbar = () => {
                       {userProfile.name?.charAt(0)?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-gray-300">{userProfile.name}</span>
+                  <span className="text-sm text-gray-300">
+                    {userProfile.name}
+                  </span>
                 </div>
 
                 <Button
@@ -147,16 +167,16 @@ const Navbar = () => {
               <div className="flex items-center space-x-2">
                 <Button
                   variant="ghost"
-                  onClick={() => navigate('/auth')}
+                  onClick={() => navigate("/auth")}
                   className="text-gray-300 hover:text-[#C9A227]"
                 >
-                  {t('auth.login.button')}
+                  {t("auth.login.button")}
                 </Button>
                 <Button
-                  onClick={() => navigate('/auth')}
+                  onClick={() => navigate("/auth")}
                   className="gradient-gold text-[#0B0B0D] hover:opacity-90"
                 >
-                  {t('auth.register.button')}
+                  {t("auth.register.button")}
                 </Button>
               </div>
             )}
@@ -169,7 +189,11 @@ const Navbar = () => {
             className="md:hidden text-gray-300"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </Button>
         </div>
       </div>
@@ -178,7 +202,7 @@ const Navbar = () => {
       {isMobileMenuOpen && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
+          animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           className="md:hidden glass-effect border-t border-[#C9A227]/20"
         >
@@ -190,8 +214,8 @@ const Navbar = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-[#C9A227] text-[#0B0B0D]'
-                    : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'
+                    ? "bg-[#C9A227] text-[#0B0B0D]"
+                    : "text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -208,8 +232,8 @@ const Navbar = () => {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                       isActive(item.path)
-                        ? 'bg-[#C9A227] text-[#0B0B0D]'
-                        : 'text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]'
+                        ? "bg-[#C9A227] text-[#0B0B0D]"
+                        : "text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]"
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -226,8 +250,8 @@ const Navbar = () => {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                   isActive(item.path)
-                    ? 'bg-[#E53935] text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-[#E53935]'
+                    ? "bg-[#E53935] text-white"
+                    : "text-gray-300 hover:text-white hover:bg-[#E53935]"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -243,29 +267,35 @@ const Navbar = () => {
                   className="flex items-center space-x-3 px-3 py-3 rounded-lg text-gray-300 hover:text-[#0B0B0D] hover:bg-[#C9A227]"
                 >
                   <Settings className="w-5 h-5" />
-                  <span className="font-medium">{t('nav.settings')}</span>
+                  <span className="font-medium">{t("nav.settings")}</span>
                 </Link>
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-gray-300 hover:text-white hover:bg-[#E53935]"
                 >
                   <LogOut className="w-5 h-5" />
-                  <span className="font-medium">{t('nav.logout')}</span>
+                  <span className="font-medium">{t("nav.logout")}</span>
                 </button>
               </div>
             ) : (
               <div className="pt-4 border-t border-[#C9A227]/20 space-y-2">
                 <Button
-                  onClick={() => { navigate('/auth'); setIsMobileMenuOpen(false); }}
+                  onClick={() => {
+                    navigate("/auth");
+                    setIsMobileMenuOpen(false);
+                  }}
                   className="w-full justify-start text-gray-300 hover:text-[#C9A227]"
                 >
-                  {t('auth.login.button')}
+                  {t("auth.login.button")}
                 </Button>
                 <Button
-                  onClick={() => { navigate('/auth'); setIsMobileMenuOpen(false); }}
+                  onClick={() => {
+                    navigate("/auth");
+                    setIsMobileMenuOpen(false);
+                  }}
                   className="w-full gradient-gold text-[#0B0B0D] hover:opacity-90"
                 >
-                  {t('auth.register.button')}
+                  {t("auth.register.button")}
                 </Button>
               </div>
             )}

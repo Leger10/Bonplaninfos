@@ -41,9 +41,10 @@ const PinVerificationModal = ({
 
   const isSettingUp = !userProfile?.wallet_pin;
 
-  // Initialiser l'audio
+  // Initialiser l'audio une seule fois
   useEffect(() => {
     audioRef.current = new Audio('/sounds/warning.mp3');
+    audioRef.current.preload = 'auto';
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -52,18 +53,14 @@ const PinVerificationModal = ({
     };
   }, []);
 
-  // Réinitialiser quand le modal s'ouvre
+  // Reset modal à chaque ouverture
   useEffect(() => {
     if (isOpen) {
       setPin('');
       setConfirmPin('');
       setError(null);
       setShowIntimidation(false);
-      
-      // Réinitialiser les tentatives locales si le compte n'est pas verrouillé
-      if (!isLocked) {
-        setLocalAttempts(0);
-      }
+      if (!isLocked) setLocalAttempts(0);
     }
   }, [isOpen, isLocked]);
 
@@ -71,29 +68,23 @@ const PinVerificationModal = ({
   const playWarningSound = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(e => console.log('Audio playback failed:', e));
+      audioRef.current.play().catch(() => console.warn('Audio playback blocked'));
     }
   };
 
   // Faire vibrer le téléphone
   const vibrate = (pattern = [200, 100, 200]) => {
-    if (window.navigator && window.navigator.vibrate) {
-      window.navigator.vibrate(pattern);
-    }
+    if (navigator.vibrate) navigator.vibrate(pattern);
   };
 
   const handleVerify = async () => {
-    // Vérifier si le compte est verrouillé
     if (isLocked) {
       setError(t('pinVerification.errors.locked'));
       return;
     }
 
-    // Validation du format
     if (pin.length !== 4) {
       setError(t('pinVerification.errors.pinLength'));
-      
-      // Vibration d'erreur
       vibrate(100);
       return;
     }
@@ -102,17 +93,13 @@ const PinVerificationModal = ({
       setLoading(true);
 
       if (isSettingUp) {
-        // === MODE CONFIGURATION ===
+        // === CONFIGURATION PIN ===
         if (pin !== confirmPin) {
           setError(t('pinVerification.errors.pinMismatch'));
-          
-          // Vibration d'erreur
           vibrate(100);
-          setLoading(false);
           return;
         }
 
-        // Enregistrer le nouveau PIN
         const { error } = await supabase
           .from('profiles')
           .update({ wallet_pin: pin })
@@ -129,56 +116,40 @@ const PinVerificationModal = ({
         onSuccess();
 
       } else {
-        // === MODE VÉRIFICATION ===
-        
-        // Incrémenter les tentatives locales
+        // === VÉRIFICATION PIN ===
         const newAttemptCount = localAttempts + 1;
         setLocalAttempts(newAttemptCount);
 
-        // Récupérer le PIN depuis la base
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('wallet_pin')
           .eq('id', userId)
           .single();
 
+        if (error) throw error;
+
         if (data.wallet_pin === pin) {
-          // PIN correct - réinitialiser et déverrouiller
           setLocalAttempts(0);
-          if (onIncrementFailed) onIncrementFailed(0); // Réinitialiser le compteur global
+          if (onIncrementFailed) onIncrementFailed(0);
           onSuccess();
         } else {
-          // PIN incorrect
-          
-          // Vibration d'erreur plus intense selon le nombre de tentatives
-          if (newAttemptCount === 2) {
-            vibrate([100, 50, 100]);
-          } else if (newAttemptCount === 3) {
+          // Mauvais PIN
+          if (newAttemptCount === 2) vibrate([100, 50, 100]);
+          else if (newAttemptCount === 3) {
             vibrate([300, 100, 300, 100, 300]);
-            playWarningSound(); // Jouer le son d'avertissement
-          } else {
-            vibrate(100);
-          }
+            playWarningSound();
+          } else vibrate(100);
 
-          // Incrémenter le compteur global
-          if (onIncrementFailed) {
-            onIncrementFailed();
-          }
+          if (onIncrementFailed) onIncrementFailed();
 
-          // Gestion des messages selon le nombre de tentatives
-          if (newAttemptCount === 1) {
-            setError(t('pinVerification.errors.attemptsLeft', { count: 2 }));
-          } 
+          if (newAttemptCount === 1) setError(t('pinVerification.errors.attemptsLeft', { count: 2 }));
           else if (newAttemptCount === 2) {
             setError(t('pinVerification.errors.lastAttempt'));
             setShowIntimidation(true);
-          } 
-          else if (newAttemptCount >= 3) {
-            // 3ème échec - afficher le message d'intimidation et verrouiller
+          } else if (newAttemptCount >= 3) {
             setError(t('pinVerification.errors.tooManyAttempts'));
             setShowIntimidation(true);
-            
-            // Simuler la capture de visage
+
             toast({
               title: t('pinVerification.toast.securityAlert'),
               description: t('pinVerification.toast.securityAlertDescription'),
@@ -186,15 +157,9 @@ const PinVerificationModal = ({
               duration: 8000
             });
 
-            // Verrouiller le compte
-            if (onLockAccount) {
-              onLockAccount();
-            }
+            if (onLockAccount) onLockAccount();
 
-            // Fermer le modal après 3 secondes
-            setTimeout(() => {
-              onClose(false);
-            }, 3000);
+            setTimeout(() => onClose(false), 3000);
           }
         }
       }
@@ -209,9 +174,7 @@ const PinVerificationModal = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && !isLocked) {
-      handleVerify();
-    }
+    if (e.key === 'Enter' && !loading && !isLocked) handleVerify();
   };
 
   // Message d'intimidation
@@ -240,7 +203,7 @@ const PinVerificationModal = ({
     );
   };
 
-  // Message de verrouillage
+  // Affichage modal verrouillé
   if (isLocked) {
     return (
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
@@ -282,34 +245,21 @@ const PinVerificationModal = ({
     <>
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
         <DialogContent className="sm:max-w-md">
-
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {isSettingUp ? (
-                <ShieldCheck className="w-5 h-5 text-primary" />
-              ) : (
-                <Lock className="w-5 h-5 text-primary" />
-              )}
+              {isSettingUp ? <ShieldCheck className="w-5 h-5 text-primary" /> : <Lock className="w-5 h-5 text-primary" />}
               {isSettingUp ? t('pinVerification.setupTitle') : t('pinVerification.verifyTitle')}
             </DialogTitle>
-
             <DialogDescription>
-              {isSettingUp
-                ? t('pinVerification.setupDescription')
-                : t('pinVerification.verifyDescription')}
+              {isSettingUp ? t('pinVerification.setupDescription') : t('pinVerification.verifyDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-6 space-y-6">
-            
-            {/* Message d'intimidation */}
             <IntimidationMessage />
 
-            {/* Champ PIN */}
             <div className="space-y-2">
-              <Label htmlFor="pin" className="text-sm font-medium">
-                {t('pinVerification.inputLabel')}
-              </Label>
+              <Label htmlFor="pin" className="text-sm font-medium">{t('pinVerification.inputLabel')}</Label>
               <Input
                 id="pin"
                 type="password"
@@ -326,12 +276,9 @@ const PinVerificationModal = ({
               />
             </div>
 
-            {/* Confirmation PIN (uniquement en mode configuration) */}
             {isSettingUp && (
               <div className="space-y-2">
-                <Label htmlFor="confirmPin" className="text-sm font-medium">
-                  {t('pinVerification.confirmLabel')}
-                </Label>
+                <Label htmlFor="confirmPin" className="text-sm font-medium">{t('pinVerification.confirmLabel')}</Label>
                 <Input
                   id="confirmPin"
                   type="password"
@@ -348,35 +295,27 @@ const PinVerificationModal = ({
               </div>
             )}
 
-            {/* Message d'erreur */}
             {error && (
               <div className="text-sm text-destructive flex items-center gap-2 bg-destructive/10 p-3 rounded-lg">
-                <AlertTriangle size={16} className="flex-shrink-0" />
+                <AlertTriangle size={16} />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Tentatives restantes (mode vérification) */}
             {!isSettingUp && localAttempts > 0 && (
               <div className="text-sm text-amber-600 flex items-center gap-2">
                 <AlertTriangle size={16} />
                 <span>
-                  {localAttempts === 2 
+                  {localAttempts === 2
                     ? t('pinVerification.errors.lastAttempt')
-                    : t('pinVerification.errors.attemptsLeft', { count: 3 - localAttempts })
-                  }
+                    : t('pinVerification.errors.attemptsLeft', { count: 3 - localAttempts })}
                 </span>
               </div>
             )}
 
-            {/* Lien "PIN oublié" (mode vérification) */}
             {!isSettingUp && (
               <div className="text-center">
-                <Button 
-                  variant="link" 
-                  onClick={() => setShowResetModal(true)}
-                  className="text-muted-foreground hover:text-primary"
-                >
+                <Button variant="link" onClick={() => setShowResetModal(true)} className="text-muted-foreground hover:text-primary">
                   <Key size={14} className="mr-1" />
                   {t('pinVerification.buttons.forgotPin')}
                 </Button>
@@ -386,33 +325,18 @@ const PinVerificationModal = ({
           </div>
 
           <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => onClose(false)} 
-              disabled={loading}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={() => onClose(false)} disabled={loading} className="flex-1">
               {t('pinVerification.buttons.cancel')}
             </Button>
-            <Button 
-              onClick={handleVerify} 
-              disabled={loading || pin.length !== 4 || (isSettingUp && confirmPin.length !== 4) || isLocked}
-              className="flex-1"
-            >
+            <Button onClick={handleVerify} disabled={loading || pin.length !== 4 || (isSettingUp && confirmPin.length !== 4) || isLocked} className="flex-1">
               {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {isSettingUp ? t('pinVerification.buttons.save') : t('pinVerification.buttons.unlock')}
             </Button>
           </DialogFooter>
-
         </DialogContent>
       </Dialog>
 
-      {/* Modal de demande de réinitialisation */}
-      <PinResetRequestModal
-        isOpen={showResetModal}
-        onClose={() => setShowResetModal(false)}
-        userId={userId}
-      />
+      <PinResetRequestModal isOpen={showResetModal} onClose={() => setShowResetModal(false)} userId={userId} />
     </>
   );
 };

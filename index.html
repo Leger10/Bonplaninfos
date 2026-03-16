@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="generator" content="Bonplaninfos" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Bonplaninfos - Le meilleur des bons plans en Afrique</title>
+    <meta name="theme-color" content="#3B82F6" />
 
     <!-- Meta Description -->
     <meta
@@ -21,30 +25,11 @@
     <!-- Author -->
     <meta name="author" content="Bonplaninfos Team" />
 
-    <!-- Favicon -->
-    <link
-      rel="icon"
-      type="image/png"
-      href="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/26828fd1fce79ed8ec4ff0483f7de495.png"
-    />
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/26828fd1fce79ed8ec4ff0483f7de495.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/26828fd1fce79ed8ec4ff048_32x32.png"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/26828fd1fce79ed8ec4ff048_16x16.png"
-    />
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- Favicon & icônes (versions locales) -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/pwa-192x192.png" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Google Fonts -->
@@ -60,18 +45,20 @@
       property="og:title"
       content="Bonplaninfos - Le meilleur des bons plans en Afrique"
     />
-    <meta
-      property="og:description"
-      content="Découvrez, partagez et gagnez des pièces avec Bonplaninfos 🎉 Événements exclusifs et promotions près de chez vous."
-    />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://bonplaninfos.net/" />
-    <meta
-      property="og:image"
-      content="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/9538ed5cc267e81d04d54f0aa8a416eb.jpg"
-    />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+  <meta
+  property="og:description"
+  content="Découvrez, créez ;partagez et gagnez en visiilité avec Bonplaninfos 🎉 Événements exclusifs et promotions près de chez vous."
+/>
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://bonplaninfos.net/" />
+<!-- Image pour les réseaux sociaux -->
+<meta
+  property="og:image"
+  content="/images.jpeg"
+/>
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+  
     <meta property="og:site_name" content="Bonplaninfos" />
     <meta property="og:locale" content="fr_FR" />
 
@@ -81,19 +68,38 @@
       name="twitter:title"
       content="Bonplaninfos - Le meilleur des bons plans en Afrique"
     />
-    <meta
-      name="twitter:description"
-      content="Découvrez, partagez et gagnez des pièces avec Bonplaninfos 🎉"
-    />
-    <meta
-      name="twitter:image"
-      content="https://horizons-cdn.hostinger.com/b046caa6-31e1-44c9-b7bb-4c0c24e49566/9538ed5cc267e81d04d54f0aa8a416eb.jpg"
-    />
-    <meta name="twitter:site" content="@bonplaninfos" />
-    <meta name="twitter:creator" content="@bonplaninfos" />
+   <meta
+  name="twitter:description"
+  content="Découvrez, Créez et encaissez avec Bonplaninfos 🎉"
+/>
+<meta
+  name="twitter:image"
+  content="/images.jpeg"
+/>
+<meta name="twitter:site" content="@bonplaninfos" />
+<meta name="twitter:creator" content="@bonplaninfos" />
 
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://bonplaninfos.net/" />
+<!-- Canonical URL -->
+<link rel="canonical" href="https://bonplaninfos.net/" />
+
+    <script>
+      // Service Worker Registration for PWA and Push Notifications
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              console.log(
+                "ServiceWorker registration successful with scope: ",
+                registration.scope,
+              );
+            })
+            .catch((err) => {
+              console.error("ServiceWorker registration failed: ", err);
+            });
+        });
+      }
+    </script>
 
     <!-- Google Tag Manager -->
     <script>
@@ -123,7 +129,6 @@
       gtag("js", new Date());
       gtag("config", "G-WKPHLVK5CE");
     </script>
-
     <!-- Structured Data -->
     <script type="application/ld+json">
       {
@@ -151,10 +156,9 @@
       }
     </script>
 
- 
-<!-- Au lieu de précharger main.jsx et index.css, utilisez : -->
-<link rel="modulepreload" href="/src/main.jsx" />
-<link rel="stylesheet" href="/src/index.css" />
+    <!-- Au lieu de précharger main.jsx et index.css, utilisez : -->
+    <link rel="modulepreload" href="/src/main.jsx" />
+    <link rel="stylesheet" href="/src/index.css" />
     <!-- Meta Pixel Code -->
     <script>
       !(function (f, b, e, v, n, t, s) {

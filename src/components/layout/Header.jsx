@@ -23,9 +23,9 @@ import logo from '@/assets/logo.png';
 
 const AppLogo = () => (
   <NavLink to="/" className="flex items-center gap-2">
-    <img src={logo} alt="BonPlanInfos Logo" className="h-8 w-auto" />
-    <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
-  </NavLink>
+  <img src="/logo.png" alt="BonPlanInfos Logo" className="h-8 w-auto" />
+  <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
+</NavLink>
 );
 
 const UserMenu = ({ user, userProfile, handleLogout }) => {
