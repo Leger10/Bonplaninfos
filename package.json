@@ -8,7 +8,8 @@
     "build": "node tools/generate-llms.js || true && node ./node_modules/vite/dist/node/cli.js build",
     "preview": "vite preview --host --port 3000",
     "sitemap": "node scripts/generate-sitemap.js",
-    "netlify-build": "npm run build"
+    "netlify-build": "npm run build",
+    "prebuild": "node scripts/download-pwa-icons.js"
   },
   "dependencies": {
     "@babel/traverse": "^7.26.4",
@@ -70,6 +71,7 @@
     "react-i18next": "^14.1.0",
     "react-router-dom": "^6.16.0",
     "recharts": "^2.12.7",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "tailwind-merge": "^1.14.0",
     "tailwindcss-animate": "^1.0.7",

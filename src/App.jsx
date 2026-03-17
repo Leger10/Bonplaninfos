@@ -57,6 +57,8 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import WelcomePopup from "@/components/WelcomePopup";
 import FloatingActionButton from "@/components/layout/FloatingActionButton";
 import InstallPWAButton from "@/components/InstallPWAButton";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
+import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
 // Composant pour synchroniser l'état d'authentification avec le contexte de données
 const AuthSync = () => {
   const { setForceRefresh } = useAuth();
@@ -240,7 +242,9 @@ function App() {
                 <MandatoryVideoPopup />
                 <PushNotificationManager />
                 <WelcomePopup />
+                     <PWAInstallPremiumPopup />
                 <FloatingActionButton />
+                 <PWAInstallBanner />
               </MainLayout>
             </Suspense>
           </DataProvider>

@@ -26,10 +26,11 @@
     <meta name="author" content="Bonplaninfos Team" />
 
     <!-- Favicon & icônes (versions locales) -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192x192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512x512.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/pwa-192x192.png" />
+
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192x192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512x512.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/pwa-192x192.png" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Google Fonts -->
@@ -82,24 +83,25 @@
 <!-- Canonical URL -->
 <link rel="canonical" href="https://bonplaninfos.net/" />
 
-    <script>
-      // Service Worker Registration for PWA and Push Notifications
+  <script>
+    // Service Worker Registration for PWA and Push Notifications
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
             .register("/sw.js")
             .then((registration) => {
               console.log(
-                "ServiceWorker registration successful with scope: ",
+                "[PWA] ServiceWorker registration successful with scope: ",
                 registration.scope,
               );
             })
             .catch((err) => {
-              console.error("ServiceWorker registration failed: ", err);
+              console.error("[PWA] ServiceWorker registration failed: ", err);
             });
         });
       }
-    </script>
+  </script>
+
 
     <!-- Google Tag Manager -->
     <script>

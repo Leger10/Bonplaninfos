@@ -5,27 +5,57 @@
   "start_url": "/",
   "display": "standalone",
   "scope": "/",
-  "background_color": "#ffffff", 
-  "theme_color": "#2563eb",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "orientation": "portrait",
-  "categories": ["events", "entertainment", "business"],
+  "categories": [
+    "events",
+    "entertainment",
+    "business"
+  ],
   "icons": [
     {
       "src": "/pwa-192x192.png",
       "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any"
+      "sizes": "192x192"
     },
     {
       "src": "/pwa-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pwa-preview1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
     },
     {
-      "src": "/favicon.png",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/pwa-preview2.png.jpeg",
+      "sizes": "540x720",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/pwa-preview3.png.jpeg",
+      "sizes": "540x720",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/pwa-preview4.png.jpeg",
+      "sizes": "540x720",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/pwa-preview6.png.jpeg",
+      "sizes": "540x720",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
     }
   ]
 }

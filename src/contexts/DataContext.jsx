@@ -15,10 +15,14 @@ const fetchWithRetry = async (fn, retries = 3, delay = 1000, fallbackValue = nul
     return await fn();
   } catch (error) {
     if (retries === 0) {
-      console.error("All fetch retries failed:", error);
+      if (import.meta.env.DEV) {
+        console.error("All fetch retries failed:", error);
+      }
       return { data: fallbackValue, error };
     }
-    console.warn(`Fetch failed, retrying in ${delay}ms... (${retries} attempts left)`);
+    if (import.meta.env.DEV) {
+      console.warn(`Fetch failed, retrying in ${delay}ms... (${retries} attempts left)`);
+    }
     await new Promise(resolve => setTimeout(resolve, delay));
     return fetchWithRetry(fn, retries - 1, delay * 1.5, fallbackValue);
   }
@@ -26,13 +30,13 @@ const fetchWithRetry = async (fn, retries = 3, delay = 1000, fallbackValue = nul
 
 const safeTime = (label) => {
   if (import.meta.env.DEV) {
-    try { console.time(label); } catch (e) {}
+    try { console.time(label); } catch (e) { }
   }
 };
 
 const safeTimeEnd = (label) => {
   if (import.meta.env.DEV) {
-    try { console.timeEnd(label); } catch (e) {}
+    try { console.timeEnd(label); } catch (e) { }
   }
 };
 
@@ -70,7 +74,7 @@ export const DataProvider = ({ children }) => {
   const [visualEffects, setVisualEffects] = useState([]);
   const [soundEffect, setSoundEffect] = useState(null);
 
-  // --- Gestion des effets visuels/sonores ---
+  // --- Gestion des effets visuels/sonores (indépendants) ---
   const addVisualEffect = useCallback((type) => {
     const id = Math.random().toString(36).substr(2, 9);
     setVisualEffects(prev => [...prev, { id, type }]);
@@ -88,7 +92,7 @@ export const DataProvider = ({ children }) => {
     setSoundEffect(null);
   }, []);
 
-  // --- Fonctions de chargement ---
+  // --- Fonctions de chargement (fetch) ---
   const fetchUserProfile = useCallback(async () => {
     if (!user) {
       setUserProfile(null);
@@ -118,13 +122,17 @@ export const DataProvider = ({ children }) => {
       );
 
       if (error) {
-        console.error("Error fetching profile:", error);
+        if (import.meta.env.DEV) {
+          console.error("Error fetching profile:", error);
+        }
       } else if (data) {
         setUserProfile(data);
         profileCache.current = { data, userId: user.id, timestamp: Date.now() };
       }
     } catch (err) {
-      console.error("Exception fetching profile:", err);
+      if (import.meta.env.DEV) {
+        console.error("Exception fetching profile:", err);
+      }
     } finally {
       safeTimeEnd("fetchUserProfile");
       setLoadingProfile(false);
@@ -144,7 +152,9 @@ export const DataProvider = ({ children }) => {
       );
       if (!error && data) setAppSettings(prev => ({ ...prev, ...data }));
     } catch (err) {
-      console.warn("Exception fetching app_settings:", err);
+      if (import.meta.env.DEV) {
+        console.warn("Exception fetching app_settings:", err);
+      }
     } finally {
       safeTimeEnd("fetchAppSettings");
       isFetchingSettings.current = false;
@@ -163,7 +173,9 @@ export const DataProvider = ({ children }) => {
       );
       if (!error && data) setWelcomePopups(data);
     } catch (err) {
-      console.warn("Exception fetching welcome_popups:", err);
+      if (import.meta.env.DEV) {
+        console.warn("Exception fetching welcome_popups:", err);
+      }
     } finally {
       safeTimeEnd("fetchWelcomePopups");
       isFetchingPopups.current = false;
@@ -185,17 +197,22 @@ export const DataProvider = ({ children }) => {
         .eq("is_read", false);
 
       if (!error) {
-        console.info(`[DataContext] 🔄 Mise à jour du compteur de notifications: ${count}`);
+        if (import.meta.env.DEV) {
+          console.info(`[DataContext] 🔄 Mise à jour du compteur de notifications: ${count}`);
+        }
         setNotificationCount(count || 0);
       }
     } catch (err) {
-      console.error("Error fetching notification count:", err);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching notification count:", err);
+      }
     } finally {
       safeTimeEnd("fetchNotificationCount");
       isFetchingNotifications.current = false;
     }
   }, [user]);
 
+  // --- Fonctions qui dépendent des fetch ---
   const updateUserProfile = useCallback(async (userId, updates) => {
     setLoadingProfile(true);
     safeTime("updateUserProfile");
@@ -220,13 +237,71 @@ export const DataProvider = ({ children }) => {
 
       return { success: true, data };
     } catch (error) {
-      console.error("Profile update error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Profile update error:", error);
+      }
       return { success: false, error };
     } finally {
       safeTimeEnd("updateUserProfile");
       setLoadingProfile(false);
     }
   }, [fetchUserProfile]);
+
+  // --- Fonctions utilitaires (définies avant leur utilisation dans d'autres callbacks) ---
+  const forceRefreshUserProfile = useCallback(() => {
+    profileCache.current = { ...profileCache.current, timestamp: 0 };
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const triggerNotificationAnimation = useCallback(() => {
+    setNotificationBellAnimation(true);
+    setTimeout(() => setNotificationBellAnimation(false), 2000);
+  }, []);
+
+  const getEvents = useCallback(async (filters = {}) => {
+    safeTime("getEvents");
+    try {
+      let query = supabase.from("events").select("*").eq("status", "active").order("created_at", { ascending: false });
+      if (filters.organizer_id) query = query.eq("organizer_id", filters.organizer_id);
+      if (filters.country) query = query.eq("country", filters.country);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error fetching events:", error);
+      }
+      return [];
+    } finally {
+      safeTimeEnd("getEvents");
+    }
+  }, []);
+
+  const getPromotions = useCallback(async () => {
+    safeTime("getPromotions");
+    try {
+      const { data, error } = await supabase
+        .from("event_promotions")
+        .select("*, organizer:organizer_id(full_name, email)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error fetching promotions:", error);
+      }
+      return [];
+    } finally {
+      safeTimeEnd("getPromotions");
+    }
+  }, []);
+
+  const refreshData = useCallback(() => {
+    fetchAppSettings();
+    fetchWelcomePopups();
+    forceRefreshUserProfile();
+    fetchNotificationCount();
+  }, [fetchAppSettings, fetchWelcomePopups, forceRefreshUserProfile, fetchNotificationCount]);
 
   // --- Chargement initial ---
   useEffect(() => {
@@ -247,10 +322,12 @@ export const DataProvider = ({ children }) => {
         await Promise.all([
           fetchAppSettings(),
           fetchWelcomePopups(),
-          checkSoundFile(), // Vérifie la présence du fichier son (log seulement)
+          checkSoundFile(),
         ]);
       } catch (e) {
-        console.error("Global data load error:", e);
+        if (import.meta.env.DEV) {
+          console.error("Global data load error:", e);
+        }
       } finally {
         if (isMounted) setLoading(false);
         safeTimeEnd("loadGlobalData");
@@ -278,7 +355,9 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    console.info(`[Realtime] 🔌 Initialisation de la souscription pour user_id: ${user.id}`);
+    if (import.meta.env.DEV) {
+      console.info(`[Realtime] 🔌 Initialisation de la souscription pour user_id: [FILTERED]`);
+    }
 
     const profileChannel = supabase
       .channel("public:profiles")
@@ -298,22 +377,25 @@ export const DataProvider = ({ children }) => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
         (payload) => {
-          console.info("[Realtime] ⚡ Nouvelle notification reçue:", payload.new);
+          if (import.meta.env.DEV) {
+            // Ne pas logger tout le payload, seulement un résumé sans données sensibles
+            console.info("[Realtime] ⚡ Nouvelle notification reçue (ID masqué)");
+          }
 
           const newNotification = payload.new;
           const type = newNotification?.type || 'default';
 
-          // 1. Jouer le son approprié
+          // Jouer le son approprié
           playNotificationSound(type);
 
-          // 2. Mettre à jour le compteur
+          // Mettre à jour le compteur
           fetchNotificationCount();
 
-          // 3. Animer la cloche
+          // Animer la cloche
           setNotificationBellAnimation(true);
-          setTimeout(() => setNotificationBellAnimation(false), 2000); // 2 sec bounce
+          setTimeout(() => setNotificationBellAnimation(false), 2000);
 
-          // 4. Afficher un toast avec emoji
+          // Afficher un toast avec emoji
           const emojiMap = {
             event: '🎉',
             credit: '💰',
@@ -330,67 +412,19 @@ export const DataProvider = ({ children }) => {
         }
       )
       .subscribe((status) => {
-        console.info(`[Realtime] Statut de souscription notifications: ${status}`);
+        if (import.meta.env.DEV) {
+          console.info(`[Realtime] Statut de souscription notifications: ${status}`);
+        }
       });
 
     return () => {
-      console.info(`[Realtime] 🔌 Nettoyage des souscriptions pour user_id: ${user.id}`);
+      if (import.meta.env.DEV) {
+        console.info(`[Realtime] 🔌 Nettoyage des souscriptions pour user_id: [FILTERED]`);
+      }
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(notificationChannel);
     };
   }, [user, fetchUserProfile, fetchNotificationCount, playNotificationSound, toast]);
-
-  // --- Fonctions utilitaires ---
-  const forceRefreshUserProfile = useCallback(() => {
-    profileCache.current = { ...profileCache.current, timestamp: 0 };
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
-
-  const triggerNotificationAnimation = useCallback(() => {
-    setNotificationBellAnimation(true);
-    setTimeout(() => setNotificationBellAnimation(false), 2000);
-  }, []);
-
-  const getEvents = useCallback(async (filters = {}) => {
-    safeTime("getEvents");
-    try {
-      let query = supabase.from("events").select("*").eq("status", "active").order("created_at", { ascending: false });
-      if (filters.organizer_id) query = query.eq("organizer_id", filters.organizer_id);
-      if (filters.country) query = query.eq("country", filters.country);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error("Error fetching events:", error);
-      return [];
-    } finally {
-      safeTimeEnd("getEvents");
-    }
-  }, []);
-
-  const getPromotions = useCallback(async () => {
-    safeTime("getPromotions");
-    try {
-      const { data, error } = await supabase
-        .from("event_promotions")
-        .select("*, organizer:organizer_id(full_name, email)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error("Error fetching promotions:", error);
-      return [];
-    } finally {
-      safeTimeEnd("getPromotions");
-    }
-  }, []);
-
-  const refreshData = useCallback(() => {
-    fetchAppSettings();
-    fetchWelcomePopups();
-    forceRefreshUserProfile();
-    fetchNotificationCount();
-  }, [fetchAppSettings, fetchWelcomePopups, forceRefreshUserProfile, fetchNotificationCount]);
 
   // Valeur du contexte
   const value = {
