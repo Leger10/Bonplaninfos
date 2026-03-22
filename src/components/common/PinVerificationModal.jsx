@@ -30,6 +30,7 @@ const PinVerificationModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const audioRef = useRef(null);
+  const scrollContainerRef = useRef(null); // Pour référence au conteneur scrollable
 
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -41,7 +42,6 @@ const PinVerificationModal = ({
 
   const isSettingUp = !userProfile?.wallet_pin;
 
-  // Initialiser l'audio
   useEffect(() => {
     audioRef.current = new Audio('/sounds/warning.mp3');
     audioRef.current.preload = 'auto';
@@ -53,7 +53,6 @@ const PinVerificationModal = ({
     };
   }, []);
 
-  // Reset modal à chaque ouverture
   useEffect(() => {
     if (isOpen) {
       setPin('');
@@ -61,10 +60,15 @@ const PinVerificationModal = ({
       setError(null);
       setShowIntimidation(false);
       if (!isLocked) setLocalAttempts(0);
+      // Réinitialiser le scroll en haut à chaque ouverture
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = 0;
+        }
+      }, 100);
     }
   }, [isOpen, isLocked]);
 
-  // Jouer le son d'avertissement
   const playWarningSound = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
@@ -72,13 +76,12 @@ const PinVerificationModal = ({
     }
   };
 
-  // Faire vibrer le téléphone
   const vibrate = (pattern = [200, 100, 200]) => {
     if (navigator.vibrate) navigator.vibrate(pattern);
   };
 
   const handleVerify = async (e) => {
-    if (e) e.preventDefault(); // Empêche la soumission du formulaire
+    if (e) e.preventDefault();
 
     if (isLocked) {
       setError(t('pinVerification.errors.locked'));
@@ -95,7 +98,6 @@ const PinVerificationModal = ({
       setLoading(true);
 
       if (isSettingUp) {
-        // === CONFIGURATION PIN ===
         if (pin !== confirmPin) {
           setError(t('pinVerification.errors.pinMismatch'));
           vibrate(100);
@@ -117,7 +119,6 @@ const PinVerificationModal = ({
 
         onSuccess();
       } else {
-        // === VÉRIFICATION PIN ===
         const newAttemptCount = localAttempts + 1;
         setLocalAttempts(newAttemptCount);
 
@@ -134,7 +135,6 @@ const PinVerificationModal = ({
           if (onIncrementFailed) onIncrementFailed(0);
           onSuccess();
         } else {
-          // Mauvais PIN
           if (newAttemptCount === 2) vibrate([100, 50, 100]);
           else if (newAttemptCount === 3) {
             vibrate([300, 100, 300, 100, 300]);
@@ -159,10 +159,7 @@ const PinVerificationModal = ({
               duration: 8000
             });
 
-            // Verrouiller le compte
             if (onLockAccount) onLockAccount();
-
-            // Fermer le modal après 3 secondes
             setTimeout(() => onClose(false), 3000);
           }
         }
@@ -180,7 +177,6 @@ const PinVerificationModal = ({
     if (e.key === 'Enter' && !loading && !isLocked) handleVerify(e);
   };
 
-  // Message d'intimidation
   const IntimidationMessage = () => {
     if (!showIntimidation || isSettingUp) return null;
 
@@ -206,18 +202,17 @@ const PinVerificationModal = ({
     );
   };
 
-  // Affichage modal verrouillé
   if (isLocked) {
     return (
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-4 border-b">
+        <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b shrink-0">
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <Lock className="w-5 h-5" />
               {t('pinVerification.locked.title')}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto py-6 text-center space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 text-center space-y-4">
             <div className="flex justify-center">
               <div className="bg-red-100 rounded-full p-4">
                 <AlertTriangle className="w-12 h-12 text-red-600" />
@@ -236,7 +231,7 @@ const PinVerificationModal = ({
               {t('pinVerification.buttons.forgotPin')}
             </Button>
           </div>
-          <DialogFooter className="p-3 border-t">
+          <DialogFooter className="p-3 border-t bg-background flex gap-2 shrink-0">
             <Button onClick={() => onClose(false)}>{t('pinVerification.buttons.close')}</Button>
           </DialogFooter>
         </DialogContent>
@@ -247,8 +242,8 @@ const PinVerificationModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
-          <DialogHeader className="p-4 border-b">
+        <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {isSettingUp ? <ShieldCheck className="w-5 h-5 text-primary" /> : <Lock className="w-5 h-5 text-primary" />}
               {isSettingUp ? t('pinVerification.setupTitle') : t('pinVerification.verifyTitle')}
@@ -258,7 +253,11 @@ const PinVerificationModal = ({
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleVerify} className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-4 space-y-6"
+            style={{ paddingBottom: '6rem' }} // Espace important pour voir les boutons après scroll
+          >
             <IntimidationMessage />
 
             <div className="space-y-2">
@@ -326,9 +325,9 @@ const PinVerificationModal = ({
                 </Button>
               </div>
             )}
-          </form>
+          </div>
 
-          <DialogFooter className="p-3 border-t bg-background flex gap-2 sticky bottom-0">
+          <DialogFooter className="p-3 border-t bg-background flex gap-2 shrink-0">
             <Button
               variant="outline"
               onClick={() => onClose(false)}
