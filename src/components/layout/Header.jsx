@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
-import { Menu, User, Wallet, LogOut, PlusCircle, Home, Compass, Calendar, HeartHandshake as Handshake } from 'lucide-react';
+import { Menu, User, Wallet, LogOut, PlusCircle, Home, Compass, Calendar, HeartHandshake as Handshake, Tag } from 'lucide-react';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,9 @@ import logo from '@/assets/logo.png';
 
 const AppLogo = () => (
   <NavLink to="/" className="flex items-center gap-2">
-  <img src="/logo.png" alt="BonPlanInfos Logo" className="h-8 w-auto" />
-  <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
-</NavLink>
+    <img src="/logo.png" alt="BonPlanInfos Logo" className="h-8 w-auto" />
+    <span className="hidden sm:inline-block font-bold text-lg">BonPlanInfos</span>
+  </NavLink>
 );
 
 const UserMenu = ({ user, userProfile, handleLogout }) => {
@@ -57,6 +57,10 @@ const UserMenu = ({ user, userProfile, handleLogout }) => {
         <DropdownMenuItem onClick={() => navigate('/wallet')}>
           <Wallet className="mr-2 h-4 w-4" />
           <span>{t('nav.wallet')}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/coupons')}>
+          <Tag className="mr-2 h-4 w-4" />
+          <span>Mes coupons</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
@@ -116,6 +120,17 @@ const MobileMenu = ({ navLinks, user, userProfile, handleLogout, isMenuOpen, set
               >
                 <PlusCircle className="mr-3 h-5 w-5" />
                 {t('nav.create_event')}
+              </Button>
+            )}
+            {/* Ajout du lien Mes coupons */}
+            {user && (
+              <Button
+                variant="ghost"
+                className="justify-start text-base h-11"
+                onClick={() => handleNavigation('/coupons')}
+              >
+                <Tag className="mr-3 h-5 w-5" />
+                Mes coupons
               </Button>
             )}
           </nav>
@@ -185,6 +200,20 @@ const Header = () => {
                 {t(item.name)}
               </NavLink>
             ))}
+            {/* Ajout du lien Mes coupons dans la barre de navigation desktop */}
+            {user && (
+              <NavLink
+                to="/coupons"
+                className={({ isActive }) =>
+                  cn(
+                    'transition-colors hover:text-foreground/80',
+                    isActive ? 'text-foreground font-semibold' : 'text-foreground/60'
+                  )
+                }
+              >
+                Mes coupons
+              </NavLink>
+            )}
           </nav>
         </div>
 

@@ -56,6 +56,19 @@
       "sizes": "540x720",
       "type": "image/jpeg",
       "form_factor": "narrow"
+    },
+      {
+        "src": "/pwa-preview.png.jpeg",
+        "sizes": "540x720",
+        "type": "image/jpeg",
+        "form_factor": "narrow"
+      },
+      {
+      "src": "/pwa-preview7.png",
+      "sizes": "540x720",
+      "type": "image/jpeg",
+      "form_factor": "narrow"
     }
+    
   ]
 }

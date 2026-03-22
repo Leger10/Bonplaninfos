@@ -149,7 +149,7 @@ const WalletPage = () => {
           title={t('wallet_page.total_balance')}
           value={formatFull(totalCoins)}
           color="from-blue-500 to-indigo-600"
-          description={`(${formatCoin(free_coin_balance)} ${t('wallet_page.free_coins')} + ${formatCoin(coin_balance)} ${t('wallet_page.paid_coins')})`}
+          description={`(${formatCoin(coin_balance)} ${t('wallet_page.paid_coins')})`}
         />
         <StatCard
           icon={<DollarSign className="h-6 w-6 text-white/80" />}

@@ -41,7 +41,7 @@ const PinVerificationModal = ({
 
   const isSettingUp = !userProfile?.wallet_pin;
 
-  // Initialiser l'audio une seule fois
+  // Initialiser l'audio
   useEffect(() => {
     audioRef.current = new Audio('/sounds/warning.mp3');
     audioRef.current.preload = 'auto';
@@ -114,7 +114,6 @@ const PinVerificationModal = ({
         });
 
         onSuccess();
-
       } else {
         // === VÉRIFICATION PIN ===
         const newAttemptCount = localAttempts + 1;
@@ -142,8 +141,9 @@ const PinVerificationModal = ({
 
           if (onIncrementFailed) onIncrementFailed();
 
-          if (newAttemptCount === 1) setError(t('pinVerification.errors.attemptsLeft', { count: 2 }));
-          else if (newAttemptCount === 2) {
+          if (newAttemptCount === 1) {
+            setError(t('pinVerification.errors.attemptsLeft', { count: 2 }));
+          } else if (newAttemptCount === 2) {
             setError(t('pinVerification.errors.lastAttempt'));
             setShowIntimidation(true);
           } else if (newAttemptCount >= 3) {
@@ -157,13 +157,14 @@ const PinVerificationModal = ({
               duration: 8000
             });
 
+            // Verrouiller le compte
             if (onLockAccount) onLockAccount();
 
+            // Fermer le modal après 3 secondes
             setTimeout(() => onClose(false), 3000);
           }
         }
       }
-
     } catch (err) {
       console.error('PIN Error:', err);
       setError(t('pinVerification.errors.verificationError'));
@@ -207,14 +208,14 @@ const PinVerificationModal = ({
   if (isLocked) {
     return (
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b">
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <Lock className="w-5 h-5" />
               {t('pinVerification.locked.title')}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-8 text-center space-y-4">
+          <div className="flex-1 overflow-y-auto py-6 text-center space-y-4">
             <div className="flex justify-center">
               <div className="bg-red-100 rounded-full p-4">
                 <AlertTriangle className="w-12 h-12 text-red-600" />
@@ -233,7 +234,7 @@ const PinVerificationModal = ({
               {t('pinVerification.buttons.forgotPin')}
             </Button>
           </div>
-          <DialogFooter>
+          <DialogFooter className="p-3 border-t">
             <Button onClick={() => onClose(false)}>{t('pinVerification.buttons.close')}</Button>
           </DialogFooter>
         </DialogContent>
@@ -244,8 +245,8 @@ const PinVerificationModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(val) => !loading && onClose(val)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b">
             <DialogTitle className="flex items-center gap-2">
               {isSettingUp ? <ShieldCheck className="w-5 h-5 text-primary" /> : <Lock className="w-5 h-5 text-primary" />}
               {isSettingUp ? t('pinVerification.setupTitle') : t('pinVerification.verifyTitle')}
@@ -255,7 +256,7 @@ const PinVerificationModal = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-6 space-y-6">
+          <div className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
             <IntimidationMessage />
 
             <div className="space-y-2">
@@ -321,14 +322,27 @@ const PinVerificationModal = ({
                 </Button>
               </div>
             )}
-
           </div>
 
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => onClose(false)} disabled={loading} className="flex-1">
+          <DialogFooter className="p-3 border-t bg-background flex gap-2 sticky bottom-0">
+            <Button
+              variant="outline"
+              onClick={() => onClose(false)}
+              disabled={loading}
+              className="flex-1"
+            >
               {t('pinVerification.buttons.cancel')}
             </Button>
-            <Button onClick={handleVerify} disabled={loading || pin.length !== 4 || (isSettingUp && confirmPin.length !== 4) || isLocked} className="flex-1">
+            <Button
+              onClick={handleVerify}
+              disabled={
+                loading ||
+                pin.length !== 4 ||
+                (isSettingUp && confirmPin.length !== 4) ||
+                isLocked
+              }
+              className="flex-1"
+            >
               {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {isSettingUp ? t('pinVerification.buttons.save') : t('pinVerification.buttons.unlock')}
             </Button>

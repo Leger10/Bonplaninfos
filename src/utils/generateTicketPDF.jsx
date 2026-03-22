@@ -190,6 +190,7 @@ const formatPurchaseDate = (dateString) => {
     return "";
   }
 };
+
 export const generateTicketPDF = async (event, tickets, user) => {
   try {
     // Validation améliorée
@@ -248,7 +249,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
       
       const holderName = safeText(user?.full_name || user?.email?.split("@")[0] || "Invité");
       const eventTitle = safeText(event?.title || "Événement BonPlanInfos");
-      const eventDate = formatDate(event?.event_start_at);
+      const eventDate = formatDate(event?.event_start_at); // conservée mais non affichée
       const location = safeText(event?.location || event?.city || "Lieu à confirmer");
       const ticketType = safeText(ticket.type_name || "Standard");
       const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.purchased_at);
@@ -338,18 +339,10 @@ export const generateTicketPDF = async (event, tickets, user) => {
       doc.text(titleLines, pageWidth / 2, cursorY, { align: "center" });
       cursorY += titleHeight + 4;
 
-      // --- 4. DÉTAILS ---
+      // --- 4. DÉTAILS (lieu uniquement, date supprimée) ---
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(60, 60, 60);
-
-      // Date
-      doc.setFont("helvetica", "bold");
-      doc.text("DATE:", margin, cursorY);
-      doc.setFont("helvetica", "normal");
-      const dateLines = doc.splitTextToSize(eventDate, contentWidth - 15);
-      doc.text(dateLines, margin + 12, cursorY);
-      cursorY += dateLines.length * 4 + 3;
 
       // Lieu
       doc.setFont("helvetica", "bold");

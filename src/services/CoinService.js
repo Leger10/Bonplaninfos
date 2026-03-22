@@ -101,9 +101,37 @@ export class CoinService {
     return true;
   }
 
-  static generateMoneyFusionLink(data) {
-    const returnUrl = `${window.location.origin}/paiement/success?action=${data.action}&userId=${data.userId}&amount=${data.amountFcfa}&packId=${data.packId || ''}`;
-    const cancelUrl = `${window.location.origin}/paiement/cancel`;
+  static async addCredits(userId, amountFcfa, transactionId, couponCode = null) {
+    try {
+      console.log(`[CoinService.addCredits] Calling RPC process_moneyfusion_success for user ${userId}, amount ${amountFcfa}, txn ${transactionId}, coupon ${couponCode}`);
+      const { data, error } = await supabase.rpc('process_moneyfusion_success', {
+        p_user_id: userId,
+        p_transaction_id: transactionId,
+        p_amount: amountFcfa,
+        p_status: 'success',
+        p_coupon_code: couponCode
+      });
+      
+      if (error) {
+        console.error("[CoinService.addCredits] RPC Error:", error);
+        throw error;
+      }
+      
+      console.log(`[CoinService.addCredits] RPC Success:`, data);
+      return data;
+    } catch (error) {
+      console.error("[CoinService.addCredits] Exception:", error);
+      throw error;
+    }
+  }
+
+  static generateMoneyFusionLink(data, transactionId) {
+    if (data.amountFcfa) {
+      localStorage.setItem('packAmount', data.amountFcfa.toString());
+    }
+
+    const returnUrl = `${window.location.origin}/payment-success?transaction_id=${transactionId}&amount=${data.amountFcfa}&status=success&userId=${data.userId}&packId=${data.packId || ''}`;
+    const cancelUrl = `${window.location.origin}/payment-cancel`;
 
     const params = new URLSearchParams({
       amount: data.amountFcfa.toString(),
@@ -128,10 +156,11 @@ export class CoinService {
     } else if (onInsufficientBalance) {
       onInsufficientBalance();
     } else {
+      const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const url = this.generateMoneyFusionLink({
         userId,
         ...paymentData
-      });
+      }, txnId);
       window.location.href = url;
     }
   }

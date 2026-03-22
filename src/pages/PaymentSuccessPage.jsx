@@ -1,18 +1,3 @@
-/*
-  SQL Reference for 'payments' table:
-  CREATE TABLE IF NOT EXISTS public.payments (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID REFERENCES public.profiles(id),
-      coins_amount INTEGER NOT NULL,
-      amount_fcfa NUMERIC NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending',
-      payment_method TEXT,
-      transaction_id TEXT UNIQUE NOT NULL,
-      processed_at TIMESTAMP WITH TIME ZONE,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-  );
-*/
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -37,69 +22,96 @@ const PaymentSuccessPage = () => {
   const [resultData, setResultData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Params from MoneyFusion Callback
-  const transactionId = searchParams.get('transaction_id') || searchParams.get('id');
+  // Paramètres de l'URL (MoneyFusion renvoie souvent un token)
+  const moneyFusionToken = searchParams.get('token') || searchParams.get('transaction_id') || searchParams.get('id');
   const queryAmount = searchParams.get('amount');
   const status = searchParams.get('status') || 'success';
 
-  useEffect(() => {
-    if (!user) return;
+  // Récupérer notre propre transaction_id stocké avant la redirection
+  const pendingTxnId = localStorage.getItem('pendingPaymentTxnId');
 
+  // Log pour le débogage
+  useEffect(() => {
+    console.log('🔍 Paramètres URL reçus :', Object.fromEntries(searchParams.entries()));
+    console.log('🔍 Transaction en attente (localStorage) :', pendingTxnId);
+  }, [searchParams, pendingTxnId]);
+
+  useEffect(() => {
     const processPayment = async () => {
-      console.info(`[PaymentSuccess] Starting verification for txn: ${transactionId}`);
+      // Utiliser notre transaction_id stocké en priorité, sinon essayer celui de l'URL
+      const transactionId = pendingTxnId || moneyFusionToken;
+
+      console.info(`[PaymentSuccess] transactionId utilisé : ${transactionId}`);
+
       if (!transactionId) {
         setError("Identifiant de transaction manquant.");
         setVerifying(false);
         return;
       }
 
+      if (!user) {
+        console.warn("[PaymentSuccess] Utilisateur non connecté, sauvegarde de la transaction.");
+        localStorage.setItem('pendingTransaction', JSON.stringify({
+          transactionId,
+          amount: queryAmount,
+          status
+        }));
+        navigate('/auth?redirect=/payment-success');
+        return;
+      }
+
       try {
-        // 1. Check local 'payments' table
+        let couponCode = localStorage.getItem('couponCodeForPayment');
+        if (couponCode) {
+          console.info(`[PaymentSuccess] Code coupon trouvé : ${couponCode}`);
+          localStorage.removeItem('couponCodeForPayment');
+        }
+
+        // Chercher le paiement dans la base de données
         const { data: paymentRecord, error: paymentError } = await supabase
-            .from('payments')
-            .select('*')
-            .eq('transaction_id', transactionId)
-            .single();
+          .from('payments')
+          .select('*')
+          .eq('transaction_id', transactionId)
+          .single();
 
         if (paymentError || !paymentRecord) {
-            console.warn("[PaymentSuccess] Payment record not found in local DB.", paymentError);
-            // We can continue with RPC fallback using query params just in case, but warn first.
+          console.warn("[PaymentSuccess] Aucun paiement trouvé avec ce transaction_id.", paymentError);
+          // On peut continuer, le montant sera pris de l'URL
         } else if (paymentRecord.status === 'completed') {
-            console.info("[PaymentSuccess] Payment already marked completed.");
+          console.info("[PaymentSuccess] Paiement déjà marqué comme terminé.");
         }
 
-        // Use amount from DB if available, else from URL
         const finalAmount = paymentRecord ? paymentRecord.amount_fcfa : parseInt(queryAmount, 10);
-        
         if (!finalAmount) {
-            setError("Montant de la transaction introuvable.");
-            setVerifying(false);
-            return;
+          setError("Montant de la transaction introuvable.");
+          setVerifying(false);
+          return;
         }
 
-        // 2. Call the RPC to securely handle the balance distribution (Idempotent)
         const { data, error: rpcError } = await supabase.rpc('process_moneyfusion_success', {
           p_user_id: user.id,
           p_transaction_id: transactionId,
           p_amount: finalAmount,
-          p_status: status
+          p_status: status,
+          p_coupon_code: couponCode || null
         });
 
         if (rpcError) throw rpcError;
 
         if (data.success) {
-          // 3. Update 'payments' table status
           if (paymentRecord && paymentRecord.status !== 'completed') {
-             await supabase.from('payments')
-                 .update({ status: 'completed', processed_at: new Date() })
-                 .eq('transaction_id', transactionId);
+            await supabase.from('payments')
+              .update({ status: 'completed', processed_at: new Date() })
+              .eq('transaction_id', transactionId);
           }
+
+          // Nettoyer le localStorage (les clés utilisées)
+          localStorage.removeItem('pendingPaymentTxnId');
+          localStorage.removeItem('couponCodeForPayment');
+          // Ne pas toucher à 'appliedCoupon' car il n'est pas défini ici (il appartient à CreditPacksPage)
 
           setSuccess(true);
           setResultData(data);
-          
-          // CRITICAL: Force refresh context to update globally
-          console.info("[PaymentSuccess] Payment processed successfully. Forcing context refresh.");
           forceRefreshUserProfile();
 
           if (!data.already_processed) {
@@ -111,25 +123,32 @@ const PaymentSuccessPage = () => {
             });
           }
         } else {
-          // Update payment table to failed if we had a record
           if (paymentRecord) {
-             await supabase.from('payments').update({ status: 'failed' }).eq('transaction_id', transactionId);
+            await supabase.from('payments').update({ status: 'failed' }).eq('transaction_id', transactionId);
           }
           setError(data.message || "Échec du traitement du paiement.");
         }
       } catch (err) {
-        console.error("[PaymentSuccess] Payment processing error:", err);
+        console.error("[PaymentSuccess] Erreur de traitement :", err);
         setError("Erreur lors de la communication avec le serveur.");
       } finally {
         setVerifying(false);
       }
     };
 
-    // Small delay to ensure DB propagation from external hooks if any
     const timeout = setTimeout(processPayment, 1000);
     return () => clearTimeout(timeout);
+  }, [user, pendingTxnId, moneyFusionToken, queryAmount, status, forceRefreshUserProfile, toast, navigate]);
 
-  }, [user, transactionId, queryAmount, status, forceRefreshUserProfile, toast]);
+  // Vérifier s'il y a une transaction en attente après connexion
+  useEffect(() => {
+    const pending = localStorage.getItem('pendingTransaction');
+    if (user && pending) {
+      localStorage.removeItem('pendingTransaction');
+      const { transactionId, amount, status } = JSON.parse(pending);
+      navigate(`/payment-success?transaction_id=${transactionId}&amount=${amount}&status=${status}`);
+    }
+  }, [user, navigate]);
 
   if (verifying) {
     return (
@@ -152,7 +171,6 @@ const PaymentSuccessPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <MultilingualSeoHead pageData={{ title: "Paiement Réussi - BonPlanInfos", description: "Confirmation de votre achat." }} />
-
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -163,11 +181,7 @@ const PaymentSuccessPage = () => {
           <div className={`h-2 w-full ${success ? 'bg-green-500' : 'bg-red-500'}`}></div>
           <CardHeader className="text-center pb-2 pt-8">
             <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${success ? 'bg-green-50' : 'bg-red-50'}`}>
-              {success ? (
-                <CheckCircle2 className="w-12 h-12 text-green-600" />
-              ) : (
-                <AlertCircle className="w-12 h-12 text-red-500" />
-              )}
+              {success ? <CheckCircle2 className="w-12 h-12 text-green-600" /> : <AlertCircle className="w-12 h-12 text-red-500" />}
             </div>
             <CardTitle className={`text-3xl font-bold ${success ? 'text-green-700' : 'text-red-700'}`}>
               {success ? 'Paiement Réussi !' : 'Erreur de Traitement'}
@@ -182,18 +196,15 @@ const PaymentSuccessPage = () => {
                     <Coins className="w-5 h-5" />
                     <span className="font-medium">Compte Crédité</span>
                   </div>
-
                   <div className="py-4">
                     <span className="text-6xl font-extrabold text-indigo-600 block mb-2">{resultData.coins_added}</span>
                     <span className="text-xl font-medium text-slate-400">Crédits ajoutés</span>
                   </div>
-
                   {resultData.bonus_added > 0 && (
                     <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
                       +{resultData.bonus_added} Bonus inclus 🎉
                     </div>
                   )}
-
                   <div className="border-t border-slate-200 pt-4 mt-4">
                     <p className="text-sm text-slate-500">Nouveau solde disponible</p>
                     <p className="text-2xl font-bold text-slate-800">{resultData.new_balance} <span className="text-sm font-normal text-slate-400">crédits</span></p>
@@ -203,19 +214,21 @@ const PaymentSuccessPage = () => {
             ) : (
               <div className="bg-red-50 p-6 rounded-xl border border-red-100">
                 <p className="text-red-700 font-medium mb-2">{error}</p>
-                <p className="text-xs text-red-400 font-mono mt-4">ID: {transactionId || 'Non fourni'}</p>
+                <p className="text-xs text-red-400 font-mono mt-4">ID reçu : {moneyFusionToken || pendingTxnId || 'Non fourni'}</p>
                 <p className="text-sm text-slate-500 mt-4">
                   Si vous avez été débité, veuillez contacter le support avec l'ID de transaction ci-dessus.
                 </p>
+                {!user && (
+                  <Button onClick={() => navigate('/auth')} className="mt-4">
+                    Se connecter pour valider
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
 
           <CardFooter className="flex flex-col gap-3 pt-4 pb-8 px-8">
-            <Button
-              className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
-              onClick={() => navigate('/profile')}
-            >
+            <Button className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200" onClick={() => navigate('/profile')}>
               Voir mon profil <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
             <Button variant="ghost" className="w-full text-slate-500 hover:text-slate-700" onClick={() => navigate('/packs')}>

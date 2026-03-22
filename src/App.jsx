@@ -59,29 +59,27 @@ import FloatingActionButton from "@/components/layout/FloatingActionButton";
 import InstallPWAButton from "@/components/InstallPWAButton";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
+import CouponsPage from "@/pages/CouponsPage";
+
 // Composant pour synchroniser l'état d'authentification avec le contexte de données
 const AuthSync = () => {
   const { setForceRefresh } = useAuth();
   const { forceRefreshUserProfile } = useData();
 
-  // 1. Synchronisation des fonctions de rafraîchissement (profil)
   useEffect(() => {
     if (setForceRefresh && forceRefreshUserProfile) {
       setForceRefresh(() => forceRefreshUserProfile);
     }
   }, [setForceRefresh, forceRefreshUserProfile]);
 
-  // 2. Activation audio au premier clic utilisateur
   useEffect(() => {
     const enableAudio = () => {
       const audio = new Audio("/sounds/success.mp3");
       audio.volume = 0.1;
-      audio.play().catch(() => {}); // tentative silencieuse pour débloquer l'audio
+      audio.play().catch(() => {});
       document.removeEventListener("click", enableAudio);
     };
     document.addEventListener("click", enableAudio, { once: true });
-
-    // Nettoyage (optionnel car { once: true })
     return () => {
       document.removeEventListener("click", enableAudio);
     };
@@ -101,6 +99,7 @@ const LoadingFallback = () => (
     </div>
   </div>
 );
+
 function App() {
   return (
     <BrowserRouter
@@ -200,8 +199,12 @@ function App() {
                   <Route path="/sponsors" element={<SponsorsPage />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/pricing" element={<PricingPage />} />
-                  <Route path="/packs" element={<CoinPacksPage />} />
+                  {/* Route principale pour acheter des packs : utilise CreditPacksPage (avec champ coupon) */}
+                  <Route path="/packs" element={<CreditPacksPage />} />
+                  {/* Route alternative si besoin */}
                   <Route path="/credit-packs" element={<CreditPacksPage />} />
+                  {/* Route pour les packs simplifiés (ancien) – peut être retiré si non utilisé */}
+                  <Route path="/coin-packs" element={<CoinPacksPage />} />
                   <Route
                     path="/buy/:packSlug"
                     element={<PaymentRedirectPage />}
@@ -210,7 +213,7 @@ function App() {
                     path="/payment/checkout"
                     element={<PaymentCheckoutPage />}
                   />
-
+                  <Route path="/coupons" element={<CouponsPage />} />
                   <Route
                     path="/paiement/success"
                     element={<PaymentSuccessPage />}
@@ -227,7 +230,6 @@ function App() {
                     path="/payment-cancel"
                     element={<PaymentCancelPage />}
                   />
-
                   <Route path="/verify-ticket" element={<VerifyTicketPage />} />
                   <Route
                     path="/legal-mentions"
@@ -242,9 +244,9 @@ function App() {
                 <MandatoryVideoPopup />
                 <PushNotificationManager />
                 <WelcomePopup />
-                     <PWAInstallPremiumPopup />
+                <PWAInstallPremiumPopup />
                 <FloatingActionButton />
-                 <PWAInstallBanner />
+                <PWAInstallBanner />
               </MainLayout>
             </Suspense>
           </DataProvider>

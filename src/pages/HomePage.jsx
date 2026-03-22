@@ -1,4 +1,3 @@
-// HomePage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +11,8 @@ import {
   Info,
   Zap,
   AlertTriangle,
-  Smartphone
+  Smartphone,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,15 +44,16 @@ import PWAImageCarousel from "@/components/PWAImageCarousel";
 import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
 import PWAInstallGuide from "@/components/PWAInstallGuide";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import VideoPlayerModal from "@/components/VideoPlayerModal";
 
-// --- Images du carousel ---
 const pwaCarouselImages = [
   "/pwa-preview1.png",
-  "/pwa-preview2.png.jpeg",
-  "/pwa-preview3.png.jpeg",
-  "/pwa-preview4.png.jpeg",
-  "/pwa-preview6.png.jpeg",
-  "/pwa-preview.png.jpeg",
+  "/pwa-preview2.png",
+  "/pwa-preview3.png",
+  "/pwa-preview4.png",
+  "/pwa-preview6.png",
+  "/pwa-preview.png",
+  "/pwa-preview7.png",
 ];
 
 const HomePage = () => {
@@ -73,6 +74,30 @@ const HomePage = () => {
     costFcfa: 0,
     onConfirm: null,
   });
+
+  // --- Vidéo active ---
+  const [activeVideo, setActiveVideo] = useState(null);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoWatched, setVideoWatched] = useState(false);
+
+  const fetchActiveVideo = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("mandatory_videos")
+      .select("*")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (error) {
+      console.error("Error fetching active video:", error);
+    } else {
+      console.log("Active video fetched:", data);
+      setActiveVideo(data);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActiveVideo();
+    // On ne réinitialise pas videoWatched ici, il est géré par le modal
+  }, [fetchActiveVideo]);
 
   // --- Fetch des events ---
   const fetchInitialData = useCallback(async () => {
@@ -211,6 +236,22 @@ const HomePage = () => {
     userProfile &&
     ["organizer", "admin", "super_admin"].includes(userProfile.user_type);
 
+  // Gestion du clic sur la vidéo
+  const handleVideoClick = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    setVideoModalOpen(true);
+  };
+
+  const handleVideoWatched = () => {
+    setVideoWatched(true);
+    // Optionnel : stocker en localStorage si on veut éviter de réafficher la carte après visionnage
+    localStorage.setItem("video_watched", "true");
+    forceRefreshUserProfile();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
@@ -218,14 +259,11 @@ const HomePage = () => {
         <meta name="description" content="Découvrez les meilleurs événements, achetez vos billets et participez aux concours en Afrique." />
       </Helmet>
 
-      {/* Render the PWA Install Guide modal at the root */}
       <PWAInstallGuide />
-
       <LanguageTutorial />
       {!hasFetchError && <WelcomePopup />}
       {!hasFetchError && <AnimatedBadgesBanner />}
 
-      {/* --- Section d'information PWA Inline (au cas où la popup a été fermée) --- */}
       {!isInstalled && (isInstallable || isIOS) && (
         <div className="bg-primary/10 border-b border-primary/20 py-3 px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -245,19 +283,16 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* --- Carousel global pour montrer l'app --- */}
       <div className="max-w-4xl mx-auto my-8 px-4">
          <PWAImageCarousel images={pwaCarouselImages} height={300} speed={4000} />
       </div>
 
-      {/* --- Popup PWA Intelligente --- */}
       <PWAInstallPremiumPopup images={pwaCarouselImages} />
 
       <main className="container mx-auto px-4 pt-4 pb-28 space-y-12">
         <EventTypeFilters />
         <NearbyEvents />
 
-        {/* --- Section des événements sponsorisés --- */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,7 +331,7 @@ const HomePage = () => {
               <Loader2 className="w-6 h-6 animate-spin mr-2" />
               {t("common.loading")}
             </div>
-          ) : promotedEvents.length > 0 ? (
+          ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {promotedEvents.map((event) => (
                 <EventCard
@@ -314,21 +349,30 @@ const HomePage = () => {
                   className="transition-transform hover:scale-105 hover:shadow-xl"
                 />
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-16 bg-card/50 rounded-lg border border-dashed border-border">
-              <Zap className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-muted-foreground mb-2">
-                {t("home_page.no_sponsored_events.title")}
-              </h3>
-              <p className="text-muted-foreground max-w-md mx-auto mb-4">
-                {t("home_page.no_sponsored_events.description")}
-              </p>
-              {canCreateEvent && (
-                <Button onClick={() => navigate("/boost")} variant="premium">
-                  <Plus className="w-4 h-4 mr-2" />
-                  {t("home_page.no_sponsored_events.button")}
-                </Button>
+
+              {/* Carte Vidéo active (si non regardée) */}
+              {activeVideo && !videoWatched && (
+                <div
+                  className="relative group bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden cursor-pointer hover:scale-105 hover:shadow-blue-500/20"
+                  onClick={handleVideoClick}
+                >
+                  <div className="absolute top-4 left-4 z-10">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-500 text-black shadow-lg">
+                      🎬 Vidéo récompense
+                    </span>
+                  </div>
+                  <div className="p-6 text-center flex flex-col items-center">
+                    <div className="w-20 h-20 mx-auto bg-black/30 rounded-full flex items-center justify-center mb-4">
+                      <Play className="w-10 h-10 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">{activeVideo.title}</h3>
+                    <p className="text-white/80 text-sm line-clamp-2 mb-4">{activeVideo.description}</p>
+                    <div className="inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-1 text-white text-sm font-bold">
+                      <Coins className="w-4 h-4 mr-1" />
+                      +{activeVideo.reward_coins} pièces
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -389,6 +433,15 @@ const HomePage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {activeVideo && (
+        <VideoPlayerModal
+          isOpen={videoModalOpen}
+          onClose={() => setVideoModalOpen(false)}
+          video={activeVideo}
+          onWatched={handleVideoWatched}
+        />
+      )}
     </div>
   );
 };
