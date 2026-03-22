@@ -77,7 +77,9 @@ const PinVerificationModal = ({
     if (navigator.vibrate) navigator.vibrate(pattern);
   };
 
-  const handleVerify = async () => {
+  const handleVerify = async (e) => {
+    if (e) e.preventDefault(); // Empêche la soumission du formulaire
+
     if (isLocked) {
       setError(t('pinVerification.errors.locked'));
       return;
@@ -175,7 +177,7 @@ const PinVerificationModal = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !loading && !isLocked) handleVerify();
+    if (e.key === 'Enter' && !loading && !isLocked) handleVerify(e);
   };
 
   // Message d'intimidation
@@ -256,7 +258,7 @@ const PinVerificationModal = ({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
+          <form onSubmit={handleVerify} className="flex-1 overflow-y-auto py-4 px-4 space-y-6">
             <IntimidationMessage />
 
             <div className="space-y-2">
@@ -274,6 +276,7 @@ const PinVerificationModal = ({
                 className="text-center text-3xl tracking-[0.5em] font-mono h-14"
                 autoFocus
                 disabled={loading}
+                autoComplete={isSettingUp ? "new-password" : "current-password"}
               />
             </div>
 
@@ -292,6 +295,7 @@ const PinVerificationModal = ({
                   onKeyDown={handleKeyDown}
                   className="text-center text-3xl tracking-[0.5em] font-mono h-14"
                   disabled={loading}
+                  autoComplete="off"
                 />
               </div>
             )}
@@ -322,7 +326,7 @@ const PinVerificationModal = ({
                 </Button>
               </div>
             )}
-          </div>
+          </form>
 
           <DialogFooter className="p-3 border-t bg-background flex gap-2 sticky bottom-0">
             <Button

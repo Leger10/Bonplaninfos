@@ -70,7 +70,7 @@ const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
             <form onSubmit={handleSubmit} className="space-y-4 text-left mt-4">
                 <div>
                     <Label>Votre Email</Label>
-                    <Input value={initialEmail} disabled className="bg-muted" />
+                    <Input value={initialEmail} disabled className="bg-muted" autoComplete="off" />
                 </div>
                 <div>
                     <Label htmlFor="reactivation-msg">Message à l'administration</Label>
@@ -81,6 +81,7 @@ const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
                         onChange={(e) => setMessage(e.target.value)}
                         required
                         className="min-h-[100px]"
+                        autoComplete="off"
                     />
                 </div>
                 <div className="flex gap-2">
@@ -379,12 +380,19 @@ const AuthPage = () => {
                                         <>
                                             <motion.div variants={itemVariants} className="space-y-2">
                                                 <Label htmlFor="fullName">{t('auth.full_name')}</Label>
-                                                <Input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                                                <Input 
+                                                    id="fullName" 
+                                                    type="text" 
+                                                    value={fullName} 
+                                                    onChange={(e) => setFullName(e.target.value)} 
+                                                    required 
+                                                    autoComplete="name"
+                                                />
                                             </motion.div>
                                             <motion.div variants={itemVariants} className="space-y-2">
                                                 <Label htmlFor="country">{t('auth.country')}</Label>
                                                 <Select onValueChange={setCountry} value={country}>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger autoComplete="country-name">
                                                         <SelectValue placeholder={t('auth.select_country_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -395,7 +403,7 @@ const AuthPage = () => {
                                             <motion.div variants={itemVariants} className="space-y-2">
                                                 <Label htmlFor="city">{t('auth.city')}</Label>
                                                 <Select onValueChange={setCity} value={city} disabled={!country}>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger autoComplete="address-level2">
                                                         <SelectValue placeholder={t('auth.select_city_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -406,7 +414,7 @@ const AuthPage = () => {
                                              <motion.div variants={itemVariants} className="space-y-2">
                                                 <Label htmlFor="role">{t('auth.choose_role')}</Label>
                                                 <Select onValueChange={setRole} value={role}>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger autoComplete="off">
                                                         <SelectValue placeholder={t('auth.choose_role_placeholder')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -419,13 +427,32 @@ const AuthPage = () => {
                                     )}
                                     <motion.div variants={itemVariants} className="space-y-2">
                                         <Label htmlFor="email">{t('auth.email')}</Label>
-                                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                                        <Input 
+                                            id="email" 
+                                            type="email" 
+                                            value={email} 
+                                            onChange={(e) => setEmail(e.target.value)} 
+                                            required 
+                                            autoComplete="email"
+                                        />
                                     </motion.div>
                                     <motion.div variants={itemVariants} className="space-y-2">
                                         <Label htmlFor="password">{t('auth.password')}</Label>
                                         <div className="relative">
-                                            <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground">
+                                            <Input 
+                                                id="password" 
+                                                type={showPassword ? 'text' : 'password'} 
+                                                value={password} 
+                                                onChange={(e) => setPassword(e.target.value)} 
+                                                required 
+                                                autoComplete={isLogin ? "current-password" : "new-password"}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setShowPassword(!showPassword)} 
+                                                className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground"
+                                                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                                            >
                                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                             </button>
                                         </div>
@@ -434,7 +461,13 @@ const AuthPage = () => {
                                         <>
                                             <motion.div variants={itemVariants} className="space-y-2">
                                                 <Label htmlFor="referralCode">{t('auth.referral_code_optional')}</Label>
-                                                <Input id="referralCode" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+                                                <Input 
+                                                    id="referralCode" 
+                                                    type="text" 
+                                                    value={referralCode} 
+                                                    onChange={(e) => setReferralCode(e.target.value)} 
+                                                    autoComplete="off"
+                                                />
                                             </motion.div>
                                             <motion.div variants={itemVariants} className="flex items-center space-x-2 pt-2">
                                                 <Checkbox id="terms" checked={agreedToTerms} onCheckedChange={setAgreedToTerms} />
