@@ -325,7 +325,7 @@ export const generateSalarySlip = (data) => {
   doc.text('TAUX / BASE', margin + 100, y + 7);
   doc.text('MONTANT (FCFA)', pageWidth - margin - 5, y + 7, { align: 'right' });
   
-  y += 12;
+  y += 16;
   
   // Ligne 1: Volume Zone
   addTableRow(doc, y, 'Volume total des ventes Zone', '100%', formatCurrency(volumeZone));
@@ -364,17 +364,7 @@ export const generateSalarySlip = (data) => {
   doc.setFontSize(28);
   doc.text(`${formatCurrency(netSalary)} FCFA`, pageWidth / 2, y + 20, { align: 'center' });
   
-  // Conversion en euros
-  if (netSalary > 0) {
-    const amountEuro = (netSalary / 656).toLocaleString('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
-    doc.text(`(≈ ${amountEuro} €)`, pageWidth / 2, y + 26, { align: 'center' });
-  }
-  
+ 
   y += 35;
   
   // ============ SIGNATURE ET VALIDATION ============

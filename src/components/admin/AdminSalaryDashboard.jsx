@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, FileText, CalendarClock, Info, DollarSign, TrendingUp, PieChart, Globe, Download } from 'lucide-react';
+import { Loader2, FileText, CalendarClock, DollarSign, TrendingUp, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +12,6 @@ import { Progress } from '@/components/ui/progress';
 import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
 import AdminSalaryWithdrawalModal from './AdminSalaryWithdrawalModal';
 import { toast } from '@/components/ui/use-toast';
-import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
 import { generatePaymentReceipt, generateSalarySlip } from '@/utils/pdfGenerator';
 
 const AdminSalaryDashboard = () => {
@@ -163,7 +162,7 @@ const AdminSalaryDashboard = () => {
             <p className="text-2xl font-bold text-white">{zoneVolume.toLocaleString()} F</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-400">Commission (5%)</CardTitle>
@@ -172,7 +171,7 @@ const AdminSalaryDashboard = () => {
             <p className="text-2xl font-bold text-blue-400">{platformFees.toLocaleString()} F</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-400">Votre Part ({commissionRate}%)</CardTitle>
@@ -181,7 +180,7 @@ const AdminSalaryDashboard = () => {
             <p className="text-2xl font-bold text-emerald-400">{estimatedSalary.toLocaleString()} F</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-400">Score</CardTitle>
@@ -206,7 +205,7 @@ const AdminSalaryDashboard = () => {
                 <p className="text-3xl font-bold text-white">{estimatedSalary.toLocaleString()} FCFA</p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 size="lg"
@@ -221,7 +220,7 @@ const AdminSalaryDashboard = () => {
                 )}
                 Bulletin
               </Button>
-              
+
               <Button
                 size="lg"
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -233,7 +232,7 @@ const AdminSalaryDashboard = () => {
               </Button>
             </div>
           </div>
-          
+
           <p className="text-xs text-gray-500 mt-4 text-center">
             Retraits disponibles les : {withdrawalConfig.withdrawal_dates?.join(', ')} du mois
           </p>
@@ -270,7 +269,7 @@ const AdminSalaryDashboard = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={
-                      w.status === 'approved' ? 'success' : 
+                      w.status === 'approved' ? 'success' :
                       w.status === 'rejected' ? 'destructive' : 'secondary'
                     }>
                       {w.status}
@@ -278,9 +277,9 @@ const AdminSalaryDashboard = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     {(w.status === 'approved' || w.status === 'paid') && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => generateReceipt(w)}
                         disabled={generatingPdf === w.id}
                         className="text-gray-400 hover:text-white"
@@ -300,8 +299,8 @@ const AdminSalaryDashboard = () => {
         </CardContent>
       </Card>
 
-      <AdminSalaryWithdrawalModal 
-        open={isWithdrawalModalOpen} 
+      <AdminSalaryWithdrawalModal
+        open={isWithdrawalModalOpen}
         onOpenChange={setIsWithdrawalModalOpen}
         availableAmount={estimatedSalary}
         adminId={user.id}

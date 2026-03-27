@@ -48,7 +48,8 @@ import ImpersonationBanner from "@/components/layout/ImpersonationBanner";
 import { retrySupabaseRequest } from "@/lib/supabaseHelper";
 import AdminCreditsGlobalTab from "@/components/admin/AdminCreditsGlobalTab";
 
-const AdminStats = ({ userProfile }) => {
+// Composant AdminStats
+const AdminStats = ({ userProfile, partnerZone }) => {
   const { t } = useTranslation();
   const [stats, setStats] = useState({
     credited: 0,
@@ -59,7 +60,9 @@ const AdminStats = ({ userProfile }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
-    if (!userProfile?.country) {
+    const country = partnerZone?.country || userProfile?.country;
+    const city = partnerZone?.cities?.length === 1 ? partnerZone.cities[0] : null;
+    if (!country) {
       setLoading(false);
       return;
     }
@@ -67,92 +70,49 @@ const AdminStats = ({ userProfile }) => {
     setLoading(true);
     try {
       const today = new Date();
-      const firstDayOfMonth = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1
-      );
-      const lastDayOfMonth = new Date(
-        today.getFullYear(),
-        today.getMonth() + 1,
-        0
-      );
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-      let creditedQuery = supabase
+      let query = supabase
         .from("transactions")
-        .select("amount_pi")
-        .eq("country", userProfile.country)
-        .eq("transaction_type", "manual_credit")
-        .gte("created_at", firstDayOfMonth.toISOString())
-        .lte("created_at", lastDayOfMonth.toISOString());
-
-      if (userProfile.city) {
-        creditedQuery = creditedQuery.eq("city", userProfile.city);
-      }
-
-      const { data: creditedData, error: creditedError } = await retrySupabaseRequest(() => creditedQuery);
-      if (creditedError) throw creditedError;
-
-      const totalManualCredited = creditedData.reduce(
-        (sum, item) => sum + (item.amount_pi || 0),
-        0
-      );
-
-      let purchasedQuery = supabase
-        .from("user_coin_transactions")
-        .select(
-          `
-                    amount_fcfa,
-                    user:user_id!inner(country, city)
-                `
-        )
-        .eq("user.country", userProfile.country)
+        .select(`
+          amount_pi,
+          amount_fcfa,
+          user:user_id!inner(country, city)
+        `)
+        .eq("transaction_type", "platform_fee")
         .gte("created_at", firstDayOfMonth.toISOString())
         .lte("created_at", lastDayOfMonth.toISOString())
-        .eq("status", "completed");
+        .eq("user.country", country);
+      if (city) query = query.eq("user.city", city);
 
-      if (userProfile.city) {
-        purchasedQuery = purchasedQuery.eq("user.city", userProfile.city);
-      }
+      const { data: feesData, error: feesError } = await retrySupabaseRequest(() => query);
+      if (feesError) throw feesError;
 
-      const { data: purchasedData, error: purchasedError } =
-        await retrySupabaseRequest(() => purchasedQuery);
-      if (purchasedError) throw purchasedError;
-
-      const totalPurchasedFCFA = purchasedData.reduce(
-        (sum, item) => sum + (Number(item.amount_fcfa) || 0),
-        0
-      );
+      const totalRevenueFcfa = feesData.reduce((sum, item) => sum + Math.abs(item.amount_fcfa || 0), 0);
+      const totalCommissionPi = feesData.reduce((sum, item) => sum + Math.abs(item.amount_pi || 0), 0);
 
       let usersQuery = supabase
         .from("profiles")
         .select("id", { count: "exact" })
-        .eq("country", userProfile.country)
+        .eq("country", country)
         .eq("is_active", true);
-
-      if (userProfile.city) {
-        usersQuery = usersQuery.eq("city", userProfile.city);
-      }
-
+      if (city) usersQuery = usersQuery.eq("city", city);
       const { count: activeUsers, error: usersError } = await retrySupabaseRequest(() => usersQuery);
       if (usersError) throw usersError;
 
-      const piToFcfaRate = 10;
-      const revenueFromCredits = totalManualCredited * piToFcfaRate;
-      const totalMonthlyRevenue = revenueFromCredits + totalPurchasedFCFA;
-
       setStats({
-        credited: totalManualCredited,
-        purchased: totalPurchasedFCFA,
+        credited: totalCommissionPi,
+        purchased: 0,
         activeUsers: activeUsers || 0,
-        monthlyRevenue: totalMonthlyRevenue,
+        monthlyRevenue: totalRevenueFcfa,
       });
     } catch (error) {
       console.error("Failed to fetch admin stats:", error);
     } finally {
       setLoading(false);
     }
-  }, [userProfile?.country, userProfile?.city, t]);
+  }, [partnerZone, userProfile, t]);
 
   useEffect(() => {
     fetchStats();
@@ -174,13 +134,14 @@ const AdminStats = ({ userProfile }) => {
     );
   }
 
+  const zoneCountry = partnerZone?.country || userProfile?.country;
+  const zoneCity = partnerZone?.cities?.length === 1 ? partnerZone.cities[0] : null;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <Card className="glass-effect shadow-lg border-l-4 border-l-green-500">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            {t("admin_dashboard.stats.revenue_title")}
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">{t("admin_dashboard.stats.revenue_title")}</CardTitle>
           <DollarSign className="h-5 w-5 text-green-500" />
         </CardHeader>
         <CardContent>
@@ -188,28 +149,19 @@ const AdminStats = ({ userProfile }) => {
             {stats.monthlyRevenue.toLocaleString("fr-FR")} FCFA
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            <span className="block">
-              Achats: {stats.purchased.toLocaleString("fr-FR")} FCFA
-            </span>
-            <span className="block">
-              Crédits: {(stats.credited * 10).toLocaleString("fr-FR")} FCFA (
-              {stats.credited} π)
-            </span>
+            <span className="block">Chiffres affaires de la Plateforme </span>
+            <span className="block">Total π: {stats.credited.toLocaleString("fr-FR")} π</span>
           </div>
         </CardContent>
       </Card>
 
       <Card className="glass-effect shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Utilisateurs actifs
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">Utilisateurs actifs</CardTitle>
           <Users className="h-5 w-5 text-primary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
-            {stats.activeUsers.toLocaleString("fr-FR")}
-          </div>
+          <div className="text-2xl font-bold">{stats.activeUsers.toLocaleString("fr-FR")}</div>
           <p className="text-xs text-muted-foreground">dans votre zone</p>
         </CardContent>
       </Card>
@@ -221,11 +173,11 @@ const AdminStats = ({ userProfile }) => {
         </CardHeader>
         <CardContent>
           <div className="text-lg font-bold">
-            {userProfile?.country}
-            {userProfile?.city && `, ${userProfile.city}`}
+            {zoneCountry}
+            {zoneCity && `, ${zoneCity}`}
           </div>
           <p className="text-xs text-muted-foreground">
-            {userProfile?.city ? "Ville spécifique" : "Tout le pays"}
+            {zoneCity ? "Ville spécifique" : "Tout le pays"}
           </p>
         </CardContent>
       </Card>
@@ -303,6 +255,7 @@ const LicenseStatus = ({ user }) => {
             <p className="font-bold text-lg">{t("admin_dashboard.license.status_title")}:<span className={`ml-2 px-2 py-1 rounded-md ${daysRemaining > 30 ? "bg-green-500 text-white" : daysRemaining > 7 ? "bg-yellow-500 text-white" : daysRemaining > 0 ? "bg-orange-500 text-white" : "bg-red-500 text-white"}`}>{partner.license.name} - {statusText}</span></p>
             <div className="text-xs mt-2 space-y-1 text-gray-300">
               <p>{t("admin_dashboard.license.activated_on")}: {activationDate.toLocaleDateString("fr-FR")}</p>
+               {/* <p>{t("admin_dashboard.license.expires_on")}: {expirationDate.toLocaleDateString("fr-FR")}</p> */}
               {partner.license.commission_rate && (<p>Taux de commission: <strong>{partner.license.commission_rate}%</strong></p>)}
             </div>
           </div>
@@ -329,7 +282,6 @@ const AdminStatusBanner = ({ status }) => {
   switch (status) { case "pending_verification": case "pending": message = t("admin_dashboard.banner.pending"); colorClass = "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"; break; case "suspended": message = t("admin_dashboard.banner.suspended"); colorClass = "bg-orange-500/20 text-orange-300 border-orange-500/30"; break; case "expired": message = t("admin_dashboard.banner.expired"); colorClass = "bg-red-500/20 text-red-300 border-red-500/30"; break; default: return null; }
   return (<div className={`p-4 mb-6 rounded-lg border flex items-center gap-3 ${colorClass}`}><AlertTriangle className="w-6 h-6 flex-shrink-0" /><p className="font-semibold">{message}</p></div>);
 };
-
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -345,11 +297,13 @@ const AdminDashboard = () => {
   const [partnerStatus, setPartnerStatus] = useState("inactive");
   const [impersonatingUser, setImpersonatingUser] = useState(null);
   const [fetchError, setFetchError] = useState(null);
+  const [partnerZone, setPartnerZone] = useState(null);
 
   const isSuperAdmin = userProfile?.user_type === "super_admin";
   const isAdmin = userProfile?.user_type === "admin";
   const isSecretaryBySuperAdmin = userProfile?.user_type === "secretary" && userProfile?.appointed_by_super_admin;
   const isFunctionalityActive = isSuperAdmin || partnerStatus === "active";
+
 
   useEffect(() => {
     const validateSession = async () => { const { data: { session }, error } = await retrySupabaseRequest(() => supabase.auth.getSession()); if (error || !session) { await supabase.auth.signOut(); window.location.href = "/auth"; } };
@@ -370,24 +324,64 @@ const AdminDashboard = () => {
     }
   }, [isAdmin, user?.id]);
 
-  useEffect(() => { if (isSuperAdmin) { setActiveTab("analytics"); } else if (isAdmin) { } else if (isSecretaryBySuperAdmin) { setActiveTab("credits"); } }, [isSuperAdmin, isAdmin, isSecretaryBySuperAdmin]);
+  useEffect(() => {
+    if (isAdmin && user?.id) {
+      const fetchPartnerZone = async () => {
+        const { data, error } = await retrySupabaseRequest(() =>
+          supabase
+            .from('partners')
+            .select('coverage_zone')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        );
+        if (!error && data?.coverage_zone) {
+          setPartnerZone(data.coverage_zone);
+        } else {
+          setPartnerZone({ country: userProfile?.country, cities: userProfile?.city ? [userProfile.city] : [] });
+        }
+      };
+      fetchPartnerZone();
+    } else {
+      setPartnerZone(null);
+    }
+  }, [isAdmin, user?.id, userProfile?.country, userProfile?.city]);
 
+  useEffect(() => { if (isSuperAdmin) { setActiveTab("analytics"); } else if (isAdmin) { } else if (isSecretaryBySuperAdmin) { setActiveTab("credits"); } }, [isSuperAdmin, isAdmin, isSecretaryBySuperAdmin]);
+ // Fonction de récupération des données (fetchData) CORRIGÉE pour utiliser partnerZone
   const fetchData = useCallback(async () => {
     if (!userProfile || !user) return;
     setLoadingData(true);
     setFetchError(null);
     
     try {
-      const countryFilter = isAdmin ? userProfile.country : null;
-      const fetchUsers = () => { let query = supabase.from("profiles").select("*"); if (countryFilter && !isSuperAdmin) { query = query.eq("country", countryFilter); if (userProfile.city) { query = query.eq("city", userProfile.city); } } return query; };
+      // Pour un admin, on utilise la zone du partenaire (sinon pour super admin, pas de filtre)
+      const country = isAdmin ? (partnerZone?.country || userProfile.country) : null;
+      const city = isAdmin && partnerZone?.cities?.length === 1 ? partnerZone.cities[0] : null;
+
+      const fetchUsers = () => {
+        let query = supabase.from("profiles").select("*");
+        if (country && !isSuperAdmin) {
+          query = query.eq("country", country);
+          if (city) query = query.eq("city", city);
+        }
+        return query;
+      };
+      
       let transactionsQuery;
-      if (isSuperAdmin) { transactionsQuery = supabase.from("transactions").select(`id, amount_pi, amount_fcfa, description, created_at, transaction_type, user:user_id (full_name, email)`).order("created_at", { ascending: false }); }
+      if (isSuperAdmin) {
+        transactionsQuery = supabase
+          .from("transactions")
+          .select(`id, amount_pi, amount_fcfa, description, created_at, transaction_type, user:user_id (full_name, email)`)
+          .order("created_at", { ascending: false });
+      }
       
       const results = await Promise.all([
           retrySupabaseRequest(fetchUsers), 
           retrySupabaseRequest(() => supabase.from("announcements").select("*").order("created_at", { ascending: false })), 
-          getEvents(countryFilter ? { country: countryFilter } : {}), 
-          getPromotions(countryFilter ? { country: countryFilter } : {}), 
+          getEvents(country ? { country: country } : {}), 
+          getPromotions(country ? { country: country } : {}), 
           retrySupabaseRequest(() => supabase.from("welcome_popups").select("*").order("created_at", { ascending: false })), 
           transactionsQuery ? retrySupabaseRequest(() => transactionsQuery) : Promise.resolve({ data: [], error: null })
       ]);
@@ -424,12 +418,13 @@ const AdminDashboard = () => {
     } finally { 
       setLoadingData(false); 
     }
-  }, [userProfile?.id, userProfile?.updated_at, isAdmin, isSuperAdmin, user?.id, getPromotions, getEvents, t]);
+  }, [userProfile?.id, userProfile?.updated_at, isAdmin, isSuperAdmin, user?.id, getPromotions, getEvents, t, partnerZone]);
 
+  // Rechargement des données quand partnerZone change (important pour la mise à jour)
   useEffect(() => { if (userProfile) { fetchData(); } }, [fetchData]);
 
+  // Gestion des écrans de chargement et erreurs
   if (loadingProfile || loadingData) { return (<div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>); }
-  
   if (fetchError) {
     return (
       <div className="min-h-screen bg-background text-foreground p-4 md:p-8 flex flex-col items-center justify-center gap-4">
@@ -445,7 +440,10 @@ const AdminDashboard = () => {
 
   if (!user || (!isSuperAdmin && !isAdmin && !isSecretaryBySuperAdmin)) { return (<div className="min-h-screen bg-background text-foreground p-4 md:p-8"><h1 className="text-2xl text-red-500">{t("admin_dashboard.unauthorized_title")}</h1><p className="text-muted-foreground">{t("admin_dashboard.unauthorized_desc")}</p></div>); }
 
-  const dashboardTitle = isSuperAdmin ? t("admin_dashboard.super_admin_title") : isAdmin ? t("admin_dashboard.admin_title", { country: userProfile.country }) : t("admin_dashboard.secretary_title");
+  const dashboardTitle = isSuperAdmin ? t("admin_dashboard.super_admin_title") : isAdmin ? t("admin_dashboard.admin_title", { country: partnerZone?.country || userProfile.country }) : t("admin_dashboard.secretary_title");
+
+  const displayZoneCountry = partnerZone?.country || userProfile?.country;
+  const displayZoneCity = partnerZone?.cities?.length === 1 ? partnerZone.cities[0] : userProfile?.city;
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 relative">
@@ -453,9 +451,9 @@ const AdminDashboard = () => {
       <header className="mb-8">
         <h1 className="text-3xl font-bold">{dashboardTitle}</h1>
         <p className="text-muted-foreground">{t("admin_dashboard.welcome", { name: userProfile.full_name || user.email })}</p>
-        {isAdmin && userProfile?.country && (<div className="mt-2"><Badge variant="outline" className="text-sm"><MapPin className="w-3 h-3 mr-1" />Zone: {userProfile.country}{userProfile.city && `, ${userProfile.city}`}</Badge></div>)}
+        {isAdmin && displayZoneCountry && (<div className="mt-2"><Badge variant="outline" className="text-sm"><MapPin className="w-3 h-3 mr-1" />Zone: {displayZoneCountry}{displayZoneCity && `, ${displayZoneCity}`}</Badge></div>)}
       </header>
-      {isAdmin && isFunctionalityActive && userProfile?.country && (<AdminStats userProfile={userProfile} />)}
+      {isAdmin && isFunctionalityActive && displayZoneCountry && (<AdminStats userProfile={userProfile} partnerZone={partnerZone} />)}
       {isAdmin && isFunctionalityActive && <LicenseStatus user={userProfile} />}
       {isAdmin && <AdminStatusBanner status={partnerStatus} />}
 

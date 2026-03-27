@@ -1,14 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useData } from '@/contexts/DataContext';
-import { supabase } from '@/lib/customSupabaseClient';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { CheckCircle2, ArrowRight, Loader2, AlertCircle, Coins, Home } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import MultilingualSeoHead from '@/components/MultilingualSeoHead';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { useData } from "@/contexts/DataContext";
+import { supabase } from "@/lib/customSupabaseClient";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  Coins,
+  Home,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import MultilingualSeoHead from "@/components/MultilingualSeoHead";
+import { motion } from "framer-motion";
 
 const PaymentSuccessPage = () => {
   const { user } = useAuth();
@@ -22,131 +35,130 @@ const PaymentSuccessPage = () => {
   const [resultData, setResultData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Paramètres de l'URL (MoneyFusion renvoie souvent un token)
-  const moneyFusionToken = searchParams.get('token') || searchParams.get('transaction_id') || searchParams.get('id');
-  const queryAmount = searchParams.get('amount');
-  const status = searchParams.get('status') || 'success';
+  const moneyFusionToken =
+    searchParams.get("token") ||
+    searchParams.get("transaction_id") ||
+    searchParams.get("id");
+  const queryAmount = searchParams.get("amount");
+  const status = searchParams.get("status") || "success";
 
-  // Récupérer notre propre transaction_id stocké avant la redirection
-  const pendingTxnId = localStorage.getItem('pendingPaymentTxnId');
+  const pendingTxnId = localStorage.getItem("pendingPaymentTxnId");
 
-  // Log pour le débogage
   useEffect(() => {
-    console.log('🔍 Paramètres URL reçus :', Object.fromEntries(searchParams.entries()));
-    console.log('🔍 Transaction en attente (localStorage) :', pendingTxnId);
+    console.log(
+      "🔍 Paramètres URL reçus :",
+      Object.fromEntries(searchParams.entries()),
+    );
+    console.log("🔍 Transaction en attente (localStorage) :", pendingTxnId);
   }, [searchParams, pendingTxnId]);
 
   useEffect(() => {
-    const processPayment = async () => {
-      // Utiliser notre transaction_id stocké en priorité, sinon essayer celui de l'URL
+    const checkPaymentStatus = async () => {
       const transactionId = pendingTxnId || moneyFusionToken;
+      if (!transactionId || !user) return;
 
-      console.info(`[PaymentSuccess] transactionId utilisé : ${transactionId}`);
+      let attempts = 0;
+      const maxAttempts = 20;
+      const interval = 3000;
 
-      if (!transactionId) {
-        setError("Identifiant de transaction manquant.");
-        setVerifying(false);
-        return;
-      }
+      const poll = async () => {
+        try {
+          const { data: payment, error } = await supabase
+            .from("payments")
+            .select(
+              "status, coins_amount, amount_fcfa, coupon_owner_id, coupon_commission",
+            )
+            .eq("transaction_id", transactionId)
+            .single();
+          if (error) throw error;
 
-      if (!user) {
-        console.warn("[PaymentSuccess] Utilisateur non connecté, sauvegarde de la transaction.");
-        localStorage.setItem('pendingTransaction', JSON.stringify({
-          transactionId,
-          amount: queryAmount,
-          status
-        }));
-        navigate('/auth?redirect=/payment-success');
-        return;
-      }
+          if (payment.status === "completed") {
+            setSuccess(true);
 
-      try {
-        let couponCode = localStorage.getItem('couponCodeForPayment');
-        if (couponCode) {
-          console.info(`[PaymentSuccess] Code coupon trouvé : ${couponCode}`);
-          localStorage.removeItem('couponCodeForPayment');
-        }
+            // Récupérer le profil de l'utilisateur (acheteur)
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("coin_balance, free_coin_balance")
+              .eq("id", user.id)
+              .single();
 
-        // Chercher le paiement dans la base de données
-        const { data: paymentRecord, error: paymentError } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('transaction_id', transactionId)
-          .single();
+            // Message de félicitations si un coupon a été utilisé
+            let couponMessage = "";
+            if (payment.coupon_owner_id) {
+              const { data: owner } = await supabase
+                .from("profiles")
+                .select("full_name, email")
+                .eq("id", payment.coupon_owner_id)
+                .single();
+              const ownerName = owner?.full_name || "un ami";
+              const commissionCoins = Math.floor(payment.coupon_commission / 10);
+              couponMessage = `🎉 Bravo ! Votre coupon a permis à ${ownerName} de recevoir ${commissionCoins} crédits (${payment.coupon_commission} FCFA) !`;
+            }
 
-        if (paymentError || !paymentRecord) {
-          console.warn("[PaymentSuccess] Aucun paiement trouvé avec ce transaction_id.", paymentError);
-          // On peut continuer, le montant sera pris de l'URL
-        } else if (paymentRecord.status === 'completed') {
-          console.info("[PaymentSuccess] Paiement déjà marqué comme terminé.");
-        }
-
-        const finalAmount = paymentRecord ? paymentRecord.amount_fcfa : parseInt(queryAmount, 10);
-        if (!finalAmount) {
-          setError("Montant de la transaction introuvable.");
-          setVerifying(false);
-          return;
-        }
-
-        const { data, error: rpcError } = await supabase.rpc('process_moneyfusion_success', {
-          p_user_id: user.id,
-          p_transaction_id: transactionId,
-          p_amount: finalAmount,
-          p_status: status,
-          p_coupon_code: couponCode || null
-        });
-
-        if (rpcError) throw rpcError;
-
-        if (data.success) {
-          if (paymentRecord && paymentRecord.status !== 'completed') {
-            await supabase.from('payments')
-              .update({ status: 'completed', processed_at: new Date() })
-              .eq('transaction_id', transactionId);
-          }
-
-          // Nettoyer le localStorage (les clés utilisées)
-          localStorage.removeItem('pendingPaymentTxnId');
-          localStorage.removeItem('couponCodeForPayment');
-          // Ne pas toucher à 'appliedCoupon' car il n'est pas défini ici (il appartient à CreditPacksPage)
-
-          setSuccess(true);
-          setResultData(data);
-          forceRefreshUserProfile();
-
-          if (!data.already_processed) {
-            toast({
-              title: "Paiement validé !",
-              description: `${data.coins_added} crédits ajoutés à votre compte.`,
-              variant: "default",
-              className: "bg-green-600 text-white border-none"
+            setResultData({
+              coins_added: payment.coins_amount,
+              bonus_added: 0,
+              new_balance:
+                (profile?.coin_balance || 0) +
+                (profile?.free_coin_balance || 0),
+              couponMessage,
             });
+
+            forceRefreshUserProfile();
+            setVerifying(false);
+            return;
+          } else if (payment.status === "cancelled") {
+            setError("Paiement annulé");
+            setVerifying(false);
+            return;
           }
-        } else {
-          if (paymentRecord) {
-            await supabase.from('payments').update({ status: 'failed' }).eq('transaction_id', transactionId);
+
+          attempts++;
+          if (attempts >= maxAttempts) {
+            setError(
+              "Délai d’attente dépassé. Vérifiez plus tard le statut de votre paiement.",
+            );
+            setVerifying(false);
+            return;
           }
-          setError(data.message || "Échec du traitement du paiement.");
+
+          setTimeout(poll, interval);
+        } catch (err) {
+          console.error("Erreur vérification statut:", err);
+          setError("Impossible de vérifier le statut du paiement");
+          setVerifying(false);
         }
-      } catch (err) {
-        console.error("[PaymentSuccess] Erreur de traitement :", err);
-        setError("Erreur lors de la communication avec le serveur.");
-      } finally {
-        setVerifying(false);
-      }
+      };
+
+      poll();
     };
 
-    const timeout = setTimeout(processPayment, 1000);
-    return () => clearTimeout(timeout);
-  }, [user, pendingTxnId, moneyFusionToken, queryAmount, status, forceRefreshUserProfile, toast, navigate]);
+    if (user && (pendingTxnId || moneyFusionToken)) {
+      checkPaymentStatus();
+    } else if (!user && (pendingTxnId || moneyFusionToken)) {
+      localStorage.setItem(
+        "pendingTransaction",
+        JSON.stringify({
+          transactionId: pendingTxnId || moneyFusionToken,
+          amount: queryAmount,
+          status,
+        }),
+      );
+      navigate("/auth?redirect=/payment-success");
+    } else {
+      setVerifying(false);
+      setError("Aucune information de transaction trouvée.");
+    }
+  }, [user, pendingTxnId, moneyFusionToken, queryAmount, status, navigate, forceRefreshUserProfile]);
 
-  // Vérifier s'il y a une transaction en attente après connexion
   useEffect(() => {
-    const pending = localStorage.getItem('pendingTransaction');
+    const pending = localStorage.getItem("pendingTransaction");
     if (user && pending) {
-      localStorage.removeItem('pendingTransaction');
+      localStorage.removeItem("pendingTransaction");
       const { transactionId, amount, status } = JSON.parse(pending);
-      navigate(`/payment-success?transaction_id=${transactionId}&amount=${amount}&status=${status}`);
+      navigate(
+        `/payment-success?transaction_id=${transactionId}&amount=${amount}&status=${status}`,
+      );
     }
   }, [user, navigate]);
 
@@ -160,8 +172,12 @@ const PaymentSuccessPage = () => {
             <Loader2 className="absolute inset-0 m-auto w-8 h-8 text-indigo-600 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Vérification du paiement...</h2>
-            <p className="text-slate-500">Nous validons votre transaction sécurisée.</p>
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              Vérification du paiement...
+            </h2>
+            <p className="text-slate-500">
+              Nous validons votre transaction sécurisée.
+            </p>
           </div>
         </div>
       </div>
@@ -170,7 +186,12 @@ const PaymentSuccessPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <MultilingualSeoHead pageData={{ title: "Paiement Réussi - BonPlanInfos", description: "Confirmation de votre achat." }} />
+      <MultilingualSeoHead
+        pageData={{
+          title: "Paiement Réussi - BonPlanInfos",
+          description: "Confirmation de votre achat.",
+        }}
+      />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -178,16 +199,25 @@ const PaymentSuccessPage = () => {
         className="w-full max-w-lg"
       >
         <Card className="shadow-2xl border-0 overflow-hidden">
-          <div className={`h-2 w-full ${success ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div
+            className={`h-2 w-full ${success ? "bg-green-500" : "bg-red-500"}`}
+          ></div>
           <CardHeader className="text-center pb-2 pt-8">
-            <div className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${success ? 'bg-green-50' : 'bg-red-50'}`}>
-              {success ? <CheckCircle2 className="w-12 h-12 text-green-600" /> : <AlertCircle className="w-12 h-12 text-red-500" />}
+            <div
+              className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${success ? "bg-green-50" : "bg-red-50"}`}
+            >
+              {success ? (
+                <CheckCircle2 className="w-12 h-12 text-green-600" />
+              ) : (
+                <AlertCircle className="w-12 h-12 text-red-500" />
+              )}
             </div>
-            <CardTitle className={`text-3xl font-bold ${success ? 'text-green-700' : 'text-red-700'}`}>
-              {success ? 'Paiement Réussi !' : 'Erreur de Traitement'}
+            <CardTitle
+              className={`text-3xl font-bold ${success ? "text-green-700" : "text-red-700"}`}
+            >
+              {success ? "Paiement Réussi !" : "Erreur de Traitement"}
             </CardTitle>
           </CardHeader>
-
           <CardContent className="space-y-6 pt-6 text-center px-8">
             {success ? (
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -197,41 +227,66 @@ const PaymentSuccessPage = () => {
                     <span className="font-medium">Compte Crédité</span>
                   </div>
                   <div className="py-4">
-                    <span className="text-6xl font-extrabold text-indigo-600 block mb-2">{resultData.coins_added}</span>
-                    <span className="text-xl font-medium text-slate-400">Crédits ajoutés</span>
+                    <span className="text-6xl font-extrabold text-indigo-600 block mb-2">
+                      {resultData?.coins_added}
+                    </span>
+                    <span className="text-xl font-medium text-slate-400">
+                      Crédits ajoutés
+                    </span>
                   </div>
-                  {resultData.bonus_added > 0 && (
+                  {resultData?.bonus_added > 0 && (
                     <div className="inline-block bg-green-100 text-green-700 text-sm font-bold px-4 py-1.5 rounded-full mb-4">
                       +{resultData.bonus_added} Bonus inclus 🎉
                     </div>
                   )}
+                  {resultData?.couponMessage && (
+                    <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+                      {resultData.couponMessage}
+                    </div>
+                  )}
                   <div className="border-t border-slate-200 pt-4 mt-4">
-                    <p className="text-sm text-slate-500">Nouveau solde disponible</p>
-                    <p className="text-2xl font-bold text-slate-800">{resultData.new_balance} <span className="text-sm font-normal text-slate-400">crédits</span></p>
+                    <p className="text-sm text-slate-500">
+                      Nouveau solde disponible
+                    </p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {resultData?.new_balance}{" "}
+                      <span className="text-sm font-normal text-slate-400">
+                        crédits
+                      </span>
+                    </p>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="bg-red-50 p-6 rounded-xl border border-red-100">
                 <p className="text-red-700 font-medium mb-2">{error}</p>
-                <p className="text-xs text-red-400 font-mono mt-4">ID reçu : {moneyFusionToken || pendingTxnId || 'Non fourni'}</p>
+                <p className="text-xs text-red-400 font-mono mt-4">
+                  ID reçu : {moneyFusionToken || pendingTxnId || "Non fourni"}
+                </p>
                 <p className="text-sm text-slate-500 mt-4">
-                  Si vous avez été débité, veuillez contacter le support avec l'ID de transaction ci-dessus.
+                  Si vous avez été débité, veuillez contacter le support avec
+                  l'ID de transaction ci-dessus.
                 </p>
                 {!user && (
-                  <Button onClick={() => navigate('/auth')} className="mt-4">
+                  <Button onClick={() => navigate("/auth")} className="mt-4">
                     Se connecter pour valider
                   </Button>
                 )}
               </div>
             )}
           </CardContent>
-
           <CardFooter className="flex flex-col gap-3 pt-4 pb-8 px-8">
-            <Button className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200" onClick={() => navigate('/profile')}>
+            <Button
+              className="w-full h-12 text-base bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+              onClick={() => navigate("/profile")}
+            >
               Voir mon profil <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-            <Button variant="ghost" className="w-full text-slate-500 hover:text-slate-700" onClick={() => navigate('/packs')}>
+            <Button
+              variant="ghost"
+              className="w-full text-slate-500 hover:text-slate-700"
+              onClick={() => navigate("/packs")}
+            >
               <Home className="mr-2 w-4 h-4" /> Retourner à la boutique
             </Button>
           </CardFooter>

@@ -22,7 +22,7 @@ ARTICLE 1 : OBJET
 Le présent contrat définit les conditions dans lesquelles l'Organisateur est autorisé à publier, promouvoir et monétiser des événements sur la Plateforme.
 
 ARTICLE 2 : ENGAGEMENTS DE L'ORGANISATEUR
-2.1 L'Organisateur certifie sur l'honneur que l'événement publié est réel, licite et conforme aux lois en vigueur de son pays.
+2.1 L'Organisateur certifie sur l'honneur que l'événement publié est réel, licite, conforme aux lois en vigueur de son pays et autorisé.
 2.2 L'Organisateur s'engage à assurer le bon déroulement de l'événement tel que décrit sur la Plateforme.
 2.3 En cas d'annulation ou de modification majeure, l'Organisateur doit en informer immédiatement la Plateforme et les participants.
 
@@ -43,7 +43,7 @@ ARTICLE 6 : RÉSILIATION
 La Plateforme se réserve le droit de suspendre ou de supprimer le compte d'un Organisateur en cas de non-respect des présentes conditions, sans préavis ni indemnité.
 
 ARTICLE 7 : DROIT APPLICABLE
-Le présent contrat est soumis au droit en vigueur dans le pays d'immatriculation de la Plateforme. En cas de litige, les tribunaux compétents seront seuls habilités à trancher.
+Le présent contrat est soumis au droit en vigueur dans le pays d'immatriculation de la Plateforme.
 
 En cochant la case « J’ai lu et j’accepte », je reconnais avoir pris connaissance de l’intégralité du présent contrat et l’accepter sans réserve.
 `;

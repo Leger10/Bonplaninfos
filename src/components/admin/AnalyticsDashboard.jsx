@@ -455,196 +455,17 @@ const AnalyticsDashboard = () => {
             Vue d'ensemble et métriques clés de la plateforme.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => fetchDashboardData(true)}
-            variant="outline"
-            disabled={refreshing || loading}
-            className="shadow-sm"
-          >
-            <RefreshCw
-              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
-            />
-            {refreshing ? "Mise à jour..." : "Actualiser"}
-          </Button>
-        </div>
-      </div>
-
-      {/* 3 Modern Key Metric Cards */}
-      {loading && !refreshing ? (
-        <div className="grid gap-6 md:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-40 rounded-2xl" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Card 1: Commissions */}
-          <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-            <Card className="overflow-hidden shadow-lg border-0 bg-gradient-to-br from-violet-600 to-amber-500 text-white h-full relative">
-              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
-              <CardContent className="p-8 flex flex-col justify-between h-full relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                    <Coins className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-white/80 text-sm font-medium mb-1">
-                    Cumul commissions plateforme (5%)
-                  </p>
-                  <h3 className="text-4xl font-bold tracking-tight">
-                    {metrics.totalCommissions.toLocaleString("fr-FR")}{" "}
-                    <span className="text-xl font-normal opacity-80">
-                      pièces
-                    </span>
-                  </h3>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Card 2: User Balance */}
-          <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-            <Card className="overflow-hidden shadow-lg border-0 bg-gradient-to-br from-emerald-500 to-cyan-600 text-white h-full relative">
-              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
-              <CardContent className="p-8 flex flex-col justify-between h-full relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                    <Wallet className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-white/80 text-sm font-medium mb-1">
-                    Total solde actuel des utilisateurs
-                  </p>
-                  <h3 className="text-4xl font-bold tracking-tight">
-                    {metrics.totalUserBalance.toLocaleString("fr-FR")}{" "}
-                    <span className="text-xl font-normal opacity-80">
-                      pièces
-                    </span>
-                  </h3>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Card 3: Reset Action */}
-          <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-            <Card className="overflow-hidden shadow-lg border-0 bg-gradient-to-br from-red-600 to-rose-900 text-white h-full relative">
-              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
-              <CardContent className="p-8 flex flex-col justify-between h-full relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-                    <RotateCcw className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-white/80 text-sm font-medium mb-3">
-                    Zone de Danger
-                  </p>
-                  <Button
-                    onClick={() => setResetOpen(true)}
-                    variant="secondary"
-                    className="w-full bg-white text-red-600 hover:bg-white/90 font-bold shadow-md"
-                  >
-                    Réinitialiser les données
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Confirmation Modal for Reset */}
-      <AlertDialog
-        open={resetOpen}
-        onOpenChange={(isOpen) => {
-          setResetOpen(isOpen);
-          if (!isOpen) setResetError(null);
-        }}
-      >
-        <AlertDialogContent className="sm:max-w-[425px]">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center text-red-600">
-              <AlertCircle className="w-5 h-5 mr-2" />
-              Confirmation de Réinitialisation
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-base mt-2">
-              Êtes-vous sûr de vouloir réinitialiser toutes les données ? Cette
-              action est irréversible et supprimera l'historique des
-              transactions, les billets, les participations et réinitialisera
-              les compteurs.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {resetError && (
-            <Alert
-              variant="destructive"
-              className="mt-4 animate-in fade-in zoom-in-95"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Erreur de traitement</AlertTitle>
-              <AlertDescription className="text-sm mt-1">
-                {resetError}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel disabled={resetLoading}>
-              Annuler
-            </AlertDialogCancel>
-
-            {resetError ? (
-              <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleResetData();
-                }}
-                disabled={resetLoading}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {resetLoading ? (
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                )}
-                Réessayer
-              </Button>
-            ) : (
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleResetData();
-                }}
-                disabled={resetLoading}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {resetLoading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Réinitialisation...
-                  </>
-                ) : (
-                  "Oui, Réinitialiser"
-                )}
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+       
+          </div>
       {/* Secondary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* <SecondaryStatCard
+        <SecondaryStatCard
           title="Chiffre d'Affaires (Ventes)"
           value={formatCurrency(stats.totalSalesFcfa)}
           subtext="Total achats de packs et licences"
           icon={TrendingUp}
           colorClass="text-emerald-600"
-        /> */}
+        />
         <SecondaryStatCard
           title="Total Transactions"
           value={stats.totalTransactions.toLocaleString()}
@@ -965,9 +786,8 @@ const AnalyticsDashboard = () => {
                     </div>
                   )}
                 </div>
-                // ... (le début du fichier reste identique jusqu'à la section
-                des coupons)
-                {/* Liste des coupons avec actions admin */}
+                
+        
                 <div>
                   <h3 className="text-lg font-semibold mb-3">
                     Tous les coupons

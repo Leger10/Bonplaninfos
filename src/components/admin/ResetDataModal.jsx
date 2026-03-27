@@ -787,7 +787,7 @@ const ZoneResetManager = () => {
                   <TableHead className="font-bold">Pays / Zone</TableHead>
                   <TableHead className="text-center">Utilisateurs</TableHead>
                   <TableHead className="text-right">Pièces Distribuées</TableHead>
-                  <TableHead className="text-right">Revenus (Achats)</TableHead>
+                  <TableHead className="text-right">Revenus (Zone)</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
