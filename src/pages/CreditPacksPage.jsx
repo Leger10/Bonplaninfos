@@ -239,18 +239,23 @@ const CreditPacksPage = () => {
 
     try {
       // 1. Enregistrer le paiement en base avec le montant net
-      const { error } = await supabase.from("payments").insert({
-        user_id: user.id,
-        coins_amount: coinsAmount,
-        amount_fcfa: amountFcfa,           // montant net (sans frais)
-        status: "pending",
-        payment_method: "moneyfusion",
-        transaction_id: txnId,
-        pack_id: packId,
-        coupon_code: appliedCoupon?.code || null,
-      });
-      if (error) throw new Error("Erreur lors de l'enregistrement de la transaction.");
+      const { data, error } = await supabase.from("payments").insert({
+  user_id: user.id,
+  coins_amount: coinsAmount,
+  amount_fcfa: amountFcfa,
+  status: "pending",
+  payment_method: "moneyfusion",
+  transaction_id: txnId,
+  pack_id: packId,
+  coupon_code: appliedCoupon?.code || null,
+});
 
+if (error) {
+  console.error("❌ Erreur Supabase insert :", error);
+  throw new Error(`Erreur lors de l'enregistrement de la transaction: ${error.message}`);
+} else {
+  console.log("✅ Insertion payments réussie :", data);
+}
       // 2. Stocker l'ID pour la page de succès
       localStorage.setItem("pendingPaymentTxnId", txnId);
       if (appliedCoupon) {
