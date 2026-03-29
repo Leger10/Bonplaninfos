@@ -1532,7 +1532,7 @@
       "title": "Mon Solde de Pièces",
       "coins": "pièces",
       "approx": "≈ {{balance}} FCFA",
-      "description": "Pièces achetées ou gagnées, utilisables pour événements ou convertibles en gains. Commission de 5% sur les transferts vers gains.",
+      "description": "Pièces achetées ou gagnées, utilisables pour événements ou convertibles en gains. Commission de 5% sur les transferts vers gains pour retrait.",
       "locked": "🔒 Verrouillé",
       "lockedDescription": "Déverrouillez votre portefeuille pour voir votre solde.",
       "unlockButton": "Déverrouiller",
@@ -1562,7 +1562,7 @@
   "_comment_profileStats": "📊 Statistiques du profil (ProfileStats)",
   "profileStats": {
     "balance": "Mon solde",
-    "availableEarnings": "Gains disponibles",
+    "availableEarnings": "Gains Pour Retrait",
     "events": "Événements",
     "locked": "Verrouillé",
     "unlockButton": "Déverrouiller les soldes",
@@ -1612,6 +1612,7 @@
   "_comment_transferModal": "💸 Modal de transfert de gains (TransferModal)",
   "transferModal": {
     "title": "Transférer vos gains",
+
     "description": "Transférez vos gains en attente vers votre solde disponible. Les frais de {{percent}}% sont déjà déduits.",
     "netAmount": "Montant net à transférer",
     "afterFees": "Après déduction des frais",

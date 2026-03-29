@@ -38,6 +38,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CoinService } from "@/services/CoinService";
 
+const FCFA_PER_COIN = 10; // taux de conversion
+
 // Ticket Colors constant
 const TICKET_COLORS = {
   blue: {
@@ -373,6 +375,11 @@ const TicketingInterface = ({
   const balanceDeficit = useMemo(() => {
     return Math.max(0, cartTotal - (userBalance || 0));
   }, [userBalance, cartTotal]);
+
+  // Convert to FCFA for display
+  const userBalanceCfa = (userBalance || 0) * FCFA_PER_COIN;
+  const cartTotalCfa = cartTotal * FCFA_PER_COIN;
+  const deficitCfa = balanceDeficit * FCFA_PER_COIN;
 
   const redirectToPacks = () => {
     setShowInsufficientBalanceModal(false);
@@ -831,7 +838,7 @@ const TicketingInterface = ({
                             {cartTotal.toFixed(2)} pièces
                           </div>
                           <div className="text-xs sm:text-sm text-muted-foreground">
-                            {cartTotalFcfa.toLocaleString()} FCFA
+                            {cartTotalCfa.toLocaleString()} FCFA
                           </div>
                         </div>
                       </div>
@@ -857,7 +864,7 @@ const TicketingInterface = ({
                           <>
                             <Package className="w-5 h-5 mr-2" />
                             <span className="truncate">
-                              Recharger mon solde
+                              Recharger mon compte
                             </span>
                           </>
                         ) : (
@@ -1106,7 +1113,7 @@ const TicketingInterface = ({
                       {cartTotal.toFixed(2)} pièces
                     </span>
                     <span className="text-xs sm:text-sm text-muted-foreground">
-                      {cartTotalFcfa.toLocaleString()} FCFA
+                      {cartTotalCfa.toLocaleString()} FCFA
                     </span>
                   </div>
                 </div>
@@ -1176,7 +1183,7 @@ const TicketingInterface = ({
                   ) : (
                     <>
                       <Package className="mr-2 w-5 h-5" />
-                      <span className="truncate">Recharger mon solde</span>
+                      <span className="truncate">Faire un dépôt dans mon compte</span>
                     </>
                   )}
                 </Button>
@@ -1199,18 +1206,28 @@ const TicketingInterface = ({
             <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">
               Solde insuffisant
             </DialogTitle>
-            <DialogDescription className="text-center text-sm sm:text-base">
-              Votre solde actuel de{" "}
-              <strong>{userBalance.toFixed(2)} pièces</strong> ne permet pas
-              d'acheter le panier de{" "}
-              <strong>{cartTotal.toFixed(2)} pièces</strong>.
-              <br />
-              <br />
-              Il vous manque{" "}
-              <strong className="text-destructive">
-                {balanceDeficit.toFixed(2)} pièces
-              </strong>
-              .
+            <DialogDescription className="text-center text-sm sm:text-base space-y-2">
+              <div>
+                Votre solde actuel de{" "}
+                <strong>{userBalance.toLocaleString()} pièces</strong>{" "}
+                <span className="text-muted-foreground">
+                  (≈ {userBalanceCfa.toLocaleString()} FCFA)
+                </span>{" "}
+                ne permet pas d'acheter le panier de{" "}
+                <strong>{cartTotal.toLocaleString()} pièces</strong>{" "}
+                <span className="text-muted-foreground">
+                  (≈ {cartTotalCfa.toLocaleString()} FCFA)
+                </span>.
+              </div>
+              <div>
+                Il vous manque{" "}
+                <strong className="text-destructive">
+                  {balanceDeficit.toLocaleString()} pièces
+                </strong>{" "}
+                <span className="text-muted-foreground">
+                  (≈ {deficitCfa.toLocaleString()} FCFA)
+                </span>.
+              </div>
             </DialogDescription>
           </DialogHeader>
 
@@ -1270,7 +1287,7 @@ const TicketingInterface = ({
               <br />
               <strong className="text-primary font-semibold">
                 Vos billets sont disponibles dans l'onglet "Mes Billets" de
-                votre profil
+                votre profil en bas a droite de l'écran.
               </strong>{" "}
               pour un téléchargement ultérieur.
             </DialogDescription>

@@ -392,6 +392,7 @@ const ProfilePage = () => {
         totalNetAmount={pendingNet}
         loading={transferring}
         onConfirm={confirmTransfer}
+         exchangeRate={COIN_TO_FCFA_RATE}   // Add this line
       />
 
       <CoinTransferModal

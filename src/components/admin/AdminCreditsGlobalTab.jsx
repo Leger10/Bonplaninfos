@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Coins, Search, TrendingUp, RefreshCw, MapPin, Eraser } from "lucide-react";
+import { Loader2, Coins, Search, TrendingUp, RefreshCw, MapPin, Eraser, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,19 +24,21 @@ import {
 const AdminCreditsGlobalTab = () => {
   const { adminConfig } = useData();
   const { user } = useAuth();
-  const [creditLogs, setCreditLogs] = useState([]);
+  const [allEntries, setAllEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [totals, setTotals] = useState({ totalCoins: 0, totalFCFA: 0 });
+  const [purchaseTotals, setPurchaseTotals] = useState({ totalCoins: 0, totalFCFA: 0, uniqueUsers: 0 });
   const [countryTotals, setCountryTotals] = useState([]);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const coinToFcfaRate = adminConfig?.coin_to_fcfa_rate || 10;
 
-  const fetchCreditLogs = useCallback(async () => {
+  const fetchAllCredits = useCallback(async () => {
     setLoading(true);
     try {
+      // 1. Récupérer les crédits manuels (admin_logs)
       const { data: actors, error: actorsError } = await supabase
         .from("profiles")
         .select("id")
@@ -45,7 +47,7 @@ const AdminCreditsGlobalTab = () => {
       if (actorsError) throw actorsError;
       const actorIds = actors.map((a) => a.id);
 
-      let query = supabase
+      const adminQuery = supabase
         .from("admin_logs")
         .select(`
           id,
@@ -58,32 +60,88 @@ const AdminCreditsGlobalTab = () => {
         .eq("action_type", "user_credited")
         .order("created_at", { ascending: false });
 
-      if (searchTerm) {
-        query = query.or(
-          `target_user.full_name.ilike.%${searchTerm}%,target_user.email.ilike.%${searchTerm}%`
-        );
+      const { data: adminLogs, error: adminError } = await adminQuery;
+      if (adminError) throw adminError;
+
+      const validAdminLogs = adminLogs.filter((log) => !(log.details?.reversed));
+
+      // 2. Récupérer les achats automatiques (coin_transactions)
+      // On filtre sur transaction_type = 'credit_purchase'
+      const { data: purchases, error: purchaseError } = await supabase
+        .from("coin_transactions")
+        .select(`
+          id,
+          created_at,
+          amount_paid,
+          coins_credited,
+          user_id,
+          transaction_type,
+          profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
+        `)
+        .eq("transaction_type", "credit_purchase")
+        .order("created_at", { ascending: false });
+
+      if (purchaseError) {
+        console.error("Erreur lors de la récupération des achats :", purchaseError);
+        // On continue sans les achats
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      // Transformer les achats pour qu'ils aient la même structure que les logs admin
+      const formattedPurchases = (purchases || []).map((tx) => ({
+        id: tx.id,
+        created_at: tx.created_at,
+        details: { amount: tx.coins_credited, amount_fcfa: tx.amount_paid },
+        source: "purchase",
+        actor: { full_name: "Achat automatique", user_type: "system" },
+        target_user: {
+          full_name: tx.profiles?.full_name || "Utilisateur inconnu",
+          email: tx.profiles?.email,
+          country: tx.profiles?.country,
+          city: tx.profiles?.city,
+        },
+        user_id: tx.user_id,
+      }));
 
-      const filteredLogs = data.filter((log) => !(log.details?.reversed));
-      setCreditLogs(filteredLogs);
+      const formattedAdmin = validAdminLogs.map((log) => ({
+        ...log,
+        source: "admin",
+      }));
 
+      // Fusionner et trier par date
+      const combined = [...formattedAdmin, ...formattedPurchases].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+
+      setAllEntries(combined);
+
+      // Calcul des totaux globaux
       let totalCoinsGlobal = 0;
+      let purchaseCoins = 0;
+      let purchaseFcfa = 0;
+      const purchaseUserIds = new Set();
       const countryMap = new Map();
 
-      filteredLogs.forEach((log) => {
-        const amount = log.details?.amount || 0;
-        const country = log.target_user?.country || "Inconnu";
+      combined.forEach((entry) => {
+        const amount = entry.details?.amount || 0;
+        const amountFcfa = entry.details?.amount_fcfa || 0;
+        const country = entry.target_user?.country || "Inconnu";
         totalCoinsGlobal += amount;
+
+        // Totaux pour les achats uniquement
+        if (entry.source === "purchase") {
+          purchaseCoins += amount;
+          purchaseFcfa += amountFcfa;
+          if (entry.target_user?.full_name !== "Utilisateur inconnu") {
+            purchaseUserIds.add(entry.user_id || entry.target_user?.id);
+          }
+        }
 
         if (!countryMap.has(country)) {
           countryMap.set(country, { country, totalCoins: 0, count: 0 });
         }
-        const entry = countryMap.get(country);
-        entry.totalCoins += amount;
-        entry.count += 1;
+        const entryCountry = countryMap.get(country);
+        entryCountry.totalCoins += amount;
+        entryCountry.count += 1;
       });
 
       const countryArray = Array.from(countryMap.values()).sort(
@@ -95,31 +153,46 @@ const AdminCreditsGlobalTab = () => {
         totalCoins: totalCoinsGlobal,
         totalFCFA: totalCoinsGlobal * coinToFcfaRate,
       });
+      setPurchaseTotals({
+        totalCoins: purchaseCoins,
+        totalFCFA: purchaseCoins * coinToFcfaRate,
+        uniqueUsers: purchaseUserIds.size,
+      });
     } catch (error) {
-      console.error("Error fetching global credit logs:", error);
+      console.error("Error fetching credits:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger l'historique des crédits.",
+        description: `Impossible de charger l'historique : ${error.message}`,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, coinToFcfaRate]);
+  }, [coinToFcfaRate]);
+
+  // Filtrer selon le terme de recherche
+  const filteredEntries = allEntries.filter((entry) => {
+    if (!searchTerm) return true;
+    const target = entry.target_user;
+    return (
+      target?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      target?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   useEffect(() => {
-    fetchCreditLogs();
-  }, [fetchCreditLogs]);
+    fetchAllCredits();
+  }, [fetchAllCredits]);
 
-  // Écouter l'événement de réinitialisation pour rafraîchir les données
+  // Écouter l'événement de réinitialisation
   useEffect(() => {
     const handleZoneReset = (event) => {
       console.log("Zone reset detected, refreshing credit logs", event.detail);
-      fetchCreditLogs();
+      fetchAllCredits();
     };
     window.addEventListener("zone-reset-completed", handleZoneReset);
     return () => window.removeEventListener("zone-reset-completed", handleZoneReset);
-  }, [fetchCreditLogs]);
+  }, [fetchAllCredits]);
 
   const handleResetAll = async () => {
     if (!user) return;
@@ -128,17 +201,17 @@ const AdminCreditsGlobalTab = () => {
       const { data, error } = await supabase.rpc("reset_all_zones", {
         p_admin_id: user.id,
         p_reset_credits: true,
-        p_reset_revenue: false, // on ne réinitialise que les crédits pour cet exemple
+        p_reset_revenue: false,
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
       toast({
         title: "Réinitialisation réussie",
-        description: "Tous les crédits distribués ont été supprimés.",
+        description: "Tous les crédits distribués manuellement ont été supprimés.",
         variant: "default",
         className: "bg-green-600 text-white",
       });
-      fetchCreditLogs(); // rechargement immédiat
+      fetchAllCredits();
     } catch (err) {
       console.error("Reset error:", err);
       toast({
@@ -172,15 +245,14 @@ const AdminCreditsGlobalTab = () => {
                 Historique global des crédits
               </CardTitle>
               <CardDescription>
-                Liste de tous les crédits distribués par les super
-                administrateurs et secrétaires dans toutes les zones.
+                Liste de tous les crédits distribués (manuels par les admins + achats automatiques).
               </CardDescription>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchCreditLogs}
+                onClick={fetchAllCredits}
                 disabled={loading}
                 className="gap-2"
               >
@@ -199,14 +271,14 @@ const AdminCreditsGlobalTab = () => {
                 className="gap-2"
               >
                 <Eraser className="w-4 h-4" />
-                Réinitialiser tous les crédits
+                Réinitialiser les crédits manuels
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-6">
           {/* Cartes de synthèse */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -257,6 +329,30 @@ const AdminCreditsGlobalTab = () => {
                   </div>
                   <div className="p-2 bg-purple-500 rounded-full">
                     <MapPin className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      Achats MoneyFusion
+                    </p>
+                    <p className="text-lg font-bold text-yellow-900">
+                      {purchaseTotals.totalCoins.toLocaleString("fr-FR")} pièces
+                    </p>
+                    <p className="text-sm font-semibold text-yellow-800">
+                      {formatCurrency(purchaseTotals.totalFCFA)}
+                    </p>
+                    <div className="flex items-center gap-1 mt-2 text-sm text-yellow-700">
+                      <Users className="w-4 h-4" />
+                      <span>{purchaseTotals.uniqueUsers} utilisateurs uniques</span>
+                    </div>
+                  </div>
+                  <div className="p-2 bg-yellow-500 rounded-full">
+                    <Coins className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -349,6 +445,7 @@ const AdminCreditsGlobalTab = () => {
                     <TableHead className="whitespace-nowrap">
                       Valeur FCFA
                     </TableHead>
+                    <TableHead className="whitespace-nowrap">Source</TableHead>
                     <TableHead className="whitespace-nowrap">
                       Crédité par
                     </TableHead>
@@ -356,10 +453,10 @@ const AdminCreditsGlobalTab = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {creditLogs.length === 0 ? (
+                  {filteredEntries.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center py-12 text-muted-foreground"
                       >
                         <Coins className="w-16 h-16 mx-auto mb-4 opacity-30" />
@@ -384,25 +481,25 @@ const AdminCreditsGlobalTab = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    creditLogs.map((log) => {
-                      const coinAmount = log.details?.amount || 0;
+                    filteredEntries.map((entry) => {
+                      const coinAmount = entry.details?.amount || 0;
                       const fcfaValue = coinAmount * coinToFcfaRate;
-                      const userLocation = `${log.target_user?.city || "N/A"}, ${
-                        log.target_user?.country || "Inconnu"
+                      const userLocation = `${entry.target_user?.city || "N/A"}, ${
+                        entry.target_user?.country || "Inconnu"
                       }`;
 
                       return (
                         <TableRow
-                          key={log.id}
+                          key={entry.id}
                           className="hover:bg-muted/50 transition-colors"
                         >
                           <TableCell>
                             <p className="font-semibold">
-                              {log.target_user?.full_name ||
+                              {entry.target_user?.full_name ||
                                 "Utilisateur inconnu"}
                             </p>
                             <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {log.target_user?.email}
+                              {entry.target_user?.email}
                             </p>
                           </TableCell>
                           <TableCell>
@@ -420,24 +517,44 @@ const AdminCreditsGlobalTab = () => {
                             {formatCurrency(fcfaValue)}
                           </TableCell>
                           <TableCell>
-                            <p className="font-medium">{log.actor?.full_name}</p>
                             <Badge
-                              variant="outline"
-                              className="text-xs capitalize mt-1"
+                              variant={entry.source === "admin" ? "default" : "secondary"}
+                              className={
+                                entry.source === "admin"
+                                  ? "bg-blue-600 hover:bg-blue-700"
+                                  : "bg-purple-600 hover:bg-purple-700"
+                              }
                             >
-                              {log.actor?.user_type?.replace("_", " ") ||
-                                "Admin"}
+                              {entry.source === "admin" ? "Admin" : "Achat"}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {entry.source === "admin" ? (
+                              <>
+                                <p className="font-medium">{entry.actor?.full_name}</p>
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize mt-1"
+                                >
+                                  {entry.actor?.user_type?.replace("_", " ") ||
+                                    "Admin"}
+                                </Badge>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                Système (MoneyFusion)
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             <div className="flex flex-col">
                               <span>
-                                {new Date(log.created_at).toLocaleDateString(
+                                {new Date(entry.created_at).toLocaleDateString(
                                   "fr-FR"
                                 )}
                               </span>
                               <span className="text-xs">
-                                {new Date(log.created_at).toLocaleTimeString(
+                                {new Date(entry.created_at).toLocaleTimeString(
                                   "fr-FR",
                                   { hour: "2-digit", minute: "2-digit" }
                                 )}
@@ -453,11 +570,11 @@ const AdminCreditsGlobalTab = () => {
             </div>
           )}
 
-          {creditLogs.length > 0 && !loading && (
+          {filteredEntries.length > 0 && !loading && (
             <div className="mt-4 pt-4 border-t text-sm text-muted-foreground text-center">
               <p>
-                Affichage de {creditLogs.length} crédit
-                {creditLogs.length > 1 ? "s" : ""}
+                Affichage de {filteredEntries.length} crédit
+                {filteredEntries.length > 1 ? "s" : ""}
                 {searchTerm && ` pour "${searchTerm}"`}
               </p>
             </div>
@@ -472,7 +589,7 @@ const AdminCreditsGlobalTab = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmation de réinitialisation</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action supprimera définitivement tous les logs de crédits distribués (et seulement les crédits, pas les revenus). 
+              Cette action supprimera définitivement tous les logs de crédits distribués manuellement (et seulement les crédits manuels, pas les revenus). 
               Les soldes des utilisateurs ne seront pas modifiés. Êtes-vous sûr de vouloir continuer ?
             </AlertDialogDescription>
           </AlertDialogHeader>

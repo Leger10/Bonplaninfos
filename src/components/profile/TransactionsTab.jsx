@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Coins, 
     Package, 
@@ -7,10 +7,25 @@ import {
     Gift, 
     ArrowRightLeft, 
     Percent, 
-    AlertCircle 
+    AlertCircle,
+    Trash2,
+    Loader2,
+    AlertTriangle,
+    RotateCcw
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -21,9 +36,17 @@ import {
 } from "@/components/ui/table";
 import { COIN_TO_FCFA_RATE } from '@/constants/coinRates';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { toast } from '@/components/ui/use-toast';
 
-const TransactionsTab = ({ transactions }) => {
+const TransactionsTab = ({ transactions, onRefresh }) => {
     const { t } = useTranslation();
+    const { user } = useAuth();
+    const [clearTransferDialogOpen, setClearTransferDialogOpen] = useState(false);
+    const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+    const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+    const [clearing, setClearing] = useState(false);
 
     // Formater les nombres avec séparateurs de milliers
     const formatNumber = (num) => {
@@ -64,76 +87,144 @@ const TransactionsTab = ({ transactions }) => {
         }
     };
 
-    // --- LOGIQUE POUR HISTORIQUE GÉNÉRAL ---
-    const getTransactionDetails = (transaction) => {
-        let icon, color, text, amount;
+    // Suppression logique des transferts et frais
+    const handleClearTransferHistory = async () => {
+        if (!user) return;
+        setClearing(true);
+        try {
+            const { data, error } = await supabase.rpc('clear_user_transfer_history', {
+                p_user_id: user.id
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error(data.message);
 
-        if (transaction.transaction_type) {
-            switch (transaction.transaction_type) {
-                case 'earning':
-                    icon = Gift;
-                    color = 'text-green-400';
-                    text = t('transactionsTab.other.types.earning');
-                    amount = transaction.amount_pi;
-                    break;
-                case 'manual_credit':
-                    icon = Download;
-                    color = 'text-blue-400';
-                    text = t('transactionsTab.other.types.manual_credit');
-                    amount = transaction.amount_pi;
-                    break;
-                case 'credit_reversal':
-                    icon = Upload;
-                    color = 'text-red-400';
-                    text = t('transactionsTab.other.types.credit_reversal');
-                    amount = transaction.amount_pi;
-                    break;
-                case 'earnings_transfer_to_wallet':
-                    icon = ArrowRightLeft;
-                    color = 'text-green-500';
-                    text = t('transactionsTab.other.types.earnings_transfer_to_wallet');
-                    amount = transaction.amount_pi;
-                    break;
-                case 'platform_fee':
-                    icon = Percent;
-                    color = 'text-red-500';
-                    text = t('transactionsTab.other.types.platform_fee');
-                    amount = transaction.amount_pi;
-                    break;
-                default:
-                    icon = Coins;
-                    color = 'text-gray-400';
-                    text = transaction.description || t('transactionsTab.other.types.default');
-                    amount = transaction.amount_pi;
-            }
-        } else if (transaction.purpose) {
-            icon = Upload;
-            color = 'text-red-400';
-            text = t('transactionsTab.other.types.expense', { purpose: transaction.purpose });
-            amount = -transaction.amount;
-        } else {
-            icon = Package;
-            color = 'text-blue-400';
-            text = t('transactionsTab.other.types.default');
-            amount = transaction.total_coins;
+            toast({
+                title: "Historique vidé",
+                description: "Votre historique des transferts et frais a été supprimé (masqué).",
+                variant: "default",
+                className: "bg-green-600 text-white",
+            });
+            if (onRefresh) onRefresh(); // Recharger les transactions (excluant les supprimées)
+        } catch (err) {
+            console.error("Clear error:", err);
+            toast({
+                title: "Erreur",
+                description: err.message || "Impossible de vider l'historique.",
+                variant: "destructive",
+            });
+        } finally {
+            setClearing(false);
+            setClearTransferDialogOpen(false);
         }
-
-        return { icon, color, text, amount };
     };
 
-    const generalTransactions = (transactions || []).filter(item => 
-        !transferTypes.includes(item.transaction_type)
-    );
+    // Suppression logique de TOUTES les transactions
+    const handleClearAllHistory = async () => {
+        if (!user) return;
+        setClearing(true);
+        try {
+            const { data, error } = await supabase.rpc('clear_all_user_transactions', {
+                p_user_id: user.id
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error(data.message);
+
+            toast({
+                title: "Historique complet vidé",
+                description: "Toutes vos transactions ont été supprimées (masquées).",
+                variant: "default",
+                className: "bg-green-600 text-white",
+            });
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            console.error("Clear all error:", err);
+            toast({
+                title: "Erreur",
+                description: err.message || "Impossible de vider l'historique complet.",
+                variant: "destructive",
+            });
+        } finally {
+            setClearing(false);
+            setClearAllDialogOpen(false);
+        }
+    };
+
+    // Restauration de TOUTES les transactions (remet deleted_at = NULL)
+    const handleRestoreAllHistory = async () => {
+        if (!user) return;
+        setClearing(true);
+        try {
+            const { data, error } = await supabase.rpc('restore_user_transactions', {
+                p_user_id: user.id
+            });
+            if (error) throw error;
+            if (!data.success) throw new Error(data.message);
+
+            toast({
+                title: "Historique restauré",
+                description: "Toutes vos transactions ont été restaurées.",
+                variant: "default",
+                className: "bg-green-600 text-white",
+            });
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            console.error("Restore error:", err);
+            toast({
+                title: "Erreur",
+                description: err.message || "Impossible de restaurer l'historique.",
+                variant: "destructive",
+            });
+        } finally {
+            setClearing(false);
+            setRestoreDialogOpen(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
             {/* --- TABLEAU: HISTORIQUE DES TRANSFERTS ET FRAIS --- */}
             <Card className="shadow-sm border-t-4 border-t-indigo-500">
-                <CardHeader className="bg-muted/30 pb-4">
+                <CardHeader className="bg-muted/30 pb-4 flex flex-row items-center justify-between flex-wrap gap-2">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-indigo-900">
                         <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
                         {t('transactionsTab.transfers.title')}
                     </CardTitle>
+                    <div className="flex gap-2">
+                        {transfersAndFees.length > 0 && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setClearTransferDialogOpen(true)}
+                                disabled={clearing}
+                                className="gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Effacer les transferts
+                            </Button>
+                        )}
+                        {transactions && transactions.length > 0 && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setClearAllDialogOpen(true)}
+                                disabled={clearing}
+                                className="gap-2 bg-red-700 hover:bg-red-800"
+                            >
+                                <AlertTriangle className="w-4 h-4" />
+                                Tout effacer
+                            </Button>
+                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRestoreDialogOpen(true)}
+                            disabled={clearing}
+                            className="gap-2"
+                        >
+                            <RotateCcw className="w-4 h-4" />
+                            Restaurer l'historique
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     {transfersAndFees.length > 0 ? (
@@ -205,55 +296,81 @@ const TransactionsTab = ({ transactions }) => {
                 </CardContent>
             </Card>
 
-            {/* --- LISTE: AUTRES TRANSACTIONS --- */}
-            <Card className="glass-effect">
-                <CardHeader>
-                    <CardTitle className="text-lg">{t('transactionsTab.other.title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {generalTransactions.length > 0 ? (
-                        <div className="space-y-4">
-                            {generalTransactions.slice(0, 25).map((transaction) => {
-                                const { icon: Icon, color, text, amount } = getTransactionDetails(transaction);
-                                const isCredit = amount > 0;
+            {/* Dialogue pour effacer les transferts/frais */}
+            <AlertDialog open={clearTransferDialogOpen} onOpenChange={setClearTransferDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Effacer votre historique des transferts</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action masquera définitivement tout votre historique de transferts et frais de plateforme.
+                            <br /><br />
+                            Les autres transactions (gains, achats, etc.) ne seront pas affectées.
+                            <br /><br />
+                            Voulez-vous vraiment continuer ?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={clearing}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearTransferHistory} disabled={clearing} className="bg-red-600 hover:bg-red-700">
+                            {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            Oui, effacer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                                let bgColor = 'bg-red-500';
-                                if (color === 'text-green-400') bgColor = 'bg-green-500';
-                                if (color === 'text-blue-400') bgColor = 'bg-blue-500';
+            {/* Dialogue pour effacer TOUT l'historique */}
+            <AlertDialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Effacer TOUT votre historique</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <p className="text-red-600 font-semibold">
+                                ⚠️ Attention : Cette action est irréversible !
+                            </p>
+                            <p>
+                                Elle masquera définitivement <strong>toutes</strong> vos transactions : 
+                                transferts, frais, gains, achats de pièces, crédits manuels, etc.
+                            </p>
+                            <p>
+                                Les soldes de votre compte ne seront pas affectés, mais vous perdrez 
+                                l'historique détaillé de vos opérations.
+                            </p>
+                            <p>
+                                Voulez-vous vraiment continuer ?
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={clearing}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearAllHistory} disabled={clearing} className="bg-red-700 hover:bg-red-800">
+                            {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            Oui, tout effacer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                                return (
-                                    <div
-                                        key={transaction.id || Math.random()}
-                                        className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                                    >
-                                        <div className="flex items-center">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-opacity-20 ${bgColor}`}>
-                                                <Icon className={`w-5 h-5 ${color}`} />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-sm sm:text-base">
-                                                    {text}
-                                                </p>
-                                                <p className="text-xs sm:text-sm text-muted-foreground">
-                                                    {formatDate(transaction.created_at)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className={`font-bold whitespace-nowrap ${color}`}>
-                                            {isCredit ? '+' : ''}{formatNumber(amount)} π
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8">
-                            <Coins className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                            <p className="text-muted-foreground">{t('transactionsTab.other.empty')}</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+            {/* Dialogue pour restaurer l'historique */}
+            <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Restaurer votre historique</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action réaffichera toutes vos transactions précédemment effacées (masquées).
+                            <br /><br />
+                            Voulez-vous vraiment restaurer votre historique complet ?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={clearing}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRestoreAllHistory} disabled={clearing} className="bg-green-600 hover:bg-green-700">
+                            {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            Oui, restaurer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

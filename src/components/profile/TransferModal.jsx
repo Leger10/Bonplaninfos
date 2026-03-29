@@ -1,4 +1,6 @@
+// TransferModal.jsx
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -17,14 +19,26 @@ import {
   CheckCircle2, 
   Wallet, 
   ArrowRight,
-  Percent,
   Calculator,
   Shield,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
 
-const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, onConfirm }) => {
+// Helper to format numbers with thousands separators
+const formatNumber = (num) => {
+  return num.toLocaleString();
+};
+
+const TransferModal = ({ 
+  isOpen, 
+  onClose, 
+  totalAmount, 
+  totalNetAmount, 
+  loading, 
+  onConfirm,
+  exchangeRate = 10  // default 1 coin = 10 F CFA
+}) => {
   const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
   const [showFeesInfo, setShowFeesInfo] = useState(false);
@@ -32,7 +46,12 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
   const PLATFORM_FEE_PERCENT = 5;
   
   const platformFee = Math.ceil(totalAmount * (PLATFORM_FEE_PERCENT / 100));
-  const netAmount = totalNetAmount || Math.floor(totalAmount - platformFee);
+  const netAmount = totalNetAmount ?? Math.floor(totalAmount - platformFee);
+  
+  // CFA equivalents
+  const grossCFA = totalAmount * exchangeRate;
+  const feeCFA = platformFee * exchangeRate;
+  const netCFA = netAmount * exchangeRate;
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -52,11 +71,16 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
             <p className="text-xs sm:text-sm text-muted-foreground uppercase font-semibold tracking-wider">
               {t('transferModal.netAmount')}
             </p>
-            <div className="flex items-center justify-center">
-              <span className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary">
-                {netAmount}
+            <div className="flex flex-col items-center justify-center">
+              <div className="flex items-center">
+                <span className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary">
+                  {formatNumber(netAmount)}
+                </span>
+                <span className="text-lg sm:text-2xl text-muted-foreground ml-2">pièces</span>
+              </div>
+              <span className="text-sm text-muted-foreground mt-1">
+                ≈ {formatNumber(Math.floor(netCFA))} F CFA
               </span>
-              <span className="text-lg sm:text-2xl text-muted-foreground ml-2">pièces</span>
             </div>
             <p className="text-xs text-muted-foreground">
               {t('transferModal.afterFees')}
@@ -88,7 +112,10 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
                     <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>{t('transferModal.details.gross')}</span>
                   </span>
-                  <span className="font-bold text-sm sm:text-base">+{totalAmount}</span>
+                  <div className="text-right">
+                    <div className="font-bold">+{formatNumber(totalAmount)}</div>
+                    <div className="text-xs text-green-600">+{formatNumber(Math.floor(grossCFA))} F CFA</div>
+                  </div>
                 </div>
                 
                 <div className="flex items-center justify-between p-2 sm:p-3 bg-red-50 text-red-800 rounded-lg border border-red-100 text-sm">
@@ -96,7 +123,10 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
                     <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="whitespace-nowrap">{t('transferModal.details.fee', { percent: PLATFORM_FEE_PERCENT })}</span>
                   </span>
-                  <span className="font-bold text-sm sm:text-base">-{platformFee}</span>
+                  <div className="text-right">
+                    <div className="font-bold">-{formatNumber(platformFee)}</div>
+                    <div className="text-xs text-red-600">-{formatNumber(Math.floor(feeCFA))} F CFA</div>
+                  </div>
                 </div>
 
                 <Separator className="my-1 sm:my-2" />
@@ -106,7 +136,10 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
                     <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span>{t('transferModal.details.net')}</span>
                   </span>
-                  <span className="text-sm sm:text-lg">+{netAmount} pièces</span>
+                  <div className="text-right">
+                    <div className="text-sm sm:text-lg">+{formatNumber(netAmount)} pièces</div>
+                    <div className="text-xs text-primary/80">+{formatNumber(Math.floor(netCFA))} F CFA</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -126,8 +159,14 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
                 <Alert className="mt-2 bg-blue-50 border-blue-100 text-blue-800 text-xs sm:text-sm animate-in fade-in-50">
                   <AlertDescription>
                     <ul className="list-disc pl-4 space-y-1">
-                      <li className="leading-tight">{t('transferModal.feeInfo.content.line1', { percent: PLATFORM_FEE_PERCENT })}</li>
-                      <li className="leading-tight">{t('transferModal.feeInfo.content.line2', { amount: netAmount })}</li>
+                      <li className="leading-tight">
+                        {t('transferModal.feeInfo.content.line1', { percent: PLATFORM_FEE_PERCENT })}
+                        {` (≈ ${formatNumber(Math.floor(feeCFA))} F CFA)`}
+                      </li>
+                      <li className="leading-tight">
+                        {t('transferModal.feeInfo.content.line2', { amount: formatNumber(netAmount) })}
+                        {` (≈ ${formatNumber(Math.floor(netCFA))} F CFA)`}
+                      </li>
                       <li className="leading-tight">{t('transferModal.feeInfo.content.line3')}</li>
                     </ul>
                   </AlertDescription>
@@ -139,15 +178,24 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs sm:text-sm">
             <div className="grid grid-cols-2 gap-1 sm:gap-2">
               <div className="text-muted-foreground">{t('transferModal.summary.gross')}:</div>
-              <div className="text-right font-medium">{totalAmount} pièces</div>
+              <div className="text-right font-medium">
+                {formatNumber(totalAmount)} pièces
+                <div className="text-xs text-muted-foreground">{formatNumber(Math.floor(grossCFA))} F CFA</div>
+              </div>
               
               <div className="text-muted-foreground">{t('transferModal.summary.fee')}:</div>
-              <div className="text-right font-medium text-red-600">-{platformFee} pièces</div>
+              <div className="text-right font-medium text-red-600">
+                -{formatNumber(platformFee)} pièces
+                <div className="text-xs text-red-500">-{formatNumber(Math.floor(feeCFA))} F CFA</div>
+              </div>
               
               <div className="col-span-2 border-t border-gray-300 pt-1 mt-1">
                 <div className="flex justify-between font-bold">
                   <div>{t('transferModal.summary.net')}:</div>
-                  <div className="text-green-600">+{netAmount} pièces</div>
+                  <div className="text-green-600 text-right">
+                    +{formatNumber(netAmount)} pièces
+                    <div className="text-xs text-green-500">+{formatNumber(Math.floor(netCFA))} F CFA</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,7 +225,9 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
               </>
             ) : (
               <>
-                <span className="text-xs sm:text-sm">{t('transferModal.actions.transfer', { amount: netAmount })}</span>
+                <span className="text-xs sm:text-sm">
+                  {t('transferModal.actions.transfer', { amount: formatNumber(netAmount) })}
+                </span>
                 <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
               </>
             )}
@@ -186,6 +236,20 @@ const TransferModal = ({ isOpen, onClose, totalAmount, totalNetAmount, loading, 
       </DialogContent>
     </Dialog>
   );
+};
+
+TransferModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  totalAmount: PropTypes.number.isRequired,
+  totalNetAmount: PropTypes.number,
+  loading: PropTypes.bool.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  exchangeRate: PropTypes.number,  // optional, default 10
+};
+
+TransferModal.defaultProps = {
+  exchangeRate: 10,
 };
 
 export default TransferModal;

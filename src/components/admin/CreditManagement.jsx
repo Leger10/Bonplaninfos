@@ -39,7 +39,6 @@ const CreditManagement = ({ onRefresh }) => {
   const fetchUsers = useCallback(async () => {
     try {
       let query = supabase.from('profiles').select('*');
-      // If the user is a secretary, only fetch users from their country
       if (userProfile?.user_type === 'secretary') {
         query = query.eq('country', userProfile.country);
       }
@@ -78,8 +77,8 @@ const CreditManagement = ({ onRefresh }) => {
 
   useEffect(() => {
     if (searchTerm === '') {
-        setFilteredUsers([]);
-        return;
+      setFilteredUsers([]);
+      return;
     }
     const lowercasedFilter = searchTerm.toLowerCase();
     const filteredData = users.filter(user =>
@@ -97,7 +96,7 @@ const CreditManagement = ({ onRefresh }) => {
     }
     setLoading(true);
     try {
-      const { data: rpcData, error } = await supabase.rpc('credit_user_coins', {
+      const { data, error } = await supabase.rpc('credit_user_coins', {
         p_user_id: selectedUser.id,
         p_amount: parseInt(amount),
         p_reason: reason,
@@ -105,7 +104,7 @@ const CreditManagement = ({ onRefresh }) => {
       });
       
       if (error) throw new Error(error.message);
-      if (!rpcData.success) throw new Error(rpcData.message);
+      if (!data.success) throw new Error(data.message);
 
       toast({ title: 'Succès', description: `${selectedUser.full_name} a été crédité de ${amount} pièces.` });
       setSelectedUser(null);
@@ -113,7 +112,7 @@ const CreditManagement = ({ onRefresh }) => {
       setReason('');
       setSearchTerm('');
       fetchCreditHistory();
-      if(onRefresh) onRefresh();
+      if (onRefresh) onRefresh();
     } catch (error) {
       toast({ title: t('common.error_title'), description: error.message, variant: 'destructive' });
     } finally {
@@ -131,11 +130,11 @@ const CreditManagement = ({ onRefresh }) => {
       });
 
       if (error) throw new Error(error.message);
-      if(!data.success) throw new Error(data.message);
+      if (!data.success) throw new Error(data.message);
 
       toast({ title: 'Succès', description: 'Le crédit a été annulé.' });
       fetchCreditHistory();
-      if(onRefresh) onRefresh();
+      if (onRefresh) onRefresh();
     } catch (error) {
       toast({ title: t('common.error_title'), description: error.message, variant: 'destructive' });
     } finally {
