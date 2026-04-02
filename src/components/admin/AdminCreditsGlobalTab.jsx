@@ -66,7 +66,7 @@ const AdminCreditsGlobalTab = () => {
       const validAdminLogs = adminLogs.filter((log) => !(log.details?.reversed));
 
       // 2. Récupérer les achats automatiques (coin_transactions)
-      // On filtre sur transaction_type = 'credit_purchase'
+      // Inclure les transactions avec transaction_type = 'credit_purchase' OU null (cas MoneyFusion)
       const { data: purchases, error: purchaseError } = await supabase
         .from("coin_transactions")
         .select(`
@@ -78,7 +78,7 @@ const AdminCreditsGlobalTab = () => {
           transaction_type,
           profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
         `)
-        .eq("transaction_type", "credit_purchase")
+        .or('transaction_type.eq.credit_purchase,transaction_type.is.null')
         .order("created_at", { ascending: false });
 
       if (purchaseError) {
@@ -198,11 +198,9 @@ const AdminCreditsGlobalTab = () => {
     if (!user) return;
     setResetting(true);
     try {
-      const { data, error } = await supabase.rpc("reset_all_zones", {
-        p_admin_id: user.id,
-        p_reset_credits: true,
-        p_reset_revenue: false,
-      });
+    const { data, error } = await supabase.rpc("reset_admin_stats_only", {
+  p_admin_id: user.id,
+});
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
       toast({
@@ -271,7 +269,7 @@ const AdminCreditsGlobalTab = () => {
                 className="gap-2"
               >
                 <Eraser className="w-4 h-4" />
-                Réinitialiser les crédits manuels
+                Réinitialiser les crédits
               </Button>
             </div>
           </div>

@@ -26,10 +26,14 @@ const CreditStatsTab = () => {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  // Taux de conversion fixe (1 pièce = 10 FCFA)
+  const COIN_TO_FCFA_RATE = 10;
+
   const fetchCreditStats = useCallback(async () => {
     setLoading(true);
     try {
       // 1. Récupérer les achats automatiques (coin_transactions)
+      // Inclure les transactions avec transaction_type null (cas MoneyFusion)
       const { data: purchases, error: purchaseError } = await supabase
         .from('coin_transactions')
         .select(`
@@ -40,12 +44,11 @@ const CreditStatsTab = () => {
           profiles:user_id (country)
         `)
         .eq('status', 'completed')
-        .in('transaction_type', ['credit_purchase', 'custom_coins', 'coin_pack']);
+        .or('transaction_type.in.(credit_purchase,custom_coins,coin_pack),transaction_type.is.null');
 
       if (purchaseError) throw purchaseError;
 
       // 2. Récupérer les crédits manuels (admin_logs) non révoqués
-      // On utilise la colonne details->amount et on joint sur target_id
       const { data: manualCredits, error: manualError } = await supabase
         .from('admin_logs')
         .select(`
@@ -53,12 +56,12 @@ const CreditStatsTab = () => {
           target_user:target_id (country)
         `)
         .eq('action_type', 'user_credited')
-        .is('details->reversed', null); // on suppose que les logs révoqués ont details->reversed = true
+        .is('details->reversed', null);
 
       if (manualError) throw manualError;
 
       // 3. Fusionner les données
-      const countryMap = new Map(); // key: pays, value: { totalAmount, transactionCount }
+      const countryMap = new Map();
 
       // Traiter les achats
       purchases?.forEach(tx => {
@@ -115,8 +118,7 @@ const CreditStatsTab = () => {
     }
     setResetting(true);
     try {
-      // Appeler la RPC reset_credit_data (ou reset_all_zones selon votre base)
-      const { data, error } = await supabase.rpc('reset_credit_data', { p_admin_id: user.id });
+      const { data, error } = await supabase.rpc('reset_admin_stats_only', { p_admin_id: user.id });
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
       toast({
@@ -125,7 +127,7 @@ const CreditStatsTab = () => {
         variant: "default",
         className: "bg-green-600 text-white",
       });
-      fetchCreditStats(); // recharger
+      fetchCreditStats();
     } catch (err) {
       console.error("Reset error:", err);
       toast({
@@ -139,9 +141,20 @@ const CreditStatsTab = () => {
     }
   };
 
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "XOF",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
   }
+
+  const totalFCFA = totalCredits * COIN_TO_FCFA_RATE;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -153,7 +166,12 @@ const CreditStatsTab = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-700">{totalCredits.toLocaleString()} pièces</div>
-              <p className="text-xs text-muted-foreground mt-1">Net après annulations</p>
+              {/* <p className="text-xs text-muted-foreground mt-1">Net</p> */}
+              <div className="mt-2 pt-2 border-t border-blue-200">
+                <p className="text-sm text-muted-foreground">Valeur Net :</p>
+                <p className="text-xl font-bold text-green-700">{formatCurrency(totalFCFA)}</p>
+                {/* <p className="text-xs text-muted-foreground">(1 pièce = {COIN_TO_FCFA_RATE} FCFA)</p> */}
+              </div>
             </CardContent>
           </Card>
           <Card>

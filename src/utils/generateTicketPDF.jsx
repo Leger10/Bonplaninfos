@@ -143,7 +143,7 @@ const safeText = (text) => {
   return str.replace(/[^\x00-\x7F\u00C0-\u00FF\u0152\u0153\u20AC]/g, ""); 
 };
 
-// Format date for PDF (Event Date)
+// Format date for PDF (Event Date) - utilise event_end_at
 const formatDate = (dateString) => {
   if (!dateString) return "Date non définie";
   try {
@@ -249,7 +249,8 @@ export const generateTicketPDF = async (event, tickets, user) => {
       
       const holderName = safeText(user?.full_name || user?.email?.split("@")[0] || "Invité");
       const eventTitle = safeText(event?.title || "Événement BonPlanInfos");
-      const eventDate = formatDate(event?.event_start_at); // conservée mais non affichée
+      // Utilisation de event_end_at pour la date de l'événement
+      const eventDate = formatDate(event?.event_end_at);
       const location = safeText(event?.location || event?.city || "Lieu à confirmer");
       const ticketType = safeText(ticket.type_name || "Standard");
       const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.purchased_at);
@@ -324,7 +325,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...ticketColor);
       
-      const priceText = `Valeur: ${pricePi} pièces / ${priceFcfa}F CFA`;
+      const priceText = `Valeur: ${priceFcfa}F CFA`;
       doc.text(priceText, pageWidth / 2, cursorY, { align: "center" });
       
       cursorY += 8;
@@ -339,7 +340,7 @@ export const generateTicketPDF = async (event, tickets, user) => {
       doc.text(titleLines, pageWidth / 2, cursorY, { align: "center" });
       cursorY += titleHeight + 4;
 
-      // --- 4. DÉTAILS (lieu uniquement, date supprimée) ---
+      // --- 4. DÉTAILS (LIEU + DATE) ---
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(60, 60, 60);
@@ -351,6 +352,16 @@ export const generateTicketPDF = async (event, tickets, user) => {
       const locationLines = doc.splitTextToSize(location, contentWidth - 15);
       doc.text(locationLines, margin + 12, cursorY);
       cursorY += locationLines.length * 4 + 6;
+
+      // Date (uniquement si elle est définie et valide)
+      if (eventDate && eventDate !== "Date non définie") {
+        doc.setFont("helvetica", "bold");
+        doc.text("DATE:", margin, cursorY);
+        doc.setFont("helvetica", "normal");
+        const dateLines = doc.splitTextToSize(eventDate, contentWidth - 15);
+        doc.text(dateLines, margin + 12, cursorY);
+        cursorY += dateLines.length * 2 + 4;
+      }
 
       // --- 5. BADGE TYPE DE BILLET ---
       doc.setDrawColor(...ticketColor);
@@ -436,6 +447,9 @@ export const generateTicketPDF = async (event, tickets, user) => {
         doc.setFontSize(7);
         doc.setTextColor(120, 120, 120);
         doc.text(`Acheté le ${purchaseDateDisplay}`, pageWidth / 2, cursorY, { align: "center" });
+        // Ajout d'un espace supplémentaire après la date d'achat pour éviter qu'elle ne colle au footer
+        cursorY += 3;
+       
       }
 
       // --- 9. LIEN DU SITE ---
