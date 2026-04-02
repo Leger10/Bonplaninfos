@@ -26,25 +26,24 @@ import {
 } from "lucide-react";
 
 // Helper to format numbers with thousands separators
-const formatNumber = (num) => {
-  return num.toLocaleString();
-};
+const formatNumber = (num) => num.toLocaleString();
 
 const TransferModal = ({ 
-  isOpen, 
-  onClose, 
-  totalAmount, 
-  totalNetAmount, 
-  loading, 
-  onConfirm,
-  exchangeRate = 10  // default 1 coin = 10 F CFA
+  isOpen = false, 
+  onClose = () => {}, 
+  totalAmount = 0, 
+  totalNetAmount = null, 
+  loading = false, 
+  onConfirm = () => {},
+  exchangeRate = 10 // default 1 coin = 10 F CFA
 }) => {
   const { t } = useTranslation();
+
   const [showDetails, setShowDetails] = useState(false);
   const [showFeesInfo, setShowFeesInfo] = useState(false);
   
   const PLATFORM_FEE_PERCENT = 5;
-  
+
   const platformFee = Math.ceil(totalAmount * (PLATFORM_FEE_PERCENT / 100));
   const netAmount = totalNetAmount ?? Math.floor(totalAmount - platformFee);
   
@@ -52,6 +51,8 @@ const TransferModal = ({
   const grossCFA = totalAmount * exchangeRate;
   const feeCFA = platformFee * exchangeRate;
   const netCFA = netAmount * exchangeRate;
+
+  if (!isOpen) return null;
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -239,17 +240,13 @@ const TransferModal = ({
 };
 
 TransferModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  totalAmount: PropTypes.number.isRequired,
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+  totalAmount: PropTypes.number,
   totalNetAmount: PropTypes.number,
-  loading: PropTypes.bool.isRequired,
-  onConfirm: PropTypes.func.isRequired,
-  exchangeRate: PropTypes.number,  // optional, default 10
-};
-
-TransferModal.defaultProps = {
-  exchangeRate: 10,
+  loading: PropTypes.bool,
+  onConfirm: PropTypes.func,
+  exchangeRate: PropTypes.number,  // optional
 };
 
 export default TransferModal;

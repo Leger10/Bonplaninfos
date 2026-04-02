@@ -26,6 +26,9 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Smartphone,
+  Calendar,
+  BarChart,
 } from "lucide-react";
 import {
   AreaChart,
@@ -77,6 +80,8 @@ const AnalyticsDashboard = () => {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState(null);
+  const [pwaInstalls, setPwaInstalls] = useState([]);
+  const [totalPwaInstalls, setTotalPwaInstalls] = useState(0);
 
   // Data States
   const [metrics, setMetrics] = useState({
@@ -103,6 +108,29 @@ const AnalyticsDashboard = () => {
   const [couponOwnerMap, setCouponOwnerMap] = useState({});
   const [actionLoading, setActionLoading] = useState(null);
 
+  const fetchPwaInstalls = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('pwa_installs')
+        .select(`
+          id,
+          installed_at,
+          platform,
+          device_type,
+          source,
+          user:user_id(id, full_name, email)
+        `)
+        .order('installed_at', { ascending: false });
+
+      if (error) throw error;
+
+      setPwaInstalls(data || []);
+      setTotalPwaInstalls(data?.length || 0);
+    } catch (err) {
+      console.error('Erreur chargement installations PWA :', err);
+    }
+  };
+
   // ========== CALCUL DES COMMISSIONS (5%) ==========
   const fetchMetrics = async () => {
     try {
@@ -120,11 +148,10 @@ const AnalyticsDashboard = () => {
       }
 
       // 2. Commissions des retraits (5% des withdrawals_completed)
-      //    On prend les retraits avec status = 'completed' (ou 'approved')
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from("withdrawal_requests")
         .select("amount_pi, status")
-        .eq("status", "completed"); // À adapter selon votre colonne de statut
+        .eq("status", "completed");
       if (!withdrawalError && withdrawalData) {
         totalCommissions += withdrawalData.reduce(
           (sum, item) => sum + (item.amount_pi || 0) * 0.05,
@@ -133,11 +160,10 @@ const AnalyticsDashboard = () => {
       }
 
       // 3. Commissions explicites enregistrées dans platform_fees
-      //    (ex: pour les événements, tombolas, etc.)
       const { data: feesData, error: feesError } = await supabase
         .from("platform_fees")
         .select("amount, percentage")
-        .eq("percentage", 5); // On ne prend que les frais à 5% (certains peuvent être différents)
+        .eq("percentage", 5);
       if (!feesError && feesData) {
         totalCommissions += feesData.reduce(
           (sum, item) => sum + (item.amount || 0),
@@ -145,18 +171,7 @@ const AnalyticsDashboard = () => {
         );
       }
 
-      // 4. Si d'autres transactions enregistrent des frais (ex: tickets, votes)
-      //    Mais ils sont probablement déjà dans platform_fees. Sinon, ajoutez-les ici.
-      // Exemple : ticket_purchase dans transactions (si frais stockés)
-      // const { data: txData } = await supabase
-      //   .from('transactions')
-      //   .select('amount_fcfa, transaction_type')
-      //   .eq('transaction_type', 'ticket_purchase');
-      // if (txData) {
-      //   totalCommissions += txData.reduce((sum, item) => sum + (item.amount_fcfa * 0.05), 0);
-      // }
-
-      // 5. Total des soldes utilisateurs
+      // 4. Total des soldes utilisateurs
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("coin_balance")
@@ -301,6 +316,7 @@ const AnalyticsDashboard = () => {
           setRevenueByType(formattedRevenueType);
         })(),
         fetchCoupons(),
+        fetchPwaInstalls(),
       ]);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -455,8 +471,9 @@ const AnalyticsDashboard = () => {
             Vue d'ensemble et métriques clés de la plateforme.
           </p>
         </div>
-       
-          </div>
+        {/* Tu peux ajouter ici un bouton de rafraîchissement ou autre si besoin */}
+      </div>
+
       {/* Secondary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <SecondaryStatCard
@@ -488,6 +505,7 @@ const AnalyticsDashboard = () => {
           colorClass="text-indigo-500"
         />
       </div>
+
       {/* Charts Section */}
       <div className="grid gap-6 md:grid-cols-7">
         {/* Activity Chart */}
@@ -618,13 +636,15 @@ const AnalyticsDashboard = () => {
         </Card>
       </div>
 
-      {/* Tabs for Recent Transactions and Coupons */}
+      {/* Tabs for Recent Transactions, Coupons and PWA Installs */}
       <Tabs defaultValue="recent_tx" className="space-y-4">
         <TabsList>
           <TabsTrigger value="recent_tx">Dernières Transactions</TabsTrigger>
           <TabsTrigger value="coupons">Coupons & Parrainage</TabsTrigger>
+          <TabsTrigger value="pwa_installs">Installations PWA</TabsTrigger>
         </TabsList>
 
+        {/* Onglet Transactions récentes */}
         <TabsContent value="recent_tx">
           <Card className="shadow-sm border-muted">
             <CardHeader>
@@ -691,6 +711,7 @@ const AnalyticsDashboard = () => {
           </Card>
         </TabsContent>
 
+        {/* Onglet Coupons */}
         <TabsContent value="coupons">
           <Card className="shadow-sm border-muted">
             <CardHeader>
@@ -730,6 +751,7 @@ const AnalyticsDashboard = () => {
                     colorClass="text-yellow-500"
                   />
                 </div>
+
                 {/* Historique des utilisations */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3">
@@ -786,8 +808,8 @@ const AnalyticsDashboard = () => {
                     </div>
                   )}
                 </div>
-                
-        
+
+                {/* Tous les coupons */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3">
                     Tous les coupons
@@ -843,7 +865,6 @@ const AnalyticsDashboard = () => {
                               </td>
                               <td className="py-2 text-center">
                                 <div className="flex gap-2 justify-center">
-                                  {/* Bouton Activer / Désactiver */}
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -864,7 +885,6 @@ const AnalyticsDashboard = () => {
                                       </>
                                     )}
                                   </Button>
-                                  {/* Bouton Bloquer */}
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -886,6 +906,87 @@ const AnalyticsDashboard = () => {
                             </tr>
                           );
                         })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Nouvel onglet : Installations PWA */}
+        <TabsContent value="pwa_installs">
+          <Card className="shadow-sm border-muted">
+            <CardHeader>
+              <CardTitle>Installations de l’application</CardTitle>
+              <CardDescription>
+                Utilisateurs ayant installé BonPlanInfos sur leur appareil.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Cartes récapitulatives */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <SecondaryStatCard
+                    title="Total installations"
+                    value={totalPwaInstalls}
+                    subtext="Utilisateurs uniques"
+                    icon={Smartphone}
+                    colorClass="text-blue-500"
+                  />
+                  <SecondaryStatCard
+                    title="Dernière installation"
+                    value={pwaInstalls[0] ? format(new Date(pwaInstalls[0].installed_at), 'dd MMM yyyy', { locale: fr }) : '-'}
+                    subtext={pwaInstalls[0]?.user?.full_name || pwaInstalls[0]?.user?.email || 'Inconnu'}
+                    icon={Calendar}
+                    colorClass="text-gray-500"
+                  />
+                  <SecondaryStatCard
+                    title="Plateformes"
+                    value={`${pwaInstalls.filter(i => i.platform === 'android').length} Android / ${pwaInstalls.filter(i => i.platform === 'ios').length} iOS`}
+                    subtext="Répartition"
+                    icon={BarChart}
+                    colorClass="text-green-500"
+                  />
+                </div>
+
+                {/* Liste détaillée */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Liste détaillée</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b border-gray-700">
+                        <tr className="text-left">
+                          <th className="pb-2">Utilisateur</th>
+                          <th className="pb-2">Plateforme</th>
+                          <th className="pb-2">Appareil</th>
+                          <th className="pb-2">Source</th>
+                          <th className="pb-2">Date d’installation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pwaInstalls.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                              Aucune installation enregistrée.
+                            </td>
+                          </tr>
+                        ) : (
+                          pwaInstalls.map((install) => (
+                            <tr key={install.id} className="border-b border-gray-800">
+                              <td className="py-3">
+                                {install.user?.full_name || install.user?.email || 'Utilisateur inconnu'}
+                              </td>
+                              <td className="py-3 capitalize">{install.platform}</td>
+                              <td className="py-3 capitalize">{install.device_type}</td>
+                              <td className="py-3 capitalize">{install.source?.replace('_', ' ') || '-'}</td>
+                              <td className="py-3">
+                                {format(new Date(install.installed_at), 'dd MMM yyyy HH:mm', { locale: fr })}
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>

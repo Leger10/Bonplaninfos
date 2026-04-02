@@ -1,3 +1,4 @@
+// components/PWAInstallBanner.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
@@ -5,7 +6,7 @@ import { ArrowDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PWAInstallBanner = () => {
-  const { isBannerVisible, triggerInstall, closeBanner, isIosSafari } = useInstallPrompt();
+  const { isBannerVisible, triggerInstall, closeBanner, isIOS } = useInstallPrompt();
 
   return (
     <AnimatePresence>
@@ -23,13 +24,12 @@ const PWAInstallBanner = () => {
         >
           <div className="flex-1">
             <p className="font-semibold text-sm">
-              {isIosSafari
+              {isIOS
                 ? 'Installer BonPlanInfos'
                 : 'Installer l’application'}
             </p>
-
             <p className="text-xs text-gray-400 mt-1">
-              {isIosSafari
+              {isIOS
                 ? 'Partager → Ajouter à l’écran d’accueil'
                 : 'Accédez rapidement aux événements et notifications.'}
             </p>
@@ -40,7 +40,7 @@ const PWAInstallBanner = () => {
             size="sm"
             className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
           >
-            {isIosSafari ? 'Guide' : 'Installer'}
+            {isIOS ? 'Guide' : 'Installer'}
             <ArrowDown className="w-4 h-4" />
           </Button>
 

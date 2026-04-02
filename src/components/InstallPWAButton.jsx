@@ -1,3 +1,4 @@
+// components/InstallPWAButton.tsx
 import React from "react";
 import { Download } from "lucide-react";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";

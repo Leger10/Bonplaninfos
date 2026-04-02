@@ -151,21 +151,23 @@ export const refundService = {
     if (!selectedParticipants || selectedParticipants.length === 0) throw new Error("Aucun participant sélectionné");
 
     // Fetch conversion rate for FCFA calculation (Task 1 & 3)
-    let conversionRate = 10; // Default constant 1 PI = 10 FCFA
-    try {
-        const { data: settings } = await supabase
-            .from('app_settings')
-            .select('coin_to_fcfa_rate')
-            .limit(1)
-            .maybeSingle();
-        
-        if (settings?.coin_to_fcfa_rate) {
-            conversionRate = settings.coin_to_fcfa_rate;
-        }
-    } catch (err) {
-        console.warn('Error fetching conversion rate, using default (10):', err);
-    }
+  let conversionRate = 10; // Default
 
+try {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'coin_to_fcfa_rate')
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (data?.value) {
+    conversionRate = parseFloat(data.value);
+  }
+} catch (err) {
+  console.warn('Error fetching conversion rate, using default (10):', err);
+}
     // 1. Récupérer les données à jour
     const { participants } = await this.getParticipantsForEvent(eventId);
     

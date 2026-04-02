@@ -1,42 +1,78 @@
-import { useState, useEffect } from 'react';
+// hooks/useInstallPrompt.js
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export const useInstallPrompt = () => {
+  const { user } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isBannerVisible, setIsBannerVisible] = useState(false);
+  const [guideVisible, setGuideVisible] = useState(false);
+
+  const recordInstall = useCallback(async (source) => {
+    if (!user) return;
+    try {
+      const { data: existing } = await supabase
+        .from('pwa_installs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (existing) return;
+
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const platform = /iphone|ipad|ipod/.test(userAgent) ? 'ios'
+                     : /android/.test(userAgent) ? 'android'
+                     : 'other';
+      const deviceType = /mobile|android|iphone|ipad|ipod/i.test(userAgent) ? 'mobile' : 'desktop';
+
+      await supabase.from('pwa_installs').insert({
+        user_id: user.id,
+        platform,
+        device_type: deviceType,
+        source,
+      });
+    } catch (err) {
+      console.error('[PWA] Erreur enregistrement :', err);
+    }
+  }, [user]);
+
+  // Vérifier l'état de la bannière au chargement
+  useEffect(() => {
+    const dismissed = localStorage.getItem('pwaBannerDismissed') === 'true';
+    if (!dismissed) {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true;
+      if (!standalone) {
+        setIsBannerVisible(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    console.log('[PWA] Hook useInstallPrompt initialized');
-    
-    // Détection de l'appareil et du navigateur
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
-    console.log(`[PWA] Device detection: isIOS=${isIosDevice}, UserAgent=${userAgent}`);
 
-    // Vérifier si l'application est déjà installée
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-      console.log('[PWA] App is already installed (standalone mode detected)');
       setIsInstalled(true);
     }
 
-    // Gérer l'événement d'installation disponible (Ne se déclenche pas sur iOS Safari)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
-      console.log('[PWA] beforeinstallprompt event fired and captured');
       setDeferredPrompt(e);
       setIsInstallable(true);
     };
 
-    // Gérer l'événement d'installation réussie
     const handleAppInstalled = () => {
-      console.log('[PWA] appinstalled event fired. App was successfully installed!');
       setIsInstallable(false);
       setIsInstalled(true);
       setDeferredPrompt(null);
-      // Mettre à jour le localStorage pour ne plus afficher les popups
-      localStorage.setItem('pwaPremiumPopupDismissed', 'true');
+      localStorage.setItem('pwaBannerDismissed', 'true');
+      setIsBannerVisible(false);
+      recordInstall('app_installed_event');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -46,29 +82,55 @@ export const useInstallPrompt = () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
+  }, [recordInstall]);
+
+  // Déclencher l'installation (appelée par la bannière)
+  const triggerInstall = useCallback(async () => {
+    if (isIOS) {
+      await recordInstall('ios_guide');
+      setGuideVisible(true);
+      setIsBannerVisible(false);
+      return;
+    }
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        await recordInstall('native_prompt');
+      }
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+      setIsBannerVisible(false);
+      localStorage.setItem('pwaBannerDismissed', 'true');
+    }
+  }, [isIOS, deferredPrompt, recordInstall]);
+
+  const closeBanner = useCallback(() => {
+    setIsBannerVisible(false);
+    localStorage.setItem('pwaBannerDismissed', 'true');
   }, []);
 
-  const promptInstall = async () => {
-    console.log('[PWA] promptInstall called');
-    if (!deferredPrompt) {
-      console.warn("[PWA] L'installation n'est pas disponible pour le moment (deferredPrompt is null).");
-      return false;
-    }
-    
-    // Afficher l'invite d'installation native
-    console.log('[PWA] Showing native install prompt');
-    deferredPrompt.prompt();
-    
-    // Attendre la réponse de l'utilisateur
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`[PWA] Résultat de l'invite d'installation : ${outcome}`);
-    
-    // Réinitialiser le prompt
-    setDeferredPrompt(null);
-    setIsInstallable(false);
-    
-    return outcome === 'accepted';
-  };
+  const closeGuide = useCallback(() => {
+    setGuideVisible(false);
+    localStorage.setItem('pwaGuideDismissed', 'true');
+  }, []);
 
-  return { isInstallable, isInstalled, isIOS, promptInstall };
+  const showGuide = useCallback(() => {
+    setGuideVisible(true);
+  }, []);
+
+  return {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    isBannerVisible,
+    guideVisible,
+    triggerInstall,
+    closeBanner,
+    closeGuide,
+    showGuide,
+    // Pour compatibilité avec les composants existants
+    promptInstall: triggerInstall,
+  };
 };

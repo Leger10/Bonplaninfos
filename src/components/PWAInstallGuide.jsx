@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// components/PWAInstallGuide.tsx
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Share, 
@@ -10,38 +11,22 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
 const PWAInstallGuide = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [os, setOs] = useState('other');
+  const { guideVisible, closeGuide, isIOS } = useInstallPrompt();
+  const [os, setOs] = React.useState('other');
 
   useEffect(() => {
-    // Detect OS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(userAgent);
     const isAndroid = /android/.test(userAgent);
-    
     if (isIOS) setOs('ios');
     else if (isAndroid) setOs('android');
-
-    // Check if already installed
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    
-    // Check if dismissed previously
-    const dismissed = localStorage.getItem('pwaGuideDismissed') === 'true';
-
-    // Show guide if on mobile, not installed, and not dismissed
-    // We use a slight delay so it doesn't instantly pop up over everything
-    if ((isIOS || isAndroid) && !isStandalone && !dismissed) {
-      const timer = setTimeout(() => setIsVisible(true), 8000);
-      return () => clearTimeout(timer);
-    }
   }, []);
 
-  const handleDismiss = () => {
-    setIsVisible(false);
-    localStorage.setItem('pwaGuideDismissed', 'true');
-  };
+  // On n'affiche plus automatiquement après 8s, c'est maintenant géré par le hook
+  // via showGuide() appelé par la bannière ou un autre endroit.
 
   const IosGuide = () => (
     <div className="space-y-4">
@@ -103,7 +88,7 @@ const PWAInstallGuide = () => {
 
   return (
     <AnimatePresence>
-      {isVisible && (
+      {guideVisible && (
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6">
           {/* Backdrop */}
           <motion.div
@@ -111,7 +96,7 @@ const PWAInstallGuide = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={handleDismiss}
+            onClick={closeGuide}
           />
 
           {/* Modal */}
@@ -122,16 +107,14 @@ const PWAInstallGuide = () => {
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="relative w-full max-w-md bg-background rounded-3xl shadow-2xl overflow-hidden border border-border z-10 flex flex-col max-h-[90vh]"
           >
-            {/* Close button */}
             <button
-              onClick={handleDismiss}
+              onClick={closeGuide}
               className="absolute top-4 right-4 z-20 p-2 bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 rounded-full transition-colors backdrop-blur-md"
               aria-label="Fermer"
             >
               <X className="w-4 h-4" />
             </button>
 
-            {/* Header */}
             <div className="px-6 pt-8 pb-4 text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Smartphone className="w-8 h-8 text-primary" />
@@ -142,15 +125,13 @@ const PWAInstallGuide = () => {
               </p>
             </div>
 
-            {/* Guide Content */}
             <div className="px-6 py-2 overflow-y-auto custom-scrollbar">
               {os === 'ios' ? <IosGuide /> : <AndroidGuide />}
             </div>
 
-            {/* Actions */}
             <div className="px-6 py-6 mt-2">
               <Button 
-                onClick={handleDismiss} 
+                onClick={closeGuide} 
                 className="w-full"
                 size="lg"
               >

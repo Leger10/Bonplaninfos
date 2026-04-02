@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Ticket, Coins, Wallet, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Ticket, Coins, Wallet, ChevronUp, ChevronDown, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,22 @@ const RaffleInterface = ({
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [userTickets, setUserTickets] = useState([]);
   const [loadingUserTickets, setLoadingUserTickets] = useState(false);
+
+  // Vérifier que les données du raffle sont présentes
+  if (!raffleData) {
+    return (
+      <Card className="border-2 border-yellow-500/20 bg-gradient-to-br from-yellow-900/10 to-orange-900/5">
+        <CardContent className="p-6 text-center">
+          <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-white mb-2">Données manquantes</h3>
+          <p className="text-gray-300">
+            Les informations de cette tombola n'ont pas pu être chargées. 
+            Veuillez rafraîchir la page ou contacter l'organisateur.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const [currentRaffleStatus] = useState(
     raffleData?.status || "active",
@@ -227,9 +243,13 @@ const RaffleInterface = ({
     availableTickets
   );
 
+  // L'interface d'achat s'affiche uniquement pour les participants (non organisateurs)
+  // et seulement si la tombola est active.
+  const showPurchaseInterface = !isOrganizer && raffleData?.status === 'active';
+
   return (
     <div className="space-y-8">
-      {/* ✅ SYSTÈME DE TIRAGE */}
+      {/* Système de tirage (visible pour tous) */}
       <RaffleDrawSystem
         raffleData={liveRaffleData}
         isOrganizer={isOrganizer}
@@ -241,8 +261,8 @@ const RaffleInterface = ({
         userProfile={userProfile}
       />
 
-      {/* INTERFACE D'ACHAT DE TICKETS (POUR PARTICIPANTS) */}
-      {!isOrganizer && raffleData?.status === 'active' && (
+      {/* Interface d'achat pour les participants */}
+      {showPurchaseInterface && (
         <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-900/10 to-indigo-900/5">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-8">
@@ -429,6 +449,18 @@ const RaffleInterface = ({
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Message informatif pour l'organisateur */}
+      {isOrganizer && raffleData?.status === 'active' && (
+        <Card className="border-2 border-gray-500/20 bg-gray-800/30">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-300">
+              Vous êtes l'organisateur de cette tombola. Vous ne pouvez pas acheter de tickets.
+              Les participants verront l'interface d'achat ci-dessus.
+            </p>
           </CardContent>
         </Card>
       )}

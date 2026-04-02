@@ -24,6 +24,30 @@ import { COUNTRIES, CITIES_BY_COUNTRY } from '@/constants/countries';
 import { fetchWithRetry } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
+// Fonction utilitaire de tri par défaut (active → future, passée)
+const applyActivePastSort = (eventsList, now) => {
+    return [...eventsList].sort((a, b) => {
+        // Déterminer si un événement est actif (en cours ou futur)
+        const isActiveA = a.event_end_at 
+            ? new Date(a.event_end_at) > now 
+            : new Date(a.event_start_at) > now;
+        const isActiveB = b.event_end_at 
+            ? new Date(b.event_end_at) > now 
+            : new Date(b.event_start_at) > now;
+
+        if (isActiveA && !isActiveB) return -1;
+        if (!isActiveA && isActiveB) return 1;
+
+        // Si les deux sont actifs → tri par date de début croissante (plus proche en premier)
+        if (isActiveA && isActiveB) {
+            return new Date(a.event_start_at) - new Date(b.event_start_at);
+        }
+
+        // Si les deux sont passés → tri par date de début décroissante (plus récent en premier)
+        return new Date(b.event_start_at) - new Date(a.event_start_at);
+    });
+};
+
 const EventsPage = () => {
     const { t } = useTranslation();
     const [events, setEvents] = useState([]);
@@ -177,19 +201,17 @@ const EventsPage = () => {
             return searchTermMatch && categoryMatch && countryMatch && cityMatch && typeMatch;
         });
 
-        // Apply quick filters
+        // Appliquer les filtres rapides (filtrage et tri éventuel)
+        let sortedEvents = filtered;
+        const now = new Date();
+
         if (filters.quickFilter) {
-            const now = new Date();
-            const oneDayAgo = new Date(now);
-            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
             const oneWeekFromNow = new Date(now);
             oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
 
             switch (filters.quickFilter) {
                 case 'trending':
-                    filtered = filtered.sort((a, b) => 
-                        (b.views_count || 0) - (a.views_count || 0)
-                    );
+                    sortedEvents = filtered.sort((a, b) => (b.views_count || 0) - (a.views_count || 0));
                     break;
                 case 'popular_by_category':
                     // Group by category and sort by views
@@ -198,49 +220,47 @@ const EventsPage = () => {
                         const category = eventItem.category_slug;
                         categoryViews[category] = (categoryViews[category] || 0) + (eventItem.views_count || 0);
                     });
-                    filtered = filtered.sort((a, b) => 
+                    sortedEvents = filtered.sort((a, b) => 
                         (categoryViews[b.category_slug] || 0) - (categoryViews[a.category_slug] || 0)
                     );
                     break;
                 case 'free_weekend':
-                    // Filter events on weekends that are free or low cost
-                    filtered = filtered.filter(eventItem => {
+                    // Filter events on weekends that are free or low cost (no sort applied)
+                    sortedEvents = filtered.filter(eventItem => {
                         const eventDate = new Date(eventItem.event_start_at);
                         const dayOfWeek = eventDate.getDay();
                         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                        // Assuming we have a price field - you might need to adjust this
                         const isLowCost = (eventItem.price || 0) <= 1000; // Adjust threshold as needed
                         return isWeekend && isLowCost;
                     });
                     break;
                 case 'ending_soon':
-                    // Filter events ending soon (within next week)
-                    filtered = filtered.filter(eventItem => {
-                        const endDate = eventItem.event_end_at ? new Date(eventItem.event_end_at) : new Date(eventItem.event_start_at);
-                        return endDate > now && endDate < oneWeekFromNow;
-                    }).sort((a, b) => {
-                        const endDateA = a.event_end_at ? new Date(a.event_end_at) : new Date(a.event_start_at);
-                        const endDateB = b.event_end_at ? new Date(b.event_end_at) : new Date(b.event_start_at);
-                        return endDateA - endDateB;
-                    });
+                    // Filter and sort by end date ascending
+                    sortedEvents = filtered
+                        .filter(eventItem => {
+                            const endDate = eventItem.event_end_at ? new Date(eventItem.event_end_at) : new Date(eventItem.event_start_at);
+                            return endDate > now && endDate < oneWeekFromNow;
+                        })
+                        .sort((a, b) => {
+                            const endDateA = a.event_end_at ? new Date(a.event_end_at) : new Date(a.event_start_at);
+                            const endDateB = b.event_end_at ? new Date(b.event_end_at) : new Date(b.event_start_at);
+                            return endDateA - endDateB;
+                        });
                     break;
                 default:
                     break;
             }
+        } else {
+            // Aucun filtre rapide actif → appliquer le tri par défaut actif/passé
+            sortedEvents = applyActivePastSort(filtered, now);
         }
 
-        // Default sorting: new events first, then by date
-        const oneDayAgo = new Date();
-        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        // Si le filtre rapide est 'free_weekend', aucun tri n'a été appliqué, on applique le tri par défaut
+        if (filters.quickFilter === 'free_weekend') {
+            sortedEvents = applyActivePastSort(sortedEvents, now);
+        }
 
-        return filtered.sort((a, b) => {
-            const isANew = new Date(a.created_at) > oneDayAgo;
-            const isBNew = new Date(b.created_at) > oneDayAgo;
-            if (isANew && !isBNew) return -1;
-            if (!isANew && isBNew) return 1;
-
-            return new Date(a.event_start_at) - new Date(b.event_start_at);
-        });
+        return sortedEvents;
     }, [events, searchTerm, filters]);
 
     const handleEventClick = async (clickedEvent) => {

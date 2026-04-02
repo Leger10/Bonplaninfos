@@ -5,20 +5,24 @@ export class CoinService {
   static COIN_RATE = 10;
 
   static async initializeRate() {
-    try {
-      const { data } = await retrySupabaseRequest(() => supabase
+  try {
+    const { data, error } = await retrySupabaseRequest(() => 
+      supabase
         .from('app_settings')
-        .select('coin_to_fcfa_rate')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle());
-      if (data && data.coin_to_fcfa_rate) {
-        this.COIN_RATE = data.coin_to_fcfa_rate;
-      }
-    } catch (error) {
-      console.warn("Failed to initialize coin rate:", error);
+        .select('value')
+        .eq('key', 'coin_to_fcfa_rate')
+        .maybeSingle()
+    );
+
+    if (error) throw error;
+
+    if (data && data.value) {
+      this.COIN_RATE = parseFloat(data.value);
     }
+  } catch (error) {
+    console.warn("Failed to initialize coin rate:", error);
   }
+}
 
   static convertFcfaToCoins(fcfa) {
     return Math.max(1, Math.ceil(fcfa / this.COIN_RATE));
