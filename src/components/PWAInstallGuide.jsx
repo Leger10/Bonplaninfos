@@ -1,148 +1,112 @@
-// components/PWAInstallGuide.tsx
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Share, 
   PlusSquare, 
-  MoreVertical, 
-  Download, 
   X, 
-  Smartphone,
-  ChevronRight
+  Smartphone, 
+  Download, 
+  MoreVertical,
+  Monitor,
+  Chrome,
+  Menu
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
-const PWAInstallGuide = () => {
-  const { guideVisible, closeGuide, isIOS } = useInstallPrompt();
-  const [os, setOs] = React.useState('other');
+const PWAInstallGuide = ({ isOpen, onClose }) => {
+  const [os, setOs] = React.useState('ios');
 
-  useEffect(() => {
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOS = /iphone|ipad|ipod/.test(userAgent);
-    const isAndroid = /android/.test(userAgent);
-    if (isIOS) setOs('ios');
-    else if (isAndroid) setOs('android');
+  React.useEffect(() => {
+    const ua = window.navigator.userAgent.toLowerCase();
+    if (/android/.test(ua)) setOs('android');
+    else if (/iphone|ipad|ipod/.test(ua)) setOs('ios');
+    else setOs('desktop');
   }, []);
 
-  // On n'affiche plus automatiquement après 8s, c'est maintenant géré par le hook
-  // via showGuide() appelé par la bannière ou un autre endroit.
-
   const IosGuide = () => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-background p-2 rounded shadow-sm border">
-          <Share className="w-5 h-5 text-blue-500" />
-        </div>
-        <p className="text-sm font-medium">1. Appuyez sur le bouton <strong>Partager</strong> dans la barre de navigation Safari.</p>
-      </div>
-      <div className="flex justify-center text-muted-foreground">
-        <ChevronRight className="w-4 h-4 rotate-90" />
-      </div>
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-background p-2 rounded shadow-sm border">
-          <PlusSquare className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        </div>
-        <p className="text-sm font-medium">2. Faites défiler et sélectionnez <strong>Sur l'écran d'accueil</strong>.</p>
-      </div>
-      <div className="flex justify-center text-muted-foreground">
-        <ChevronRight className="w-4 h-4 rotate-90" />
-      </div>
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-background px-3 py-1 rounded shadow-sm border font-semibold text-blue-500 text-sm">
-          Ajouter
-        </div>
-        <p className="text-sm font-medium">3. Confirmez en appuyant sur <strong>Ajouter</strong> en haut à droite.</p>
-      </div>
+    <div className="space-y-5">
+      <Step icon={<Share className="w-6 h-6 text-blue-500" />} text="Appuyez sur le bouton **Partager** dans Safari." />
+      <Step icon={<PlusSquare className="w-6 h-6 text-green-500" />} text="Faites défiler et sélectionnez **Sur l'écran d'accueil**." />
+      <Step icon={<div className="font-bold text-white bg-blue-600 px-3 py-1.5 rounded-md text-sm">Ajouter</div>} text="Appuyez sur **Ajouter** en haut à droite." />
     </div>
   );
 
   const AndroidGuide = () => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-background p-2 rounded shadow-sm border">
-          <MoreVertical className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        </div>
-        <p className="text-sm font-medium">1. Appuyez sur le <strong>Menu</strong> (trois points) de Chrome en haut à droite.</p>
-      </div>
-      <div className="flex justify-center text-muted-foreground">
-        <ChevronRight className="w-4 h-4 rotate-90" />
-      </div>
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-background p-2 rounded shadow-sm border">
-          <Download className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        </div>
-        <p className="text-sm font-medium">2. Sélectionnez <strong>Installer l'application</strong> ou <strong>Ajouter à l'écran d'accueil</strong>.</p>
-      </div>
-      <div className="flex justify-center text-muted-foreground">
-        <ChevronRight className="w-4 h-4 rotate-90" />
-      </div>
-      <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-        <div className="bg-primary text-primary-foreground px-3 py-1 rounded shadow-sm font-semibold text-sm">
-          Installer
-        </div>
-        <p className="text-sm font-medium">3. Confirmez l'installation sur la popup qui s'affiche.</p>
-      </div>
+    <div className="space-y-5">
+      <Step icon={<MoreVertical className="w-6 h-6 text-gray-300" />} text="Appuyez sur le **menu à trois points** (⋮) de Chrome." />
+      <Step icon={<Download className="w-6 h-6 text-blue-500" />} text="Sélectionnez **Installer l'application**." />
+      <Step icon={<div className="font-bold text-white bg-green-600 px-3 py-1.5 rounded-md text-sm">Installer</div>} text="Confirmez l'installation." />
+    </div>
+  );
+
+  const DesktopGuide = () => (
+    <div className="space-y-5">
+      <Step icon={<Chrome className="w-6 h-6 text-blue-500" />} text="Dans Chrome/Edge, regardez la **barre d'adresse**." />
+      <Step icon={<Download className="w-6 h-6 text-green-500" />} text="Cliquez sur l'icône **d'installation** (📲) à droite de l'URL." />
+      <Step icon={<Menu className="w-6 h-6 text-gray-300" />} text="Ou cliquez sur le menu **⋮** → **Installer l'application**." />
     </div>
   );
 
   return (
     <AnimatePresence>
-      {guideVisible && (
-        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
+      {isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={closeGuide}
+            className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            onClick={onClose}
           />
-
-          {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md bg-background rounded-3xl shadow-2xl overflow-hidden border border-border z-10 flex flex-col max-h-[90vh]"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25 }}
+            className="relative w-full max-w-md bg-black text-white rounded-t-3xl sm:rounded-3xl p-6 z-20 border border-gray-800"
           >
-            <button
-              onClick={closeGuide}
-              className="absolute top-4 right-4 z-20 p-2 bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 rounded-full transition-colors backdrop-blur-md"
-              aria-label="Fermer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="px-6 pt-8 pb-4 text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Smartphone className="w-8 h-8 text-primary" />
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Smartphone className="w-7 h-7 text-white" />
               </div>
-              <h2 className="text-xl font-bold font-heading tracking-tight mb-2">Installez l'Application</h2>
-              <p className="text-sm text-muted-foreground">
-                Ajoutez BonPlanInfos à votre écran d'accueil pour un accès rapide, même hors ligne !
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Installer l'application
+              </h3>
+              <p className="text-sm text-gray-400 mt-1">
+                {os === 'ios' ? 'Sur iPhone / iPad' : os === 'android' ? 'Sur Android' : 'Sur ordinateur'}
               </p>
             </div>
 
-            <div className="px-6 py-2 overflow-y-auto custom-scrollbar">
-              {os === 'ios' ? <IosGuide /> : <AndroidGuide />}
-            </div>
+            {os === 'ios' && <IosGuide />}
+            {os === 'android' && <AndroidGuide />}
+            {os === 'desktop' && <DesktopGuide />}
 
-            <div className="px-6 py-6 mt-2">
-              <Button 
-                onClick={closeGuide} 
-                className="w-full"
-                size="lg"
-              >
-                J'ai compris
-              </Button>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-full mt-8 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all"
+            >
+              J'ai compris
+            </button>
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X size={22} />
+            </button>
           </motion.div>
         </div>
       )}
     </AnimatePresence>
   );
 };
+
+const Step = ({ icon, text }) => (
+  <div className="flex items-center gap-4 bg-gray-900/50 p-4 rounded-2xl border border-gray-800">
+    <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-gray-700">
+      {icon}
+    </div>
+    <p className="text-sm font-medium leading-tight text-gray-200">
+      {text.split('**').map((part, i) => 
+        i % 2 === 1 ? <strong key={i} className="text-blue-400">{part}</strong> : part
+      )}
+    </p>
+  </div>
+);
 
 export default PWAInstallGuide;

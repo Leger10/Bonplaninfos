@@ -58,6 +58,8 @@ import WelcomePopup from "@/components/WelcomePopup";
 import FloatingActionButton from "@/components/layout/FloatingActionButton";
 import InstallPWAButton from "@/components/InstallPWAButton";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
+import PWAInstallGuide from "@/components/PWAInstallGuide";
+import PWAInstallFloatingButton from '@/components/PWAInstallFloatingButton';
 import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
 import CouponsPage from "@/pages/CouponsPage";
 
@@ -237,14 +239,30 @@ function App() {
                   />
                 </Routes>
 
-                <div className="fixed bottom-20 right-4 z-50">
-                  <InstallPWAButton className="bg-white/90 backdrop-blur-sm shadow-xl hover:bg-white" />
+                  {/* Bouton PWA centré en bas */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                  <InstallPWAButton 
+                    className="bg-white/90 backdrop-blur-sm shadow-xl hover:bg-white"
+                    size="default"
+                  />
                 </div>
                 <Toaster />
                 <MandatoryVideoPopup />
                 <PushNotificationManager />
                 <WelcomePopup />
-                <PWAInstallPremiumPopup />
+                <PWAInstallPremiumPopup
+                  images={[
+                    "/pwa-preview1.png",
+                    "/pwa-preview2.png",
+                    "/pwa-preview3.png",
+                    "/pwa-preview4.png",
+                    "/pwa-preview6.png",
+                    "/pwa-preview.png",
+                    "/pwa-preview7.png",
+                  ]}
+                />
+                <PWAInstallGuide />
+                <PWAInstallFloatingButton />
                 <FloatingActionButton />
                 <PWAInstallBanner />
               </MainLayout>

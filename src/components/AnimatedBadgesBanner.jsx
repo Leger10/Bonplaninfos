@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/customSupabaseClient";
-import { Volume2, PlayCircle, Loader2 } from "lucide-react";
+import { PlayCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Mapping des codes pays pour FlagCDN
 const getCountryCode = (countryName) => {
@@ -25,20 +26,19 @@ const AnimatedBadgesBanner = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const fetchActivePartners = async () => {
       try {
         const now = new Date().toISOString();
-
         const { data, error } = await supabase
           .from("partners")
           .select("*, user:user_id(full_name, avatar_url)")
           .eq("status", "active")
           .gt("expiration_date", now)
           .limit(10);
-
         if (error) throw error;
-
         setPartners(data || []);
       } catch (err) {
         console.error("Erreur fetch banner:", err);
@@ -46,51 +46,49 @@ const AnimatedBadgesBanner = () => {
         setLoading(false);
       }
     };
-
     fetchActivePartners();
   }, []);
 
   useEffect(() => {
     if (partners.length <= 1) return;
-
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % partners.length);
     }, 8000);
-
     return () => clearInterval(interval);
   }, [partners]);
 
+  // 🎙️ Message vocal incitant à devenir représentant (sans mention du pays de l'ambassadeur)
   const speak = (partner) => {
-  if (!window.speechSynthesis) {
-    console.warn("Synthèse vocale non supportée");
-    return;
-  }
+    if (!window.speechSynthesis) {
+      console.warn("Synthèse vocale non supportée");
+      return;
+    }
 
-  window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel();
 
-  const country = partner.coverage_zone?.country || "son pays";
-  const fullName = partner.user?.full_name || "notre ambassadeur";
+    const ambassadorName = partner.user?.full_name || "un de nos ambassadeurs";
 
-  const text = `Découvrez ${fullName}, notre ambassadeur au ${country}.
+    const text = ` Devenez représentant officiel BonPlanInfos dans votre pays !
 
-En devenant partenaire BonPlanInfos dans votre pays, vous bénéficiez de nombreux avantages :
+${ambassadorName} l’a fait, et vous aussi.
 
-- Vous générez des revenus stables grâce à notre programme de partage de commissions, de 20% jusqu'à 50 % sur chaque vente de packs partenaires réalisée dans votre zone.
-- Vous accédez à une plateforme de gestion d'événements tout en un, pour organiser, encaisser et promouvoir vos activités facilement.
-- Vous recevez un accompagnement personnalisé de notre équipe, ainsi que des outils marketing pour développer votre réseau local.
-- Vous gagnez en crédibilité et en visibilité en étant mis en avant sur notre site et nos réseaux sociaux.
-- Vous participez à des événements exclusifs réservés aux ambassadeurs et bénéficiez de formations continues.
+Pourquoi devenir représentant ?
+Gagnez 20% à 40% de commission sur chaque vente générée dans votre pays.
+Bénéficiez d’une plateforme clé en main pour développer votre activité.
+Accompagnement personnalisé pour ouvrir un point de représentation physique.
+Devenez une référence dans votre pays.
 
-${fullName} incarne parfaitement ces valeurs et nous sommes fiers de l’avoir à nos côtés pour faire rayonner BonPlanInfos au ${country}.
+Les places sont limitées par pays.
+Ne laissez pas passer cette opportunité unique.
 
-Rejoignez le mouvement et devenez ambassadeur dès aujourd'hui !`;
+Cliquez sur "Devenir Ambassadeur" maintenant et rejoignez l’aventure BonPlan Infos !`;
 
-  const speech = new SpeechSynthesisUtterance(text);
-  speech.lang = "fr-FR";
-  speech.rate = 0.9;
-
-  window.speechSynthesis.speak(speech);
-};
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "fr-FR";
+    speech.rate = 0.95;
+    speech.pitch = 1.05;
+    window.speechSynthesis.speak(speech);
+  };
 
   if (loading || partners.length === 0) return null;
 
@@ -120,7 +118,6 @@ Rejoignez le mouvement et devenez ambassadeur dès aujourd'hui !`;
                   alt={current.user?.full_name}
                 />
               </div>
-
               <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-primary overflow-hidden shadow-sm bg-white">
                 <img
                   src={`https://flagcdn.com/w40/${countryCode}.png`}
@@ -129,7 +126,6 @@ Rejoignez le mouvement et devenez ambassadeur dès aujourd'hui !`;
                 />
               </div>
             </div>
-
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-widest opacity-70">
                 Ambassadeur {current.coverage_zone?.country}
@@ -141,6 +137,7 @@ Rejoignez le mouvement et devenez ambassadeur dès aujourd'hui !`;
           </div>
 
           <div className="flex items-center gap-3">
+            {/* 🎧 Bouton audio */}
             <button
               onClick={() => speak(current)}
               className="flex items-center gap-2 text-[11px] bg-white text-primary px-4 py-2 rounded-full font-black shadow-md hover:bg-slate-100 transition-transform active:scale-95"
@@ -148,11 +145,21 @@ Rejoignez le mouvement et devenez ambassadeur dès aujourd'hui !`;
               <PlayCircle size={14} className="fill-primary text-white" />
               PRÉSENTATION
             </button>
+
+            {/* 🚀 Bouton conversion */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+              onClick={() => navigate("/documentation")}
+              className="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold shadow-lg"
+            >
+              🚀 Devenir Ambassadeur
+            </motion.button>
           </div>
         </motion.div>
       </AnimatePresence>
 
-      {/* Barre de progression visuelle */}
+      {/* Barre de progression */}
       <motion.div
         key={`progress-${currentIndex}`}
         initial={{ width: 0 }}

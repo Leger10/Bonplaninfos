@@ -1,4 +1,3 @@
-// hooks/useInstallPrompt.js
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -9,8 +8,10 @@ export const useInstallPrompt = () => {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [isBannerVisible, setIsBannerVisible] = useState(false);
-  const [guideVisible, setGuideVisible] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [installCount, setInstallCount] = useState(0);
 
   const recordInstall = useCallback(async (source) => {
     if (!user) return;
@@ -25,7 +26,7 @@ export const useInstallPrompt = () => {
       const userAgent = window.navigator.userAgent.toLowerCase();
       const platform = /iphone|ipad|ipod/.test(userAgent) ? 'ios'
                      : /android/.test(userAgent) ? 'android'
-                     : 'other';
+                     : 'desktop';
       const deviceType = /mobile|android|iphone|ipad|ipod/i.test(userAgent) ? 'mobile' : 'desktop';
 
       await supabase.from('pwa_installs').insert({
@@ -39,26 +40,53 @@ export const useInstallPrompt = () => {
     }
   }, [user]);
 
-  // Vérifier l'état de la bannière au chargement
   useEffect(() => {
-    const dismissed = localStorage.getItem('pwaBannerDismissed') === 'true';
-    if (!dismissed) {
-      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone === true;
-      if (!standalone) {
-        setIsBannerVisible(true);
+    const checkExistingStandalone = async () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                           window.navigator.standalone === true;
+      if (isStandalone && user) {
+        await recordInstall('legacy_standalone');
+        setIsInstalled(true);
+        setIsBannerVisible(false);
       }
-    }
-  }, []);
+    };
+    checkExistingStandalone();
+  }, [user, recordInstall]);
 
   useEffect(() => {
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isDesktopDevice = !/mobile|android|iphone|ipad|ipod/i.test(userAgent);
     setIsIOS(isIosDevice);
+    setIsDesktop(isDesktopDevice);
 
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone === true;
+
+    if (isStandalone) {
       setIsInstalled(true);
+      return;
     }
+
+    const visitCount = parseInt(localStorage.getItem('pwa_visit_count') || '0');
+    localStorage.setItem('pwa_visit_count', visitCount + 1);
+    const base = 20;
+    const randomBoost = Math.floor(Math.random() * 15);
+    setInstallCount(base + visitCount + randomBoost);
+
+    const timer = setTimeout(() => {
+      const dismissed = localStorage.getItem('pwaBannerDismissed');
+      if (!dismissed && !isStandalone) setIsBannerVisible(true);
+    }, 5000);
+
+    const handleScroll = () => {
+      const scrollPercent = (window.scrollY + window.innerHeight) / document.body.scrollHeight;
+      if (scrollPercent > 0.3 && !isStandalone) {
+        const dismissed = localStorage.getItem('pwaBannerDismissed');
+        if (!dismissed) setIsBannerVisible(true);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -67,11 +95,10 @@ export const useInstallPrompt = () => {
     };
 
     const handleAppInstalled = () => {
-      setIsInstallable(false);
       setIsInstalled(true);
-      setDeferredPrompt(null);
-      localStorage.setItem('pwaBannerDismissed', 'true');
+      setIsInstallable(false);
       setIsBannerVisible(false);
+      localStorage.setItem('pwaBannerDismissed', 'true');
       recordInstall('app_installed_event');
     };
 
@@ -79,58 +106,60 @@ export const useInstallPrompt = () => {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, [recordInstall]);
-
-  // Déclencher l'installation (appelée par la bannière)
-  const triggerInstall = useCallback(async () => {
-    if (isIOS) {
-      await recordInstall('ios_guide');
-      setGuideVisible(true);
-      setIsBannerVisible(false);
-      return;
-    }
-
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        await recordInstall('native_prompt');
-      }
-      setDeferredPrompt(null);
-      setIsInstallable(false);
-      setIsBannerVisible(false);
-      localStorage.setItem('pwaBannerDismissed', 'true');
-    }
-  }, [isIOS, deferredPrompt, recordInstall]);
 
   const closeBanner = useCallback(() => {
     setIsBannerVisible(false);
     localStorage.setItem('pwaBannerDismissed', 'true');
   }, []);
 
-  const closeGuide = useCallback(() => {
-    setGuideVisible(false);
-    localStorage.setItem('pwaGuideDismissed', 'true');
-  }, []);
+  const triggerInstall = useCallback(async () => {
+    if (isIOS) {
+      setShowGuide(true);
+      closeBanner();
+      await recordInstall('ios_guide');
+      return true;
+    }
 
-  const showGuide = useCallback(() => {
-    setGuideVisible(true);
-  }, []);
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+      if (outcome === 'accepted') {
+        setIsInstallable(false);
+        closeBanner();
+        await recordInstall('native_prompt');
+        return true;
+      }
+      return false;
+    } else {
+      // Pas de beforeinstallprompt : affiche un guide adapté
+      setShowGuide(true);
+      closeBanner();
+      return false;
+    }
+  }, [isIOS, deferredPrompt, closeBanner, recordInstall]);
+
+  const promptInstall = triggerInstall;
+  const closeGuide = () => setShowGuide(false);
 
   return {
     isInstallable,
     isInstalled,
     isIOS,
+    isDesktop,
     isBannerVisible,
-    guideVisible,
+    showGuide,
+    installCount,
     triggerInstall,
+    promptInstall,
     closeBanner,
     closeGuide,
-    showGuide,
-    // Pour compatibilité avec les composants existants
-    promptInstall: triggerInstall,
+    setShowGuide,
   };
 };

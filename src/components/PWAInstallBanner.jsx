@@ -1,4 +1,3 @@
-// components/PWAInstallBanner.tsx
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
@@ -19,37 +18,46 @@ const PWAInstallBanner = () => {
           className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 
                      bg-gray-900 text-white 
                      shadow-2xl rounded-xl border border-gray-700 
-                     p-4 flex items-center gap-3 
-                     max-w-md md:max-w-lg"
+                     p-4 w-[calc(100%-2rem)] max-w-sm mx-auto"
         >
-          <div className="flex-1">
-            <p className="font-semibold text-sm">
-              {isIOS
-                ? 'Installer BonPlanInfos'
-                : 'Installer l’application'}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              {isIOS
-                ? 'Partager → Ajouter à l’écran d’accueil'
-                : 'Accédez rapidement aux événements et notifications.'}
-            </p>
-          </div>
-
-          <Button
-            onClick={triggerInstall}
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
-          >
-            {isIOS ? 'Guide' : 'Installer'}
-            <ArrowDown className="w-4 h-4" />
-          </Button>
-
           <button
             onClick={closeBanner}
-            className="text-gray-400 hover:text-white transition"
+            className="absolute top-2 right-2 text-gray-400 hover:text-white transition"
+            aria-label="Fermer"
           >
             <X size={18} />
           </button>
+
+          <div className="text-center mb-4 mt-2">
+            <p className="font-semibold text-sm break-words px-2">
+              {isIOS ? 'Installer BonPlanInfos' : 'Installer l’application'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1 break-words px-2">
+              {isIOS
+                ? 'Partager → Ajouter à l’écran d’accueil'
+                : 'Accédez rapidement aux événements.'}
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              animate={{
+                scale: [1, 1.03, 1],
+                transition: { duration: 1.5, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' },
+              }}
+            >
+              <Button
+                onClick={triggerInstall}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 shadow-md"
+              >
+                {isIOS ? 'Guide' : 'Installer'}
+                <ArrowDown className="w-4 h-4" />
+              </Button>
+            </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
