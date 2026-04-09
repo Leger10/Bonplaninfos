@@ -175,7 +175,7 @@ import React from 'react';
                                 </AccordionItem>
                                 <AccordionItem value="item-3">
                                     <AccordionTrigger>Quand puis-je retirer mon argent ?</AccordionTrigger>
-                                    <AccordionContent>Dès que vous atteignez le seuil de 1000 coins, vous pouvez demander un retrait instantané via nos partenaires de paiement mobile.</AccordionContent>
+                                    <AccordionContent>Dès que vous atteignez le seuil de 100 coins, vous pouvez demander un retrait instantané via nos partenaires de paiement mobile.</AccordionContent>
                                 </AccordionItem>
                             </Accordion>
                         </div>
@@ -210,7 +210,7 @@ import React from 'react';
                                 <ul className="space-y-2 text-sm">
                                     <li><a href="#" onClick={(e) => {e.preventDefault(); navigate('/about')}} className="text-muted-foreground hover:text-primary">À propos</a></li>
                                     <li><a href="#" onClick={(e) => {e.preventDefault(); navigate('/marketing')}} className="text-muted-foreground hover:text-primary">Partenariat</a></li>
-                                    <li><a href="mailto:contact@bonplaninfos.net" className="text-muted-foreground hover:text-primary">Contact</a></li>
+                                    <li><a href="mailto:support@bonplaninfos.net" className="text-muted-foreground hover:text-primary">Contact</a></li>
                                 </ul>
                             </div>
                             <div>

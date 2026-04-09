@@ -65,6 +65,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { Checkbox } from '@/components/ui/checkbox';
 import { checkAuthentication } from '@/lib/authUtils';
 import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+import {
+  processImage,
+  validateImage,
+  uploadImageWithProcessing
+} from '@/utils/imageConverter';
 
 // Composant d'input animé
 const AnimatedInput = ({ icon: Icon, label, error, touched, ...props }) => {
@@ -458,10 +463,6 @@ const CreateRaffleEventPage = () => {
     return validateField(field, formData[field]);
   };
 
-  const isFieldValid = (field) => {
-    return !getFieldError(field);
-  };
-
   const handleBlur = (field) => {
     setTouchedFields(prev => ({ ...prev, [field]: true }));
   };
@@ -566,7 +567,6 @@ const CreateRaffleEventPage = () => {
       return newData;
     });
 
-    // Animation de scroll vers le nouveau lot
     setTimeout(() => {
       window.scrollTo({
         top: document.body.scrollHeight,
@@ -590,55 +590,60 @@ const CreateRaffleEventPage = () => {
   };
 
   // Upload d'image
-  const handleImageUpload = async (file) => {
-    if (!file) return null;
+// Upload d'image avec compression automatique
+const handleImageUpload = async (file) => {
+  if (!file) return null;
 
-    setUploading(true);
-    try {
-      if (file.size > 2 * 1024 * 1024) {
-        toast({ 
-          title: 'Fichier trop volumineux', 
-          description: 'L\'image ne doit pas dépasser 2MB.', 
-          variant: 'destructive' 
-        });
-        return null;
-      }
-
-      if (!file.type.startsWith('image/')) {
-        toast({ 
-          title: 'Type de fichier invalide', 
-          description: 'Veuillez sélectionner une image', 
-          variant: 'destructive' 
-        });
-        return null;
-      }
-
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
-      const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(filePath, file);
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath);
-      
-      return urlData.publicUrl;
-
-    } catch (error) {
-      console.error('Erreur upload image:', error);
-      toast({ 
-        title: 'Erreur d\'upload', 
-        description: 'Impossible de télécharger l\'image', 
-        variant: 'destructive' 
+  setUploading(true);
+  try {
+    // 1. Validation initiale (type, taille max 5 Mo avant compression)
+    const validation = validateImage(file);
+    if (!validation.isValid) {
+      toast({
+        title: 'Format ou taille invalide',
+        description: validation.message,
+        variant: 'destructive'
       });
       return null;
-    } finally {
-      setUploading(false);
     }
-  };
+
+    // 2. Compression + conversion automatique
+    const processedFile = await processImage(file, {
+      maxSizeMB: 1,           // Taille cible après compression
+      maxWidthOrHeight: 1920, // Redimensionne si plus grand
+      useWebWorker: true,
+      fileType: 'image/jpeg'  // Force JPEG pour meilleure compression
+    });
+
+    // 3. Upload du fichier traité vers Supabase
+    const cleanFileName = processedFile.name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
+    const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('media')
+      .upload(filePath, processedFile);
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath);
+
+    // 4. Retourner l'URL publique
+    return urlData.publicUrl;
+
+  } catch (error) {
+    console.error('Erreur traitement image:', error);
+    toast({
+      title: 'Erreur',
+      description: 'Impossible de traiter l’image. Veuillez réessayer.',
+      variant: 'destructive'
+    });
+    return null;
+  } finally {
+    setUploading(false);
+  }
+};
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -792,11 +797,14 @@ const CreateRaffleEventPage = () => {
           contract_version: 'v1.0'
         });
 
-      // Création du raffle event
+      // ============================================================
+      // CRITIQUE : Création du raffle event – AJOUTER organizer_id
+      // ============================================================
       const { data: raffleEventData, error: raffleError } = await supabase
         .from('raffle_events')
         .insert({
           event_id: newEventId,
+          organizer_id: user.id,   // ← AJOUT OBLIGATOIRE
           draw_date: formData.drawDate,
           base_price: formData.ticketPrice,
           base_currency: formData.ticketCurrency,
@@ -804,7 +812,8 @@ const CreateRaffleEventPage = () => {
           total_tickets: formData.totalTickets,
           max_tickets_per_user: formData.maxTicketsPerUser,
           min_tickets_required: formData.minTicketsRequired,
-          auto_draw: formData.autoDraw
+          auto_draw: formData.autoDraw,
+          status: 'active'
         })
         .select()
         .single();
@@ -955,14 +964,14 @@ const CreateRaffleEventPage = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <input 
-              type="file" 
-              id="coverImage" 
-              accept="image/*" 
-              onChange={handleFileSelect} 
-              className="hidden" 
-              disabled={uploading}
-            />
+          <input
+  type="file"
+  id="coverImage"
+  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+  onChange={handleFileSelect}
+  className="hidden"
+  disabled={uploading}
+/>
             <label htmlFor="coverImage" className="cursor-pointer">
               {uploading ? (
                 <Loader2 className="w-8 h-8 mx-auto text-muted-foreground animate-spin" />

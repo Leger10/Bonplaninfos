@@ -62,7 +62,7 @@ import PWAInstallGuide from "@/components/PWAInstallGuide";
 import PWAInstallFloatingButton from '@/components/PWAInstallFloatingButton';
 import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
 import CouponsPage from "@/pages/CouponsPage";
-
+import StandBookingDetails from './pages/StandBookingDetails';
 // Composant pour synchroniser l'état d'authentification avec le contexte de données
 const AuthSync = () => {
   const { setForceRefresh } = useAuth();
@@ -237,6 +237,7 @@ function App() {
                     path="/legal-mentions"
                     element={<LegalMentionsPage />}
                   />
+                  <Route path="/stand-booking" element={<StandBookingDetails />} />
                 </Routes>
 
                   {/* Bouton PWA centré en bas */}

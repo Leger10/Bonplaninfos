@@ -196,7 +196,7 @@
         "q6": "Quelles sont les conditions générales d'utilisation ?",
         "a6": "En créant un compte, vous acceptez notre <b>Contrat Organisateur</b> qui précise : Vous êtes seul responsable de vos événements, nous sommes un prestataire technique. La commission est de 5%, les retraits sont simples, et vous gardez 95% de vos revenus. Téléchargez le contrat complet depuis votre tableau de bord.",
         "q7": "Comment fonctionnent les paiements et retraits ?",
-        "a7": "<b>Paiements</b> : Collectés via moyens locaux (mobile money, cartes). <b>Retraits</b> : Disponibles sur votre compte organisateur. <b>Commission</b> : 5% prélevés sur chaque participation. <b>Exemple</b> : Pour 1 000 000 FCFA de ventes → Vous recevez 950 000 FCFA, nous prenons 50 000 FCFA.",
+        "a7": "<b>Paiements</b> : Collectés via moyens locaux (mobile money, cartes). <b>Retraits</b> : Disponibles sur votre compte organisateur. <b>Commission</b> : 5% prélevés sur chaque participation. <b>Exemple</b> : Pour 1 000 000 FCFA de ventes → Vous recevez 850 000 FCFA, nous prenons 150 000 FCFA.",
         "q8": "Où puis-je obtenir de l'aide ou du support ?",
         "a8": "Plusieurs canaux : <b>1) Support WhatsApp</b> : +225 0712275374, <b>2) Email</b> : support@bonplaninfos.net, <b>3) Chat en direct</b> sur la plateforme. Réponse sous 24h."
       },
@@ -897,7 +897,7 @@
     "license_card": {
       "active": "Active",
       "expired": "Expirée",
-      "revenue_share": "Part de revenus : {{percent}}% sur les 5% commission plateforme",
+      "revenue_share": "Part de revenus : {{percent}}% sur les5% commission plateforme",
       "territory": "Territoire : {{location}}",
       "purchased_on": "Contraté le",
       "expires_on": "Expire le",
@@ -1476,7 +1476,7 @@
         "capital": "Société par actions simplifiée (SAS) au capital social compris entre 1 000 000 et 5 000 000 FCFA",
         "address": "Siège social : Abidjan (Côte d’Ivoire) et Ouagadougou (Burkina Faso)",
         "phone": "Téléphone : (+225) 07 12 27 53 74",
-        "email": "contact@bonplaninfos.net"
+        "email": "support@bonplaninfos.net"
       },
       "director": {
         "title": "Directeur de la publication",
@@ -1491,7 +1491,7 @@
       },
       "data": {
         "title": "Protection des données personnelles",
-        "content1": "Conformément aux réglementations applicables en matière de protection des données personnelles, vous disposez d’un droit d’accès, de rectification, de suppression et d’opposition concernant vos données personnelles. Pour exercer ces droits, vous pouvez contacter notre Délégué à la Protection des Données (DPO) à l’adresse suivante : contact@bonplaninfos.net.",
+        "content1": "Conformément aux réglementations applicables en matière de protection des données personnelles, vous disposez d’un droit d’accès, de rectification, de suppression et d’opposition concernant vos données personnelles. Pour exercer ces droits, vous pouvez contacter notre Délégué à la Protection des Données (DPO) à l’adresse suivante : support@bonplaninfos.net.",
         "content2": "Pour plus d’informations, veuillez consulter notre <1>Politique de confidentialité</1>."
       },
       "cookies": {
@@ -1972,7 +1972,7 @@
     "updateSuccess": "Mot de passe mis à jour avec succès",
     "updateError": "Erreur lors de la mise à jour du mot de passe"
   },
- "privacy": {
+  "privacy": {
     "meta_title": "Politique de Confidentialité",
     "meta_description": "Consultez notre politique de confidentialité pour comprendre comment nous collectons, utilisons et protégeons vos données personnelles.",
     "title": "Politique de Confidentialité",
@@ -2022,8 +2022,7 @@
       "p1": "Pour toute question relative à cette politique de confidentialité, veuillez nous contacter à :",
       "email": "support@bonplaninfos.net"
     }
-  }, 
-
+  },
 
   "notificationSettings": {
     "title": "Préférences de notification",

@@ -1,24 +1,43 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/customSupabaseClient';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, FileText, CalendarClock, DollarSign, TrendingUp, Download } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
-import { getNextWithdrawalDate, isWithdrawalOpen } from '@/lib/dateUtils';
-import AdminSalaryWithdrawalModal from './AdminSalaryWithdrawalModal';
-import { toast } from '@/components/ui/use-toast';
-import { generatePaymentReceipt, generateSalarySlip } from '@/utils/pdfGenerator';
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/customSupabaseClient";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Loader2,
+  FileText,
+  CalendarClock,
+  DollarSign,
+  TrendingUp,
+  Download,
+} from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { getNextWithdrawalDate, isWithdrawalOpen } from "@/lib/dateUtils";
+import AdminSalaryWithdrawalModal from "./AdminSalaryWithdrawalModal";
+import { toast } from "@/components/ui/use-toast";
+import {
+  generatePaymentReceipt,
+  generateSalarySlip,
+} from "@/utils/pdfGenerator";
 
 const AdminSalaryDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [salaryStats, setSalaryStats] = useState(null);
-  const [withdrawalConfig, setWithdrawalConfig] = useState({ withdrawal_dates: [5] });
+  const [withdrawalConfig, setWithdrawalConfig] = useState({
+    withdrawal_dates: [5],
+  });
   const [isWithdrawalModalOpen, setIsWithdrawalModalOpen] = useState(false);
   const [withdrawalHistory, setWithdrawalHistory] = useState([]);
   const [nextWithdrawalDate, setNextWithdrawalDate] = useState(null);
@@ -29,20 +48,29 @@ const AdminSalaryDashboard = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: configData } = await supabase.from('admin_withdrawal_config').select('*').limit(1).maybeSingle();
+      const { data: configData } = await supabase
+        .from("admin_withdrawal_config")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
       const config = configData || { withdrawal_dates: [5] };
       setWithdrawalConfig(config);
-      setNextWithdrawalDate(getNextWithdrawalDate(config.withdrawal_dates || [5]));
+      setNextWithdrawalDate(
+        getNextWithdrawalDate(config.withdrawal_dates || [5]),
+      );
 
-      const { data: stats, error: statsError } = await supabase.rpc('get_admin_salary_stats', { p_admin_id: user.id });
+      const { data: stats, error: statsError } = await supabase.rpc(
+        "get_admin_salary_stats",
+        { p_admin_id: user.id },
+      );
       if (statsError) console.error("Stats Error:", statsError);
       setSalaryStats(stats);
 
       const { data: history } = await supabase
-        .from('admin_withdrawal_requests')
-        .select('*')
-        .eq('admin_id', user.id)
-        .order('requested_at', { ascending: false });
+        .from("admin_withdrawal_requests")
+        .select("*")
+        .eq("admin_id", user.id)
+        .order("requested_at", { ascending: false });
       setWithdrawalHistory(history || []);
 
       setCanWithdraw(isWithdrawalOpen(config.withdrawal_dates || [5]));
@@ -53,31 +81,41 @@ const AdminSalaryDashboard = () => {
     }
   }, [user]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const generateReceipt = async (withdrawal) => {
     if (!withdrawal) return;
     setGeneratingPdf(withdrawal.id);
     try {
       const { data: adminProfile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
         .single();
 
       await generatePaymentReceipt({
-        recipientName: adminProfile?.full_name || adminProfile?.email || 'Administrateur',
+        recipientName:
+          adminProfile?.full_name || adminProfile?.email || "Administrateur",
         amount: withdrawal.amount_fcfa || 0,
-        paymentType: 'Salaire Administrateur',
+        paymentType: "Salaire Administrateur",
         reference: withdrawal.reference || withdrawal.id,
         date: new Date(withdrawal.processed_at || withdrawal.requested_at),
-        description: `Paiement de salaire - ${withdrawal.period || format(new Date(withdrawal.requested_at), 'MMMM yyyy', { locale: fr })}`
+        description: `Paiement de salaire - ${withdrawal.period || format(new Date(withdrawal.requested_at), "MMMM yyyy", { locale: fr })}`,
       });
 
-      toast({ title: "Reçu téléchargé", description: "Votre reçu a été généré." });
+      toast({
+        title: "Reçu téléchargé",
+        description: "Votre reçu a été généré.",
+      });
     } catch (err) {
       console.error("Erreur génération PDF:", err);
-      toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le PDF.",
+        variant: "destructive",
+      });
     } finally {
       setGeneratingPdf(null);
     }
@@ -89,41 +127,53 @@ const AdminSalaryDashboard = () => {
       toast({
         title: "Aucun salaire",
         description: "Vous n'avez pas encore de salaire à télécharger.",
-        variant: "warning"
+        variant: "warning",
       });
       return;
     }
 
-    setGeneratingPdf('salary-slip');
+    setGeneratingPdf("salary-slip");
     try {
       const { data: adminProfile } = await supabase
-        .from('profiles')
-        .select('full_name, country, city')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("full_name, country, city")
+        .eq("id", user.id)
         .single();
 
       await generateSalarySlip({
-        adminName: adminProfile?.full_name || 'Administrateur',
-        zone: `${salaryStats.country || ''}${salaryStats.city ? `, ${salaryStats.city}` : ''}`,
-        period: format(new Date(), 'MMMM yyyy', { locale: fr }),
+        adminName: adminProfile?.full_name || "Administrateur",
+        zone: `${salaryStats.country || ""}${salaryStats.city ? `, ${salaryStats.city}` : ""}`,
+        period: format(new Date(), "MMMM yyyy", { locale: fr }),
         volumeZone: salaryStats.total_volume_fcfa || 0,
         commissionBase: salaryStats.platform_revenue_fcfa || 0,
         licenseRate: salaryStats.license_commission_rate || 0,
         personalScore: salaryStats.personal_score || 1.0,
         netSalary: salaryStats.total_salary_fcfa || 0,
-        date: new Date()
+        date: new Date(),
       });
 
-      toast({ title: 'Bulletin généré', description: 'Votre bulletin a été téléchargé.' });
+      toast({
+        title: "Bulletin généré",
+        description: "Votre bulletin a été téléchargé.",
+      });
     } catch (err) {
-      console.error('Erreur génération bulletin:', err);
-      toast({ title: 'Erreur', description: 'Impossible de générer le bulletin.', variant: 'destructive' });
+      console.error("Erreur génération bulletin:", err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le bulletin.",
+        variant: "destructive",
+      });
     } finally {
       setGeneratingPdf(null);
     }
   };
 
-  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-white" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center p-12">
+        <Loader2 className="animate-spin text-white" />
+      </div>
+    );
 
   const commissionRate = salaryStats?.license_commission_rate || 0;
   const personalScore = salaryStats?.personal_score || 1.0;
@@ -136,17 +186,27 @@ const AdminSalaryDashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white">Mon Salaire & Revenus</h2>
+          <h2 className="text-3xl font-bold text-white">
+            Mon Salaire & Revenus
+          </h2>
           <p className="text-gray-400">
-            Licence : <Badge className="bg-gray-800 text-gray-200">{salaryStats?.license_name || 'Standard'}</Badge> ({commissionRate}%)
+            Licence :{" "}
+            <Badge className="bg-gray-800 text-gray-200">
+              {salaryStats?.license_name || "Standard"}
+            </Badge>{" "}
+            ({commissionRate}%)
           </p>
         </div>
         <div className="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 flex items-center gap-3">
           <CalendarClock className="text-indigo-400" />
           <div>
-            <p className="text-xs text-gray-400 font-bold uppercase">Prochain Retrait</p>
+            <p className="text-xs text-gray-400 font-bold uppercase">
+              Prochain Retrait
+            </p>
             <p className="font-medium text-white">
-              {nextWithdrawalDate ? format(nextWithdrawalDate, 'd MMMM yyyy', { locale: fr }) : '---'}
+              {nextWithdrawalDate
+                ? format(nextWithdrawalDate, "d MMMM yyyy", { locale: fr })
+                : "---"}
             </p>
           </div>
         </div>
@@ -159,25 +219,35 @@ const AdminSalaryDashboard = () => {
             <CardTitle className="text-sm text-gray-400">Volume Zone</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-white">{zoneVolume.toLocaleString()} F</p>
+            <p className="text-2xl font-bold text-white">
+              {zoneVolume.toLocaleString()} F
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-400">Commission (5%)</CardTitle>
+            <CardTitle className="text-sm text-gray-400">
+              Commission (5%)
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-400">{platformFees.toLocaleString()} F</p>
+            <p className="text-2xl font-bold text-blue-400">
+              {platformFees.toLocaleString()} F
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-400">Votre Part ({commissionRate}%)</CardTitle>
+            <CardTitle className="text-sm text-gray-400">
+              Votre Part ({commissionRate}%)
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-400">{estimatedSalary.toLocaleString()} F</p>
+            <p className="text-2xl font-bold text-emerald-400">
+              {estimatedSalary.toLocaleString()} F
+            </p>
           </CardContent>
         </Card>
 
@@ -186,7 +256,9 @@ const AdminSalaryDashboard = () => {
             <CardTitle className="text-sm text-gray-400">Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-indigo-400">{personalScore}</p>
+            <p className="text-2xl font-bold text-indigo-400">
+              {personalScore}
+            </p>
             <Progress value={personalScore * 100} className="h-1 mt-2" />
           </CardContent>
         </Card>
@@ -202,7 +274,9 @@ const AdminSalaryDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Salaire estimé</p>
-                <p className="text-3xl font-bold text-white">{estimatedSalary.toLocaleString()} FCFA</p>
+                <p className="text-3xl font-bold text-white">
+                  {estimatedSalary.toLocaleString()} FCFA
+                </p>
               </div>
             </div>
 
@@ -211,9 +285,11 @@ const AdminSalaryDashboard = () => {
                 size="lg"
                 className="bg-indigo-600 hover:bg-indigo-700 text-white"
                 onClick={generateSalarySlipPDF}
-                disabled={estimatedSalary === 0 || generatingPdf === 'salary-slip'}
+                disabled={
+                  estimatedSalary === 0 || generatingPdf === "salary-slip"
+                }
               >
-                {generatingPdf === 'salary-slip' ? (
+                {generatingPdf === "salary-slip" ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 ) : (
                   <FileText className="w-5 h-5 mr-2" />
@@ -234,7 +310,8 @@ const AdminSalaryDashboard = () => {
           </div>
 
           <p className="text-xs text-gray-500 mt-4 text-center">
-            Retraits disponibles les : {withdrawalConfig.withdrawal_dates?.join(', ')} du mois
+            Retraits disponibles les :{" "}
+            {withdrawalConfig.withdrawal_dates?.join(", ")} du mois
           </p>
         </CardContent>
       </Card>
@@ -257,43 +334,55 @@ const AdminSalaryDashboard = () => {
             <TableBody>
               {withdrawalHistory.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-400">Aucun historique</TableCell>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center py-8 text-gray-400"
+                  >
+                    Aucun historique
+                  </TableCell>
                 </TableRow>
-              ) : withdrawalHistory.map((w) => (
-                <TableRow key={w.id} className="border-gray-800">
-                  <TableCell className="text-gray-300">
-                    {format(new Date(w.requested_at), 'dd/MM/yyyy')}
-                  </TableCell>
-                  <TableCell className="font-bold text-white">
-                    {w.amount_fcfa?.toLocaleString() || '0'} F
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      w.status === 'approved' ? 'success' :
-                      w.status === 'rejected' ? 'destructive' : 'secondary'
-                    }>
-                      {w.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(w.status === 'approved' || w.status === 'paid') && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => generateReceipt(w)}
-                        disabled={generatingPdf === w.id}
-                        className="text-gray-400 hover:text-white"
+              ) : (
+                withdrawalHistory.map((w) => (
+                  <TableRow key={w.id} className="border-gray-800">
+                    <TableCell className="text-gray-300">
+                      {format(new Date(w.requested_at), "dd/MM/yyyy")}
+                    </TableCell>
+                    <TableCell className="font-bold text-white">
+                      {w.amount_fcfa?.toLocaleString() || "0"} F
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          w.status === "approved"
+                            ? "success"
+                            : w.status === "rejected"
+                              ? "destructive"
+                              : "secondary"
+                        }
                       >
-                        {generatingPdf === w.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {w.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(w.status === "approved" || w.status === "paid") && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => generateReceipt(w)}
+                          disabled={generatingPdf === w.id}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          {generatingPdf === w.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

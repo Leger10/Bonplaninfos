@@ -966,10 +966,10 @@ const EventDetailPage = () => {
                           </span>
                           <span className="text-red-400">-{standStats.platform_fee} pièces</span>
                         </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-700">
+                        {/* <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-700">
                           <span className="font-bold text-green-400">{t('eventDetail.standDashboard.netEarnings')}</span>
                           <span className="font-bold text-xl text-green-400">{standStats.organizer_net} pièces</span>
-                        </div>
+                        </div> */}
                       </div>
                     </>
                   )}

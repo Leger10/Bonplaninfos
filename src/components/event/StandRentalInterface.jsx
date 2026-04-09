@@ -16,11 +16,9 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Sheet,
@@ -49,22 +47,16 @@ import {
   Loader2,
   Store,
   CheckCircle,
-  Info,
   Layout,
   Lock,
   ArrowRight,
-  Phone,
   Building,
   Package,
   Copy,
-  Mail,
-  Navigation,
   Printer,
   BadgeCheck,
   Briefcase,
   Tag,
-  Hash,
-  CalendarDays,
   UserCircle,
   CreditCard,
   Ticket,
@@ -72,32 +64,25 @@ import {
   Search,
   BarChart3,
   Coins,
-  Percent,
-  Wallet,
-  FileText,
-  Users,
   Grid3x3,
   ShoppingCart,
   PlusCircle,
   Trash2,
-  X,
+   Users,
   Bookmark,
   Eye,
   MoreVertical,
-  QrCode,
-  AlertCircle,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-// Palette de couleurs complètement statique
 const STAND_COLORS = [
   {
     border: "border-blue-600",
@@ -179,42 +164,26 @@ const STAND_COLORS = [
   },
 ];
 
-const StandRentalInterface = ({
-  event,
-  isUnlocked,
-  onRefresh,
-  isClosed,
-  userProfile,
-}) => {
+const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  // États
+
   const [standTypes, setStandTypes] = useState([]);
   const [myRentals, setMyRentals] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // États pour le panier
   const [cartStands, setCartStands] = useState([]);
   const [isRenting, setIsRenting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  
-  // États pour les réservations
   const [allRentals, setAllRentals] = useState([]);
   const [filteredRentals, setFilteredRentals] = useState([]);
-  const [activeTab, setActiveTab] = useState("details");
   const [activeTabs, setActiveTabs] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  
-  // États pour les détails d'une réservation
-  const [selectedRentalForDetails, setSelectedRentalForDetails] = useState(null);
+  const [selectedRentalForDetails, setSelectedRentalForDetails] =
+    useState(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
-
-  // États pour les statistiques
   const [statistics, setStatistics] = useState({
     totalStands: 0,
     totalRentals: 0,
@@ -228,7 +197,7 @@ const StandRentalInterface = ({
   });
 
   const COIN_RATE = 10;
-  const COMMISSION_RATE = 0.05;
+const COMMISSION_RATE = 0; // plus de commission
   const isOrganizer = user?.id === event?.organizer_id;
 
   const [formData, setFormData] = useState({
@@ -239,155 +208,141 @@ const StandRentalInterface = ({
     description: "",
   });
 
-  // ==================== FONCTIONS UTILITAIRES ====================
-
+  // ==================== UTILITAIRES ====================
   const copyToClipboard = async (text, label) => {
     try {
       await navigator.clipboard.writeText(text);
       toast({
         title: "✅ Copié !",
-        description: `${label} a été copié dans le presse-papier.`,
-        className: "bg-green-600 text-white border-none",
+        description: `${label} copié.`,
+        className: "bg-green-600 text-white",
       });
-    } catch (err) {
-      console.error("Erreur de copie:", err);
+    } catch {
       toast({
         title: "Erreur",
-        description: "Impossible de copier dans le presse-papier.",
+        description: "Impossible de copier.",
         variant: "destructive",
       });
     }
   };
+  const generateUniqueBookingCode = async (retries = 3) => {
+    const generate = () => {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let code = "";
+      for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
 
-  const generateBookingCode = () => {
-    const prefix = "STD";
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${prefix}-${timestamp}-${random}`;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      const code = generate();
+      const { data, error } = await supabase
+        .from("stand_rentals")
+        .select("booking_code")
+        .eq("booking_code", code)
+        .maybeSingle();
+      if (error || !data) return code;
+    }
+    // Fallback : code basé sur timestamp (plus long mais unique)
+    return "R" + Date.now().toString(36).slice(-3).toUpperCase();
   };
 
   const generateQRCode = async (text) => {
     try {
-      const url = await QRCode.toDataURL(text);
-      setQrCodeUrl(url);
+      return await QRCode.toDataURL(text);
     } catch (err) {
-      console.error("Erreur génération QR code:", err);
+      console.error("QR Code error:", err);
+      return null;
     }
   };
 
-  const setTabForRental = (rentalId, tab) => {
-    setActiveTabs((prev) => ({ ...prev, [rentalId]: tab }));
-  };
-
-  // ==================== FONCTIONS D'EXPORT ====================
-
+  // ==================== EXPORTS ====================
   const exportToExcel = () => {
-    if (!filteredRentals || filteredRentals.length === 0) return;
-
-    const data = filteredRentals.map((rental) => ({
-      "N° Stand": rental.stand_number,
-      "Entreprise": rental.company_name,
-      "Description": rental.business_description || "",
-      "Personne à Contact": rental.contact_person,
-      "Email": rental.contact_email,
-      "Téléphone": rental.contact_phone,
-      "Code Réservation": rental.booking_code || "",
-      "Type Stand": rental.stand_types?.name || "",
-      "Montant (π)": rental.rental_amount_pi,
-      "Montant (F CFA)": rental.rental_amount_pi * COIN_RATE,
+    if (!filteredRentals.length) return;
+    const data = filteredRentals.map((r) => ({
+      "N° Stand": r.stand_number,
+      Entreprise: r.company_name,
+      Description: r.business_description || "",
+      "Personne à Contact": r.contact_person,
+      Email: r.contact_email,
+      Téléphone: r.contact_phone,
+      "Code Réservation": r.booking_code || "",
+      "Type Stand": r.stand_types?.name || "",
+      "Montant (π)": r.rental_amount_pi,
+      "Montant (F CFA)": r.rental_amount_pi * COIN_RATE,
     }));
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Réservations");
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-    const fileData = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-    });
-    saveAs(fileData, "reservations_stands.xlsx");
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Réservations");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([excelBuffer], { type: "application/octet-stream" }),
+      "reservations_stands.xlsx",
+    );
   };
 
   const exportToPDF = () => {
     setIsExporting(true);
     try {
       const doc = new jsPDF();
-
       doc.setFontSize(20);
-      doc.setTextColor(0, 0, 0);
       doc.text(
         `Réservations de stands - ${event?.title || "Événement"}`,
         14,
         20,
       );
-
       doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Généré le ${new Date().toLocaleDateString("fr-FR")} à ${new Date().toLocaleTimeString("fr-FR")}`,
-        14,
-        28,
-      );
-
+      doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, 14, 28);
       doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
       doc.text("Résumé des locations", 14, 40);
-
-      doc.setFontSize(10);
-      doc.text(`Total des réservations: ${filteredRentals.length}`, 14, 48);
+      doc.text(`Total réservations: ${filteredRentals.length}`, 14, 48);
       doc.text(
-        `Revenu total: ${filteredRentals.reduce((sum, r) => sum + r.rental_amount_pi, 0)} π`,
+        `Revenu total: ${filteredRentals.reduce((s, r) => s + r.rental_amount_pi, 0)} π`,
         14,
         55,
       );
-
       const tableColumn = [
         "Stand",
         "Entreprise",
-        "Personne à contacter",
+        "Contact",
         "Email",
         "Téléphone",
         "Type",
         "Code",
         "Prix (π)",
       ];
-
-      const tableRows = filteredRentals.map((rental) => [
-        rental.stand_number,
-        rental.company_name || "N/A",
-        rental.contact_person || "N/A",
-        rental.contact_email || "N/A",
-        rental.contact_phone || rental.profiles?.phone || "N/A",
-        rental.stand_types?.name || "N/A",
-        rental.booking_code || "N/A",
-        rental.rental_amount_pi.toString(),
+      const tableRows = filteredRentals.map((r) => [
+        r.stand_number,
+        r.company_name || "N/A",
+        r.contact_person || "N/A",
+        r.contact_email || "N/A",
+        r.contact_phone || r.profiles?.phone || "N/A",
+        r.stand_types?.name || "N/A",
+        r.booking_code || "N/A",
+        r.rental_amount_pi.toString(),
       ]);
-
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 65,
         theme: "striped",
-        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [41, 128, 185] },
+        styles: { fontSize: 8 },
       });
-
       doc.save(
         `reservations-stands-${event?.title?.replace(/\s+/g, "-").toLowerCase() || "evenement"}.pdf`,
       );
-
       toast({
         title: "✅ Export réussi",
-        description: "Le fichier PDF a été téléchargé.",
+        description: "PDF téléchargé.",
         className: "bg-green-600 text-white",
       });
     } catch (error) {
-      console.error("Erreur lors de l'export PDF:", error);
+      console.error(error);
       toast({
         title: "Erreur",
-        description: "Impossible d'exporter le PDF.",
+        description: "Export PDF impossible.",
         variant: "destructive",
       });
     } finally {
@@ -395,265 +350,28 @@ const StandRentalInterface = ({
     }
   };
 
-  const exportToCSV = () => {
-    try {
-      const headers = [
-        "Stand",
-        "Entreprise",
-        "Personne à contacter",
-        "Email",
-        "Téléphone",
-        "Type de stand",
-        "Code réservation",
-        "Prix (π)",
-        "Prix (FCFA)",
-        "Date de réservation",
-      ];
-
-      const rows = filteredRentals.map((rental) => [
-        rental.stand_number,
-        rental.company_name || "",
-        rental.contact_person || "",
-        rental.contact_email || "",
-        rental.contact_phone || rental.profiles?.phone || "",
-        rental.stand_types?.name || "",
-        rental.booking_code || "",
-        rental.rental_amount_pi,
-        rental.rental_amount_pi * COIN_RATE,
-        new Date(rental.created_at).toLocaleDateString("fr-FR"),
-      ]);
-
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-      ].join("\n");
-
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `reservations-stands-${event?.title?.replace(/\s+/g, "-").toLowerCase() || "evenement"}.csv`,
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "✅ Export réussi",
-        description: "Le fichier CSV a été téléchargé.",
-        className: "bg-green-600 text-white",
-      });
-    } catch (error) {
-      console.error("Erreur lors de l'export CSV:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'exporter le CSV.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const exportCompanyListExcel = () => {
-    if (!statistics.byCompany || statistics.byCompany.length === 0) return;
-
-    const data = statistics.byCompany.map((company) => ({
-      "Entreprise": company.company_name,
-      "Nombre de stands": company.total_stands,
-      "Montant total (π)": company.total_amount_pi,
-      "Montant total (F CFA)": company.total_amount_pi * COIN_RATE,
+    if (!statistics.byCompany.length) return;
+    const data = statistics.byCompany.map((c) => ({
+      Entreprise: c.companyName,
+      "Personne à contacter": c.contactPerson,
+      Email: c.contactEmail,
+      Téléphone: c.contactPhone,
+      "Nombre de stands": c.rentals.length,
+      "Montant total (π)": c.totalAmount,
+      "Montant total (F CFA)": c.totalAmount * COIN_RATE,
     }));
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Entreprises");
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-    const fileData = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-    });
-    saveAs(fileData, "liste_entreprises_stands.xlsx");
-  };
-
-  const exportCompanyList = () => {
-    try {
-      const headers = [
-        "Entreprise",
-        "Personne à contacter",
-        "Email",
-        "Téléphone",
-        "Nombre de stands",
-        "Code(s) réservation",
-        "Montant total (π)",
-        "Montant total (FCFA)",
-      ];
-
-      const rows = statistics.byCompany.map((company) => [
-        company.companyName,
-        company.contactPerson,
-        company.contactEmail,
-        company.contactPhone,
-        company.rentals.length,
-        company.bookingCodes.join(" | "),
-        company.totalAmount,
-        company.totalAmount * COIN_RATE,
-      ]);
-
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-      ].join("\n");
-
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `entreprises-${event?.title?.replace(/\s+/g, "-").toLowerCase() || "evenement"}.csv`,
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "✅ Export réussi",
-        description: "La liste des entreprises a été téléchargée.",
-        className: "bg-green-600 text-white",
-      });
-    } catch (error) {
-      console.error("Erreur lors de l'export:", error);
-    }
-  };
-
-  // ==================== FONCTIONS PRINCIPALES ====================
-
-  useEffect(() => {
-    if (event?.id) {
-      fetchStandData();
-    }
-  }, [event?.id, user?.id]);
-
-  useEffect(() => {
-    if (standTypes.length > 0 && allRentals.length >= 0) {
-      calculateStatistics();
-    }
-  }, [standTypes, allRentals]);
-
-  useEffect(() => {
-    let filtered = [...allRentals];
-
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (rental) =>
-          rental.company_name?.toLowerCase().includes(lowerSearch) ||
-          rental.contact_person?.toLowerCase().includes(lowerSearch) ||
-          rental.contact_email?.toLowerCase().includes(lowerSearch) ||
-          rental.stand_number?.toLowerCase().includes(lowerSearch) ||
-          rental.contact_phone?.toLowerCase().includes(lowerSearch) ||
-          (rental.booking_code && rental.booking_code.toLowerCase().includes(lowerSearch))
-      );
-    }
-
-    if (selectedType !== "all") {
-      filtered = filtered.filter(
-        (rental) => rental.stand_type_id === selectedType
-      );
-    }
-
-    setFilteredRentals(filtered);
-  }, [allRentals, searchTerm, selectedType]);
-
-  const calculateStatistics = () => {
-    const totalStands = standTypes.reduce(
-      (sum, type) => sum + (type.quantity_available || 0),
-      0,
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Entreprises");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([excelBuffer], { type: "application/octet-stream" }),
+      "liste_entreprises_stands.xlsx",
     );
-    const totalRentals = allRentals.length;
-    const totalRevenue = allRentals.reduce(
-      (sum, rental) => sum + (rental.rental_amount_pi || 0),
-      0,
-    );
-    const totalRevenueFcfa = totalRevenue * COIN_RATE;
-    const totalCommission = totalRevenueFcfa * COMMISSION_RATE;
-    const totalNetGain = totalRevenueFcfa - totalCommission;
-    const occupancyRate =
-      totalStands > 0 ? (totalRentals / totalStands) * 100 : 0;
-
-    const byType = standTypes.map((type) => {
-      const typeRentals = allRentals.filter((r) => r.stand_type_id === type.id);
-      const rented = typeRentals.length;
-      const available = type.quantity_available || 0;
-      const revenue = typeRentals.reduce(
-        (sum, r) => sum + (r.rental_amount_pi || 0),
-        0,
-      );
-      const revenueFcfa = revenue * COIN_RATE;
-      const commission = revenueFcfa * COMMISSION_RATE;
-      const netGain = revenueFcfa - commission;
-      const rate = available > 0 ? (rented / available) * 100 : 0;
-
-      return {
-        ...type,
-        rented,
-        available,
-        revenue,
-        revenueFcfa,
-        commission,
-        netGain,
-        rate,
-        remaining: available - rented,
-      };
-    });
-
-    // Statistiques par entreprise
-    const companyMap = new Map();
-    allRentals.forEach((rental) => {
-      if (rental.company_name && !companyMap.has(rental.company_name)) {
-        companyMap.set(rental.company_name, {
-          companyName: rental.company_name,
-          contactPerson: rental.contact_person,
-          contactEmail: rental.contact_email,
-          contactPhone: rental.contact_phone,
-          rentals: [],
-          totalAmount: 0,
-          bookingCodes: new Set(),
-        });
-      }
-      if (rental.company_name) {
-        const company = companyMap.get(rental.company_name);
-        company.rentals.push(rental);
-        company.totalAmount += rental.rental_amount_pi;
-        if (rental.booking_code) {
-          company.bookingCodes.add(rental.booking_code);
-        }
-      }
-    });
-
-    const byCompany = Array.from(companyMap.values()).map(company => ({
-      ...company,
-      bookingCodes: Array.from(company.bookingCodes)
-    }));
-
-    setStatistics({
-      totalStands,
-      totalRentals,
-      totalRevenue,
-      totalRevenueFcfa,
-      totalCommission,
-      totalNetGain,
-      occupancyRate,
-      byType,
-      byCompany,
-    });
   };
 
+  // ==================== DONNÉES & STATISTIQUES ====================
   const fetchStandData = async () => {
     setLoading(true);
     try {
@@ -662,7 +380,6 @@ const StandRentalInterface = ({
         .select("id")
         .eq("event_id", event.id)
         .maybeSingle();
-
       if (standEventError) throw standEventError;
       if (!standEvent) {
         setStandTypes([]);
@@ -676,12 +393,10 @@ const StandRentalInterface = ({
         .eq("stand_event_id", standEvent.id)
         .eq("is_active", true)
         .order("calculated_price_pi", { ascending: true });
-
       if (typesError) throw typesError;
       setStandTypes(types || []);
 
       if (user) {
-        // Récupérer TOUTES les réservations de l'utilisateur
         const { data: rentals, error: rentalError } = await supabase
           .from("stand_rentals")
           .select(
@@ -690,25 +405,17 @@ const StandRentalInterface = ({
           .eq("user_id", user.id)
           .eq("stand_event_id", standEvent.id)
           .order("created_at", { ascending: false });
-
-        if (!rentalError) {
-          setMyRentals(rentals || []);
-        }
+        if (!rentalError) setMyRentals(rentals || []);
 
         if (isOrganizer) {
           const { data: allRentalsData, error: allRentalsError } =
             await supabase
               .from("stand_rentals")
               .select(
-                `
-              *,
-              stand_types(name, size, base_price, base_currency, calculated_price_pi, description),
-              profiles(full_name, phone)
-            `,
+                "*, stand_types(name, size, base_price, base_currency, calculated_price_pi, description), profiles(full_name, phone)",
               )
               .eq("stand_event_id", standEvent.id)
               .order("created_at", { ascending: false });
-
           if (!allRentalsError) {
             setAllRentals(allRentalsData || []);
             setFilteredRentals(allRentalsData || []);
@@ -716,10 +423,10 @@ const StandRentalInterface = ({
         }
       }
     } catch (error) {
-      console.error("Error fetching stand data:", error);
+      console.error(error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les données des stands",
+        description: "Impossible de charger les stands.",
         variant: "destructive",
       });
     } finally {
@@ -727,419 +434,538 @@ const StandRentalInterface = ({
     }
   };
 
-  // ==================== FONCTIONS DU PANIER ====================
+const calculateStatistics = () => {
+  const totalStands = standTypes.reduce(
+    (sum, t) => sum + (t.quantity_available || 0),
+    0,
+  );
+  const totalRentals = allRentals.length;
+  const totalRevenue = allRentals.reduce(
+    (sum, r) => sum + (r.rental_amount_pi || 0),
+    0,
+  );
+  const totalRevenueFcfa = totalRevenue * COIN_RATE;
+  const totalCommission = 0; // plus de commission
+  const totalNetGain = totalRevenueFcfa; // 100% pour l'organisateur
+  const occupancyRate =
+    totalStands > 0 ? (totalRentals / totalStands) * 100 : 0;
 
+  const byType = standTypes.map((type) => {
+    const typeRentals = allRentals.filter((r) => r.stand_type_id === type.id);
+    const rented = typeRentals.length;
+    const available = type.quantity_available || 0;
+    const revenue = typeRentals.reduce(
+      (s, r) => s + (r.rental_amount_pi || 0),
+      0,
+    );
+    const revenueFcfa = revenue * COIN_RATE;
+    const commission = 0; // suppression commission
+    const netGain = revenueFcfa; // net = brut
+    const rate = available > 0 ? (rented / available) * 100 : 0;
+    return {
+      ...type,
+      rented,
+      available,
+      revenue,
+      revenueFcfa,
+      commission,
+      netGain,
+      rate,
+      remaining: available - rented,
+    };
+  });
+
+  const companyMap = new Map();
+  allRentals.forEach((rental) => {
+    if (!rental.company_name) return;
+    if (!companyMap.has(rental.company_name)) {
+      companyMap.set(rental.company_name, {
+        companyName: rental.company_name,
+        contactPerson: rental.contact_person,
+        contactEmail: rental.contact_email,
+        contactPhone: rental.contact_phone,
+        rentals: [],
+        totalAmount: 0,
+        bookingCodes: new Set(),
+      });
+    }
+    const company = companyMap.get(rental.company_name);
+    company.rentals.push(rental);
+    company.totalAmount += rental.rental_amount_pi;
+    if (rental.booking_code) company.bookingCodes.add(rental.booking_code);
+  });
+  const byCompany = Array.from(companyMap.values()).map((c) => ({
+    ...c,
+    bookingCodes: Array.from(c.bookingCodes),
+  }));
+
+  setStatistics({
+    totalStands,
+    totalRentals,
+    totalRevenue,
+    totalRevenueFcfa,
+    totalCommission,
+    totalNetGain,
+    occupancyRate,
+    byType,
+    byCompany,
+  });
+};
+
+  useEffect(() => {
+    if (event?.id) fetchStandData();
+  }, [event?.id, user?.id]);
+
+  useEffect(() => {
+    if (standTypes.length > 0 || allRentals.length >= 0) calculateStatistics();
+  }, [standTypes, allRentals]);
+
+  useEffect(() => {
+    let filtered = [...allRentals];
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter((r) =>
+        [
+          r.company_name,
+          r.contact_person,
+          r.contact_email,
+          r.stand_number,
+          r.booking_code,
+        ].some((f) => f?.toLowerCase().includes(lower)),
+      );
+    }
+    if (selectedType !== "all")
+      filtered = filtered.filter((r) => r.stand_type_id === selectedType);
+    setFilteredRentals(filtered);
+  }, [allRentals, searchTerm, selectedType]);
+
+  // ==================== PANIER ====================
   const handleAddToCart = (type) => {
     if (isClosed) return;
-    
     const available = type.quantity_available - (type.quantity_rented || 0);
     const inCart = cartStands.filter((t) => t.id === type.id).length;
-    
     if (available - inCart <= 0) {
       toast({
         title: "Stock épuisé",
-        description: "Plus de stands disponibles pour ce type.",
-        variant: "destructive"
+        description: "Plus de stands disponibles.",
+        variant: "destructive",
       });
       return;
     }
-
     setCartStands([...cartStands, type]);
     toast({
-      title: "✅ Ajouté au panier",
-      description: `1x ${type.name} ajouté à votre sélection.`,
+      title: "✅ Ajouté",
+      description: `1x ${type.name} ajouté.`,
       className: "bg-green-600 text-white",
     });
   };
 
-  const handleRemoveFromCart = (index) => {
-    const newCart = [...cartStands];
-    newCart.splice(index, 1);
-    setCartStands(newCart);
-  };
-
   const updateQuantity = (typeId, newQuantity) => {
-    const type = cartStands.find(t => t.id === typeId);
+    const type = cartStands.find((t) => t.id === typeId);
     if (!type) return;
-
-    const currentCount = cartStands.filter(t => t.id === typeId).length;
+    const currentCount = cartStands.filter((t) => t.id === typeId).length;
     const available = type.quantity_available - (type.quantity_rented || 0);
-    
     if (newQuantity > currentCount) {
       const toAdd = newQuantity - currentCount;
       if (currentCount + toAdd > available) {
         toast({
           title: "Stock insuffisant",
-          description: `Seulement ${available} stand(s) disponible(s) au total.`,
-          variant: "destructive"
-        });
-        return;
-      }
-      for (let i = 0; i < toAdd; i++) {
-        setCartStands(prev => [...prev, type]);
-      }
-    } else if (newQuantity < currentCount) {
-      const toRemove = currentCount - newQuantity;
-      let removed = 0;
-      setCartStands(prev => prev.filter(item => {
-        if (item.id === typeId && removed < toRemove) {
-          removed++;
-          return false;
-        }
-        return true;
-      }));
-    }
-  };
-
-  const getCartTotal = () => {
-    return cartStands.reduce((sum, item) => sum + item.calculated_price_pi, 0);
-  };
-
-  const getCartCountByType = (typeId) => {
-    return cartStands.filter(t => t.id === typeId).length;
-  };
-
-  const clearCart = () => {
-    setCartStands([]);
-  };
-
-  // ==================== FONCTION DE RÉSERVATION MULTIPLE ====================
-
-  const handleRentMultipleStands = async () => {
-    if (isClosed) return;
-    if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour louer des stands.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (cartStands.length === 0) return;
-
-    setIsRenting(true);
-    let successCount = 0;
-    const bookingCode = generateBookingCode();
-
-    try {
-      const totalPi = getCartTotal();
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("coin_balance")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      if (profile.coin_balance < totalPi) {
-        toast({
-          title: "Solde insuffisant",
-          description: (
-            <div className="mt-2 space-y-3">
-              <div className="text-sm">
-                <p>Total: {totalPi} π</p>
-                <p>Votre solde: {profile.coin_balance} π</p>
-              </div>
-              <Button
-                variant="default"
-                className="w-full"
-                onClick={() => {
-                  setIsRenting(false);
-                  setIsCartOpen(false);
-                  navigate("/packs");
-                }}
-              >
-                Acheter des pièces
-              </Button>
-            </div>
-          ),
+          description: `Seulement ${available} disponible(s).`,
           variant: "destructive",
         });
-        setIsRenting(false);
         return;
       }
-
-      const { data: standEvent, error: standEventError } = await supabase
-        .from("stand_events")
-        .select("id")
-        .eq("event_id", event.id)
-        .single();
-
-      if (standEventError) throw standEventError;
-
-      const rentalPromises = cartStands.map((stand) => {
-        return supabase.rpc("rent_stand", {
-          p_event_id: event.id,
-          p_user_id: user.id,
-          p_stand_type_id: stand.id,
-          company_name: formData.companyName,
-          contact_person: formData.contactPerson,
-          contact_email: formData.email,
-          contact_phone: formData.phone,
-          business_description: formData.description,
-          p_booking_code: bookingCode,
-        });
-      });
-
-      const results = await Promise.all(rentalPromises);
-      
-      const hasError = results.some((r) => r.error || !r.data?.success);
-      if (hasError) {
-        throw new Error("Une ou plusieurs réservations ont échoué");
-      }
-
-      const qrData = JSON.stringify({
-        bookingCode,
-        company: formData.companyName,
-        contact: formData.contactPerson,
-        stands: cartStands.map(s => ({ name: s.name, price: s.calculated_price_pi })),
-        total: totalPi,
-        event: event.title,
-        date: new Date().toISOString(),
-      });
-      await generateQRCode(qrData);
-
-      toast({
-        title: "✅ Réservations confirmées !",
-        description: `${cartStands.length} stand(s) réservé(s) avec succès. Code: ${bookingCode}`,
-        className: "bg-green-600 text-white",
-      });
-
-      setCartStands([]);
-      setIsCartOpen(false);
-      setFormData({
-        companyName: "",
-        contactPerson: "",
-        email: user?.email || "",
-        phone: "",
-        description: "",
-      });
-      fetchStandData();
-      if (onRefresh) onRefresh();
-
-    } catch (error) {
-      console.error("Rental error:", error);
-      toast({
-        title: "Attention",
-        description: error.message || "Erreur lors de la réservation.",
-        variant: "destructive",
-      });
-      
-      if (successCount > 0) {
-        const failedStands = cartStands.slice(successCount);
-        setCartStands(failedStands);
-        fetchStandData();
-        if (onRefresh) onRefresh();
-      }
-    } finally {
-      setIsRenting(false);
+      for (let i = 0; i < toAdd; i++) setCartStands((prev) => [...prev, type]);
+    } else if (newQuantity < currentCount) {
+      let toRemove = currentCount - newQuantity;
+      setCartStands((prev) =>
+        prev.filter((item) => !(item.id === typeId && toRemove-- > 0)),
+      );
     }
   };
 
-  const viewRentalDetails = (rental) => {
-    setSelectedRentalForDetails(rental);
-    setIsDetailsDialogOpen(true);
-  };
+  const getCartTotal = () =>
+    cartStands.reduce((sum, item) => sum + item.calculated_price_pi, 0);
+  const getCartCountByType = (typeId) =>
+    cartStands.filter((t) => t.id === typeId).length;
+  const clearCart = () => setCartStands([]);
 
-  const handleBuyCoins = () => {
-    navigate("/packs");
-  };
+const handleRentMultipleStands = async () => {
+  if (isClosed || !user) {
+    if (!user) toast({ title: "Connexion requise", description: "Veuillez vous connecter.", variant: "destructive" });
+    return;
+  }
+  if (cartStands.length === 0) return;
+
+  setIsRenting(true);
+  const successList = [];
+  const failureList = [];
+  const generatedBookingCodes = [];
+
+  try {
+    const totalPi = getCartTotal();
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("coin_balance")
+      .eq("id", user.id)
+      .single();
+    if (profileError) throw profileError;
+    if (profile.coin_balance < totalPi) {
+      toast({
+        title: "Solde insuffisant",
+        description: (
+          <div className="space-y-2">
+            <p>Total: {totalPi} π - Votre solde: {profile.coin_balance} π</p>
+            <Button onClick={() => navigate("/packs")} className="w-full">Acheter des pièces</Button>
+          </div>
+        ),
+        variant: "destructive",
+      });
+      setIsRenting(false);
+      return;
+    }
+
+    // Exécution séquentielle avec code unique par stand
+    for (const stand of cartStands) {
+      const bookingCode = await generateUniqueBookingCode();
+      const { data, error } = await supabase.rpc("rent_stand", {
+        p_event_id: event.id,
+        p_user_id: user.id,
+        p_stand_type_id: stand.id,
+        company_name: formData.companyName,
+        contact_person: formData.contactPerson,
+        contact_email: formData.email,
+        contact_phone: formData.phone,
+        business_description: formData.description,
+        p_booking_code: bookingCode,
+      });
+
+      if (error || !data?.success) {
+        failureList.push({ name: stand.name, error: data?.message || error?.message || "Erreur inconnue" });
+      } else {
+        successList.push(stand);
+        generatedBookingCodes.push(bookingCode);
+      }
+    }
+
+    const baseUrl = window.location.origin;
+    const orderId = Date.now().toString(36).toUpperCase();
+
+    if (failureList.length > 0) {
+      const errorSummary = failureList.map((f) => `${f.name} : ${f.error}`).join("\n");
+      toast({
+        title: successList.length === 0 ? "❌ Réservations échouées" : "⚠️ Réservations partiellement réussies",
+        description: (
+          <div className="text-sm">
+            {successList.length > 0 && <p className="font-semibold text-green-400">✅ Réussies : {successList.map((s) => s.name).join(", ")}</p>}
+            <p className="font-semibold text-red-400 mt-2">❌ Échecs :</p>
+            <pre className="text-xs bg-black/30 p-2 rounded whitespace-pre-wrap">{errorSummary}</pre>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 8000,
+      });
+
+      // Mettre à jour le panier : ne garder que les échecs
+      const failedStandNames = failureList.map((f) => f.name);
+      const remainingStands = cartStands.filter((s) => failedStandNames.includes(s.name));
+      setCartStands(remainingStands);
+      await fetchStandData();
+      if (onRefresh) onRefresh();
+
+      if (successList.length > 0) {
+        const qrUrl = `${baseUrl}/stand-booking?orderId=${orderId}&codes=${generatedBookingCodes.join(",")}`;
+        const qr = await generateQRCode(qrUrl);
+        if (qr) setQrCodeUrl(qr);
+      }
+      setIsRenting(false);
+      return;
+    }
+
+    // Tout a réussi
+    const qrUrl = `${baseUrl}/stand-booking?orderId=${orderId}&codes=${generatedBookingCodes.join(",")}`;
+    const qr = await generateQRCode(qrUrl);
+    if (qr) setQrCodeUrl(qr);
+
+    toast({
+      title: "✅ Réservations confirmées !",
+      description: `${cartStands.length} stand(s) réservé(s). Codes: ${generatedBookingCodes.join(", ")}`,
+      className: "bg-green-600 text-white",
+    });
+
+    setCartStands([]);
+    setIsCartOpen(false);
+    setFormData({ companyName: "", contactPerson: "", email: user?.email || "", phone: "", description: "" });
+    await fetchStandData();
+    if (onRefresh) onRefresh();
+  } catch (error) {
+    console.error(error);
+    toast({ title: "Erreur système", description: error.message || "Impossible de traiter la demande.", variant: "destructive" });
+  } finally {
+    setIsRenting(false);
+  }
+};
+const viewRentalDetails = async (rental) => {
+  setSelectedRentalForDetails(rental);
+  const baseUrl = window.location.origin;
+  const qrUrl = `${baseUrl}/stand-booking?code=${rental.booking_code}`;
+  const qr = await generateQRCode(qrUrl);
+  setQrCodeUrl(qr);
+  setIsDetailsDialogOpen(true);
+};
+    
+  const handleBuyCoins = () => navigate("/packs");
 
   if (loading)
     return (
-      <div className="py-16 flex justify-center items-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-400">Chargement des stands disponibles...</p>
-        </div>
+      <div className="py-16 flex justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-primary" />
       </div>
     );
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="mb-6">
+      <div>
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <Store className="w-6 h-6 text-primary" />
           {isOrganizer ? "Tableau de bord des Locations" : "Louer un stand"}
         </h2>
         <p className="text-gray-400 mt-1">
-          {isOrganizer 
-            ? "Gérez les locations de stands et suivez vos revenus pour cet événement." 
-            : "Choisissez parmi les emplacements disponibles pour exposer lors de l'événement."}
+          {isOrganizer
+            ? "Gérez les locations et suivez vos revenus."
+            : "Choisissez un emplacement pour exposer."}
         </p>
       </div>
 
-      {/* --- PANIER (pour les non-organisateurs) --- */}
+      {/* PANIER (exposant) */}
       {!isOrganizer && cartStands.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="sticky top-20 z-40 mb-8"
         >
-          <Card className="bg-gray-900 border border-primary/50 shadow-2xl overflow-hidden backdrop-blur-xl bg-opacity-90">
+          <Card className="bg-gray-900 border border-primary/50 shadow-2xl backdrop-blur-xl bg-opacity-90">
             <CardHeader className="py-4 border-b border-gray-800 bg-primary/10">
-              <CardTitle className="text-white flex items-center justify-between text-lg">
+              <CardTitle className="text-white flex justify-between items-center text-lg">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-primary" />
-                  Votre Panier
-                  <Badge className="bg-primary hover:bg-primary ml-2">{cartStands.length}</Badge>
+                  Votre Panier{" "}
+                  <Badge className="bg-primary ml-2">{cartStands.length}</Badge>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-bold text-primary">{getCartTotal()} π</span>
-                  <p className="text-xs text-gray-400 font-normal mt-0.5">
+                  <span className="text-2xl font-bold text-primary">
+                    {getCartTotal()} π
+                  </span>
+                  <p className="text-xs text-gray-400">
                     ≈ {(getCartTotal() * COIN_RATE).toLocaleString()} FCFA
                   </p>
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 max-h-[40vh] overflow-y-auto custom-scrollbar space-y-3">
-              {Array.from(new Set(cartStands.map(s => s.id))).map(typeId => {
-                const type = cartStands.find(s => s.id === typeId);
-                const count = cartStands.filter(s => s.id === typeId).length;
-                const colors = STAND_COLORS[standTypes.findIndex(t => t.id === typeId) % STAND_COLORS.length];
-                
-                return (
-                  <div key={typeId} className="flex justify-between items-center bg-gray-800/40 p-3 rounded-lg border border-gray-700/50">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${colors.iconBg} flex items-center justify-center text-xs font-bold ${colors.text}`}>
-                        {count}
+            <CardContent className="pt-4 max-h-[40vh] overflow-y-auto space-y-3">
+              {Array.from(new Set(cartStands.map((s) => s.id))).map(
+                (typeId) => {
+                  const type = cartStands.find((s) => s.id === typeId);
+                  const count = cartStands.filter(
+                    (s) => s.id === typeId,
+                  ).length;
+                  const colors =
+                    STAND_COLORS[
+                      standTypes.findIndex((t) => t.id === typeId) %
+                        STAND_COLORS.length
+                    ];
+                  return (
+                    <div
+                      key={typeId}
+                      className="flex justify-between items-center bg-gray-800/40 p-3 rounded-lg border border-gray-700/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-full ${colors.iconBg} flex items-center justify-center text-xs font-bold ${colors.text}`}
+                        >
+                          {count}
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{type.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {type.calculated_price_pi} π / unité
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-white font-medium">{type.name}</p>
-                        <p className="text-xs text-gray-400">{type.calculated_price_pi} π / unité</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center border border-gray-700 rounded">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center border border-gray-700 rounded">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => updateQuantity(typeId, count - 1)}
+                            className="h-8 px-2"
+                          >
+                            -
+                          </Button>
+                          <span className="w-8 text-center text-white">
+                            {count}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => updateQuantity(typeId, count + 1)}
+                            className="h-8 px-2"
+                          >
+                            +
+                          </Button>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => updateQuantity(typeId, count - 1)}
-                          className="h-8 px-2 text-gray-400 hover:text-white"
+                          onClick={() =>
+                            setCartStands((prev) =>
+                              prev.filter((s) => s.id !== typeId),
+                            )
+                          }
+                          className="text-red-400"
                         >
-                          -
-                        </Button>
-                        <span className="w-8 text-center text-white">{count}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => updateQuantity(typeId, count + 1)}
-                          className="h-8 px-2 text-gray-400 hover:text-white"
-                        >
-                          +
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setCartStands(prev => prev.filter(s => s.id !== typeId));
-                        }}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </CardContent>
             <CardFooter className="bg-gray-900/50 border-t border-gray-800 pt-4">
               <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
                 <SheetTrigger asChild>
-                  <Button className="w-full text-base font-bold h-12 shadow-lg hover:shadow-primary/20 transition-all">
+                  <Button className="w-full text-base font-bold h-12">
                     Passer à la caisse <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="bg-gray-900 border-gray-800 text-white w-full sm:max-w-md overflow-y-auto">
                   <SheetHeader>
                     <SheetTitle className="text-white flex items-center gap-2 text-xl">
-                      <ShoppingCart className="w-5 h-5 text-primary" />
                       Finaliser votre commande
                     </SheetTitle>
                     <SheetDescription className="text-gray-400">
-                      {cartStands.length} stand{cartStands.length > 1 ? "s" : ""} dans votre panier
+                      {cartStands.length} stand(s) dans le panier
                     </SheetDescription>
                   </SheetHeader>
-
                   <div className="mt-6 space-y-6">
-                    <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                      <h4 className="font-medium text-white mb-3">Récapitulatif</h4>
-                      <div className="space-y-2">
-                        {Array.from(new Set(cartStands.map(s => s.id))).map(typeId => {
-                          const type = cartStands.find(s => s.id === typeId);
-                          const count = cartStands.filter(s => s.id === typeId).length;
+                    <div className="p-4 bg-gray-800/50 rounded-xl">
+                      <h4 className="font-medium text-white mb-3">
+                        Récapitulatif
+                      </h4>
+                      {Array.from(new Set(cartStands.map((s) => s.id))).map(
+                        (typeId) => {
+                          const type = cartStands.find((s) => s.id === typeId);
+                          const count = cartStands.filter(
+                            (s) => s.id === typeId,
+                          ).length;
                           return (
-                            <div key={typeId} className="flex justify-between text-sm">
-                              <span className="text-gray-400">{type.name} x{count}</span>
-                              <span className="text-white">{type.calculated_price_pi * count} π</span>
+                            <div
+                              key={typeId}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-gray-400">
+                                {type.name} x{count}
+                              </span>
+                              <span className="text-white">
+                                {type.calculated_price_pi * count} π
+                              </span>
                             </div>
                           );
-                        })}
-                        <div className="border-t border-gray-700 pt-2 mt-2">
-                          <div className="flex justify-between font-bold">
-                            <span className="text-white">Total</span>
-                            <span className="text-primary">{getCartTotal()} π</span>
-                          </div>
-                          <div className="text-xs text-gray-400 text-right mt-1">
-                            ≈ {(getCartTotal() * COIN_RATE).toLocaleString()} FCFA
-                          </div>
+                        },
+                      )}
+                      <div className="border-t border-gray-700 pt-2 mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Total</span>
+                          <span className="text-primary">
+                            {getCartTotal()} π
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-400 text-right">
+                          ≈ {(getCartTotal() * COIN_RATE).toLocaleString()} FCFA
                         </div>
                       </div>
                     </div>
-
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-gray-300">Entreprise / Marque <span className="text-red-400">*</span></Label>
+                        <Label className="text-gray-300">
+                          Entreprise / Marque{" "}
+                          <span className="text-red-400">*</span>
+                        </Label>
                         <Input
                           value={formData.companyName}
-                          onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                          placeholder="Nom de votre structure"
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              companyName: e.target.value,
+                            })
+                          }
                           className="bg-gray-800 border-gray-700 text-white mt-1"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-gray-300">Personne à contacter <span className="text-red-400">*</span></Label>
+                          <Label className="text-gray-300">
+                            Personne à contacter{" "}
+                            <span className="text-red-400">*</span>
+                          </Label>
                           <Input
                             value={formData.contactPerson}
-                            onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                            placeholder="Prénom Nom"
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                contactPerson: e.target.value,
+                              })
+                            }
                             className="bg-gray-800 border-gray-700 text-white mt-1"
                           />
                         </div>
                         <div>
-                          <Label className="text-gray-300">Téléphone <span className="text-red-400">*</span></Label>
+                          <Label className="text-gray-300">
+                            Téléphone <span className="text-red-400">*</span>
+                          </Label>
                           <Input
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="+225..."
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                phone: e.target.value,
+                              })
+                            }
                             className="bg-gray-800 border-gray-700 text-white mt-1"
                           />
                         </div>
                       </div>
                       <div>
-                        <Label className="text-gray-300">Email de confirmation</Label>
+                        <Label className="text-gray-300">
+                          Email de confirmation
+                        </Label>
                         <Input
                           type="email"
                           value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
                           className="bg-gray-800 border-gray-700 text-white mt-1"
                         />
                       </div>
                       <div>
-                        <Label className="text-gray-300">Description activité</Label>
+                        <Label className="text-gray-300">
+                          Description activité
+                        </Label>
                         <Textarea
                           value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              description: e.target.value,
+                            })
+                          }
                           rows={2}
-                          className="bg-gray-800 border-gray-700 text-white mt-1 resize-none"
-                          placeholder="Décrivez brièvement ce que vous allez exposer..."
+                          className="bg-gray-800 border-gray-700 text-white mt-1"
                         />
                       </div>
                     </div>
-
                     <Button
                       onClick={handleRentMultipleStands}
                       disabled={
@@ -1149,31 +975,26 @@ const StandRentalInterface = ({
                         !formData.phone ||
                         cartStands.length === 0
                       }
-                      className="w-full bg-primary hover:bg-primary/90 h-12 text-base font-bold"
+                      className="w-full bg-primary h-12"
                     >
                       {isRenting ? (
-                        <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Traitement...
-                        </>
+                        <Loader2 className="animate-spin mr-2" />
                       ) : (
                         `Payer ${getCartTotal()} π et confirmer`
                       )}
                     </Button>
-
                     <Button
                       variant="ghost"
-                      className="w-full text-gray-400 hover:text-white"
+                      className="w-full text-gray-400"
                       onClick={() => setIsCartOpen(false)}
                     >
                       Annuler
                     </Button>
-
                     <p className="text-center text-sm text-gray-400">
                       Pas assez de pièces ?{" "}
                       <Button
                         variant="link"
-                        className="text-primary hover:text-primary/80 p-0 h-auto font-normal"
+                        className="text-primary p-0 h-auto"
                         onClick={handleBuyCoins}
                       >
                         Acheter des pièces
@@ -1187,143 +1008,194 @@ const StandRentalInterface = ({
         </motion.div>
       )}
 
-      {/* --- TABLEAU DE BORD ORGANISATEUR --- */}
+      {/* TABLEAU DE BORD ORGANISATEUR */}
       {isOrganizer && standTypes.length > 0 && (
-        <div className="space-y-8">
-          <Card className="bg-gray-900 border-gray-800 shadow-xl rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-gray-800 bg-gray-800/30 py-5">
-              <CardTitle className="text-white text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                Aperçu Global des Locations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                <div className="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 shadow-sm hover:shadow-md hover:border-gray-600 transition-all duration-300">
-                  <p className="text-sm text-gray-400 flex items-center gap-2 mb-3 font-medium">
-                    <Package className="w-4 h-4 text-gray-300" /> Stands loués
-                  </p>
-                  <p className="text-3xl font-bold text-white tracking-tight">
-                    {statistics.totalRentals}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">
-                    sur {statistics.totalStands} disponibles
-                  </p>
-                </div>
-
-                <div className="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 shadow-sm hover:shadow-md hover:border-blue-900/50 transition-all duration-300">
-                  <p className="text-sm text-gray-400 flex items-center gap-2 mb-3 font-medium">
-                    <Coins className="w-4 h-4 text-blue-400" /> Revenus bruts
-                  </p>
-                  <p className="text-3xl font-bold text-white tracking-tight">
-                    {statistics.totalRevenue} <span className="text-xl text-blue-400 font-medium">π</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">
-                    ≈ {statistics.totalRevenueFcfa.toLocaleString()} FCFA
-                  </p>
-                </div>
-
-                {/* <div className="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 shadow-sm hover:shadow-md hover:border-orange-900/50 transition-all duration-300">
-                  <p className="text-sm text-gray-400 flex items-center gap-2 mb-3 font-medium">
-                    <Percent className="w-4 h-4 text-orange-400" /> Frais plateforme
-                  </p>
-                  <p className="text-3xl font-bold text-orange-400 tracking-tight">
-                    -{statistics.totalCommission.toFixed(0)} <span className="text-xl text-orange-400/70 font-medium">F</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">Commission de 5%</p>
-                </div> */}
-
-                {/* <div className="bg-green-950/20 p-6 rounded-xl border border-green-900/30 shadow-md hover:shadow-lg hover:border-green-900/60 transition-all duration-300 relative overflow-hidden group">
-                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all"></div>
-                  <p className="text-sm text-gray-300 flex items-center gap-2 mb-3 font-medium relative z-10">
-                    <Wallet className="w-4 h-4 text-green-400" /> Vos gains nets
-                  </p>
-                  <p className="text-3xl font-bold text-green-400 tracking-tight relative z-10">
-                    {statistics.totalNetGain.toFixed(0)} <span className="text-xl text-green-400/70 font-medium">F</span>
-                  </p>
-                  <p className="text-xs text-green-500/60 mt-2 font-medium relative z-10">Après commission (95%)</p>
-                </div> */}
-
-                <div className="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 shadow-sm hover:shadow-md hover:border-purple-900/50 transition-all duration-300 flex flex-col justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400 flex items-center gap-2 mb-3 font-medium">
-                      <Grid3x3 className="w-4 h-4 text-purple-400" /> Occupation
-                    </p>
-                    <p className="text-3xl font-bold text-white tracking-tight mb-3">
-                      {statistics.occupancyRate.toFixed(1)}%
-                    </p>
-                  </div>
-                  <Progress
-                    value={statistics.occupancyRate}
-                    className="h-2 bg-gray-700 [&>div]:bg-purple-500"
-                  />
-                </div>
+        <Card className="bg-gray-900 border-gray-800 shadow-xl rounded-xl overflow-hidden">
+          <CardHeader className="border-b border-gray-800 bg-gray-800/30 py-5">
+            <CardTitle className="text-white text-lg font-semibold flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" /> Aperçu Global
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+              <div className="bg-gray-800/40 p-6 rounded-xl">
+                <p className="text-sm text-gray-400 flex items-center gap-2 mb-3">
+                  <Package className="w-4 h-4" /> Stands loués
+                </p>
+                <p className="text-3xl font-bold text-white">
+                  {statistics.totalRentals}
+                </p>
+                <p className="text-xs text-gray-500">
+                  sur {statistics.totalStands} disponibles
+                </p>
               </div>
+              <div className="bg-gray-800/40 p-6 rounded-xl">
+                <p className="text-sm text-gray-400 flex items-center gap-2 mb-3">
+                  <Coins className="w-4 h-4 text-blue-400" /> Revenus bruts
+                </p>
+                <p className="text-3xl font-bold text-white">
+                  {statistics.totalRevenue}{" "}
+                  <span className="text-xl text-blue-400">π</span>
+                </p>
+                <p className="text-xs text-gray-500">
+                  ≈ {statistics.totalRevenueFcfa.toLocaleString()} FCFA
+                </p>
+              </div>
+              <div className="bg-gray-800/40 p-6 rounded-xl">
+                <p className="text-sm text-gray-400 flex items-center gap-2 mb-3">
+                  <Grid3x3 className="w-4 h-4 text-purple-400" /> Occupation
+                </p>
+                <p className="text-3xl font-bold text-white mb-3">
+                  {statistics.occupancyRate.toFixed(1)}%
+                </p>
+                <Progress
+                  value={statistics.occupancyRate}
+                  className="h-2 bg-gray-700 [&>div]:bg-purple-500"
+                />
+              </div>
+            </div>
 
+            <div className="mt-10">
+              <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                Détail par type de stand
+              </h4>
+              <div className="overflow-x-auto rounded-xl border border-gray-800">
+                <Table>
+                  <TableHeader className="bg-gray-800/80">
+                    <TableRow>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-center">Dimensions</TableHead>
+                      <TableHead className="text-center">
+                        Prix unitaire
+                      </TableHead>
+                      <TableHead className="text-center">Disponibles</TableHead>
+                      <TableHead className="text-center">Réservés</TableHead>
+                      <TableHead className="text-center w-40">
+                        Occupation
+                      </TableHead>
+                      <TableHead className="text-right">
+                        Revenus bruts
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {statistics.byType.map((type, idx) => {
+                      const colors = STAND_COLORS[idx % STAND_COLORS.length];
+                      return (
+                        <TableRow
+                          key={type.id}
+                          className="border-gray-800 hover:bg-gray-800/40"
+                        >
+                          <TableCell className="py-4">
+                            <span className={`font-semibold ${colors.text}`}>
+                              {type.name}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-gray-300">
+                            {type.size || "N/A"}
+                          </TableCell>
+                          <TableCell className="text-center text-white">
+                            {type.calculated_price_pi} π
+                          </TableCell>
+                          <TableCell className="text-center text-gray-400">
+                            {type.quantity_available}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant="outline"
+                              className={`border ${colors.borderLight} ${colors.bg} ${colors.text}`}
+                            >
+                              {type.rented}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-3">
+                              <span className="text-gray-300 text-xs">
+                                {type.rate.toFixed(0)}%
+                              </span>
+                              <Progress
+                                value={type.rate}
+                                className={`w-16 h-1.5 bg-gray-800 ${colors.progress}`}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right text-white">
+                            {type.revenue} π
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {statistics.byCompany.length > 0 && (
               <div className="mt-10">
-                <h4 className="text-white font-semibold mb-4 flex items-center gap-2 text-lg">
-                  <Layout className="w-5 h-5 text-gray-400" />
-                  Détail par type de stand
+                <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
+                  Entreprises participantes
                 </h4>
-                <div className="overflow-x-auto rounded-xl border border-gray-800 bg-gray-900/50 shadow-sm">
+                <div className="overflow-x-auto rounded-xl border border-gray-800">
                   <Table>
                     <TableHeader className="bg-gray-800/80">
-                      <TableRow className="border-gray-800 hover:bg-transparent">
-                        <TableHead className="text-gray-300 font-medium py-4">Type</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-center">Dimensions</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-center">Prix unitaire</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-center">Disponibles</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-center">Réservés</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-center w-40">Occupation</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-right">Revenus bruts</TableHead>
-                        <TableHead className="text-gray-300 font-medium text-right pr-6">Gains nets (F)</TableHead>
+                      <TableRow>
+                        <TableHead>Entreprise</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Téléphone</TableHead>
+                        <TableHead className="text-center">Stands</TableHead>
+                        <TableHead>Code(s)</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {statistics.byType.map((type, index) => {
-                        const colors = STAND_COLORS[index % STAND_COLORS.length];
+                      {statistics.byCompany.slice(0, 5).map((company, idx) => {
+                        const colors = STAND_COLORS[idx % STAND_COLORS.length];
                         return (
                           <TableRow
-                            key={type.id}
-                            className="border-gray-800 hover:bg-gray-800/40 transition-colors"
+                            key={company.companyName}
+                            className="border-gray-800 hover:bg-gray-800/40"
                           >
                             <TableCell className="py-4">
                               <div className="flex items-center gap-2">
-                                <div className={`w-3 h-3 rounded-full ${colors.bgSolid} border border-transparent`} />
-                                <span className={`font-semibold ${colors.text}`}>{type.name}</span>
+                                <Building
+                                  className={`w-4 h-4 ${colors.text}`}
+                                />
+                                <span className="text-white">
+                                  {company.companyName}
+                                </span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center text-gray-300 text-sm">
-                              {type.size || "N/A"}
+                            <TableCell className="text-gray-300">
+                              {company.contactPerson}
                             </TableCell>
-                            <TableCell className="text-center text-white font-medium">
-                              {type.calculated_price_pi} π
+                            <TableCell className="text-gray-300">
+                              {company.contactEmail}
                             </TableCell>
-                            <TableCell className="text-center text-gray-400">
-                              {type.quantity_available}
+                            <TableCell className="text-gray-300">
+                              {company.contactPhone}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant="outline" className={`border ${colors.borderLight} ${colors.bg} ${colors.text} font-bold`}>
-                                {type.rented}
+                              <Badge className="bg-green-900 text-green-200">
+                                {company.rentals.length}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-3">
-                                <span className="text-gray-300 text-xs w-10 text-right font-medium">
-                                  {type.rate.toFixed(0)}%
-                                </span>
-                                <Progress
-                                  value={type.rate}
-                                  className={`w-16 h-1.5 bg-gray-800 ${colors.progress}`}
-                                />
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {company.bookingCodes
+                                  .slice(0, 2)
+                                  .map((code, i) => (
+                                    <code
+                                      key={i}
+                                      className="text-xs bg-gray-800 px-1 py-0.5 rounded"
+                                    >
+                                      {code}
+                                    </code>
+                                  ))}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right text-white font-medium">
-                              {type.revenue} π
-                              <span className="block text-xs text-gray-500 font-normal mt-0.5">{(type.revenue * COIN_RATE).toLocaleString()} F</span>
-                            </TableCell>
-                            <TableCell className="text-right text-green-400 font-bold pr-6">
-                              {type.netGain.toLocaleString()} F
+                            <TableCell className="text-right text-white">
+                              {company.totalAmount} π
                             </TableCell>
                           </TableRow>
                         );
@@ -1331,195 +1203,169 @@ const StandRentalInterface = ({
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-
-              {statistics.byCompany.length > 0 && (
-                <div className="mt-10">
-                  <h4 className="text-white font-semibold mb-4 flex items-center gap-2 text-lg">
-                    <Building className="w-5 h-5 text-gray-400" />
-                    Entreprises participantes
-                  </h4>
-                  <div className="overflow-x-auto rounded-xl border border-gray-800 bg-gray-900/50 shadow-sm">
-                    <Table>
-                      <TableHeader className="bg-gray-800/80">
-                        <TableRow className="border-gray-800 hover:bg-transparent">
-                          <TableHead className="text-gray-300 font-medium py-4">Entreprise</TableHead>
-                          <TableHead className="text-gray-300 font-medium">Personne à contacter</TableHead>
-                          <TableHead className="text-gray-300 font-medium">Email</TableHead>
-                          <TableHead className="text-gray-300 font-medium">Téléphone</TableHead>
-                          <TableHead className="text-gray-300 font-medium text-center">Stands</TableHead>
-                          <TableHead className="text-gray-300 font-medium">Code(s)</TableHead>
-                          <TableHead className="text-gray-300 font-medium text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {statistics.byCompany.slice(0, 5).map((company, index) => {
-                          const colors = STAND_COLORS[index % STAND_COLORS.length];
-                          return (
-                            <TableRow key={company.companyName} className="border-gray-800 hover:bg-gray-800/40">
-                              <TableCell className="py-4">
-                                <div className="flex items-center gap-2">
-                                  <Building className={`w-4 h-4 ${colors.text}`} />
-                                  <span className="text-white font-medium">{company.companyName}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-gray-300">{company.contactPerson}</TableCell>
-                              <TableCell className="text-gray-300">{company.contactEmail}</TableCell>
-                              <TableCell className="text-gray-300">{company.contactPhone}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge className="bg-green-900 text-green-200">
-                                  {company.rentals.length}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-wrap gap-1">
-                                  {company.bookingCodes.slice(0, 2).map((code, i) => (
-                                    <code key={i} className="text-xs bg-gray-800 px-1 py-0.5 rounded">
-                                      {code}
-                                    </code>
-                                  ))}
-                                  {company.bookingCodes.length > 2 && (
-                                    <span className="text-xs text-gray-500">+{company.bookingCodes.length - 2}</span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right text-white font-medium">
-                                {company.totalAmount} π
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                    {statistics.byCompany.length > 5 && (
-                      <div className="p-3 text-center border-t border-gray-800">
-                        <Button variant="link" className="text-primary" onClick={exportCompanyList}>
-                          Voir toutes les entreprises ({statistics.byCompany.length})
-                        </Button>
-                      </div>
-                    )}
+                {statistics.byCompany.length > 5 && (
+                  <div className="p-3 text-center border-t border-gray-800">
+                    <Button
+                      variant="link"
+                      className="text-primary"
+                      onClick={exportCompanyListExcel}
+                    >
+                      Voir toutes les entreprises ({statistics.byCompany.length}
+                      )
+                    </Button>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {/* --- MES RÉSERVATIONS (pour les exposants) --- */}
+      {/* MES RÉSERVATIONS (exposant) */}
       {!isOrganizer && myRentals.length > 0 && (
-        <div className="space-y-6 mb-12">
-          <h3 className="text-2xl font-bold text-white flex items-center gap-2 border-b border-gray-800 pb-4">
-            <Bookmark className="w-6 h-6 text-primary" /> Mes Réservations ({myRentals.length})
+        <div>
+          <h3 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 mb-6 flex items-center gap-2">
+            <Bookmark className="w-6 h-6 text-primary" /> Mes Réservations (
+            {myRentals.length})
           </h3>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {myRentals.map((rental, index) => {
-              const typeIndex = standTypes.findIndex((t) => t.id === rental.stand_type_id);
-              const colors = STAND_COLORS[typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0];
+            {myRentals.map((rental, idx) => {
+              const typeIndex = standTypes.findIndex(
+                (t) => t.id === rental.stand_type_id,
+              );
+              const colors =
+                STAND_COLORS[
+                  typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0
+                ];
               const activeTab = activeTabs[rental.id] || "details";
-
               return (
                 <motion.div
                   key={rental.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: idx * 0.1 }}
                   className="h-full"
                 >
-                  <Card className={`bg-gray-900 border-l-4 ${colors.border} border-gray-800 h-full flex flex-col hover:border-gray-700 transition-colors`}>
+                  <Card
+                    className={`bg-gray-900 border-l-4 ${colors.border} border-gray-800 h-full`}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-white flex items-center gap-2">
-                            Stand {rental.stand_number}
+                            Stand {rental.stand_number}{" "}
                             <Badge className={colors.badge}>
                               {rental.stand_types?.name}
                             </Badge>
                           </CardTitle>
                           <CardDescription className="flex items-center gap-2 mt-1">
-                            <Tag className="w-3 h-3" />
-                            Code: {rental.booking_code || "N/A"}
+                            <Tag className="w-3 h-3" /> Code:{" "}
+                            {rental.booking_code || "N/A"}
                           </CardDescription>
                         </div>
                         <BadgeCheck className={`w-6 h-6 ${colors.text}`} />
                       </div>
                     </CardHeader>
-                    <CardContent className="flex-1">
-                      <div className="flex gap-1.5 mb-4 border-b border-gray-800 pb-2 overflow-x-auto">
+                    <CardContent>
+                      <div className="flex gap-1.5 mb-4 border-b border-gray-800 pb-2">
                         <button
-                          onClick={() => setTabForRental(rental.id, "details")}
-                          className={`px-3 py-1.5 font-medium text-xs rounded-md transition-all whitespace-nowrap ${
-                            activeTab === "details"
-                              ? `bg-gray-800 ${colors.text}`
-                              : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                          }`}
+                          onClick={() =>
+                            setActiveTabs((prev) => ({
+                              ...prev,
+                              [rental.id]: "details",
+                            }))
+                          }
+                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "details" ? `bg-gray-800 ${colors.text}` : "text-gray-400 hover:text-white"}`}
                         >
-                          <Store className="w-3.5 h-3.5 inline-block mr-1.5" />
                           Stand
                         </button>
                         <button
-                          onClick={() => setTabForRental(rental.id, "entreprise")}
-                          className={`px-3 py-1.5 font-medium text-xs rounded-md transition-all whitespace-nowrap ${
-                            activeTab === "entreprise"
-                              ? `bg-gray-800 ${colors.text}`
-                              : "text-gray-400 hover:text-white hover:bg-gray-800/50"
-                          }`}
+                          onClick={() =>
+                            setActiveTabs((prev) => ({
+                              ...prev,
+                              [rental.id]: "entreprise",
+                            }))
+                          }
+                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "entreprise" ? `bg-gray-800 ${colors.text}` : "text-gray-400 hover:text-white"}`}
                         >
-                          <Building className="w-3.5 h-3.5 inline-block mr-1.5" />
                           Entreprise
                         </button>
                       </div>
-
                       {activeTab === "details" && (
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
-                                <Tag className="w-3 h-3" /> Type
+                              <p className="text-[10px] text-gray-500">Type</p>
+                              <p className="text-sm font-medium text-white">
+                                {rental.stand_types?.name}
                               </p>
-                              <p className="text-sm font-medium text-white truncate">{rental.stand_types?.name}</p>
-                              <p className="text-[11px] text-gray-400">{rental.stand_types?.size}</p>
+                              <p className="text-[11px] text-gray-400">
+                                {rental.stand_types?.size}
+                              </p>
                             </div>
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
-                                <CreditCard className="w-3 h-3" /> Payé
+                              <p className="text-[10px] text-gray-500">Payé</p>
+                              <p className="text-sm font-bold text-white">
+                                {rental.rental_amount_pi} π
                               </p>
-                              <p className="text-sm font-bold text-white">{rental.rental_amount_pi} π</p>
-                              <p className="text-[11px] text-gray-400">{(rental.rental_amount_pi * COIN_RATE).toLocaleString()} F</p>
+                              <p className="text-[11px] text-gray-400">
+                                {(
+                                  rental.rental_amount_pi * COIN_RATE
+                                ).toLocaleString()}{" "}
+                                F
+                              </p>
                             </div>
                           </div>
                           <div className="bg-black/30 rounded-lg p-3">
-                            <p className="text-[10px] text-gray-500 mb-1">Date de réservation</p>
+                            <p className="text-[10px] text-gray-500">Date</p>
                             <p className="text-xs text-white">
-                              {new Date(rental.created_at).toLocaleDateString("fr-FR", {
-                                day: "2-digit",
-                                month: "long",
-                                year: "numeric"
-                              })}
+                              {new Date(rental.created_at).toLocaleDateString(
+                                "fr-FR",
+                              )}
                             </p>
                           </div>
                         </div>
                       )}
-
                       {activeTab === "entreprise" && (
                         <div className="space-y-2">
-                          <div className="bg-black/30 rounded-lg p-3 flex justify-between items-center">
+                          <div className="bg-black/30 rounded-lg p-3 flex justify-between">
                             <div>
-                              <p className="text-[10px] text-gray-500">Entreprise</p>
-                              <p className="text-sm text-white font-medium">{rental.company_name}</p>
+                              <p className="text-[10px] text-gray-500">
+                                Entreprise
+                              </p>
+                              <p className="text-sm text-white">
+                                {rental.company_name}
+                              </p>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(rental.company_name, "Entreprise")} className="h-6 w-6 text-gray-500 hover:text-white">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                copyToClipboard(
+                                  rental.company_name,
+                                  "Entreprise",
+                                )
+                              }
+                            >
                               <Copy className="w-3 h-3" />
                             </Button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500">Personne à contacter</p>
-                              <p className="text-xs text-white truncate">{rental.contact_person}</p>
+                              <p className="text-[10px] text-gray-500">
+                                Contact
+                              </p>
+                              <p className="text-xs text-white">
+                                {rental.contact_person}
+                              </p>
                             </div>
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500">Téléphone</p>
-                              <p className="text-xs text-white truncate">{rental.contact_phone || "N/A"}</p>
+                              <p className="text-[10px] text-gray-500">
+                                Téléphone
+                              </p>
+                              <p className="text-xs text-white">
+                                {rental.contact_phone || "N/A"}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -1530,10 +1376,9 @@ const StandRentalInterface = ({
                         variant="outline"
                         size="sm"
                         onClick={() => viewRentalDetails(rental)}
-                        className="w-full border-gray-700 text-gray-300 hover:text-white"
+                        className="w-full border-gray-700 text-gray-300"
                       >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Voir détails complets
+                        <Eye className="w-4 h-4 mr-2" /> Détails
                       </Button>
                     </CardFooter>
                   </Card>
@@ -1544,127 +1389,139 @@ const StandRentalInterface = ({
         </div>
       )}
 
-      {/* --- STANDS DISPONIBLES (pour les exposants sans réservation) --- */}
-      {!isOrganizer && myRentals.length === 0 && (
+      {/* STANDS DISPONIBLES (exposant) */}
+      {!isOrganizer && (
         <>
           {!isUnlocked ? (
             <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-10 text-center flex flex-col items-center">
-                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                  <Lock className="w-8 h-8 text-gray-500" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Contenu Verrouillé</h3>
-                <p className="text-gray-400 max-w-md mx-auto">
-                  Vous devez débloquer l'accès à cet événement pour pouvoir consulter et réserver des stands.
+              <CardContent className="p-10 text-center">
+                <Lock className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white">
+                  Contenu Verrouillé
+                </h3>
+                <p className="text-gray-400">
+                  Débloquez l'accès pour réserver des stands.
                 </p>
               </CardContent>
             </Card>
           ) : standTypes.length === 0 ? (
             <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-10 text-center flex flex-col items-center">
-                <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                  <Store className="w-8 h-8 text-gray-500" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Aucun stand disponible</h3>
-                <p className="text-gray-400 max-w-md mx-auto">
-                  L'organisateur n'a pas encore configuré de stands pour cet événement.
+              <CardContent className="p-10 text-center">
+                <Store className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white">
+                  Aucun stand disponible
+                </h3>
+                <p className="text-gray-400">
+                  L'organisateur n'a pas encore configuré de stands.
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div>
-              <h3 className="text-xl font-bold text-white mb-6">Stands disponibles à la réservation</h3>
+              <h3 className="text-xl font-bold text-white mb-6">
+                Stands disponibles
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {standTypes.map((type, index) => {
-                  const available = type.quantity_available - (type.quantity_rented || 0);
+                {standTypes.map((type, idx) => {
+                  const available =
+                    type.quantity_available - (type.quantity_rented || 0);
                   const isSoldOut = available <= 0;
-                  const colors = STAND_COLORS[index % STAND_COLORS.length];
+                  const colors = STAND_COLORS[idx % STAND_COLORS.length];
                   const inCartCount = getCartCountByType(type.id);
-
                   return (
                     <motion.div
                       key={type.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                      transition={{ delay: idx * 0.1 }}
                       className="h-full"
                     >
-                      <Card className={`bg-gray-900 border-t-4 ${colors.border} border-x-gray-800 border-b-gray-800 h-full flex flex-col hover:shadow-xl ${colors.shadow} transition-all duration-300 relative overflow-hidden group`}>
-                        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${colors.gradient} rounded-full blur-2xl -mr-10 -mt-10 opacity-30 group-hover:opacity-60 transition-opacity`} />
-                        
-                        <CardHeader className="border-b border-gray-800/50 pb-4 relative z-10">
+                      <Card
+                        className={`bg-gray-900 border-t-4 ${colors.border} border-x-gray-800 border-b-gray-800 h-full hover:shadow-xl transition-all`}
+                      >
+                        <CardHeader className="border-b border-gray-800/50 pb-4">
                           <div className="flex justify-between items-start gap-4">
                             <div>
-                              <CardTitle className={`text-xl font-bold ${colors.text} leading-tight`}>
+                              <CardTitle
+                                className={`text-xl font-bold ${colors.text}`}
+                              >
                                 {type.name}
                               </CardTitle>
-                              <CardDescription className="flex items-center gap-1.5 mt-2 text-gray-400 font-medium">
-                                <Layout className="w-3.5 h-3.5" />
+                              <CardDescription className="flex items-center gap-1.5 mt-2 text-gray-400">
+                                <Layout className="w-3.5 h-3.5" />{" "}
                                 {type.size || "Dimensions non spécifiées"}
                               </CardDescription>
                             </div>
                             <Badge
-                              variant={isClosed ? "outline" : isSoldOut ? "destructive" : "secondary"}
-                              className={`shrink-0 ${isClosed ? "border-gray-600 text-gray-400" : isSoldOut ? "bg-red-950 text-red-400 border border-red-900" : `${colors.bg} ${colors.text} border ${colors.borderLight}`}`}
+                              variant={
+                                isClosed
+                                  ? "outline"
+                                  : isSoldOut
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                              className={
+                                isClosed
+                                  ? "border-gray-600 text-gray-400"
+                                  : isSoldOut
+                                    ? "bg-red-950 text-red-400"
+                                    : `${colors.bg} ${colors.text} border ${colors.borderLight}`
+                              }
                             >
-                              {isClosed ? "Terminé" : isSoldOut ? "Complet" : `${available - inCartCount} dispo.`}
+                              {isClosed
+                                ? "Terminé"
+                                : isSoldOut
+                                  ? "Complet"
+                                  : `${available - inCartCount} dispo.`}
                             </Badge>
                           </div>
                         </CardHeader>
-
-                        <CardContent className="flex-1 pt-5 relative z-10">
-                          <p className="text-sm text-gray-300 mb-5 leading-relaxed line-clamp-3" title={type.description}>
-                            {type.description || "Aucune description fournie pour ce type de stand."}
+                        <CardContent className="flex-1 pt-5">
+                          <p className="text-sm text-gray-300 mb-5 line-clamp-3">
+                            {type.description || "Aucune description."}
                           </p>
-
-                          {type.amenities && Object.keys(type.amenities).length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mb-2">
-                              {Object.entries(type.amenities)
-                                .filter(([, v]) => v)
-                                .map(([k]) => (
-                                  <Badge key={k} variant="outline" className="border-gray-700 text-gray-400 bg-gray-800/50 text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5">
-                                    {k.replace(/_/g, " ")}
-                                  </Badge>
-                                ))}
-                            </div>
-                          )}
                         </CardContent>
-
-                        <CardFooter className="border-t border-gray-800/50 pt-5 relative z-10 bg-gray-900/50">
-                          <div className="flex items-center justify-between w-full">
+                        <CardFooter className="border-t border-gray-800/50 pt-5 bg-gray-900/50">
+                          <div className="flex justify-between w-full">
                             <div>
-                              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">Tarif</p>
+                              <p className="text-xs text-gray-500">Tarif</p>
                               <div className="flex items-baseline gap-1.5">
-                                <span className="text-2xl font-bold text-white">{type.calculated_price_pi}</span>
-                                <span className={`text-sm font-medium ${colors.text}`}>π</span>
+                                <span className="text-2xl font-bold text-white">
+                                  {type.calculated_price_pi}
+                                </span>
+                                <span
+                                  className={`text-sm font-medium ${colors.text}`}
+                                >
+                                  π
+                                </span>
                               </div>
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                ≈ {(type.calculated_price_pi * COIN_RATE).toLocaleString()} FCFA
+                              <p className="text-xs text-gray-500">
+                                ≈{" "}
+                                {(
+                                  type.calculated_price_pi * COIN_RATE
+                                ).toLocaleString()}{" "}
+                                FCFA
                               </p>
                             </div>
-
                             {isClosed ? (
-                              <Button disabled variant="outline" className="border-gray-700 bg-gray-800/50 text-gray-500 rounded-full px-6">Terminé</Button>
+                              <Button disabled>Terminé</Button>
                             ) : isSoldOut ? (
-                              <Button disabled variant="outline" className="border-red-900/50 bg-red-950/30 text-red-500 rounded-full px-6">Complet</Button>
+                              <Button disabled>Complet</Button>
                             ) : (
-                              <Button 
+                              <Button
                                 onClick={() => handleAddToCart(type)}
-                                size="sm"
-                                variant={inCartCount > 0 ? "outline" : "default"}
-                                className={inCartCount > 0 ? `border-${colors.text} ${colors.text}` : `${colors.bgSolid} ${colors.bgHover} text-white`}
+                                variant={
+                                  inCartCount > 0 ? "outline" : "default"
+                                }
+                                className={
+                                  inCartCount > 0
+                                    ? `border-${colors.text} ${colors.text}`
+                                    : `${colors.bgSolid} hover:bg-blue-700 text-white`
+                                }
                               >
-                                {inCartCount > 0 ? (
-                                  <>
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                    {inCartCount} au panier
-                                  </>
-                                ) : (
-                                  <>
-                                    <PlusCircle className="w-3 h-3 mr-1" />
-                                    Ajouter
-                                  </>
-                                )}
+                                {inCartCount > 0
+                                  ? `${inCartCount} au panier`
+                                  : "Ajouter"}
                               </Button>
                             )}
                           </div>
@@ -1679,215 +1536,166 @@ const StandRentalInterface = ({
         </>
       )}
 
-      {/* --- STANDS DISPONIBLES (pour les exposants AVEC réservation) --- */}
-      {!isOrganizer && myRentals.length > 0 && (
-        <div className="mt-12">
-          <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-            <PlusCircle className="w-5 h-5 text-primary" />
-            Vous pouvez aussi réserver d'autres stands
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {standTypes
-              .filter(type => {
-                const available = type.quantity_available - (type.quantity_rented || 0);
-                return available > 0;
-              })
-              .map((type, index) => {
-                const available = type.quantity_available - (type.quantity_rented || 0);
-                const colors = STAND_COLORS[index % STAND_COLORS.length];
-                const inCartCount = getCartCountByType(type.id);
-
-                return (
-                  <motion.div
-                    key={type.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card className={`bg-gray-900 border-l-4 ${colors.border} border-gray-800 hover:shadow-xl transition-all`}>
-                      <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className={`text-lg font-bold ${colors.text}`}>{type.name}</CardTitle>
-                          <Badge className={colors.badge}>{available - inCartCount} dispo.</Badge>
-                        </div>
-                        <CardDescription className="text-xs text-gray-400">{type.size}</CardDescription>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        <p className="text-xs text-gray-300 line-clamp-2">{type.description}</p>
-                      </CardContent>
-                      <CardFooter className="border-t border-gray-800 pt-3">
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-lg font-bold text-white">{type.calculated_price_pi} π</span>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddToCart(type)}
-                            variant={inCartCount > 0 ? "outline" : "default"}
-                            className={inCartCount > 0 ? `border-${colors.text} ${colors.text}` : `${colors.bgSolid} ${colors.bgHover} text-white`}
-                          >
-                            {inCartCount > 0 ? (
-                              <>
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                {inCartCount} au panier
-                              </>
-                            ) : (
-                              "Ajouter"
-                            )}
-                          </Button>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {/* --- ORGANIZER: TOUTES LES RÉSERVATIONS --- */}
+      {/* TOUTES LES RÉSERVATIONS (organisateur) */}
       {isOrganizer && allRentals.length > 0 && (
         <Card className="bg-gray-900 border-gray-800 shadow-xl rounded-xl mt-12 overflow-hidden">
           <CardHeader className="border-b border-gray-800 bg-gray-800/20 py-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle className="text-white text-xl font-bold flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  Toutes les Réservations
+                  <Users className="w-5 h-5 text-primary" /> Toutes les
+                  Réservations
                 </CardTitle>
-                <CardDescription className="text-gray-400 mt-1">
-                  {allRentals.length} réservation{allRentals.length > 1 ? "s" : ""} · {statistics.byCompany.length} entreprise{statistics.byCompany.length > 1 ? "s" : ""}
+                <CardDescription className="text-gray-400">
+                  {allRentals.length} réservation(s) ·{" "}
+                  {statistics.byCompany.length} entreprise(s)
                 </CardDescription>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={exportCompanyListExcel}
-                  className="flex-1 sm:flex-none border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
                 >
                   <FileDown className="w-4 h-4 mr-2" /> Excel Entreprises
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={exportToExcel}
-                  className="flex-1 sm:flex-none border-gray-700 bg-gray-800 text-white hover:bg-gray-700"
-                >
+                <Button variant="outline" size="sm" onClick={exportToExcel}>
                   <FileDown className="w-4 h-4 mr-2" /> Excel
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportToPDF} disabled={isExporting} className="flex-1 sm:flex-none border-gray-700 bg-gray-800 text-white hover:bg-gray-700">
-                  {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />} PDF
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToPDF}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4 mr-2" />
+                  )}{" "}
+                  PDF
                 </Button>
               </div>
             </div>
-
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <Input
-                  placeholder="Rechercher (Entreprise, contact, email, N° stand, code)..."
+                  placeholder="Rechercher..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 bg-gray-950 border-gray-700 text-white focus-visible:ring-primary w-full"
+                  className="pl-9 bg-gray-950 border-gray-700 text-white"
                 />
               </div>
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
+                className="px-4 py-2 bg-gray-950 border border-gray-700 rounded-md text-white sm:w-64"
               >
-                <option value="all">Tous les types de stands</option>
-                {standTypes.map((type) => (
-                  <option key={type.id} value={type.id}>{type.name}</option>
+                <option value="all">Tous les types</option>
+                {standTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
                 ))}
               </select>
             </div>
           </CardHeader>
-
           <CardContent className="p-0">
             {filteredRentals.length === 0 ? (
-              <div className="text-center py-12 flex flex-col items-center">
-                <div className="w-16 h-16 bg-gray-800/50 rounded-full flex items-center justify-center mb-4">
-                  <Search className="w-8 h-8 text-gray-500" />
-                </div>
-                <p className="text-lg font-medium text-white">Aucune réservation trouvée</p>
-                <p className="text-gray-400 mt-1">Modifiez vos critères de recherche.</p>
+              <div className="text-center py-12">
+                Aucune réservation trouvée.
               </div>
             ) : (
-              <div className="overflow-x-auto custom-scrollbar">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-gray-800/30">
-                    <TableRow className="border-gray-800 hover:bg-transparent">
-                      <TableHead className="text-gray-400 font-medium py-4 px-6">N° Stand</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6">Entreprise</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6">Personne à contacter</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6">Code</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6">Type</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6 text-right">Prix</TableHead>
-                      <TableHead className="text-gray-400 font-medium py-4 px-6 text-center">Actions</TableHead>
+                    <TableRow>
+                      <TableHead>N° Stand</TableHead>
+                      <TableHead>Entreprise</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Prix</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredRentals.map((rental) => {
-                      const typeIndex = standTypes.findIndex((t) => t.id === rental.stand_type_id);
-                      const colors = STAND_COLORS[typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0];
-
+                      const typeIndex = standTypes.findIndex(
+                        (t) => t.id === rental.stand_type_id,
+                      );
+                      const colors =
+                        STAND_COLORS[
+                          typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0
+                        ];
                       return (
-                        <TableRow key={rental.id} className="border-gray-800 hover:bg-gray-800/40 transition-colors group">
-                          <TableCell className={`font-bold ${colors.text} px-6 py-4`}>
+                        <TableRow
+                          key={rental.id}
+                          className="border-gray-800 hover:bg-gray-800/40"
+                        >
+                          <TableCell className={`font-bold ${colors.text}`}>
                             {rental.stand_number}
                           </TableCell>
-                          <TableCell className="px-6 py-4">
-                            <div className="text-white font-medium">{rental.company_name}</div>
+                          <TableCell>
+                            <div className="text-white">
+                              {rental.company_name}
+                            </div>
                             {rental.business_description && (
-                              <div className="text-xs text-gray-500 truncate max-w-[200px]" title={rental.business_description}>
+                              <div className="text-xs text-gray-500 truncate max-w-[200px]">
                                 {rental.business_description}
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="px-6 py-4">
-                            <div className="text-gray-300 flex items-center gap-2">
-                              <UserCircle className="w-4 h-4 text-gray-500 shrink-0" />
-                              <span className="truncate max-w-[150px]">{rental.contact_person}</span>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <UserCircle className="w-4 h-4 text-gray-500" />
+                              {rental.contact_person}
                             </div>
                           </TableCell>
-                          <TableCell className="px-6 py-4">
-                            <code className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">
+                          <TableCell>
+                            <code className="text-xs bg-gray-800 px-2 py-1 rounded">
                               {rental.booking_code || "N/A"}
                             </code>
                           </TableCell>
-                          <TableCell className="px-6 py-4">
+                          <TableCell>
                             <Badge className={colors.badge}>
                               {rental.stand_types?.name}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right px-6 py-4">
-                            <div className="text-white font-medium whitespace-nowrap">{rental.rental_amount_pi} π</div>
-                            <div className="text-gray-500 text-xs whitespace-nowrap">{(rental.rental_amount_pi * COIN_RATE).toLocaleString()} F</div>
+                          <TableCell className="text-right">
+                            <div className="text-white">
+                              {rental.rental_amount_pi} π
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {(
+                                rental.rental_amount_pi * COIN_RATE
+                              ).toLocaleString()}{" "}
+                              F
+                            </div>
                           </TableCell>
-                          <TableCell className="text-center px-6 py-4">
+                          <TableCell className="text-center">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                                <Button variant="ghost" size="sm">
                                   <MoreVertical className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white">
+                              <DropdownMenuContent className="bg-gray-800 border-gray-700">
                                 <DropdownMenuItem
                                   onClick={() => viewRentalDetails(rental)}
-                                  className="hover:bg-gray-700 cursor-pointer"
                                 >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  Voir détails
+                                  <Eye className="w-4 h-4 mr-2" /> Détails
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => {
-                                    const text = `Stand: ${rental.stand_number}\nCode: ${rental.booking_code}\nEntreprise: ${rental.company_name}\nPersonne à contacter: ${rental.contact_person}\nEmail: ${rental.contact_email}\nTél: ${rental.contact_phone}`;
-                                    copyToClipboard(text, "Infos réservation");
-                                  }}
-                                  className="hover:bg-gray-700 cursor-pointer"
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      `Stand: ${rental.stand_number}\nCode: ${rental.booking_code}\nEntreprise: ${rental.company_name}\nContact: ${rental.contact_person}\nEmail: ${rental.contact_email}\nTél: ${rental.contact_phone}`,
+                                      "Infos",
+                                    )
+                                  }
                                 >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Copier
+                                  <Copy className="w-4 h-4 mr-2" /> Copier
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -1899,158 +1707,132 @@ const StandRentalInterface = ({
                 </Table>
               </div>
             )}
-            {filteredRentals.length > 0 && (
-              <div className="p-4 border-t border-gray-800 bg-gray-900 text-sm text-gray-400 text-right">
-                Affichage de {filteredRentals.length} sur {allRentals.length} réservation(s)
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
 
-      {/* --- DIALOG DÉTAILS RÉSERVATION (avec QR code) --- */}
+      {/* DIALOG DÉTAILS RÉSERVATION */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-800 text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-white">
-              Détails complets de la réservation
+            <DialogTitle className="text-xl font-bold">
+              Détails complets
             </DialogTitle>
           </DialogHeader>
-
           {selectedRentalForDetails && (
             <div className="space-y-4">
-              {qrCodeUrl && selectedRentalForDetails.id === selectedRentalForDetails.id && (
-                <div className="flex justify-center p-4 bg-white rounded-lg">
-                  <img src={qrCodeUrl} alt="QR Code de réservation" className="w-32 h-32" />
-                </div>
-              )}
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Stand</p>
-                  <p className="text-xl font-bold text-white">
+                  <p className="text-xs text-gray-400">Stand</p>
+                  <p className="text-xl font-bold">
                     {selectedRentalForDetails.stand_number}
                   </p>
                 </div>
                 <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-1">Code réservation</p>
-                  <p className="text-sm font-mono text-white break-all">
+                  <p className="text-xs text-gray-400">Code</p>
+                  <p className="text-sm font-mono break-all">
                     {selectedRentalForDetails.booking_code || "N/A"}
                   </p>
                 </div>
               </div>
-
               <div className="bg-gray-800/50 p-4 rounded-lg">
-                <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Building className="w-4 h-4 text-primary" /> Entreprise
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Nom:</span>
-                    <span className="text-white font-medium">{selectedRentalForDetails.company_name}</span>
+                    <span className="text-white">
+                      {selectedRentalForDetails.company_name}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Personne à contacter:</span>
-                    <span className="text-white">{selectedRentalForDetails.contact_person}</span>
+                    <span className="text-gray-400">Contact:</span>
+                    <span className="text-white">
+                      {selectedRentalForDetails.contact_person}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Email:</span>
-                    <span className="text-white">{selectedRentalForDetails.contact_email}</span>
+                    <span className="text-white">
+                      {selectedRentalForDetails.contact_email}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Téléphone:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.contact_phone || 
-                       selectedRentalForDetails.profiles?.phone || "N/A"}
+                      {selectedRentalForDetails.contact_phone ||
+                        selectedRentalForDetails.profiles?.phone ||
+                        "N/A"}
                     </span>
                   </div>
                 </div>
               </div>
-
               <div className="bg-gray-800/50 p-4 rounded-lg">
-                <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Ticket className="w-4 h-4 text-primary" /> Location
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Type de stand:</span>
-                    <span className="text-white">{selectedRentalForDetails.stand_types?.name}</span>
+                    <span className="text-gray-400">Type:</span>
+                    <span className="text-white">
+                      {selectedRentalForDetails.stand_types?.name}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Dimensions:</span>
-                    <span className="text-white">{selectedRentalForDetails.stand_types?.size}</span>
+                    <span className="text-white">
+                      {selectedRentalForDetails.stand_types?.size}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Date de réservation:</span>
+                    <span className="text-gray-400">Date:</span>
                     <span className="text-white">
-                      {new Date(selectedRentalForDetails.created_at).toLocaleDateString("fr-FR", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {new Date(
+                        selectedRentalForDetails.created_at,
+                      ).toLocaleDateString("fr-FR")}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
-                    <span className="text-gray-400 font-bold">Prix total:</span>
-                    <span className="text-white font-bold text-lg">
-                      {selectedRentalForDetails.rental_amount_pi} π
-                      <span className="text-sm text-gray-400 ml-2 font-normal">
-                        ({(selectedRentalForDetails.rental_amount_pi * COIN_RATE).toLocaleString()} FCFA)
+                    <span className="font-bold">Prix total:</span>
+                    <span className="font-bold text-lg">
+                      {selectedRentalForDetails.rental_amount_pi} π{" "}
+                      <span className="text-sm text-gray-400">
+                        (
+                        {(
+                          selectedRentalForDetails.rental_amount_pi * COIN_RATE
+                        ).toLocaleString()}{" "}
+                        FCFA)
                       </span>
                     </span>
                   </div>
                 </div>
               </div>
-
               {selectedRentalForDetails.business_description && (
                 <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <h4 className="font-medium text-white mb-2 flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-primary" /> Activité / Produits exposés
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-primary" /> Activité
                   </h4>
-                  <p className="text-gray-300">{selectedRentalForDetails.business_description}</p>
-                </div>
-              )}
-
-              {selectedRentalForDetails.stand_types?.amenities && 
-               Object.keys(selectedRentalForDetails.stand_types.amenities).length > 0 && (
-                <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <h4 className="font-medium text-white mb-2 flex items-center gap-2">
-                    <Package className="w-4 h-4 text-primary" /> Équipements inclus
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(selectedRentalForDetails.stand_types.amenities)
-                      .filter(([, v]) => v)
-                      .map(([k]) => (
-                        <Badge key={k} variant="outline" className="border-gray-600 text-gray-300 bg-gray-800">
-                          {k.replace(/_/g, " ")}
-                        </Badge>
-                      ))}
-                  </div>
+                  <p className="text-gray-300">
+                    {selectedRentalForDetails.business_description}
+                  </p>
                 </div>
               )}
             </div>
           )}
-
-          <DialogFooter className="flex gap-2">
+          <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                if (selectedRentalForDetails) {
-                  const text = `Stand: ${selectedRentalForDetails.stand_number}\nCode: ${selectedRentalForDetails.booking_code}\nEntreprise: ${selectedRentalForDetails.company_name}`;
-                  copyToClipboard(text, "Infos");
-                }
-              }}
-              className="border-gray-700 text-gray-300 hover:text-white"
+              onClick={() =>
+                copyToClipboard(
+                  `Stand: ${selectedRentalForDetails?.stand_number}\nCode: ${selectedRentalForDetails?.booking_code}\nEntreprise: ${selectedRentalForDetails?.company_name}`,
+                  "Infos",
+                )
+              }
             >
-              <Copy className="w-4 h-4 mr-2" />
               Copier
             </Button>
-            <Button
-              onClick={() => setIsDetailsDialogOpen(false)}
-              className="bg-primary hover:bg-primary/90"
-            >
+            <Button onClick={() => setIsDetailsDialogOpen(false)}>
               Fermer
             </Button>
           </DialogFooter>

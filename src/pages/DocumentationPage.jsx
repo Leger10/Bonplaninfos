@@ -1072,7 +1072,7 @@ const DocumentationPage = () => {
     doc.text("• chaque retrait effectué par l'Organisateur", 30, y);
     y += 7;
     doc.text(
-      "👉 L'Organisateur perçoit 95% des montants générés, nets de la commission.",
+      "L'Organisateur perçoit 95% des montants générés, nets de la commission.",
       25,
       y,
     );
@@ -2572,42 +2572,66 @@ const DocumentationPage = () => {
               </details>
 
               <details className="group bg-[#111111] p-3 md:p-4 rounded-xl border border-gray-800 cursor-pointer hover:border-gray-600 transition-all duration-300 shadow-sm hover:shadow-lg">
-  <summary className="flex justify-between items-center font-semibold text-white list-none text-sm md:text-base">
-    
-    📄 Que faire après avoir téléchargé les contrats PDF pour représenter BonPlanInfos ?
-    
-    <span className="transition-transform duration-300 group-open:rotate-90 text-gray-400">
-      <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-    </span>
-  </summary>
+                <summary className="flex justify-between items-center font-semibold text-white list-none text-sm md:text-base">
+                  📄 Que faire après avoir téléchargé les contrats PDF pour
+                  représenter BonPlanInfos ?
+                  <span className="transition-transform duration-300 group-open:rotate-90 text-gray-400">
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                  </span>
+                </summary>
 
-  <div className="text-gray-300 mt-3 text-xs md:text-sm border-t border-gray-800 pt-3 space-y-3 leading-relaxed">
-    
-    <p>
-      Une fois votre contrat téléchargé, suivez simplement ces étapes pour finaliser votre inscription en tant qu’ambassadeur :
-    </p>
+                <div className="text-gray-300 mt-3 text-xs md:text-sm border-t border-gray-800 pt-3 space-y-3 leading-relaxed">
+                  <p>
+                    Une fois votre contrat téléchargé, suivez simplement ces
+                    étapes pour finaliser votre inscription en tant
+                    qu’ambassadeur :
+                  </p>
 
-    <ul className="space-y-2">
-      <li>✅ Téléchargez le contrat PDF généré (3 à 5 pages complètes).</li>
-      <li>✍️ Signez le document manuellement ou électroniquement.</li>
-      <li>📤 Revenez sur la plateforme et cliquez sur <span className="text-green-500 font-semibold">Signer</span> a droite puis sur <span className="text-white font-semibold">"Soumettre le contrat signé"</span>.</li>
-      <li>📝 Accédez à la page de signature et remplissez le formulaire demandé.</li>
-      <li>📎 Ajoutez votre contrat signé (PDF).</li>
-      <li>🚀 Cliquez sur <span className="text-white font-semibold">"Soumettre"</span> pour envoyer à l’administration.</li>
-    </ul>
+                  <ul className="space-y-2">
+                    <li>
+                      ✅ Téléchargez le contrat PDF généré (3 à 5 pages
+                      complètes).
+                    </li>
+                    <li>
+                      ✍️ Signez le document manuellement ou électroniquement.
+                    </li>
+                    <li>
+                      📤 Revenez sur la plateforme et cliquez sur{" "}
+                      <span className="text-green-500 font-semibold">
+                        Signer
+                      </span>{" "}
+                      a droite puis sur{" "}
+                      <span className="text-white font-semibold">
+                        "Soumettre le contrat signé"
+                      </span>
+                      .
+                    </li>
+                    <li>
+                      📝 Accédez à la page de signature et remplissez le
+                      formulaire demandé.
+                    </li>
+                    <li>📎 Ajoutez votre contrat signé (PDF).</li>
+                    <li>
+                      🚀 Cliquez sur{" "}
+                      <span className="text-white font-semibold">
+                        "Soumettre"
+                      </span>{" "}
+                      pour envoyer à l’administration.
+                    </li>
+                  </ul>
 
-    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-700">
-      <p className="text-xs md:text-sm text-gray-400">
-        🔐 La signature officielle de{" "}
-        <span className="text-white font-semibold">
-          {BONPLANINFOS_INFO.responsable} 
-        </span> CEO de BonPlanInfos{" "}
-        est automatiquement ajoutée au document.
-      </p>
-    </div>
-
-  </div>
-</details>
+                  <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-700">
+                    <p className="text-xs md:text-sm text-gray-400">
+                      🔐 La signature officielle de{" "}
+                      <span className="text-white font-semibold">
+                        {BONPLANINFOS_INFO.responsable}
+                      </span>{" "}
+                      CEO de BonPlanInfos est automatiquement ajoutée au
+                      document.
+                    </p>
+                  </div>
+                </div>
+              </details>
             </div>
           </section>
         </div>

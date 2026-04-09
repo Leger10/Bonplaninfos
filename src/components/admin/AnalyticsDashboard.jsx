@@ -111,23 +111,25 @@ const AnalyticsDashboard = () => {
   const fetchPwaInstalls = async () => {
     try {
       const { data, error } = await supabase
-        .from('pwa_installs')
-        .select(`
+        .from("pwa_installs")
+        .select(
+          `
           id,
           installed_at,
           platform,
           device_type,
           source,
           user:user_id(id, full_name, email)
-        `)
-        .order('installed_at', { ascending: false });
+        `,
+        )
+        .order("installed_at", { ascending: false });
 
       if (error) throw error;
 
       setPwaInstalls(data || []);
       setTotalPwaInstalls(data?.length || 0);
     } catch (err) {
-      console.error('Erreur chargement installations PWA :', err);
+      console.error("Erreur chargement installations PWA :", err);
     }
   };
 
@@ -937,14 +939,26 @@ const AnalyticsDashboard = () => {
                   />
                   <SecondaryStatCard
                     title="Dernière installation"
-                    value={pwaInstalls[0] ? format(new Date(pwaInstalls[0].installed_at), 'dd MMM yyyy', { locale: fr }) : '-'}
-                    subtext={pwaInstalls[0]?.user?.full_name || pwaInstalls[0]?.user?.email || 'Inconnu'}
+                    value={
+                      pwaInstalls[0]
+                        ? format(
+                            new Date(pwaInstalls[0].installed_at),
+                            "dd MMM yyyy",
+                            { locale: fr },
+                          )
+                        : "-"
+                    }
+                    subtext={
+                      pwaInstalls[0]?.user?.full_name ||
+                      pwaInstalls[0]?.user?.email ||
+                      "Inconnu"
+                    }
                     icon={Calendar}
                     colorClass="text-gray-500"
                   />
                   <SecondaryStatCard
                     title="Plateformes"
-                    value={`${pwaInstalls.filter(i => i.platform === 'android').length} Android / ${pwaInstalls.filter(i => i.platform === 'ios').length} iOS`}
+                    value={`${pwaInstalls.filter((i) => i.platform === "android").length} Android / ${pwaInstalls.filter((i) => i.platform === "ios").length} iOS`}
                     subtext="Répartition"
                     icon={BarChart}
                     colorClass="text-green-500"
@@ -953,7 +967,9 @@ const AnalyticsDashboard = () => {
 
                 {/* Liste détaillée */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Liste détaillée</h3>
+                  <h3 className="text-lg font-semibold mb-3">
+                    Liste détaillée
+                  </h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="border-b border-gray-700">
@@ -968,21 +984,39 @@ const AnalyticsDashboard = () => {
                       <tbody>
                         {pwaInstalls.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                            <td
+                              colSpan={5}
+                              className="text-center py-8 text-muted-foreground"
+                            >
                               Aucune installation enregistrée.
                             </td>
                           </tr>
                         ) : (
                           pwaInstalls.map((install) => (
-                            <tr key={install.id} className="border-b border-gray-800">
+                            <tr
+                              key={install.id}
+                              className="border-b border-gray-800"
+                            >
                               <td className="py-3">
-                                {install.user?.full_name || install.user?.email || 'Utilisateur inconnu'}
+                                {install.user?.full_name ||
+                                  install.user?.email ||
+                                  "Utilisateur inconnu"}
                               </td>
-                              <td className="py-3 capitalize">{install.platform}</td>
-                              <td className="py-3 capitalize">{install.device_type}</td>
-                              <td className="py-3 capitalize">{install.source?.replace('_', ' ') || '-'}</td>
+                              <td className="py-3 capitalize">
+                                {install.platform}
+                              </td>
+                              <td className="py-3 capitalize">
+                                {install.device_type}
+                              </td>
+                              <td className="py-3 capitalize">
+                                {install.source?.replace("_", " ") || "-"}
+                              </td>
                               <td className="py-3">
-                                {format(new Date(install.installed_at), 'dd MMM yyyy HH:mm', { locale: fr })}
+                                {format(
+                                  new Date(install.installed_at),
+                                  "dd MMM yyyy HH:mm",
+                                  { locale: fr },
+                                )}
                               </td>
                             </tr>
                           ))
