@@ -625,26 +625,7 @@ const CandidateCard = ({
           description: `Gains de vote: ${candidate.name} - ${eventData.title} (${voteCount} voix)`,
         });
 
-        await TransactionService.createTransaction({
-          user_id: eventData.organizer_id,
-          event_id: event.id,
-          transaction_type: "vote_earnings",
-          amount_pi: netAmount,
-          amount_fcfa: netAmount * 5,
-          description: `Gains de vote: ${candidate.name}`,
-          status: "completed",
-          metadata: {
-            candidate_id: candidate.id,
-            candidate_name: candidate.name,
-            gross_amount: totalCostPi,
-            platform_fee: platformFee,
-            fee_percent: platformFeePercent,
-            net_amount: netAmount,
-            source: "vote_earnings",
-            vote_count: voteCount,
-            is_cumulative: true,
-          },
-        });
+      
       }
 
       toast({
@@ -1628,26 +1609,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               description: `Gains de vote: ${item.candidate.name} - ${eventData.title} (${item.quantity} voix)`,
             });
 
-            await TransactionService.createTransaction({
-              user_id: eventData.organizer_id,
-              event_id: event.id,
-              transaction_type: "vote_earnings",
-              amount_pi: netAmount,
-              amount_fcfa: netAmount * 5,
-              description: `Gains de vote: ${item.candidate.name}`,
-              status: "completed",
-              metadata: {
-                candidate_id: item.candidate.id,
-                candidate_name: item.candidate.name,
-                gross_amount: itemTotalCost,
-                platform_fee: platformFee,
-                fee_percent: platformFeePercent,
-                net_amount: netAmount,
-                source: "vote_earnings",
-                vote_count: item.quantity,
-                is_cumulative: true,
-              },
-            });
+         
           }
         } catch (itemError) {
           errors.push(

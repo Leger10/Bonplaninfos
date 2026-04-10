@@ -13,7 +13,7 @@ export default defineConfig({
     hmr: {
       protocol: 'ws',
       host: 'localhost',
-      port: 3000,  // Utilise le même port que le serveur
+      port: 3000,
     },
   },
   resolve: {
@@ -24,12 +24,28 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'terser',
+    // Supprimer les commentaires du build final (améliore la sécurité)
+    terserOptions: {
+      compress: {
+        drop_console: true,   // Supprime les console.log en production
+        drop_debugger: true,  // Supprime les debugger
+      },
+      output: {
+        comments: false,      // Supprime tous les commentaires
+      },
+    },
     rollupOptions: {
       external: ['@babel/parser', '@babel/traverse', '@babel/generator', '@babel/types'],
+      output: {
+        // Générer des fichiers avec des noms uniques (hash)
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
     },
   },
   optimizeDeps: {
     include: ['@supabase/supabase-js'],
-      exclude: ['@ffmpeg/ffmpeg'],
+    exclude: ['@ffmpeg/ffmpeg'],
   },
 });
