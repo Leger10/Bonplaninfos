@@ -109,17 +109,16 @@ const HomePage = () => {
     setLoading(true);
     try {
       const now = new Date().toISOString();
-      const { data: eventsRes, error: eventsError } = await supabase
-        .from("events")
-        .select(
-          "*, organizer:organizer_id(full_name), category:category_id(name, slug)"
-        )
-        .eq("status", "active")
-        .eq("is_promoted", true)
-        .or(`promoted_until.gt.${now},promotion_end.gt.${now}`)
-        .order("created_at", { ascending: false })
-        .limit(8);
-
+    const { data: eventsRes, error: eventsError } = await supabase
+  .from("events")
+  .select(
+    "*, organizer:organizer_id(full_name), category:category_id(name, slug)"
+  )
+  .in("status", ['active', 'protected'])  // ← Modification ici
+  .eq("is_promoted", true)
+  .or(`promoted_until.gt.${now},promotion_end.gt.${now}`)
+  .order("created_at", { ascending: false })
+  .limit(8);
       if (eventsError) throw eventsError;
 
       const formattedEvents = eventsRes.map((e) => ({

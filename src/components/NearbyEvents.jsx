@@ -66,36 +66,35 @@ const NearbyEvents = () => {
     try {
       const normalizedCity = city.trim().toLowerCase();
       const normalizedCountry = country.trim().toLowerCase();
-
-      const { data, error } = await fetchWithRetry(() =>
-        supabase
-          .from('events')
-          .select(`
-            id,
-            title,
-            event_start_at,
-            event_end_at,
-            city,
-            country,
-            full_address,
-            cover_image,
-            event_type,
-            is_promoted,
-            interactions_count,
-            created_at,
-            organizer_id,
-            category:event_categories (name, slug),
-            organizer:profiles!organizer_id (full_name)
-          `)
-          .eq('status', 'active')
-          .eq('is_cancelled', false)
-          .gte('event_end_at', new Date().toISOString()) // ← clé : événements non terminés
-          .ilike('city', `%${normalizedCity}%`)
-          .ilike('country', `%${normalizedCountry}%`)
-          .order('is_promoted', { ascending: false })
-          .order('event_start_at', { ascending: true })
-          .limit(4)
-      );
+const { data, error } = await fetchWithRetry(() =>
+  supabase
+    .from('events')
+    .select(`
+      id,
+      title,
+      event_start_at,
+      event_end_at,
+      city,
+      country,
+      full_address,
+      cover_image,
+      event_type,
+      is_promoted,
+      interactions_count,
+      created_at,
+      organizer_id,
+      category:event_categories (name, slug),
+      organizer:profiles!organizer_id (full_name)
+    `)
+    .in('status', ['active', 'protected'])  // ← Modification ici
+    .eq('is_cancelled', false)
+    .gte('event_end_at', new Date().toISOString())
+    .ilike('city', `%${normalizedCity}%`)
+    .ilike('country', `%${normalizedCountry}%`)
+    .order('is_promoted', { ascending: false })
+    .order('event_start_at', { ascending: true })
+    .limit(4)
+);
 
       if (error) throw error;
 
