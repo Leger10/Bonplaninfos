@@ -9,11 +9,31 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # Anti-clickjacking
     X-Frame-Options = "DENY"
+    
+    # Anti-MIME sniffing
     X-Content-Type-Options = "nosniff"
+    
+    # Force HTTPS
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    
+    # Contrôle du referrer
     Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # Protection XSS (pour les navigateurs anciens)
+    X-XSS-Protection = "1; mode=block"
+    
+    # Content Security Policy renforcée
     Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://bonplaninfos.net https://jdeuwvaauerzjdtpwjjz.supabase.co; connect-src 'self' https://jdeuwvaauerzjdtpwjjz.supabase.co https://api.country.is https://www.google-analytics.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+    
+    # Permissions Policy (limite les APIs sensibles)
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+    
+    # Cross-Origin protections
+    Cross-Origin-Embedder-Policy = "require-corp"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-origin"
 
 [[headers]]
   for = "/assets/*"

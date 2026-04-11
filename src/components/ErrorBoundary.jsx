@@ -6,61 +6,82 @@ const spinnerStyles = {
   alignItems: 'center',
   height: '100vh',
   flexDirection: 'column',
+  backgroundColor: '#f9fafb',
 };
 
 const messages = [
   "Chargement en cours, patientez...",
-  "Patientez toujours un instant...",
-  "Dernier tour...",
-  "Actualiser la page ?",
-  "Vérifiez votre connexion...",
-  "Réactualisez votre page si nécessaire..."
+  "Nous récupérons vos informations...",
+  "Préparation de votre espace...",
+  "Plus que quelques secondes...",
+  "Finalisation en cours...",
+  "Vous allez être redirigé...",
 ];
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, messageIndex: 0 };
+    this.state = { 
+      hasError: false, 
+      messageIndex: 0,
+      errorId: null,
+      countdown: 10  // Compteur de secondes avant rechargement
+    };
     this.interval = null;
+    this.countdownInterval = null;
     this.reloadTimer = null;
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught an error", error, errorInfo);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("ErrorBoundary caught an error:", error);
+      console.error("ErrorInfo:", errorInfo);
+    }
+    
+    const errorId = Math.random().toString(36).substring(2, 10);
+    this.setState({ errorId });
   }
 
   componentDidUpdate(prevProps, prevState) {
-    // Démarrer les mécanismes uniquement quand l'erreur apparaît
     if (!prevState.hasError && this.state.hasError) {
-      // 1. Rotation des messages
+      // Rotation des messages toutes les 2 secondes
       if (!this.interval) {
         this.interval = setInterval(() => {
           this.setState(prev => ({
             messageIndex: (prev.messageIndex + 1) % messages.length
           }));
-        }, 3000);
+        }, 2000);
       }
-
-      // 2. Rechargement automatique après un délai (15 secondes)
+      
+      // Compteur dégressif
+      if (!this.countdownInterval) {
+        this.countdownInterval = setInterval(() => {
+          this.setState(prev => ({
+            countdown: prev.countdown - 1
+          }));
+        }, 1000);
+      }
+      
+      // Rechargement automatique après 10 secondes
       if (!this.reloadTimer) {
         this.reloadTimer = setTimeout(() => {
           window.location.reload();
-        }, 15000);
+        }, 10000);
       }
     }
   }
 
   componentWillUnmount() {
     if (this.interval) clearInterval(this.interval);
+    if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.reloadTimer) clearTimeout(this.reloadTimer);
   }
 
   handleManualReload = () => {
-    // Annuler le timer pour éviter un double rechargement
     if (this.reloadTimer) {
       clearTimeout(this.reloadTimer);
       this.reloadTimer = null;
@@ -73,43 +94,92 @@ class ErrorBoundary extends React.Component {
       return (
         <div style={spinnerStyles}>
           <style>{`
-            .fancy-spinner {
-              width: 100px;
-              height: 100px;
+            .error-spinner {
+              width: 80px;
+              height: 80px;
               border-radius: 50%;
-              background: conic-gradient(from 0deg, #ff6b6b, #feca57, #48dbfb, #ff6b6b);
-              mask: radial-gradient(circle at 50% 50%, transparent 55%, black 56%);
-              animation: spin 1.5s linear infinite;
-              box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+              border: 4px solid #e5e7eb;
+              border-top-color: #3b82f6;
+              animation: spin 1s linear infinite;
             }
             @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
+              to { transform: rotate(360deg); }
             }
-            .message {
-              margin-top: 20px;
-              color: #666;
+            .error-title {
+              margin-top: 24px;
+              font-size: 1.25rem;
+              font-weight: 600;
+              color: #1f2937;
               font-family: sans-serif;
-              font-size: 1.1rem;
+            }
+            .error-message {
+              margin-top: 12px;
+              color: #6b7280;
+              font-family: sans-serif;
+              font-size: 0.875rem;
+              text-align: center;
+              max-width: 300px;
+              min-height: 60px;
               transition: opacity 0.3s ease;
             }
+            .countdown {
+              margin-top: 16px;
+              font-size: 0.875rem;
+              color: #9ca3af;
+              font-family: monospace;
+            }
+            .error-id {
+              margin-top: 8px;
+              color: #9ca3af;
+              font-size: 0.75rem;
+              font-family: monospace;
+            }
             .reload-button {
-              margin-top: 20px;
-              padding: 8px 16px;
-              background-color: #ff6b6b;
+              margin-top: 24px;
+              padding: 10px 20px;
+              background-color: #3b82f6;
               color: white;
               border: none;
-              border-radius: 4px;
+              border-radius: 8px;
               cursor: pointer;
-              font-size: 1rem;
+              font-size: 0.875rem;
+              font-weight: 500;
               transition: background-color 0.2s;
             }
             .reload-button:hover {
-              background-color: #ff5252;
+              background-color: #2563eb;
+            }
+            .progress-bar {
+              margin-top: 20px;
+              width: 200px;
+              height: 4px;
+              background-color: #e5e7eb;
+              border-radius: 2px;
+              overflow: hidden;
+            }
+            .progress-fill {
+              height: 100%;
+              background-color: #3b82f6;
+              width: 0%;
+              animation: progress 10s linear forwards;
+            }
+            @keyframes progress {
+              from { width: 0%; }
+              to { width: 100%; }
             }
           `}</style>
-          <div className="fancy-spinner"></div>
-          <p className="message">{messages[this.state.messageIndex]}</p>
+          <div className="error-spinner"></div>
+          <h1 className="error-title">Récupération en cours</h1>
+          <p className="error-message">{messages[this.state.messageIndex]}</p>
+          <div className="countdown">
+            Rechargement automatique dans {this.state.countdown} secondes
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill"></div>
+          </div>
+          {this.state.errorId && (
+            <p className="error-id">ID d'erreur : {this.state.errorId}</p>
+          )}
           <button className="reload-button" onClick={this.handleManualReload}>
             Recharger maintenant
           </button>

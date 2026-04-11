@@ -1,5 +1,12 @@
 import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
+const hashToken = async (token) => {
+  const msgBuffer = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+};
 
 // Vérifie le support des push notifications
 export const isPushSupported = () => {
@@ -177,22 +184,25 @@ export const savePushTokenToSupabase = async (user, subscription) => {
   if (!user || !subscription) return { error: 'Missing data' };
 
   try {
-    const { data, error } = await supabase
-      .from('push_tokens')
-      .upsert(
-        {
-          user_id: user.id,
-          token: JSON.stringify(subscription),
-          device_type: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-          is_active: true,
-          device_info: {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-          },
-          last_used_at: new Date().toISOString(),
-        },
-        { onConflict: 'token' }
-      );
+   const tokenHash = await hashToken(JSON.stringify(subscription));
+
+const { data, error } = await supabase
+  .from('push_tokens')
+  .upsert(
+    {
+      user_id: user.id,
+      token: tokenHash,  // ← utiliser le hash
+      device_type: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+      is_active: true,
+      device_info: {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+      },
+      last_used_at: new Date().toISOString(),
+    },
+    { onConflict: 'token' }
+  );
+
 
     if (error) throw error;
     return { data };
