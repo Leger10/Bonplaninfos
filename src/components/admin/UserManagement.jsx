@@ -360,35 +360,37 @@ const UserManagement = ({ onRefresh, userProfile }) => {
     }
   };
 
-  const confirmResetPassword = async () => {
-    if (!resetUser || !newPassword) return;
-    setResetLoading(true);
-    try {
-        const { data, error } = await invokeFunction('admin-reset-password', {
-            body: JSON.stringify({ userId: resetUser.id, newPassword: newPassword })
-        });
+const confirmResetPassword = async () => {
+  if (!resetUser || !newPassword) return;
+  setResetLoading(true);
+  try {
+    const { data, error } = await supabase.rpc('admin_reset_password', {
+      target_user_id: resetUser.id,
+      new_password: newPassword
+    });
 
-        if (error || (data && data.error)) {
-            throw new Error(error?.message || data?.error);
-        }
-
-        toast({ 
-            title: "Mot de passe réinitialisé", 
-            description: `Nouveau mot de passe pour ${resetUser.full_name || 'utilisateur'} : ${newPassword}`,
-            variant: "success",
-            duration: 10000 
-        });
-        setResetPasswordDialog(false);
-    } catch (err) {
-        toast({ 
-            title: 'Erreur', 
-            description: err.message || "Erreur technique.", 
-            variant: 'destructive' 
-        });
-    } finally {
-        setResetLoading(false);
+    if (error) throw error;
+    
+    if (data && !data.success) {
+      throw new Error(data.error);
     }
-  };
+
+    toast({ 
+      title: "Mot de passe réinitialisé", 
+      description: `Nouveau mot de passe : ${newPassword}`,
+      duration: 10000 
+    });
+    setResetPasswordDialog(false);
+  } catch (err) {
+    toast({ 
+      title: 'Erreur', 
+      description: err.message, 
+      variant: 'destructive' 
+    });
+  } finally {
+    setResetLoading(false);
+  }
+};
 
   const copyCode = (code) => {
     if (!code) return;
