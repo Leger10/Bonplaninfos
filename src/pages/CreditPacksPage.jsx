@@ -366,12 +366,16 @@ const initPayment = async (amountFcfa, coinsAmount, packId) => {
           <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/50 p-6 shadow-lg shadow-yellow-500/10 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-3xl animate-bounce">🎁</span>
-              <h2 className="text-xl font-bold text-white"> Entrez vore Code coupon</h2>
+              <h2 className="text-xl font-bold text-white"> Entrez vore Code coupon</h2>  
+              <p className="text-gray-500 text-xs text-center mt-3">
+  Pas de code ? <span className="text-yellow-400">Faites votre dépôt en sélectionnant un pack de pièces</span>
+</p>        
             </div>
+            
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <Input
-                  placeholder="Entrez un code (ex: 6FNQ3N)"
+                  placeholder="Entrez un code (ex: MONCODE123)"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   disabled={!!appliedCoupon}
