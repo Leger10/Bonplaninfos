@@ -21,7 +21,7 @@ export default function TicketScannerDialog({
   isOpen, 
   onClose, 
   eventId,
-  eventEndDate // nouvelle prop optionnelle (ex: "2026-02-20")
+  eventEndDate
 }) {
 
   const [activeTab, setActiveTab] = useState('entry');
@@ -33,7 +33,6 @@ export default function TicketScannerDialog({
 
   const lockedRef = useRef(false);
 
-  // Vérification si l'événement est terminé
   const isEventFinished = useMemo(() => {
     if (!eventEndDate) return false;
     return new Date(eventEndDate) < new Date();
@@ -80,26 +79,16 @@ export default function TicketScannerDialog({
     localStorage.removeItem('offline_scans');
   };
 
-  // Fonction pour obtenir le message à afficher selon le contexte
   const getDisplayMessage = (result) => {
     if (result.success) {
-      return result.message; // message de succès
+      return result.message;
     }
 
-    // Si l'événement est terminé, on priorise ce message
     if (isEventFinished) {
-      return `Cet événement est terminé depuis le ${formattedEndDate}. Le ticket n'est pas pour cet événement. Merci 🥺`;
+      return `Cet événement est terminé depuis le ${formattedEndDate}.`;
     }
 
-    // Si le message d'erreur indique que le ticket n'appartient pas à cet événement
-    // On utilise une détection simple sur le texte (adaptez selon les messages réels)
-    const lowerMsg = result.message?.toLowerCase() || '';
-    if (lowerMsg.includes('pas pour cet événement') || lowerMsg.includes('n\'appartient pas')) {
-      return `Le ticket n'est pas pour cet événement. Merci 🥺`;
-    }
-
-    // Sinon on retourne le message d'erreur original
-    return result.message;
+    return result.message || 'Erreur lors du scan';
   };
 
   const processVerification = useCallback(async (code, isManual = false) => {
@@ -109,16 +98,22 @@ export default function TicketScannerDialog({
     setIsProcessing(true);
 
     try {
-      const { data, error } = await supabase.rpc('verify_ticket_v3', {
-        p_ticket_identifier: code,
+      const codeTrimmed = code.trim().toUpperCase();
+      
+      // Utiliser la nouvelle fonction verify_ticket_direct
+      const { data, error } = await supabase.rpc('verify_ticket_direct', {
+        p_ticket_identifier: codeTrimmed,
         p_verification_method: isManual ? 'manual_entry' : 'qr_scanner_web',
         p_exit_mode: activeTab === 'exit',
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("RPC Error:", error);
+        throw error;
+      }
 
       const result = {
-        code,
+        code: codeTrimmed,
         success: data.success,
         message: data.message,
         attendee: data.attendee_name,
@@ -132,13 +127,18 @@ export default function TicketScannerDialog({
       setScanHistory(prev => [result, ...prev].slice(0, 50));
       saveOffline(result);
 
-      playFeedback(data.success ? (activeTab === 'exit' ? 'exit' : 'entry') : 'error');
+      if (data.success) {
+        playFeedback(activeTab === 'exit' ? 'exit' : 'entry');
+      } else {
+        playFeedback('error');
+      }
 
-    } catch {
+    } catch (error) {
+      console.error('Erreur scan:', error);
       const errorResult = {
-        code,
+        code: code.trim().toUpperCase(),
         success: false,
-        message: 'Erreur technique',
+        message: error.message || 'Erreur technique, veuillez réessayer',
         timestamp: Date.now(),
         mode: activeTab,
         isManual,
@@ -150,17 +150,20 @@ export default function TicketScannerDialog({
     } finally {
       setIsProcessing(false);
       setManualCode('');
+      setTimeout(() => {
+        lockedRef.current = false;
+      }, 500);
     }
-  }, [activeTab, scanResult, isEventFinished, formattedEndDate]);
+  }, [activeTab, scanResult]);
 
   const handleScan = (code) => {
     if (isProcessing || scanResult) return;
-    processVerification(code.trim(), false);
+    processVerification(code, false);
   };
 
   const handleManualSubmit = () => {
     if (!manualCode.trim()) return;
-    processVerification(manualCode.trim(), true);
+    processVerification(manualCode, true);
   };
 
   const handleNextScan = () => {
@@ -168,9 +171,6 @@ export default function TicketScannerDialog({
     lockedRef.current = false;
   };
 
-  /* =========================
-     EXPORT EXCEL
-  ========================== */
   const exportScansToExcel = () => {
     if (scanHistory.length === 0) return;
 
@@ -197,9 +197,6 @@ export default function TicketScannerDialog({
     );
   };
 
-  /* =========================
-     EXPORT PDF
-  ========================== */
   const exportScansToPDF = () => {
     if (scanHistory.length === 0) return;
 
@@ -230,7 +227,6 @@ export default function TicketScannerDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md w-full bg-black text-white p-0 overflow-hidden max-h-screen">
 
-        {/* FLASH */}
         {flashColor && (
           <div className={cn(
             "absolute inset-0 z-50 pointer-events-none",
@@ -250,7 +246,6 @@ export default function TicketScannerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* MODE */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="p-2">
           <TabsList className="grid grid-cols-2 bg-gray-800">
             <TabsTrigger value="entry" className="data-[state=active]:bg-green-600 text-xs sm:text-sm">
@@ -262,7 +257,6 @@ export default function TicketScannerDialog({
           </TabsList>
         </Tabs>
 
-        {/* SAISIE MANUELLE */}
         <div className="px-3 pb-2 flex gap-2 flex-col sm:flex-row">
           <Input
             placeholder="Saisir code billet"
@@ -282,7 +276,6 @@ export default function TicketScannerDialog({
           </Button>
         </div>
 
-        {/* SCANNER */}
         <div className="relative min-h-[260px] sm:min-h-[320px]">
           <QrScanner isScanning={isOpen && !scanResult} onScan={handleScan} />
 
@@ -318,7 +311,6 @@ export default function TicketScannerDialog({
           )}
         </div>
 
-        {/* HISTORIQUE */}
         <div className="h-[180px] sm:h-[200px] border-t border-gray-800 p-2 flex flex-col">
           <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
             <span className="text-xs text-gray-400 flex items-center gap-1">

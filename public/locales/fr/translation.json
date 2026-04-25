@@ -315,11 +315,13 @@
     "subtitle": "Découvrez ce qui se passe près de chez vous et au-delà.",
     "search_placeholder": "Rechercher par nom, ville, catégorie...",
     "filters": "Filtres",
+    "apply_filters": "Rechercher",
     "quick_filters": {
       "trending": "Tendances",
       "popular_by_category": "Populaires par catégorie",
       "free_weekend": "Gratuits ce week-end",
-      "ending_soon": "Bientôt terminés"
+      "ending_soon": "Bientôt terminés",
+       "with_promo": "🎫 Avec code promo"
     },
     "event_types": "Types d'événement",
     "categories": "Catégories",
@@ -1355,25 +1357,56 @@
 
   "common": {
     "error_title": "Erreur",
+    "success_title": "Succès",
+
     "confirm": "Confirmer",
     "cancel": "Annuler",
-    "delete": "Supprimer",
     "close": "Fermer",
-    "save": "Sauvegarder",
+    "back": "Retour",
+
+    "save": "Enregistrer",
     "edit": "Modifier",
-    "success_title": "Succès",
-    "search": "Rechercher...",
+    "delete": "Supprimer",
+    "view": "Voir",
+
+    "submit": "Valider",
+
     "activate": "Activer",
     "deactivate": "Désactiver",
-    "credit": "Créditer",
-    "retry": "Réessayer",
-    "whatsapp_community": "Rejoindre la communauté WhatsApp",
+    "on": "Activé",
+    "off": "Désactivé",
+
+    "yes": "Oui",
+    "no": "Non",
+
+    "search": "Rechercher...",
+    "filter": "Filtrer",
+    "clear": "Effacer",
+    "clear_all": "Tout effacer",
+
     "loading": "Chargement...",
+    "retry": "Réessayer",
     "error": "Une erreur est survenue",
-    "back": "Retour",
+
     "share": "Partager",
-    "copyLink": "Lien copié",
-    "success": "Succès"
+    "copy_link": "Lien copié",
+
+    "credit": "Créditer",
+
+    "all": "Tous",
+    "none": "Aucun",
+
+    "actions": "Actions",
+    "details": "Détails",
+    "status": "Statut",
+
+    "created_at": "Créé le",
+    "updated_at": "Mis à jour le",
+
+    "next": "Suivant",
+    "previous": "Précédent",
+
+    "whatsapp_community": "Rejoindre la communauté WhatsApp"
   },
 
   "eventDetail": {

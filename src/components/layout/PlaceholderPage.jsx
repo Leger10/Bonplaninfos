@@ -1,8 +1,8 @@
-import React from 'react';
-import { Helmet } from 'react-helmet';
-import MainLayout from '@/components/layout/MainLayout';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import React from "react";
+import { Helmet } from "react-helmet-async";
+import MainLayout from "@/components/layout/MainLayout";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const PlaceholderPage = ({ title, description }) => {
   return (

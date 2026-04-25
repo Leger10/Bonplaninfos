@@ -1,13 +1,13 @@
-import React from 'react';
-import { Helmet } from 'react-helmet';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import UserManagement from '@/components/admin/UserManagement';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useData } from '@/contexts/DataContext';
+import React from "react";
+import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { ArrowLeft, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import UserManagement from "@/components/admin/UserManagement";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { useData } from "@/contexts/DataContext";
 
 const AdminUsersPage = () => {
   const navigate = useNavigate();
@@ -15,7 +15,11 @@ const AdminUsersPage = () => {
   const { userProfile } = useData();
 
   // Basic access check
-  if (!user || !userProfile || !['super_admin', 'admin', 'secretary'].includes(userProfile.user_type)) {
+  if (
+    !user ||
+    !userProfile ||
+    !["super_admin", "admin", "secretary"].includes(userProfile.user_type)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -23,8 +27,13 @@ const AdminUsersPage = () => {
             <CardTitle className="text-red-500">Accès Refusé</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4 text-muted-foreground">Vous n'avez pas les permissions nécessaires pour accéder à cette page.</p>
-            <Button onClick={() => navigate('/')} className="w-full">Retour à l'accueil</Button>
+            <p className="mb-4 text-muted-foreground">
+              Vous n'avez pas les permissions nécessaires pour accéder à cette
+              page.
+            </p>
+            <Button onClick={() => navigate("/")} className="w-full">
+              Retour à l'accueil
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -45,7 +54,7 @@ const AdminUsersPage = () => {
         >
           <Button
             variant="ghost"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate("/admin")}
             className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -57,12 +66,15 @@ const AdminUsersPage = () => {
               <Users className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Gestion des Utilisateurs</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                Gestion des Utilisateurs
+              </h1>
               <p className="text-muted-foreground">
                 Gérez les utilisateurs, leurs rôles et leurs statuts.
-                {userProfile.user_type !== 'super_admin' && (
+                {userProfile.user_type !== "super_admin" && (
                   <span className="block text-xs mt-1 text-orange-500">
-                    * Vue restreinte à votre zone ({userProfile.country} {userProfile.city ? `- ${userProfile.city}` : ''})
+                    * Vue restreinte à votre zone ({userProfile.country}{" "}
+                    {userProfile.city ? `- ${userProfile.city}` : ""})
                   </span>
                 )}
               </p>

@@ -80,6 +80,33 @@ export class CouponService {
     }
   }
 
+  /**
+   * Utilise un coupon et crédite les gains au propriétaire
+   * @param {string} couponCode - Code du coupon à utiliser
+   * @param {string} buyerUserId - ID de l'acheteur qui utilise le coupon
+   * @param {number} amountFcfa - Montant de la transaction en FCFA
+   * @param {string|null} transactionId - ID optionnel de la transaction
+   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   */
+  static async useCoupon(couponCode, buyerUserId, amountFcfa, transactionId = null) {
+    try {
+      const { data, error } = await supabase.rpc('credit_coupon_earnings', {
+        p_coupon_code: couponCode,
+        p_buyer_user_id: buyerUserId,
+        p_amount_fcfa: amountFcfa,
+        p_transaction_id: transactionId
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+      
+      return { success: true, data: data.data };
+    } catch (error) {
+      console.error('[CouponService] useCoupon error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   static async deactivateCoupon(code) {
     try {
       const { error } = await supabase
@@ -138,6 +165,38 @@ export class CouponService {
     } catch (error) {
       console.error('[CouponService] getAllCouponUsages error:', error);
       return { data: null, error };
+    }
+  }
+
+  /**
+   * Récupère les statistiques des gains d'un utilisateur
+   * @param {string} userId - ID de l'utilisateur
+   * @returns {Promise<{totalCommission: number, usageCount: number, coupons: Array}>}
+   */
+  static async getUserEarningsStats(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('code, usage_count, total_amount, commission_earned')
+        .eq('user_id', userId);
+      
+      if (error) throw error;
+      
+      const totalCommission = data?.reduce((sum, c) => sum + (c.commission_earned || 0), 0) || 0;
+      const totalUsage = data?.reduce((sum, c) => sum + (c.usage_count || 0), 0) || 0;
+      const totalAmount = data?.reduce((sum, c) => sum + (c.total_amount || 0), 0) || 0;
+      
+      return {
+        totalCommission,
+        totalUsage,
+        totalAmount,
+        couponsCount: data?.length || 0,
+        coupons: data || [],
+        error: null
+      };
+    } catch (error) {
+      console.error('[CouponService] getUserEarningsStats error:', error);
+      return { totalCommission: 0, totalUsage: 0, totalAmount: 0, couponsCount: 0, coupons: [], error };
     }
   }
 }

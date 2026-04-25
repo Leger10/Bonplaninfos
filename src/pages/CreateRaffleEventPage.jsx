@@ -1,34 +1,34 @@
 // Pages/CreateRaffleEventPage.jsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/customSupabaseClient';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useData } from '@/contexts/DataContext';
-import { toast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/customSupabaseClient";
+import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { useData } from "@/contexts/DataContext";
+import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Progress } from '@/components/ui/progress';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import {
   Loader2,
   Ticket,
@@ -59,17 +59,17 @@ import {
   Zap,
   Edit3,
   Image as ImageIcon,
-  CheckCheck
-} from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import { Checkbox } from '@/components/ui/checkbox';
-import { checkAuthentication } from '@/lib/authUtils';
-import OrganizerContractModal from '@/components/organizer/OrganizerContractModal';
+  CheckCheck,
+} from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
+import { Checkbox } from "@/components/ui/checkbox";
+import { checkAuthentication } from "@/lib/authUtils";
+import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
 import {
   processImage,
   validateImage,
-  uploadImageWithProcessing
-} from '@/utils/imageConverter';
+  uploadImageWithProcessing,
+} from "@/utils/imageConverter";
 
 // Composant d'input animé
 const AnimatedInput = ({ icon: Icon, label, error, touched, ...props }) => {
@@ -77,16 +77,16 @@ const AnimatedInput = ({ icon: Icon, label, error, touched, ...props }) => {
   const inputRef = useRef(null);
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-2 relative"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <Label 
-        htmlFor={props.id} 
+      <Label
+        htmlFor={props.id}
         className={`text-sm font-medium transition-colors duration-200 flex items-center gap-1
-          ${isFocused ? 'text-primary' : 'text-muted-foreground'}`}
+          ${isFocused ? "text-primary" : "text-muted-foreground"}`}
       >
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label} {props.required && <span className="text-red-500">*</span>}
@@ -104,9 +104,9 @@ const AnimatedInput = ({ icon: Icon, label, error, touched, ...props }) => {
             props.onBlur?.(e);
           }}
           className={`transition-all duration-200 bg-background/50 backdrop-blur-sm
-            ${isFocused ? 'ring-2 ring-primary/20 border-primary scale-[1.02] shadow-lg' : 'hover:bg-background/80'}
-            ${error && touched ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            ${props.className || ''}`}
+            ${isFocused ? "ring-2 ring-primary/20 border-primary scale-[1.02] shadow-lg" : "hover:bg-background/80"}
+            ${error && touched ? "border-red-500 focus-visible:ring-red-500" : ""}
+            ${props.className || ""}`}
         />
         {isFocused && (
           <motion.div
@@ -119,7 +119,7 @@ const AnimatedInput = ({ icon: Icon, label, error, touched, ...props }) => {
         )}
       </div>
       {error && touched && (
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-xs text-red-500 mt-1 flex items-center gap-1"
@@ -138,16 +138,16 @@ const AnimatedTextarea = ({ icon: Icon, label, error, touched, ...props }) => {
   const textareaRef = useRef(null);
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-2 relative"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <Label 
-        htmlFor={props.id} 
+      <Label
+        htmlFor={props.id}
         className={`text-sm font-medium transition-colors duration-200 flex items-center gap-1
-          ${isFocused ? 'text-primary' : 'text-muted-foreground'}`}
+          ${isFocused ? "text-primary" : "text-muted-foreground"}`}
       >
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label}
@@ -165,9 +165,9 @@ const AnimatedTextarea = ({ icon: Icon, label, error, touched, ...props }) => {
             props.onBlur?.(e);
           }}
           className={`transition-all duration-200 bg-background/50 backdrop-blur-sm
-            ${isFocused ? 'ring-2 ring-primary/20 border-primary scale-[1.01] shadow-lg' : 'hover:bg-background/80'}
-            ${error && touched ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            min-h-[120px] resize-y ${props.className || ''}`}
+            ${isFocused ? "ring-2 ring-primary/20 border-primary scale-[1.01] shadow-lg" : "hover:bg-background/80"}
+            ${error && touched ? "border-red-500 focus-visible:ring-red-500" : ""}
+            min-h-[120px] resize-y ${props.className || ""}`}
         />
         {isFocused && (
           <motion.div
@@ -184,37 +184,49 @@ const AnimatedTextarea = ({ icon: Icon, label, error, touched, ...props }) => {
 };
 
 // Composant Select animé
-const AnimatedSelect = ({ icon: Icon, label, value, onValueChange, placeholder, options, required, error, touched }) => {
+const AnimatedSelect = ({
+  icon: Icon,
+  label,
+  value,
+  onValueChange,
+  placeholder,
+  options,
+  required,
+  error,
+  touched,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-2"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <Label className={`text-sm font-medium transition-colors duration-200 flex items-center gap-1
-        ${isOpen ? 'text-primary' : 'text-muted-foreground'}`}>
+      <Label
+        className={`text-sm font-medium transition-colors duration-200 flex items-center gap-1
+        ${isOpen ? "text-primary" : "text-muted-foreground"}`}
+      >
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label} {required && <span className="text-red-500">*</span>}
       </Label>
-      <Select 
-        onValueChange={onValueChange} 
+      <Select
+        onValueChange={onValueChange}
         value={value}
         onOpenChange={setIsOpen}
       >
-        <SelectTrigger 
+        <SelectTrigger
           className={`transition-all duration-200 bg-background/50 backdrop-blur-sm
-            ${isOpen ? 'ring-2 ring-primary/20 border-primary scale-[1.02] shadow-lg' : 'hover:bg-background/80'}
-            ${error && touched ? 'border-red-500' : ''}`}
+            ${isOpen ? "ring-2 ring-primary/20 border-primary scale-[1.02] shadow-lg" : "hover:bg-background/80"}
+            ${error && touched ? "border-red-500" : ""}`}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (
-            <SelectItem 
-              key={option.id} 
+            <SelectItem
+              key={option.id}
               value={option.id}
               className="cursor-pointer hover:bg-primary/10 transition-colors"
             >
@@ -228,9 +240,15 @@ const AnimatedSelect = ({ icon: Icon, label, value, onValueChange, placeholder, 
 };
 
 // Composant Switch animé
-const AnimatedSwitch = ({ label, description, checked, onCheckedChange, icon: Icon }) => {
+const AnimatedSwitch = ({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+  icon: Icon,
+}) => {
   return (
-    <motion.div 
+    <motion.div
       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-all cursor-pointer group"
       whileHover={{ scale: 1.01, x: 5 }}
       whileTap={{ scale: 0.99 }}
@@ -238,7 +256,9 @@ const AnimatedSwitch = ({ label, description, checked, onCheckedChange, icon: Ic
     >
       <div className="flex items-start gap-3">
         {Icon && (
-          <div className={`p-2 rounded-lg transition-colors duration-300 ${checked ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+          <div
+            className={`p-2 rounded-lg transition-colors duration-300 ${checked ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}
+          >
             <Icon className="w-5 h-5" />
           </div>
         )}
@@ -247,8 +267,8 @@ const AnimatedSwitch = ({ label, description, checked, onCheckedChange, icon: Ic
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Switch 
-        checked={checked} 
+      <Switch
+        checked={checked}
         onCheckedChange={onCheckedChange}
         className="data-[state=checked]:bg-primary transition-all duration-300"
       />
@@ -257,7 +277,14 @@ const AnimatedSwitch = ({ label, description, checked, onCheckedChange, icon: Ic
 };
 
 // Composant pour les lots avec animations
-const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) => {
+const PrizeCard = ({
+  prize,
+  index,
+  onUpdate,
+  onRemove,
+  isLast,
+  exchangeRate,
+}) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -267,19 +294,22 @@ const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) =
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
-      whileHover={{ scale: 1.01, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.3)" }}
+      whileHover={{
+        scale: 1.01,
+        boxShadow: "0 10px 30px -15px rgba(0,0,0,0.3)",
+      }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       className="relative"
     >
       <Card className="border-2 overflow-hidden transition-all duration-300">
         {/* Bande de couleur animée */}
-        <motion.div 
+        <motion.div
           className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500"
-          animate={{ x: ['-100%', '200%'] }}
+          animate={{ x: ["-100%", "200%"] }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
         />
-        
+
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -287,31 +317,38 @@ const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) =
                 animate={{ rotate: isHovered ? [0, 10, -10, 0] : 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <Badge className={`px-3 py-1 text-sm transition-all duration-300 ${isHovered ? 'scale-110' : ''}`}>
-                  {prize.rank === 1 ? '🥇 GRAND LOT' :
-                   prize.rank === 2 ? '🥈 SECOND LOT' :
-                   prize.rank === 3 ? '🥉 TROISIÈME LOT' :
-                   `Lot N°${prize.rank}`}
+                <Badge
+                  className={`px-3 py-1 text-sm transition-all duration-300 ${isHovered ? "scale-110" : ""}`}
+                >
+                  {prize.rank === 1
+                    ? "🥇 GRAND LOT"
+                    : prize.rank === 2
+                      ? "🥈 SECOND LOT"
+                      : prize.rank === 3
+                        ? "🥉 TROISIÈME LOT"
+                        : `Lot N°${prize.rank}`}
                 </Badge>
               </motion.div>
-              
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="text-muted-foreground hover:text-primary transition-colors"
               >
-                <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? "rotate-90" : ""}`}
+                />
               </motion.button>
             </div>
-            
+
             {!isLast && (
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   onClick={() => onRemove(prize.id)}
                   className="text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -326,7 +363,7 @@ const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) =
             {isExpanded && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
+                animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className="space-y-3 overflow-hidden"
@@ -338,7 +375,9 @@ const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) =
                   </Label>
                   <Textarea
                     value={prize.description}
-                    onChange={e => onUpdate(prize.id, 'description', e.target.value)}
+                    onChange={(e) =>
+                      onUpdate(prize.id, "description", e.target.value)
+                    }
                     placeholder="Décrivez le lot en détail..."
                     className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
@@ -353,13 +392,15 @@ const PrizeCard = ({ prize, index, onUpdate, onRemove, isLast, exchangeRate }) =
                     <Input
                       type="number"
                       value={prize.value_fcfa}
-                      onChange={e => onUpdate(prize.id, 'value_fcfa', e.target.value)}
+                      onChange={(e) =>
+                        onUpdate(prize.id, "value_fcfa", e.target.value)
+                      }
                       placeholder="0"
                       className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
-                  
-                  <motion.div 
+
+                  <motion.div
                     className="flex items-end"
                     animate={{ scale: prize.value_fcfa > 0 ? [1, 1.02, 1] : 1 }}
                     transition={{ duration: 0.3 }}
@@ -404,58 +445,67 @@ const CreateRaffleEventPage = () => {
     XOF: 1,
     EUR: 655.957,
     USD: 600,
-    PI: adminConfig?.pi_conversion_rate || 10
+    PI: adminConfig?.pi_conversion_rate || 10,
   };
 
   // États du formulaire
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    categoryId: '',
-    eventStartDate: '',
-    drawDate: '',
+    title: "",
+    description: "",
+    categoryId: "",
+    eventStartDate: "",
+    drawDate: "",
     coverImage: null,
-    coverImageUrl: '',
-    country: userProfile?.country || 'Côte d\'Ivoire',
-    city: userProfile?.city || '',
-    address: '',
+    coverImageUrl: "",
+    country: userProfile?.country || "Côte d'Ivoire",
+    city: userProfile?.city || "",
+    address: "",
     isOnline: false,
     ticketPrice: 500,
-    ticketCurrency: 'XOF',
+    ticketCurrency: "XOF",
     totalTickets: 100,
     maxTicketsPerUser: 10,
     minTicketsRequired: 50,
     showRemainingTickets: true,
-    prizes: [{ id: uuidv4(), rank: 1, description: '', value_fcfa: 0 }],
+    prizes: [{ id: uuidv4(), rank: 1, description: "", value_fcfa: 0 }],
     autoDraw: true,
     notifyParticipants: true,
-    showParticipants: true
+    showParticipants: true,
   });
 
   // Validation des champs
   const validateField = (field, value) => {
-    switch(field) {
-      case 'title':
-        return !value ? 'Le titre est requis' : 
-               value.length < 3 ? 'Le titre doit faire au moins 3 caractères' : '';
-      case 'categoryId':
-        return !value ? 'La catégorie est requise' : '';
-      case 'drawDate':
-        return !value ? 'La date du tirage est requise' : 
-               new Date(value) < new Date() ? 'La date doit être dans le futur' : '';
-      case 'city':
-        return !value && !formData.isOnline ? 'La ville est requise' : '';
-      case 'country':
-        return !value && !formData.isOnline ? 'Le pays est requis' : '';
-      case 'ticketPrice':
-        return value < 0 ? 'Le prix doit être positif' : '';
-      case 'totalTickets':
-        return value < 1 ? 'Le nombre de tickets doit être au moins 1' : '';
-      case 'minTicketsRequired':
-        return value < 1 ? 'L\'objectif minimum doit être au moins 1' : 
-               value > formData.totalTickets ? 'L\'objectif ne peut pas dépasser le total' : '';
+    switch (field) {
+      case "title":
+        return !value
+          ? "Le titre est requis"
+          : value.length < 3
+            ? "Le titre doit faire au moins 3 caractères"
+            : "";
+      case "categoryId":
+        return !value ? "La catégorie est requise" : "";
+      case "drawDate":
+        return !value
+          ? "La date du tirage est requise"
+          : new Date(value) < new Date()
+            ? "La date doit être dans le futur"
+            : "";
+      case "city":
+        return !value && !formData.isOnline ? "La ville est requise" : "";
+      case "country":
+        return !value && !formData.isOnline ? "Le pays est requis" : "";
+      case "ticketPrice":
+        return value < 0 ? "Le prix doit être positif" : "";
+      case "totalTickets":
+        return value < 1 ? "Le nombre de tickets doit être au moins 1" : "";
+      case "minTicketsRequired":
+        return value < 1
+          ? "L'objectif minimum doit être au moins 1"
+          : value > formData.totalTickets
+            ? "L'objectif ne peut pas dépasser le total"
+            : "";
       default:
-        return '';
+        return "";
     }
   };
 
@@ -464,12 +514,13 @@ const CreateRaffleEventPage = () => {
   };
 
   const handleBlur = (field) => {
-    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
   };
 
   // Calculs dérivés
   const calculatedPricePi = useMemo(() => {
-    const priceInXof = formData.ticketPrice * (exchangeRates[formData.ticketCurrency] || 1);
+    const priceInXof =
+      formData.ticketPrice * (exchangeRates[formData.ticketCurrency] || 1);
     return Math.ceil(priceInXof / exchangeRates.PI);
   }, [formData.ticketPrice, formData.ticketCurrency, exchangeRates]);
 
@@ -478,18 +529,21 @@ const CreateRaffleEventPage = () => {
   }, [calculatedPricePi, formData.totalTickets]);
 
   const totalPrizeValue = useMemo(() => {
-    return formData.prizes.reduce((sum, prize) => sum + (prize.value_fcfa || 0), 0);
+    return formData.prizes.reduce(
+      (sum, prize) => sum + (prize.value_fcfa || 0),
+      0,
+    );
   }, [formData.prizes]);
 
   // Chargement des catégories
   useEffect(() => {
     const fetchCategories = async () => {
       const { data, error } = await supabase
-        .from('event_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-      if (error) console.error('Error fetching categories:', error);
+        .from("event_categories")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (error) console.error("Error fetching categories:", error);
       else setCategories(data || []);
     };
     fetchCategories();
@@ -502,9 +556,9 @@ const CreateRaffleEventPage = () => {
       if (draft) {
         try {
           const draftData = JSON.parse(draft);
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            ...draftData
+            ...draftData,
           }));
           toast({
             title: "Brouillon restauré",
@@ -532,7 +586,7 @@ const CreateRaffleEventPage = () => {
   }, []);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev, [field]: value };
       localStorage.setItem("draftRaffleEvent", JSON.stringify(newData));
       return newData;
@@ -540,12 +594,14 @@ const CreateRaffleEventPage = () => {
   };
 
   const handlePrizeChange = (id, field, value) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = {
         ...prev,
-        prizes: prev.prizes.map(p =>
-          p.id === id ? { ...p, [field]: field === 'value_fcfa' ? Number(value) : value } : p
-        )
+        prizes: prev.prizes.map((p) =>
+          p.id === id
+            ? { ...p, [field]: field === "value_fcfa" ? Number(value) : value }
+            : p,
+        ),
       };
       localStorage.setItem("draftRaffleEvent", JSON.stringify(newData));
       return newData;
@@ -553,15 +609,18 @@ const CreateRaffleEventPage = () => {
   };
 
   const addPrize = () => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = {
         ...prev,
-        prizes: [...prev.prizes, {
-          id: uuidv4(),
-          rank: prev.prizes.length + 1,
-          description: '',
-          value_fcfa: 0
-        }]
+        prizes: [
+          ...prev.prizes,
+          {
+            id: uuidv4(),
+            rank: prev.prizes.length + 1,
+            description: "",
+            value_fcfa: 0,
+          },
+        ],
       };
       localStorage.setItem("draftRaffleEvent", JSON.stringify(newData));
       return newData;
@@ -570,19 +629,21 @@ const CreateRaffleEventPage = () => {
     setTimeout(() => {
       window.scrollTo({
         top: document.body.scrollHeight,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }, 100);
   };
 
   const removePrize = (id) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = {
         ...prev,
-        prizes: prev.prizes.filter(p => p.id !== id).map((p, index) => ({
-          ...p,
-          rank: index + 1
-        }))
+        prizes: prev.prizes
+          .filter((p) => p.id !== id)
+          .map((p, index) => ({
+            ...p,
+            rank: index + 1,
+          })),
       };
       localStorage.setItem("draftRaffleEvent", JSON.stringify(newData));
       return newData;
@@ -590,76 +651,78 @@ const CreateRaffleEventPage = () => {
   };
 
   // Upload d'image
-// Upload d'image avec compression automatique
-const handleImageUpload = async (file) => {
-  if (!file) return null;
+  // Upload d'image avec compression automatique
+  const handleImageUpload = async (file) => {
+    if (!file) return null;
 
-  setUploading(true);
-  try {
-    // 1. Validation initiale (type, taille max 5 Mo avant compression)
-    const validation = validateImage(file);
-    if (!validation.isValid) {
+    setUploading(true);
+    try {
+      // 1. Validation initiale (type, taille max 5 Mo avant compression)
+      const validation = validateImage(file);
+      if (!validation.isValid) {
+        toast({
+          title: "Format ou taille invalide",
+          description: validation.message,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // 2. Compression + conversion automatique
+      const processedFile = await processImage(file, {
+        maxSizeMB: 1, // Taille cible après compression
+        maxWidthOrHeight: 1920, // Redimensionne si plus grand
+        useWebWorker: true,
+        fileType: "image/jpeg", // Force JPEG pour meilleure compression
+      });
+
+      // 3. Upload du fichier traité vers Supabase
+      const cleanFileName = processedFile.name.replace(
+        /[^a-zA-Z0-9-_\.]/g,
+        "_",
+      );
+      const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("media")
+        .upload(filePath, processedFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("media")
+        .getPublicUrl(filePath);
+
+      // 4. Retourner l'URL publique
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Erreur traitement image:", error);
       toast({
-        title: 'Format ou taille invalide',
-        description: validation.message,
-        variant: 'destructive'
+        title: "Erreur",
+        description: "Impossible de traiter l’image. Veuillez réessayer.",
+        variant: "destructive",
       });
       return null;
+    } finally {
+      setUploading(false);
     }
-
-    // 2. Compression + conversion automatique
-    const processedFile = await processImage(file, {
-      maxSizeMB: 1,           // Taille cible après compression
-      maxWidthOrHeight: 1920, // Redimensionne si plus grand
-      useWebWorker: true,
-      fileType: 'image/jpeg'  // Force JPEG pour meilleure compression
-    });
-
-    // 3. Upload du fichier traité vers Supabase
-    const cleanFileName = processedFile.name.replace(/[^a-zA-Z0-9-_\.]/g, '_');
-    const filePath = `events/${user.id}/${uuidv4()}-${cleanFileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(filePath, processedFile);
-
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = supabase.storage
-      .from('media')
-      .getPublicUrl(filePath);
-
-    // 4. Retourner l'URL publique
-    return urlData.publicUrl;
-
-  } catch (error) {
-    console.error('Erreur traitement image:', error);
-    toast({
-      title: 'Erreur',
-      description: 'Impossible de traiter l’image. Veuillez réessayer.',
-      variant: 'destructive'
-    });
-    return null;
-  } finally {
-    setUploading(false);
-  }
-};
+  };
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const previewUrl = URL.createObjectURL(file);
-    handleInputChange('coverImage', file);
-    handleInputChange('coverImageUrl', previewUrl);
+    handleInputChange("coverImage", file);
+    handleInputChange("coverImageUrl", previewUrl);
   };
 
   const handleRemoveImage = () => {
     if (formData.coverImageUrl) {
       URL.revokeObjectURL(formData.coverImageUrl);
     }
-    handleInputChange('coverImage', null);
-    handleInputChange('coverImageUrl', '');
+    handleInputChange("coverImage", null);
+    handleInputChange("coverImageUrl", "");
   };
 
   // Handlers du contrat
@@ -679,16 +742,20 @@ const handleImageUpload = async (file) => {
 
   // Validation de l'étape courante
   const isStepValid = () => {
-    switch(step) {
+    switch (step) {
       case 1:
         return formData.title && formData.categoryId && formData.drawDate;
       case 2:
         return formData.isOnline || (formData.city && formData.country);
       case 3:
-        return formData.ticketPrice > 0 && formData.totalTickets > 0 && 
-               formData.minTicketsRequired > 0 && formData.minTicketsRequired <= formData.totalTickets;
+        return (
+          formData.ticketPrice > 0 &&
+          formData.totalTickets > 0 &&
+          formData.minTicketsRequired > 0 &&
+          formData.minTicketsRequired <= formData.totalTickets
+        );
       case 4:
-        return formData.prizes.every(p => p.description && p.value_fcfa > 0);
+        return formData.prizes.every((p) => p.description && p.value_fcfa > 0);
       case 5:
         return termsAccepted;
       default:
@@ -713,10 +780,10 @@ const handleImageUpload = async (file) => {
     }
 
     if (!user) {
-      toast({ 
-        title: 'Erreur', 
-        description: 'Vous devez être connecté.', 
-        variant: 'destructive' 
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté.",
+        variant: "destructive",
       });
       return;
     }
@@ -724,7 +791,8 @@ const handleImageUpload = async (file) => {
     if (!termsAccepted) {
       toast({
         title: "Contrat requis",
-        description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        description:
+          "Veuillez lire et accepter le contrat organisateur avant de publier.",
         variant: "destructive",
       });
       setShowContractModal(true);
@@ -732,10 +800,11 @@ const handleImageUpload = async (file) => {
     }
 
     if (!isStepValid()) {
-      toast({ 
-        title: 'Formulaire incomplet', 
-        description: 'Veuillez remplir tous les champs obligatoires correctement.', 
-        variant: 'destructive' 
+      toast({
+        title: "Formulaire incomplet",
+        description:
+          "Veuillez remplir tous les champs obligatoires correctement.",
+        variant: "destructive",
       });
       return;
     }
@@ -743,8 +812,8 @@ const handleImageUpload = async (file) => {
     setLoading(true);
 
     try {
-      let coverImageUrl = '';
-      
+      let coverImageUrl = "";
+
       if (formData.coverImage) {
         const uploadedUrl = await handleImageUpload(formData.coverImage);
         if (uploadedUrl) {
@@ -752,11 +821,12 @@ const handleImageUpload = async (file) => {
         }
       }
 
-      const eventStartDate = formData.eventStartDate || new Date().toISOString();
+      const eventStartDate =
+        formData.eventStartDate || new Date().toISOString();
 
       // Création de l'événement
       const { data: eventData, error: eventError } = await supabase
-        .from('events')
+        .from("events")
         .insert({
           title: formData.title,
           description: formData.description,
@@ -764,47 +834,48 @@ const handleImageUpload = async (file) => {
           event_end_at: formData.drawDate,
           city: formData.city,
           country: formData.country,
-          address: formData.isOnline ? 'En ligne' : formData.address,
+          address: formData.isOnline ? "En ligne" : formData.address,
           organizer_id: user.id,
-          event_type: 'raffle',
+          event_type: "raffle",
           category_id: formData.categoryId,
-          status: 'active',
+          status: "active",
           is_online: formData.isOnline,
           cover_image: coverImageUrl,
           contract_accepted_at: new Date().toISOString(),
-          contract_version: 'v1.0'
+          contract_version: "v1.0",
         })
         .select()
         .single();
 
       if (eventError) {
-        if (eventError.message?.includes("JWT") || eventError.message?.includes("session")) {
+        if (
+          eventError.message?.includes("JWT") ||
+          eventError.message?.includes("session")
+        ) {
           throw new Error("Votre session a expiré. Merci de vous reconnecter.");
         }
         throw eventError;
       }
-      
+
       const newEventId = eventData.id;
 
       // Sauvegarde de l'acceptation du contrat
-      await supabase
-        .from('user_contract_acceptances')
-        .insert({
-          user_id: user.id,
-          event_id: newEventId,
-          contract_type: 'organizer',
-          accepted_at: new Date().toISOString(),
-          contract_version: 'v1.0'
-        });
+      await supabase.from("user_contract_acceptances").insert({
+        user_id: user.id,
+        event_id: newEventId,
+        contract_type: "organizer",
+        accepted_at: new Date().toISOString(),
+        contract_version: "v1.0",
+      });
 
       // ============================================================
       // CRITIQUE : Création du raffle event – AJOUTER organizer_id
       // ============================================================
       const { data: raffleEventData, error: raffleError } = await supabase
-        .from('raffle_events')
+        .from("raffle_events")
         .insert({
           event_id: newEventId,
-          organizer_id: user.id,   // ← AJOUT OBLIGATOIRE
+          organizer_id: user.id, // ← AJOUT OBLIGATOIRE
           draw_date: formData.drawDate,
           base_price: formData.ticketPrice,
           base_currency: formData.ticketCurrency,
@@ -813,7 +884,7 @@ const handleImageUpload = async (file) => {
           max_tickets_per_user: formData.maxTicketsPerUser,
           min_tickets_required: formData.minTicketsRequired,
           auto_draw: formData.autoDraw,
-          status: 'active'
+          status: "active",
         })
         .select()
         .single();
@@ -822,47 +893,50 @@ const handleImageUpload = async (file) => {
 
       // Création des settings
       const { error: settingsError } = await supabase
-        .from('event_settings')
+        .from("event_settings")
         .insert({
           event_id: newEventId,
           raffle_enabled: true,
           show_remaining_tickets: formData.showRemainingTickets,
           show_participants: formData.showParticipants,
-          notify_participants: formData.notifyParticipants
+          notify_participants: formData.notifyParticipants,
         });
 
       if (settingsError) throw settingsError;
 
       // Création des lots
       if (formData.prizes.length > 0) {
-        const prizesToInsert = formData.prizes.map(p => ({
+        const prizesToInsert = formData.prizes.map((p) => ({
           event_id: newEventId,
           raffle_event_id: raffleEventData.id,
           rank: p.rank,
           description: p.description,
-          value_fcfa: p.value_fcfa || 0
+          value_fcfa: p.value_fcfa || 0,
         }));
 
         const { error: prizesError } = await supabase
-          .from('raffle_prizes')
+          .from("raffle_prizes")
           .insert(prizesToInsert);
-          
+
         if (prizesError) throw prizesError;
       }
 
       localStorage.removeItem("draftRaffleEvent");
 
-      toast({ 
-        title: '🎉 Tombola créée !', 
-        description: 'Votre tombola a été créée avec succès.' 
+      toast({
+        title: "🎉 Tombola créée !",
+        description: "Votre tombola a été créée avec succès.",
       });
-      
+
       navigate(`/event/${newEventId}`);
-
     } catch (error) {
-      console.error('Error creating raffle event:', error);
+      console.error("Error creating raffle event:", error);
 
-      if (error.message?.includes("session") || error.message?.includes("expiré") || error.message?.includes("JWT")) {
+      if (
+        error.message?.includes("session") ||
+        error.message?.includes("expiré") ||
+        error.message?.includes("JWT")
+      ) {
         toast({
           title: "Session expirée",
           description: "Votre session a expiré. Merci de vous reconnecter.",
@@ -874,10 +948,10 @@ const handleImageUpload = async (file) => {
         localStorage.setItem("redirectAfterLogin", window.location.pathname);
         window.location.href = "/login";
       } else {
-        toast({ 
-          title: 'Erreur de création', 
-          description: error.message || 'Une erreur est survenue', 
-          variant: 'destructive' 
+        toast({
+          title: "Erreur de création",
+          description: error.message || "Une erreur est survenue",
+          variant: "destructive",
         });
       }
     } finally {
@@ -887,7 +961,7 @@ const handleImageUpload = async (file) => {
 
   // Étape 1
   const Step1 = () => (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -899,11 +973,11 @@ const handleImageUpload = async (file) => {
         icon={Ticket}
         label="Titre de la tombola"
         value={formData.title}
-        onChange={(e) => handleInputChange('title', e.target.value)}
-        onBlur={() => handleBlur('title')}
+        onChange={(e) => handleInputChange("title", e.target.value)}
+        onBlur={() => handleBlur("title")}
         placeholder="Ex: Grande Tombola de Noël"
         required
-        error={getFieldError('title')}
+        error={getFieldError("title")}
         touched={touchedFields.title}
       />
 
@@ -912,12 +986,12 @@ const handleImageUpload = async (file) => {
         icon={Edit3}
         label="Description"
         value={formData.description}
-        onChange={(e) => handleInputChange('description', e.target.value)}
+        onChange={(e) => handleInputChange("description", e.target.value)}
         placeholder="Décrivez votre tombola..."
       />
 
       {/* Upload d'image */}
-      <motion.div 
+      <motion.div
         className="space-y-2"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -928,22 +1002,22 @@ const handleImageUpload = async (file) => {
           Image de couverture
         </Label>
         {formData.coverImageUrl ? (
-          <motion.div 
+          <motion.div
             className="relative"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring" }}
           >
             <div className="border-2 border-primary/20 rounded-lg overflow-hidden group">
-              <img 
-                src={formData.coverImageUrl} 
-                alt="Aperçu" 
-                className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105" 
+              <img
+                src={formData.coverImageUrl}
+                alt="Aperçu"
+                className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <Button 
-                  type="button" 
-                  variant="destructive" 
+                <Button
+                  type="button"
+                  variant="destructive"
                   size="icon"
                   onClick={handleRemoveImage}
                   className="transform scale-0 group-hover:scale-100 transition-transform duration-300"
@@ -959,19 +1033,19 @@ const handleImageUpload = async (file) => {
             )}
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-all group"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-          <input
-  type="file"
-  id="coverImage"
-  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
-  onChange={handleFileSelect}
-  className="hidden"
-  disabled={uploading}
-/>
+            <input
+              type="file"
+              id="coverImage"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={uploading}
+            />
             <label htmlFor="coverImage" className="cursor-pointer">
               {uploading ? (
                 <Loader2 className="w-8 h-8 mx-auto text-muted-foreground animate-spin" />
@@ -979,9 +1053,11 @@ const handleImageUpload = async (file) => {
                 <Upload className="w-8 h-8 mx-auto text-muted-foreground group-hover:text-primary transition-colors" />
               )}
               <p className="font-semibold mt-2 group-hover:text-primary transition-colors">
-                {uploading ? 'Upload en cours...' : 'Ajouter une affiche'}
+                {uploading ? "Upload en cours..." : "Ajouter une affiche"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">PNG, JPG - Max 2MB</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                PNG, JPG - Max 2MB
+              </p>
             </label>
           </motion.div>
         )}
@@ -992,11 +1068,11 @@ const handleImageUpload = async (file) => {
           icon={Award}
           label="Catégorie"
           value={formData.categoryId}
-          onValueChange={(value) => handleInputChange('categoryId', value)}
+          onValueChange={(value) => handleInputChange("categoryId", value)}
           placeholder="Choisir une catégorie..."
           options={categories}
           required
-          error={getFieldError('categoryId')}
+          error={getFieldError("categoryId")}
           touched={touchedFields.categoryId}
         />
 
@@ -1006,7 +1082,7 @@ const handleImageUpload = async (file) => {
           label="Date de début"
           type="datetime-local"
           value={formData.eventStartDate}
-          onChange={(e) => handleInputChange('eventStartDate', e.target.value)}
+          onChange={(e) => handleInputChange("eventStartDate", e.target.value)}
         />
 
         <AnimatedInput
@@ -1015,20 +1091,20 @@ const handleImageUpload = async (file) => {
           label="Date du tirage"
           type="datetime-local"
           value={formData.drawDate}
-          onChange={(e) => handleInputChange('drawDate', e.target.value)}
-          onBlur={() => handleBlur('drawDate')}
+          onChange={(e) => handleInputChange("drawDate", e.target.value)}
+          onBlur={() => handleBlur("drawDate")}
           required
-          error={getFieldError('drawDate')}
+          error={getFieldError("drawDate")}
           touched={touchedFields.drawDate}
         />
       </div>
 
-      <motion.div 
+      <motion.div
         className="flex justify-end"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <Button 
+        <Button
           onClick={() => setStep(2)}
           disabled={!isStepValid()}
           className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
@@ -1041,7 +1117,7 @@ const handleImageUpload = async (file) => {
 
   // Étape 2
   const Step2 = () => (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -1053,14 +1129,14 @@ const handleImageUpload = async (file) => {
         label="Événement en ligne"
         description="Cochez si votre tombola est 100% digitale"
         checked={formData.isOnline}
-        onCheckedChange={(checked) => handleInputChange('isOnline', checked)}
+        onCheckedChange={(checked) => handleInputChange("isOnline", checked)}
       />
 
       <AnimatePresence>
         {!formData.isOnline && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
             className="space-y-4 overflow-hidden"
@@ -1070,7 +1146,7 @@ const handleImageUpload = async (file) => {
               icon={MapPin}
               label="Adresse"
               value={formData.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
+              onChange={(e) => handleInputChange("address", e.target.value)}
               placeholder="Nom du lieu, rue, numéro..."
             />
 
@@ -1080,10 +1156,10 @@ const handleImageUpload = async (file) => {
                 icon={MapPin}
                 label="Ville"
                 value={formData.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                onBlur={() => handleBlur('city')}
+                onChange={(e) => handleInputChange("city", e.target.value)}
+                onBlur={() => handleBlur("city")}
                 required
-                error={getFieldError('city')}
+                error={getFieldError("city")}
                 touched={touchedFields.city}
               />
 
@@ -1092,10 +1168,10 @@ const handleImageUpload = async (file) => {
                 icon={Globe}
                 label="Pays"
                 value={formData.country}
-                onChange={(e) => handleInputChange('country', e.target.value)}
-                onBlur={() => handleBlur('country')}
+                onChange={(e) => handleInputChange("country", e.target.value)}
+                onBlur={() => handleBlur("country")}
                 required
-                error={getFieldError('country')}
+                error={getFieldError("country")}
                 touched={touchedFields.country}
               />
             </div>
@@ -1109,9 +1185,9 @@ const handleImageUpload = async (file) => {
             <ArrowLeft className="mr-2 w-4 h-4" /> Précédent
           </Button>
         </motion.div>
-        
+
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button 
+          <Button
             onClick={() => setStep(3)}
             disabled={!isStepValid()}
             className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
@@ -1125,7 +1201,7 @@ const handleImageUpload = async (file) => {
 
   // Étape 3
   const Step3 = () => (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -1139,16 +1215,18 @@ const handleImageUpload = async (file) => {
             Prix du ticket
           </Label>
           <div className="flex gap-2">
-            <Input 
-              type="number" 
-              value={formData.ticketPrice} 
-              onChange={(e) => handleInputChange('ticketPrice', e.target.value)}
-              onBlur={() => handleBlur('ticketPrice')}
+            <Input
+              type="number"
+              value={formData.ticketPrice}
+              onChange={(e) => handleInputChange("ticketPrice", e.target.value)}
+              onBlur={() => handleBlur("ticketPrice")}
               className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
             />
-            <Select 
-              value={formData.ticketCurrency} 
-              onValueChange={(value) => handleInputChange('ticketCurrency', value)}
+            <Select
+              value={formData.ticketCurrency}
+              onValueChange={(value) =>
+                handleInputChange("ticketCurrency", value)
+              }
             >
               <SelectTrigger className="w-24 transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                 <SelectValue />
@@ -1168,10 +1246,10 @@ const handleImageUpload = async (file) => {
           label="Total tickets"
           type="number"
           value={formData.totalTickets}
-          onChange={(e) => handleInputChange('totalTickets', e.target.value)}
-          onBlur={() => handleBlur('totalTickets')}
+          onChange={(e) => handleInputChange("totalTickets", e.target.value)}
+          onBlur={() => handleBlur("totalTickets")}
           required
-          error={getFieldError('totalTickets')}
+          error={getFieldError("totalTickets")}
           touched={touchedFields.totalTickets}
         />
 
@@ -1181,7 +1259,9 @@ const handleImageUpload = async (file) => {
           label="Max tickets/personne"
           type="number"
           value={formData.maxTicketsPerUser}
-          onChange={(e) => handleInputChange('maxTicketsPerUser', e.target.value)}
+          onChange={(e) =>
+            handleInputChange("maxTicketsPerUser", e.target.value)
+          }
         />
 
         <AnimatedInput
@@ -1190,20 +1270,24 @@ const handleImageUpload = async (file) => {
           label="Objectif minimum"
           type="number"
           value={formData.minTicketsRequired}
-          onChange={(e) => handleInputChange('minTicketsRequired', e.target.value)}
-          onBlur={() => handleBlur('minTicketsRequired')}
+          onChange={(e) =>
+            handleInputChange("minTicketsRequired", e.target.value)
+          }
+          onBlur={() => handleBlur("minTicketsRequired")}
           required
-          error={getFieldError('minTicketsRequired')}
+          error={getFieldError("minTicketsRequired")}
           touched={touchedFields.minTicketsRequired}
         />
       </div>
 
-      <motion.div 
+      <motion.div
         className="p-4 border rounded-lg bg-gradient-to-r from-primary/5 to-purple-500/5"
         animate={{ scale: formData.ticketPrice > 0 ? [1, 1.02, 1] : 1 }}
         transition={{ duration: 0.3 }}
       >
-        <p className="text-center text-sm text-muted-foreground">Prix en pièces</p>
+        <p className="text-center text-sm text-muted-foreground">
+          Prix en pièces
+        </p>
         <p className="text-center text-3xl font-bold text-primary flex items-center justify-center gap-2">
           {calculatedPricePi} <Coins className="w-6 h-6" />
         </p>
@@ -1220,7 +1304,9 @@ const handleImageUpload = async (file) => {
           </h4>
           <div className="grid grid-cols-2 gap-4 mt-2">
             <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{totalRevenuePi} π</p>
+              <p className="text-2xl font-bold text-primary">
+                {totalRevenuePi} π
+              </p>
               <p className="text-xs text-muted-foreground">Revenu total</p>
             </div>
             <div className="text-center">
@@ -1238,7 +1324,9 @@ const handleImageUpload = async (file) => {
         label="Afficher les tickets restants"
         description="Montrer le nombre de tickets disponibles aux participants"
         checked={formData.showRemainingTickets}
-        onCheckedChange={(checked) => handleInputChange('showRemainingTickets', checked)}
+        onCheckedChange={(checked) =>
+          handleInputChange("showRemainingTickets", checked)
+        }
       />
 
       <div className="flex justify-between">
@@ -1247,9 +1335,9 @@ const handleImageUpload = async (file) => {
             <ArrowLeft className="mr-2 w-4 h-4" /> Précédent
           </Button>
         </motion.div>
-        
+
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button 
+          <Button
             onClick={() => setStep(4)}
             disabled={!isStepValid()}
             className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
@@ -1263,7 +1351,7 @@ const handleImageUpload = async (file) => {
 
   // Étape 4
   const Step4 = () => (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -1284,13 +1372,10 @@ const handleImageUpload = async (file) => {
         ))}
       </AnimatePresence>
 
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Button 
-          variant="outline" 
-          onClick={addPrize} 
+      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <Button
+          variant="outline"
+          onClick={addPrize}
           className="w-full py-6 border-2 border-dashed hover:border-primary/50 hover:text-primary transition-all group"
         >
           <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
@@ -1312,11 +1397,15 @@ const handleImageUpload = async (file) => {
               </h4>
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-green-600">{totalPrizeValue.toLocaleString()} F</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {totalPrizeValue.toLocaleString()} F
+                  </p>
                   <p className="text-xs text-muted-foreground">En FCFA</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-primary">{Math.ceil(totalPrizeValue / exchangeRates.PI)} π</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {Math.ceil(totalPrizeValue / exchangeRates.PI)} π
+                  </p>
                   <p className="text-xs text-muted-foreground">En pièces</p>
                 </div>
               </div>
@@ -1331,9 +1420,9 @@ const handleImageUpload = async (file) => {
             <ArrowLeft className="mr-2 w-4 h-4" /> Précédent
           </Button>
         </motion.div>
-        
+
         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Button 
+          <Button
             onClick={() => setStep(5)}
             disabled={!isStepValid()}
             className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
@@ -1347,7 +1436,7 @@ const handleImageUpload = async (file) => {
 
   // Étape 5
   const Step5 = () => (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -1360,7 +1449,7 @@ const handleImageUpload = async (file) => {
           label="Tirage automatique"
           description="Le gagnant est tiré automatiquement à la date prévue"
           checked={formData.autoDraw}
-          onCheckedChange={(checked) => handleInputChange('autoDraw', checked)}
+          onCheckedChange={(checked) => handleInputChange("autoDraw", checked)}
         />
 
         <AnimatedSwitch
@@ -1368,7 +1457,9 @@ const handleImageUpload = async (file) => {
           label="Notifier les participants"
           description="Envoyer des notifications aux participants"
           checked={formData.notifyParticipants}
-          onCheckedChange={(checked) => handleInputChange('notifyParticipants', checked)}
+          onCheckedChange={(checked) =>
+            handleInputChange("notifyParticipants", checked)
+          }
         />
 
         <AnimatedSwitch
@@ -1376,12 +1467,14 @@ const handleImageUpload = async (file) => {
           label="Afficher les participants"
           description="Montrer la liste des participants"
           checked={formData.showParticipants}
-          onCheckedChange={(checked) => handleInputChange('showParticipants', checked)}
+          onCheckedChange={(checked) =>
+            handleInputChange("showParticipants", checked)
+          }
         />
       </div>
 
       {/* Section Contrat */}
-      <motion.div 
+      <motion.div
         className={`${termsAccepted ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900/50" : "bg-muted/20 border border-border"} p-4 rounded-lg transition-all duration-300`}
         whileHover={{ scale: 1.01 }}
       >
@@ -1404,7 +1497,7 @@ const handleImageUpload = async (file) => {
               required
             />
           </motion.div>
-          
+
           <div className="grid gap-1.5 leading-none flex-1">
             <div className="flex items-center justify-between">
               <label
@@ -1425,19 +1518,20 @@ const handleImageUpload = async (file) => {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              En publiant cette tombola, vous acceptez de respecter le
-              règlement et les conditions générales d'utilisation.
+              En publiant cette tombola, vous acceptez de respecter le règlement
+              et les conditions générales d'utilisation.
             </p>
-            
+
             {termsAccepted && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-2 mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800"
               >
                 <CheckCircle className="w-4 h-4 flex-shrink-0" />
                 <span>
-                  <strong>Contrat accepté</strong> - Vous avez accepté les conditions organisateur.
+                  <strong>Contrat accepté</strong> - Vous avez accepté les
+                  conditions organisateur.
                 </span>
               </motion.div>
             )}
@@ -1454,15 +1548,28 @@ const handleImageUpload = async (file) => {
           </h4>
           <div className="space-y-2 text-sm">
             {[
-              { label: 'Titre', value: formData.title || 'Non défini' },
-              { label: 'Date tirage', value: formData.drawDate ? new Date(formData.drawDate).toLocaleDateString('fr-FR') : 'Non définie' },
-              { label: 'Prix ticket', value: `${calculatedPricePi} π` },
-              { label: 'Total tickets', value: formData.totalTickets },
-              { label: 'Objectif', value: formData.minTicketsRequired, highlight: true },
-              { label: 'Revenu estimé', value: `${totalRevenuePi} π`, primary: true },
-              { label: 'Lots', value: formData.prizes.length }
+              { label: "Titre", value: formData.title || "Non défini" },
+              {
+                label: "Date tirage",
+                value: formData.drawDate
+                  ? new Date(formData.drawDate).toLocaleDateString("fr-FR")
+                  : "Non définie",
+              },
+              { label: "Prix ticket", value: `${calculatedPricePi} π` },
+              { label: "Total tickets", value: formData.totalTickets },
+              {
+                label: "Objectif",
+                value: formData.minTicketsRequired,
+                highlight: true,
+              },
+              {
+                label: "Revenu estimé",
+                value: `${totalRevenuePi} π`,
+                primary: true,
+              },
+              { label: "Lots", value: formData.prizes.length },
             ].map((item, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 className="flex justify-between"
                 initial={{ opacity: 0, x: -20 }}
@@ -1470,10 +1577,15 @@ const handleImageUpload = async (file) => {
                 transition={{ delay: index * 0.1 }}
               >
                 <span className="text-muted-foreground">{item.label}:</span>
-                <span className={`font-bold ${
-                  item.highlight ? 'text-orange-600' : 
-                  item.primary ? 'text-primary' : ''
-                }`}>
+                <span
+                  className={`font-bold ${
+                    item.highlight
+                      ? "text-orange-600"
+                      : item.primary
+                        ? "text-primary"
+                        : ""
+                  }`}
+                >
                   {item.value}
                 </span>
               </motion.div>
@@ -1490,25 +1602,29 @@ const handleImageUpload = async (file) => {
       >
         <Card className="border-dashed border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-purple-500/5">
           <CardContent className="p-8 text-center space-y-4">
-            <motion.div 
+            <motion.div
               className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center"
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
               <CheckCircle className="w-8 h-8 text-green-600" />
             </motion.div>
-            
+
             <h3 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
               Prêt à publier ?
             </h3>
-            
+
             <p className="text-muted-foreground max-w-md mx-auto">
-              Votre tombola <strong className="text-primary">{formData.title}</strong> est prête.
+              Votre tombola{" "}
+              <strong className="text-primary">{formData.title}</strong> est
+              prête.
             </p>
 
             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto text-left bg-background/50 p-4 rounded-lg backdrop-blur-sm">
               <div>
-                <span className="text-xs text-muted-foreground block">Date tirage</span>
+                <span className="text-xs text-muted-foreground block">
+                  Date tirage
+                </span>
                 <span className="font-medium">
                   {formData.drawDate
                     ? new Date(formData.drawDate).toLocaleDateString("fr-FR")
@@ -1516,9 +1632,13 @@ const handleImageUpload = async (file) => {
                 </span>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground block">Lieu</span>
+                <span className="text-xs text-muted-foreground block">
+                  Lieu
+                </span>
                 <span className="font-medium">
-                  {formData.city || formData.isOnline ? "En ligne" : "Non défini"}
+                  {formData.city || formData.isOnline
+                    ? "En ligne"
+                    : "Non défini"}
                 </span>
               </div>
             </div>
@@ -1532,11 +1652,8 @@ const handleImageUpload = async (file) => {
             <ArrowLeft className="mr-2 w-4 h-4" /> Précédent
           </Button>
         </motion.div>
-        
-        <motion.div 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
+
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             onClick={handleSubmit}
             disabled={loading || !termsAccepted}
@@ -1573,9 +1690,9 @@ const handleImageUpload = async (file) => {
         />
       </Helmet>
 
-      <OrganizerContractModal 
-        open={showContractModal} 
-        onOpenChange={setShowContractModal} 
+      <OrganizerContractModal
+        open={showContractModal}
+        onOpenChange={setShowContractModal}
         onAccept={handleContractAccept}
         eventTitle={formData.title || "votre tombola"}
         eventId="new-event"
@@ -1587,9 +1704,9 @@ const handleImageUpload = async (file) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate(-1)} 
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
             className="mb-4 hover:scale-105 transition-transform"
           >
             <ArrowLeft className="w-4 h-4 mr-2" /> Retour
@@ -1597,10 +1714,10 @@ const handleImageUpload = async (file) => {
 
           <Card className="shadow-2xl border-none overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500" />
-            
+
             <CardHeader className="border-b border-border/50 pb-6 bg-gradient-to-r from-primary/5 to-purple-500/5">
               <div className="flex items-center gap-3">
-                <motion.div 
+                <motion.div
                   className="p-3 rounded-full bg-primary/10"
                   animate={{ rotate: [0, 10, -10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -1619,7 +1736,10 @@ const handleImageUpload = async (file) => {
             </CardHeader>
 
             <CardContent className="pt-6">
-              <Tabs value={String(step)} onValueChange={(v) => setStep(parseInt(v))}>
+              <Tabs
+                value={String(step)}
+                onValueChange={(v) => setStep(parseInt(v))}
+              >
                 <div className="relative mb-8">
                   <div className="absolute bottom-0 left-0 w-full h-1 bg-muted rounded-full" />
                   <motion.div
@@ -1628,17 +1748,19 @@ const handleImageUpload = async (file) => {
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.3 }}
                   />
-                  
+
                   <TabsList className="grid w-full grid-cols-5 bg-transparent p-0">
-                    {['Infos', 'Lieu', 'Tickets', 'Lots', 'Final'].map((label, index) => (
-                      <TabsTrigger
-                        key={index + 1}
-                        value={String(index + 1)}
-                        className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-xs md:text-sm font-medium border-b-2 border-transparent rounded-none pb-2 transition-all duration-300 hover:scale-105"
-                      >
-                        {index + 1}. {label}
-                      </TabsTrigger>
-                    ))}
+                    {["Infos", "Lieu", "Tickets", "Lots", "Final"].map(
+                      (label, index) => (
+                        <TabsTrigger
+                          key={index + 1}
+                          value={String(index + 1)}
+                          className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-xs md:text-sm font-medium border-b-2 border-transparent rounded-none pb-2 transition-all duration-300 hover:scale-105"
+                        >
+                          {index + 1}. {label}
+                        </TabsTrigger>
+                      ),
+                    )}
                   </TabsList>
                 </div>
 

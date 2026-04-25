@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
-import { Trophy, Clock, Loader2, ArrowLeft } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/customSupabaseClient';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { Trophy, Clock, Loader2, ArrowLeft } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/customSupabaseClient";
 
 const ContestCard = ({ contest, onClick }) => {
   const publicUrl = contest.primary_media_url
@@ -37,9 +37,13 @@ const ContestCard = ({ contest, onClick }) => {
           <img
             class="w-full h-40 object-cover"
             alt={`Aperçu pour ${contest.title}`}
-            src="https://images.unsplash.com/photo-1535281047371-e7d8b0e96d7f" />
+            src="https://images.unsplash.com/photo-1535281047371-e7d8b0e96d7f"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <Badge variant="secondary" className="absolute top-3 right-3 bg-primary text-primary-foreground">
+          <Badge
+            variant="secondary"
+            className="absolute top-3 right-3 bg-primary text-primary-foreground"
+          >
             <Clock className="w-3 h-3 mr-1" /> {getTimeRemaining()}
           </Badge>
         </div>
@@ -49,7 +53,7 @@ const ContestCard = ({ contest, onClick }) => {
           </h3>
           <div className="flex items-center text-muted-foreground text-sm mt-2">
             <Trophy className="w-4 h-4 mr-2 text-primary" />
-            {contest.category || 'Concours'}
+            {contest.category || "Concours"}
           </div>
         </CardContent>
       </Card>
@@ -66,10 +70,10 @@ const ContestsPage = () => {
     const fetchContests = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('contests')
-        .select('*')
-        .eq('is_active', true)
-        .order('event_end_at', { ascending: true });
+        .from("contests")
+        .select("*")
+        .eq("is_active", true)
+        .order("event_end_at", { ascending: true });
 
       if (error) {
         console.error("Error fetching contests:", error);
@@ -85,7 +89,10 @@ const ContestsPage = () => {
     <div className="min-h-screen bg-background">
       <Helmet>
         <title>Concours - BonPlaninfos</title>
-        <meta name="description" content="Participez aux concours et votez pour vos favoris." />
+        <meta
+          name="description"
+          content="Participez aux concours et votez pour vos favoris."
+        />
       </Helmet>
 
       <main className="container mx-auto px-4 pt-8 pb-24">
@@ -95,7 +102,12 @@ const ContestsPage = () => {
           className="flex items-center justify-between mb-6"
         >
           <div className="flex items-center">
-            <Button variant="ghost" size="icon" className="mr-2" onClick={() => navigate(-1)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="mr-2"
+              onClick={() => navigate(-1)}
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-3xl font-bold text-foreground flex items-center">
@@ -131,7 +143,8 @@ const ContestsPage = () => {
                 Aucun concours pour le moment
               </h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Revenez bientôt pour découvrir de nouveaux concours passionnants.
+                Revenez bientôt pour découvrir de nouveaux concours
+                passionnants.
               </p>
             </div>
           )}

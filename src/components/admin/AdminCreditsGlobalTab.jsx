@@ -67,20 +67,20 @@ const AdminCreditsGlobalTab = () => {
 
       // 2. Récupérer les achats automatiques (coin_transactions)
       // Inclure les transactions avec transaction_type = 'credit_purchase' OU null (cas MoneyFusion)
-      const { data: purchases, error: purchaseError } = await supabase
-        .from("coin_transactions")
-        .select(`
-          id,
-          created_at,
-          amount_paid,
-          coins_credited,
-          user_id,
-          transaction_type,
-          profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
-        `)
-        .or('transaction_type.eq.credit_purchase,transaction_type.is.null')
-        .order("created_at", { ascending: false });
-
+     // Version plus explicite
+const { data: purchases, error: purchaseError } = await supabase
+  .from("coin_transactions")
+  .select(`
+    id,
+    created_at,
+    amount_paid,
+    coins_credited,
+    user_id,
+    transaction_type,
+    profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
+  `)
+  .in('transaction_type', ['credit_purchase', null, ''])
+  .order("created_at", { ascending: false });
       if (purchaseError) {
         console.error("Erreur lors de la récupération des achats :", purchaseError);
         // On continue sans les achats

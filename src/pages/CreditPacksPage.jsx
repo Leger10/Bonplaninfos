@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import MultilingualSeoHead from "@/components/MultilingualSeoHead";
+import { CouponService } from "@/services/CouponService"; // Ajout de l'import
 
 const CREDIT_PACKS = [
   {
@@ -154,6 +155,7 @@ const CreditPacksPage = () => {
     }
   }, []);
 
+  // MODIFICATION: Utiliser CouponService.validateCoupon
   const validateCoupon = async () => {
     if (!couponCode.trim()) {
       toast({
@@ -165,34 +167,39 @@ const CreditPacksPage = () => {
     }
     setValidatingCoupon(true);
     try {
-      const { data, error } = await supabase
-        .from("coupons")
-        .select(
-          "code, user_id, active, usage_count, total_amount, commission_earned, profiles:user_id(email)",
-        )
-        .eq("code", couponCode.trim().toUpperCase())
+      const { valid, coupon, error } = await CouponService.validateCoupon(
+        couponCode.trim().toUpperCase()
+      );
+
+      if (!valid) throw new Error(error);
+      
+      // Récupérer l'email du propriétaire
+      const { data: ownerData } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", coupon.user_id)
         .single();
 
-      if (error || !data) throw new Error("Code invalide");
-      if (!data.active) throw new Error("Ce code est désactivé");
-
-      const ownerEmail = data.profiles?.email || "Propriétaire";
       setAppliedCoupon({
-        code: data.code,
-        ownerEmail: ownerEmail,
+        code: coupon.code,
+        ownerEmail: ownerData?.email || "Propriétaire",
+        ownerId: coupon.user_id,
         commissionRate: 2,
       });
+      
       localStorage.setItem(
         "appliedCoupon",
         JSON.stringify({
-          code: data.code,
-          ownerEmail: ownerEmail,
+          code: coupon.code,
+          ownerEmail: ownerData?.email || "Propriétaire",
+          ownerId: coupon.user_id,
           commissionRate: 2,
-        }),
+        })
       );
+      
       toast({
         title: "Coupon appliqué",
-        description: `${data.code} est valide !`,
+        description: `${coupon.code} est valide !`,
         variant: "default",
       });
     } catch (err) {
@@ -219,77 +226,87 @@ const CreditPacksPage = () => {
     });
   };
 
-  const initPayment = async (amountFcfa, coinsAmount, packId) => {
-    if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour acheter des crédits.",
-        variant: "warning",
-      });
-      navigate("/auth?redirect=/packs");
-      return;
+// MODIFICATION: Utiliser CouponService.useCoupon après paiement réussi
+const initPayment = async (amountFcfa, coinsAmount, packId) => {
+  if (!user) {
+    toast({
+      title: "Connexion requise",
+      description: "Veuillez vous connecter pour acheter des crédits.",
+      variant: "warning",
+    });
+    navigate("/auth?redirect=/packs");
+    return;
+  }
+
+  setIsProcessing(true);
+  const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+  // Calcul des frais (3% du montant net)
+  const feeAmount = Math.ceil(amountFcfa * (feePercent / 100));
+  const totalWithFees = amountFcfa + feeAmount;
+
+  try {
+    // 1. Enregistrer le paiement en base avec le montant net
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("payments")
+      .insert({
+        user_id: user.id,
+        coins_amount: coinsAmount,
+        amount_fcfa: amountFcfa,
+        status: "pending",
+        payment_method: "moneyfusion",
+        transaction_id: txnId,
+        pack_id: packId,
+        coupon_code: appliedCoupon?.code || null,
+      })
+      .select()
+      .single();
+
+    if (paymentError) {
+      console.error("❌ Erreur Supabase insert :", paymentError);
+      throw new Error(`Erreur lors de l'enregistrement de la transaction: ${paymentError.message}`);
     }
+    
+    console.log("✅ Insertion payments réussie :", paymentData);
+    
+    // 2. Stocker l'ID pour la page de succès
+    localStorage.setItem("pendingPaymentTxnId", txnId);
+    localStorage.setItem("pendingPaymentAmount", amountFcfa);
+    localStorage.setItem("pendingPaymentCoupon", appliedCoupon?.code || "");
+    localStorage.setItem("pendingPaymentPackId", packId);
+    localStorage.setItem("pendingPaymentUserId", user.id);
 
-    setIsProcessing(true);
-    const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // 3. Appeler la fonction serverless avec le montant TTC (incluant les frais)
+    const response = await fetch("/.netlify/functions/create-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        totalPrice: totalWithFees,
+        article: [{ [packId]: amountFcfa }],
+        personal_Info: [{ 
+          userId: user.id, 
+          orderId: txnId, 
+          couponCode: appliedCoupon?.code || null,
+          amountFcfa: amountFcfa
+        }],
+        numeroSend: user.phone || "01010101",
+        nomclient: user.email || "Client",
+        return_url: `${window.location.origin}/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
+        webhook_url: "/.netlify/functions/moneyfusion-webhook", // URL relative simple
+      }),
+    });
 
-    // Calcul des frais (3% du montant net)
-    const feeAmount = Math.ceil(amountFcfa * (feePercent / 100));
-    const totalWithFees = amountFcfa + feeAmount;
+    const result = await response.json();
+    if (!result.success) throw new Error(result.message);
 
-    try {
-      // 1. Enregistrer le paiement en base avec le montant net
-      const { data, error } = await supabase.from("payments").insert({
-  user_id: user.id,
-  coins_amount: coinsAmount,
-  amount_fcfa: amountFcfa,
-  status: "pending",
-  payment_method: "moneyfusion",
-  transaction_id: txnId,
-  pack_id: packId,
-  coupon_code: appliedCoupon?.code || null,
-});
-
-if (error) {
-  console.error("❌ Erreur Supabase insert :", error);
-  throw new Error(`Erreur lors de l'enregistrement de la transaction: ${error.message}`);
-} else {
-  console.log("✅ Insertion payments réussie :", data);
-}
-      // 2. Stocker l'ID pour la page de succès
-      localStorage.setItem("pendingPaymentTxnId", txnId);
-      if (appliedCoupon) {
-        localStorage.setItem("couponCodeForPayment", appliedCoupon.code);
-      } else {
-        localStorage.removeItem("couponCodeForPayment");
-      }
-
-      // 3. Appeler la fonction serverless avec le montant TTC (incluant les frais)
-      const response = await fetch("/.netlify/functions/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          totalPrice: totalWithFees, // Montant que le client paiera réellement
-          article: [{ [packId]: amountFcfa }],
-          personal_Info: [{ userId: user.id, orderId: txnId, couponCode: appliedCoupon?.code || null }],
-          numeroSend: user.phone || "01010101",
-          nomclient: user.email || "Client",
-          return_url: `${window.location.origin}/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
-          webhook_url: `${window.location.origin}/.netlify/functions/moneyfusion-webhook`,
-        }),
-      });
-
-      const result = await response.json();
-      if (!result.success) throw new Error(result.message);
-
-      // 4. Rediriger vers l'URL de paiement MoneyFusion
-      window.location.href = result.redirect_url;
-    } catch (err) {
-      console.error("Payment init error:", err);
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-      setIsProcessing(false);
-    }
-  };
+    // 4. Rediriger vers l'URL de paiement MoneyFusion
+    window.location.href = result.redirect_url;
+  } catch (err) {
+    console.error("Payment init error:", err);
+    toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    setIsProcessing(false);
+  }
+};
 
   const handlePurchase = (pack) => {
     const bonusCoins = pack.bonus ? Math.floor((pack.coins * pack.bonus) / 100) : 0;
@@ -320,9 +337,6 @@ if (error) {
 
   return (
     <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
-      {/* Styles existants... (inchangés) */}
-      <style>{`...`}</style>
-
       <MultilingualSeoHead
         pageData={{
           title: "Acheter des Crédits - BonPlanInfos",
@@ -345,28 +359,23 @@ if (error) {
             à vos besoins et participez facilement aux événements sur la
             plateforme.
           </p>
-          <div className="max-w-3xl mx-auto mt-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* ... icônes ... */}
-            </div>
-          </div>
         </motion.div>
 
-        {/* Section code promo */}
+        {/* Section code promo - Version corrigée */}
         <div className="max-w-xl mx-auto">
-          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/50 p-6 shadow-lg shadow-yellow-500/10 transition-all duration-300 animate-pulse-slow">
+          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/50 p-6 shadow-lg shadow-yellow-500/10 transition-all duration-300">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-3xl animate-bounce">🎁</span>
-              <h3 className="text-xl font-bold text-white">Code de réduction</h3>
+              <h2 className="text-xl font-bold text-white"> Entrez vore Code coupon</h2>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <Input
-                  placeholder="Entrez un code (ex: FRIEND2024)"
+                  placeholder="Entrez un code (ex: 6FNQ3N)"
                   value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   disabled={!!appliedCoupon}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500"
+                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 uppercase"
                 />
               </div>
               {!appliedCoupon ? (
@@ -393,18 +402,18 @@ if (error) {
                   ✓ Code {appliedCoupon.code} appliqué
                 </p>
                 <p className="text-gray-300 text-xs mt-1">
-                  👤 Propriétaire : {appliedCoupon.ownerEmail}
+                  👤 Parrain : {appliedCoupon.ownerEmail}
                   <br />
-                  🎁 {appliedCoupon.commissionRate}% de commission sera attribuée au propriétaire du coupon
+                  🎁 <span className="text-yellow-400 font-bold">2% de commission</span> sera versée au parrain après validation du paiement
                   <br />
-                  💳 Choisissez votre pack pour procéder au dépôt dans votre compte
+                  💳 Choisissez votre pack pour procéder au paiement
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Packs Grid (même structure) */}
+        {/* Packs Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {CREDIT_PACKS.map((pack, index) => {
             const Icon = pack.icon;
@@ -513,7 +522,7 @@ if (error) {
                   <span className="ml-2 px-2 py-1 text-xs font-bold bg-yellow-500 text-black rounded-full">Flexible</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-6">
-                  Vous avez un budget spécifique ? Renseigner le montant ci-dessous !
+                  Vous avez un budget spécifique ? Renseignez le montant ci-dessous !
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 items-center">
                   <div className="relative w-full">

@@ -154,42 +154,41 @@ const CreateVotingEventPage = () => {
     setShowCitySuggestions(false);
   };
 
-  // Load event categories
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      try {
-        const { data, error } = await supabase
-          .from("event_categories")
-          .select("id, name")
-          .eq("is_active", true)
-          .order("name");
-        if (error) throw error;
-        if (data && data.length > 0) {
-          setCategoriesList(data);
-          setSelectedCategoryId(data[0].id);
-        } else {
-          console.warn("Aucune catégorie disponible");
-          toast({
-            title: "Avertissement",
-            description: "Aucune catégorie disponible",
-            variant: "warning",
-          });
-        }
-      } catch (error) {
-        console.error("Erreur chargement catégories:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les catégories",
-          variant: "destructive",
-        });
-      } finally {
-        setLoadingCategories(false);
+ // Load event categories - VERSION CORRIGÉE AVEC COULEURS
+useEffect(() => {
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const { data, error } = await supabase
+        .from("event_categories")
+        .select("id, name, color_hex, display_order")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true, nullsFirst: false });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        console.log("✅ Catégories chargées avec couleurs:", data);
+        setCategoriesList(data);
+        setSelectedCategoryId(data[0].id);
+      } else {
+        console.warn("Aucune catégorie disponible");
       }
-    };
-    fetchCategories();
-  }, []);
-
+    } catch (error) {
+      console.error("Erreur chargement catégories:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les catégories",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+  fetchCategories();
+}, []);
+      
+    
   // Candidate image upload (with conversion & compression)
   const handleCandidateImageUpload = async (file, candidateId) => {
     if (!file) return;
@@ -487,21 +486,31 @@ const CreateVotingEventPage = () => {
                       </div>
                       <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} pièces</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category" className="text-gray-300">Catégorie <span className="text-red-500">*</span></Label>
-                      <Select value={selectedCategoryId || ""} onValueChange={setSelectedCategoryId} disabled={loadingCategories}>
-                        <SelectTrigger className="bg-gray-950 border-gray-800 text-white">
-                          <SelectValue placeholder={loadingCategories ? "Chargement des catégories..." : "Sélectionner une catégorie"} />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60">
-                          {categoriesList.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {loadingCategories && <p className="text-xs text-gray-500 flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Chargement des catégories...</p>}
-                      {!loadingCategories && categoriesList.length === 0 && <p className="text-xs text-yellow-500">Aucune catégorie disponible. Contactez l'administrateur.</p>}
-                    </div>
+                   <div className="space-y-2">
+  <Label htmlFor="category" className="text-gray-300">Catégorie <span className="text-red-500">*</span></Label>
+  <Select value={selectedCategoryId || ""} onValueChange={setSelectedCategoryId} disabled={loadingCategories}>
+    <SelectTrigger className="bg-gray-950 border-gray-800 text-white">
+      <SelectValue placeholder={loadingCategories ? "Chargement des catégories..." : "Sélectionner une catégorie"} />
+    </SelectTrigger>
+    <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60">
+      {categoriesList.map((cat) => (
+        <SelectItem key={cat.id} value={cat.id}>
+          <div className="flex items-center gap-2">
+            {cat.color_hex && (
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: cat.color_hex }}
+              />
+            )}
+            <span>{cat.name}</span>
+          </div>
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+  {loadingCategories && <p className="text-xs text-gray-500 flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Chargement des catégories...</p>}
+  {!loadingCategories && categoriesList.length === 0 && <p className="text-xs text-yellow-500">Aucune catégorie disponible. Contactez l'administrateur.</p>}
+</div>
                   </div>
 
                   <div className="space-y-5">

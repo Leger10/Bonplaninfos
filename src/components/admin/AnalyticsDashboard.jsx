@@ -714,208 +714,220 @@ const AnalyticsDashboard = () => {
         </TabsContent>
 
         {/* Onglet Coupons */}
-        <TabsContent value="coupons">
-          <Card className="shadow-sm border-muted">
-            <CardHeader>
-              <CardTitle>Suivi des coupons</CardTitle>
-              <CardDescription>
-                Liste de tous les coupons créés et leurs utilisations.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Résumé global des coupons */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <SecondaryStatCard
-                    title="Coupons créés"
-                    value={couponsData.length}
-                    subtext="Total codes générés"
-                    icon={Tag}
-                    colorClass="text-indigo-500"
-                  />
-                  <SecondaryStatCard
-                    title="Coupons utilisés"
-                    value={couponsData.filter((c) => c.usage_count > 0).length}
-                    subtext="Au moins une utilisation"
-                    icon={CheckCircle2}
-                    colorClass="text-green-500"
-                  />
-                  <SecondaryStatCard
-                    title="Commission totale versée"
-                    value={formatCurrency(
-                      couponsData.reduce(
-                        (sum, c) => sum + (c.commission_earned || 0),
-                        0,
-                      ),
-                    )}
-                    subtext="Cumul des 2% reversés"
-                    icon={Coins}
-                    colorClass="text-yellow-500"
-                  />
-                </div>
+       <TabsContent value="coupons">
+  <Card className="shadow-sm border-muted">
+    <CardHeader>
+      <CardTitle>Suivi des coupons</CardTitle>
+      <CardDescription>
+        Liste de tous les coupons créés et leurs utilisations.
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-6">
+        {/* Résumé global des coupons */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <SecondaryStatCard
+            title="Coupons créés"
+            value={couponsData.length}
+            subtext="Total codes générés"
+            icon={Tag}
+            colorClass="text-indigo-500"
+          />
+          <SecondaryStatCard
+            title="Coupons utilisés"
+            value={couponsData.filter((c) => c.usage_count > 0).length}
+            subtext="Au moins une utilisation"
+            icon={CheckCircle2}
+            colorClass="text-green-500"
+          />
+          <SecondaryStatCard
+            title="Total généré"
+            value={formatCurrency(
+              couponsData.reduce(
+                (sum, c) => sum + (c.total_amount || 0),
+                0,
+              ),
+            )}
+            subtext="Cumul des ventes générées"
+            icon={TrendingUp}
+            colorClass="text-blue-500"
+          />
+          <SecondaryStatCard
+            title="Commission totale versée"
+            value={formatCurrency(
+              couponsData.reduce(
+                (sum, c) => sum + (c.commission_earned || 0),
+                0,
+              ),
+            )}
+            subtext="Cumul des 2% reversés"
+            icon={Coins}
+            colorClass="text-yellow-500"
+          />
+        </div>
 
-                {/* Historique des utilisations */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Historique des utilisations
-                  </h3>
-                  {couponUsages.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">
-                      Aucune utilisation enregistrée.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {couponUsages.map((usage) => (
-                        <div
-                          key={usage.id}
-                          className="flex items-center justify-between p-4 border rounded-lg bg-card/50"
-                        >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="font-mono">
-                                {usage.coupon_code}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                par{" "}
-                                {usage.user?.full_name ||
-                                  usage.user?.email ||
-                                  "Utilisateur"}
-                              </span>
-                            </div>
-                            <div className="text-sm mt-1">
-                              <span className="text-muted-foreground">
-                                Montant :
-                              </span>{" "}
-                              {usage.amount.toLocaleString()} FCFA
-                              <span className="ml-3 text-muted-foreground">
-                                Commission :
-                              </span>{" "}
-                              <span className="text-green-600">
-                                {usage.commission.toLocaleString()} FCFA
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(
-                                new Date(usage.created_at),
-                                "dd MMM yyyy HH:mm",
-                                { locale: fr },
-                              )}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <Badge variant="secondary">Utilisé</Badge>
-                          </div>
-                        </div>
-                      ))}
+        {/* Historique des utilisations */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3">
+            Historique des utilisations
+          </h3>
+          {couponUsages.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              Aucune utilisation enregistrée.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {couponUsages.map((usage) => (
+                <div
+                  key={usage.id}
+                  className="flex items-center justify-between p-4 border rounded-lg bg-card/50"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono">
+                        {usage.coupon_code}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        par{" "}
+                        {usage.user?.full_name ||
+                          usage.user?.email ||
+                          "Utilisateur"}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* Tous les coupons */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Tous les coupons
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="border-b border-gray-700">
-                        <tr className="text-left">
-                          <th className="pb-2">Code</th>
-                          <th className="pb-2">Propriétaire</th>
-                          <th className="pb-2 text-right">Utilisations</th>
-                          <th className="pb-2 text-right">Total généré</th>
-                          <th className="pb-2 text-right">Commission</th>
-                          <th className="pb-2">Dernière utilisation</th>
-                          <th className="pb-2 text-center min-w-[120px]">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {couponsData.map((coupon) => {
-                          const owner = couponOwnerMap[coupon.user_id];
-                          const ownerDisplay = owner
-                            ? owner.full_name || owner.email
-                            : coupon.user_id;
-                          return (
-                            <tr
-                              key={coupon.code}
-                              className="border-b border-gray-800"
-                            >
-                              <td className="py-2 font-mono whitespace-nowrap">
-                                {coupon.code}
-                              </td>
-                              <td className="py-2 whitespace-nowrap">
-                                {ownerDisplay}
-                              </td>
-                              <td className="py-2 text-right whitespace-nowrap">
-                                {coupon.usage_count}
-                              </td>
-                              <td className="py-2 text-right whitespace-nowrap">
-                                {coupon.total_amount.toLocaleString()} FCFA
-                              </td>
-                              <td className="py-2 text-right text-green-400 whitespace-nowrap">
-                                {coupon.commission_earned.toLocaleString()} FCFA
-                              </td>
-                              <td className="py-2 whitespace-nowrap">
-                                {coupon.last_used_at
-                                  ? format(
-                                      new Date(coupon.last_used_at),
-                                      "dd MMM yyyy",
-                                    )
-                                  : "-"}
-                              </td>
-                              <td className="py-2 text-center">
-                                <div className="flex gap-2 justify-center">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleToggleCoupon(coupon)}
-                                    disabled={actionLoading === coupon.code}
-                                    className={`${coupon.active ? "text-red-500 border-red-500 hover:bg-red-500/10" : "text-green-500 border-green-500 hover:bg-green-500/10"} h-8 px-3 text-xs`}
-                                  >
-                                    {actionLoading === coupon.code ? (
-                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                    ) : coupon.active ? (
-                                      <>
-                                        <EyeOff className="w-3 h-3 mr-1" />{" "}
-                                        Désactiver
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Eye className="w-3 h-3 mr-1" /> Activer
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleBlockCoupon(coupon)}
-                                    disabled={
-                                      actionLoading === `block_${coupon.code}`
-                                    }
-                                    className="text-red-600 border-red-600 hover:bg-red-500/10 h-8 px-3 text-xs"
-                                  >
-                                    {actionLoading ===
-                                    `block_${coupon.code}` ? (
-                                      <RefreshCw className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <>🔒 Bloquer</>
-                                    )}
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="text-sm mt-1">
+                      <span className="text-muted-foreground">
+                        Montant :
+                      </span>{" "}
+                      {usage.amount.toLocaleString()} FCFA
+                      <span className="ml-3 text-muted-foreground">
+                        Commission :
+                      </span>{" "}
+                      <span className="text-green-600">
+                        {usage.commission.toLocaleString()} FCFA
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {format(
+                        new Date(usage.created_at),
+                        "dd MMM yyyy HH:mm",
+                        { locale: fr },
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="secondary">Utilisé</Badge>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Tous les coupons */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3">
+            Tous les coupons
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-700">
+                <tr className="text-left">
+                  <th className="pb-2">Code</th>
+                  <th className="pb-2">Propriétaire</th>
+                  <th className="pb-2 text-right">Utilisations</th>
+                  <th className="pb-2 text-right">Total généré</th>
+                  <th className="pb-2 text-right">Commission</th>
+                  <th className="pb-2">Dernière utilisation</th>
+                  <th className="pb-2 text-center min-w-[120px]">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {couponsData.map((coupon) => {
+                  const owner = couponOwnerMap[coupon.user_id];
+                  const ownerDisplay = owner
+                    ? owner.full_name || owner.email
+                    : coupon.user_id;
+                  return (
+                    <tr
+                      key={coupon.code}
+                      className="border-b border-gray-800"
+                    >
+                      <td className="py-2 font-mono whitespace-nowrap">
+                        {coupon.code}
+                      </td>
+                      <td className="py-2 whitespace-nowrap">
+                        {ownerDisplay}
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        {coupon.usage_count}
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        {coupon.total_amount.toLocaleString()} FCFA
+                      </td>
+                      <td className="py-2 text-right text-green-400 whitespace-nowrap">
+                        {coupon.commission_earned.toLocaleString()} FCFA
+                      </td>
+                      <td className="py-2 whitespace-nowrap">
+                        {coupon.last_used_at
+                          ? format(
+                              new Date(coupon.last_used_at),
+                              "dd MMM yyyy",
+                            )
+                          : "-"}
+                      </td>
+                      <td className="py-2 text-center">
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleCoupon(coupon)}
+                            disabled={actionLoading === coupon.code}
+                            className={`${coupon.active ? "text-red-500 border-red-500 hover:bg-red-500/10" : "text-green-500 border-green-500 hover:bg-green-500/10"} h-8 px-3 text-xs`}
+                          >
+                            {actionLoading === coupon.code ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : coupon.active ? (
+                              <>
+                                <EyeOff className="w-3 h-3 mr-1" />{" "}
+                                Désactiver
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3 mr-1" /> Activer
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleBlockCoupon(coupon)}
+                            disabled={
+                              actionLoading === `block_${coupon.code}`
+                            }
+                            className="text-red-600 border-red-600 hover:bg-red-500/10 h-8 px-3 text-xs"
+                          >
+                            {actionLoading ===
+                            `block_${coupon.code}` ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>🔒 Bloquer</>
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
 
         {/* Nouvel onglet : Installations PWA */}
         <TabsContent value="pwa_installs">

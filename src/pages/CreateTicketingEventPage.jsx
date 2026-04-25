@@ -39,12 +39,14 @@ import {
   MessageSquare,
   FileText,
   ChevronRight,
+  Tag,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import ImageUpload from "@/components/ImageUpload";
 import { Checkbox } from "@/components/ui/checkbox";
 import { checkAuthentication } from "@/lib/authUtils";
 import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
+import { PromoCodeConfig } from "@/components/organizer/PromoCodeConfig";
 
 const TICKET_COLORS = [
   { name: "Bleu (Standard)", value: "blue", hex: "bg-blue-500" },
@@ -68,6 +70,10 @@ const CreateTicketingEventPage = () => {
   // Contract Modal State
   const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Promo Code Configuration State
+  const [promoConfig, setPromoConfig] = useState(null);
+  const [promoConfigSaved, setPromoConfigSaved] = useState(false);
 
   // Pricing Configuration
   const COIN_RATE = adminConfig?.coin_to_fcfa_rate || 10;
@@ -100,18 +106,38 @@ const CreateTicketingEventPage = () => {
       color: "blue",
     },
   ]);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
+// Chargement des catégories - VERSION CORRIGÉE
+useEffect(() => {
+  const fetchCategories = async () => {
+    try {
+      console.log("🔍 Fetching categories from event_categories...");
+      
       const { data, error } = await supabase
         .from("event_categories")
-        .select("*")
-        .eq("is_active", true);
-      if (error) console.error("Error fetching categories:", error);
-      else setCategories(data || []);
-    };
-    fetchCategories();
-  }, []);
+        .select("id, name, color_hex, display_order")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true, nullsFirst: false });
+      
+      if (error) {
+        console.error("❌ Error fetching categories:", error);
+        setCategories([]);
+        return;
+      }
+      
+      console.log("✅ Categories loaded successfully:", data?.length || 0, "categories");
+      console.log("🎨 First category color:", data?.[0]?.color_hex);
+      
+      setCategories(data || []);
+      
+    } catch (err) {
+      console.error("❌ Exception fetching categories:", err);
+      setCategories([]);
+    }
+  };
+  
+  fetchCategories();
+}, []);
+
 
   // Restaurer les données du brouillon si disponible
   useEffect(() => {
@@ -145,7 +171,12 @@ const CreateTicketingEventPage = () => {
             );
           }
 
-          // Afficher un message informatif
+          // Restaurer la configuration des codes promo
+          if (draftData.promoConfig) {
+            setPromoConfig(draftData.promoConfig);
+            setPromoConfigSaved(true);
+          }
+
           toast({
             title: "Brouillon restauré",
             description:
@@ -158,7 +189,6 @@ const CreateTicketingEventPage = () => {
       }
     };
 
-    // Restaurer le brouillon seulement si l'utilisateur est authentifié
     if (user) {
       restoreDraft();
     }
@@ -216,187 +246,144 @@ const CreateTicketingEventPage = () => {
     setShowContractModal(true);
   };
 
-  const performSubmission = async () => {
-    // Vérifier l'authentification avant de continuer
-    const { isAuthenticated } = await checkAuthentication();
-    if (!isAuthenticated) {
-      toast({
-        title: "Session expirée",
-        description: "Votre session a expiré. Merci de vous reconnecter.",
-        variant: "destructive",
-      });
+  const handlePromoConfigSave = (config) => {
+    setPromoConfig(config);
+    setPromoConfigSaved(true);
+  };
 
-      // Stocker les données du formulaire pour récupération après reconnexion
-      const formData = {
+const performSubmission = async () => {
+  // Vérification 1 : Contrat accepté (OBLIGATOIRE)
+  if (!termsAccepted) {
+    toast({
+      title: "Contrat requis",
+      description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+      variant: "destructive",
+    });
+    setShowContractModal(true);
+    return;
+  }
+
+  // Vérification 2 : Utilisateur connecté
+  if (!user) {
+    toast({
+      title: "Erreur",
+      description: "Vous devez être connecté.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const eventStartAt = new Date(eventDate);
+    const eventEndAt = endDate
+      ? new Date(endDate)
+      : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000);
+
+    console.log("📝 Création de l'événement...");
+    console.log("💰 Taux de conversion:", COIN_RATE, "FCFA = 1 pièce");
+
+    // 1. Création de l'événement
+    const { data: eventData, error: eventError } = await supabase
+      .from("events")
+      .insert({
         title,
-        description,
-        eventDate,
-        endDate,
+        description: description || "",
+        event_start_at: eventStartAt.toISOString(),
+        event_end_at: eventEndAt.toISOString(),
         city,
-        country,
-        address,
-        categoryId,
-        maxAttendees,
-        isPublic,
-        requiresApproval,
-        coverImage,
-        ticketTypes,
-      };
-      localStorage.setItem("draftEvent", JSON.stringify(formData));
-
-      localStorage.setItem("redirectAfterLogin", window.location.pathname);
-      window.location.href = "/login";
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: "Erreur",
-        description: "Vous devez être connecté.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Vérifier que le contrat est accepté
-    if (!termsAccepted) {
-      toast({
-        title: "Contrat requis",
-        description:
-          "Veuillez lire et accepter le contrat organisateur avant de publier.",
-        variant: "destructive",
-      });
-
-      // Ouvrir automatiquement le modal du contrat
-      setShowContractModal(true);
-      return;
-    }
-
-    if (!title || !eventDate || !city || !categoryId) {
-      toast({
-        title: "Erreur",
-        description:
-          "Veuillez remplir les champs obligatoires (Titre, Date, Ville, Catégorie).",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validations Dates (corrigées)
-    const start = new Date(eventDate);
-    const end = endDate ? new Date(endDate) : null;
-
-    // Aujourd'hui à minuit (ignore l'heure)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Date de début à minuit
-    const startDateOnly = new Date(start);
-    startDateOnly.setHours(0, 0, 0, 0);
-
-    // ❌ Bloquer uniquement les dates STRICTEMENT dans le passé
-    if (startDateOnly < today) {
-      toast({
-        title: "Date invalide",
-        description: "La date de l'événement ne peut pas être dans le passé.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // ❌ Fin avant début (mais même jour autorisé)
-    if (end && end < start) {
-      toast({
-        title: "Date invalide",
-        description:
-          "La date de fin ne peut pas être antérieure à la date de début.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      console.log("Creating event with image:", title);
-
-      // Normalisation des dates
-      const eventStartAt = new Date(eventDate);
-      const eventEndAt = endDate
-        ? new Date(endDate)
-        : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000); // +1 jour
-
-      const { data: eventData, error: eventError } = await supabase
-        .from("events")
-        .insert({
-          title,
-          description,
-          event_start_at: eventStartAt.toISOString(),
-          event_end_at: eventEndAt.toISOString(),
-          city,
-          country,
-          address,
-          cover_image: coverImage,
-          organizer_id: user.id,
-          event_type: "ticketing",
-          category_id: categoryId,
-          status: "active",
-          max_attendees: parseInt(maxAttendees, 10) || null,
-          is_public: isPublic,
-          requires_approval: requiresApproval,
-          contract_accepted_at: new Date().toISOString(),
-          contract_version: "v1.0",
-        })
-        .select()
-        .single();
-
-      if (eventError) {
-        // Vérifier si l'erreur est liée à l'authentification
-        if (
-          eventError.message?.includes("JWT") ||
-          eventError.message?.includes("session")
-        ) {
-          throw new Error("Votre session a expiré. Merci de vous reconnecter.");
-        }
-        throw eventError;
-      }
-
-      const newEventId = eventData.id;
-
-      // Sauvegarder l'acceptation du contrat dans la table dédiée
-      await supabase.from("user_contract_acceptances").insert({
-        user_id: user.id,
-        event_id: newEventId,
-        contract_type: "organizer",
-        accepted_at: new Date().toISOString(),
+        country: country || null,
+        address: address || null,
+        cover_image: coverImage,
+        organizer_id: user.id,
+        event_type: "ticketing",
+        category_id: categoryId,
+        status: "active",
+        max_attendees: parseInt(maxAttendees, 10) || null,
+        is_public: isPublic,
+        requires_approval: requiresApproval,
+        contract_accepted_at: new Date().toISOString(),
         contract_version: "v1.0",
+      })
+      .select()
+      .single();
+
+    if (eventError) throw eventError;
+
+    const newEventId = eventData.id;
+    console.log("✅ Événement créé avec ID:", newEventId);
+
+    // 2. Enregistrer l'acceptation du contrat
+    await supabase.from("user_contract_acceptances").insert({
+      user_id: user.id,
+      event_id: newEventId,
+      contract_type: "organizer",
+      accepted_at: new Date().toISOString(),
+      contract_version: "v1.0",
+    }).catch(err => console.warn("⚠️ Erreur contrat (non bloquante):", err));
+
+    // 3. Sauvegarder la configuration des codes promo si activée
+    if (promoConfig && promoConfig.enabled) {
+      let discountValueToSave = promoConfig.discount_value;
+      
+      if (promoConfig.discount_type === 'fixed') {
+        // S'assurer que la valeur est bien en FCFA
+        discountValueToSave = promoConfig.discount_value;
+        console.log("💰 Réduction fixe:", discountValueToSave, "FCFA =", discountValueToSave / COIN_RATE, "pièces");
+      } else {
+        console.log("💰 Réduction pourcentage:", promoConfig.discount_value, "%");
+      }
+      
+      await supabase.from("event_promo_config").insert({
+        event_id: newEventId,
+        enabled: promoConfig.enabled,
+        discount_type: promoConfig.discount_type,
+        discount_value: discountValueToSave,
+        commission_rate: promoConfig.commission_rate,
+        usage_limit: promoConfig.usage_limit || null,
+      }).catch(err => console.warn("⚠️ Erreur promo config (non bloquante):", err));
+    }
+
+    // 4. Créer l'entrée ticketing_events
+    const totalTickets = ticketTypes.reduce(
+      (acc, tt) => acc + (parseInt(tt.quantity_available, 10) || 0),
+      0,
+    );
+
+    await supabase.from("ticketing_events").insert({
+      event_id: newEventId,
+      total_tickets: totalTickets,
+      tickets_sold: 0,
+    });
+
+    // 5. Insérer les types de billets avec conversion correcte (1 pièce = 10 FCFA)
+    const ticketTypesToInsert = ticketTypes.map((tt) => {
+      const priceFcfa = parseInt(tt.price, 10) || 0;
+      const presalePriceFcfa = parseInt(tt.presale_price, 10) || 0;
+      const quantityAvailable = parseInt(tt.quantity_available, 10) || 0;
+      
+      // Conversion: 1 pièce = 10 FCFA (arrondi à l'entier supérieur)
+      const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
+      const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+
+      console.log(`🎫 Billet "${tt.name}":`, {
+        priceFcfa: `${priceFcfa.toLocaleString()} FCFA`,
+        priceCoins: `${priceCoins} pièces`,
+        quantity: quantityAvailable
       });
 
-      const totalTickets = ticketTypes.reduce(
-        (acc, tt) => acc + parseInt(tt.quantity_available || 0, 10),
-        0,
-      );
-
-      // Create entry in ticketing_events
-      const { error: ticketingError } = await supabase
-        .from("ticketing_events")
-        .insert({
-          event_id: newEventId,
-          total_tickets: totalTickets,
-          tickets_sold: 0,
-        });
-      if (ticketingError) throw ticketingError;
-
-      const ticketTypesToInsert = ticketTypes.map((tt) => ({
+      return {
         event_id: newEventId,
-        name: tt.name,
-        description: tt.description,
-        quantity_available: parseInt(tt.quantity_available, 10),
-        price: parseInt(tt.price, 10),
-        price_coins: convertToCoins(tt.price),
-        price_pi: convertToCoins(tt.price),
-        presale_price_fcfa: parseInt(tt.presale_price, 10),
-        presale_price_pi: convertToCoins(tt.presale_price),
+        name: tt.name || "Standard",
+        description: tt.description || "",
+        price: priceFcfa.toString(),
+        price_pi: priceCoins,
+        price_coins: priceCoins,
+        quantity_available: quantityAvailable,
+        quantity_sold: 0,
+        presale_price_pi: presalePriceCoins,
+        presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
         sales_start: tt.sales_start_date
           ? new Date(tt.sales_start_date).toISOString()
           : new Date().toISOString(),
@@ -405,74 +392,61 @@ const CreateTicketingEventPage = () => {
           : eventEndAt.toISOString(),
         is_active: true,
         color: tt.color || "blue",
-      }));
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    });
 
-      const { error: typesError } = await supabase
-        .from("ticket_types")
-        .insert(ticketTypesToInsert);
-      if (typesError) throw typesError;
+    const { error: ticketTypesError } = await supabase
+      .from("ticket_types")
+      .insert(ticketTypesToInsert);
 
-      // Nettoyer le brouillon si l'événement a été créé avec succès
-      localStorage.removeItem("draftEvent");
+    if (ticketTypesError) throw ticketTypesError;
 
-      toast({
-        title: "Succès",
-        description: "Événement billetterie créé avec succès!",
-        duration: 5000,
-      });
+    console.log("✅", ticketTypesToInsert.length, "types de billets créés");
 
-      setTimeout(() => {
-        navigate(`/event/${newEventId}`);
-      }, 1000);
-    } catch (error) {
-      console.error("Error creating event:", error);
+    // 6. Nettoyer les brouillons
+    localStorage.removeItem("draftEvent");
+    localStorage.removeItem("event_promo_config_draft");
 
-      // Gérer les erreurs d'authentification
-      if (
-        error.message?.includes("session") ||
-        error.message?.includes("expiré") ||
-        error.message?.includes("JWT")
-      ) {
-        toast({
-          title: "Session expirée",
-          description: "Votre session a expiré. Merci de vous reconnecter.",
-          variant: "destructive",
-          duration: 5000,
-        });
+    // 7. Notification de succès
+    toast({
+      title: "🎉 Succès !",
+      description: (
+        <div className="space-y-1">
+          <p>Votre événement billetterie a été créé avec succès !</p>
+          <p className="text-xs opacity-90">
+            {totalTickets} billets • Potentiel: {ticketTypesToInsert.reduce((acc, t) => acc + (t.price_coins * t.quantity_available), 0).toLocaleString()} pièces
+          </p>
+          {promoConfig?.enabled && (
+            <p className="text-xs opacity-90 mt-1">
+              🏷️ Code promo activé: {promoConfig.discount_type === 'fixed' 
+                ? `${promoConfig.discount_value.toLocaleString()} FCFA de réduction (${promoConfig.discount_value / COIN_RATE} pièces)` 
+                : `${promoConfig.discount_value}% de réduction`}
+            </p>
+          )}
+        </div>
+      ),
+      duration: 6000,
+      className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
+    });
 
-        // Stocker les données du formulaire
-        const formData = {
-          title,
-          description,
-          eventDate,
-          endDate,
-          city,
-          country,
-          address,
-          categoryId,
-          maxAttendees,
-          isPublic,
-          requiresApproval,
-          coverImage,
-          ticketTypes,
-        };
-        localStorage.setItem("draftEvent", JSON.stringify(formData));
-
-        localStorage.setItem("redirectAfterLogin", window.location.pathname);
-        window.location.href = "/login";
-      } else {
-        toast({
-          title: "Erreur",
-          description:
-            error.message ||
-            "Une erreur est survenue lors de la création de l'événement",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    // 8. Redirection vers l'événement
+    setTimeout(() => {
+      navigate(`/event/${newEventId}`);
+    }, 2000);
+    
+  } catch (error) {
+    console.error("❌ Erreur création événement:", error);
+    toast({
+      title: "Erreur",
+      description: error.message || "Une erreur est survenue lors de la création",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 pb-20">
@@ -484,7 +458,6 @@ const CreateTicketingEventPage = () => {
         />
       </Helmet>
 
-      {/* Contract Modal */}
       <OrganizerContractModal
         open={showContractModal}
         onOpenChange={setShowContractModal}
@@ -613,11 +586,25 @@ const CreateTicketingEventPage = () => {
                         <SelectValue placeholder="Sélectionner une catégorie" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
+                        {categories.length === 0 ? (
+                          <div className="px-2 py-4 text-center text-muted-foreground">
+                            Chargement des catégories...
+                          </div>
+                        ) : (
+                          categories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              <div className="flex items-center gap-2">
+                                {c.color_hex && (
+                                  <div 
+                                    className="w-3 h-3 rounded-full" 
+                                    style={{ backgroundColor: c.color_hex }}
+                                  />
+                                )}
+                                <span>{c.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -897,6 +884,20 @@ const CreateTicketingEventPage = () => {
                 </div>
               </Button>
 
+              {/* Configuration des codes promo */}
+              <div className="mt-8 pt-4 border-t border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Codes de réduction</h3>
+                </div>
+                <PromoCodeConfig
+                  eventId={null}
+                  initialConfig={promoConfig}
+                  onSave={handlePromoConfigSave}
+                  readOnly={false}
+                />
+              </div>
+
               <div className="flex justify-between pt-8 border-t border-border">
                 <Button
                   variant="outline"
@@ -962,10 +963,32 @@ const CreateTicketingEventPage = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Aperçu de la configuration des codes promo */}
+                  {promoConfig && promoConfig.enabled && (
+                    <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <Tag className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-primary">
+                          Codes de réduction activés
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs">
+                        <Badge variant="outline" className="bg-primary/10">
+                          {promoConfig.discount_type === "fixed"
+                            ? `-${promoConfig.discount_value.toLocaleString()} FCFA`
+                            : `-${promoConfig.discount_value}%`}
+                        </Badge>
+                        <Badge variant="outline" className="bg-green-500/10">
+                          Commission: {promoConfig.commission_rate}%
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* Contract Acceptance Section with Modal Trigger */}
+              {/* Contract Acceptance Section */}
               <div className="bg-muted/20 border border-border p-4 rounded-lg">
                 <div className="flex items-start space-x-3">
                   <Checkbox
@@ -973,10 +996,8 @@ const CreateTicketingEventPage = () => {
                     checked={termsAccepted}
                     onCheckedChange={(checked) => {
                       if (checked && !termsAccepted) {
-                        // Si on veut cocher, on ouvre d'abord le modal
                         handleOpenContract();
                       } else {
-                        // Si on veut décocher, on peut le faire directement
                         setTermsAccepted(checked);
                       }
                     }}
@@ -1008,7 +1029,6 @@ const CreateTicketingEventPage = () => {
                       d'utilisation.
                     </p>
 
-                    {/* Contract Status Indicator */}
                     {termsAccepted && (
                       <div className="flex items-center gap-2 mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
                         <CheckCircle className="w-4 h-4 flex-shrink-0" />

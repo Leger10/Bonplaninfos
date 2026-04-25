@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { useData } from "@/contexts/DataContext";
@@ -22,7 +22,7 @@ import {
   X,
   Wallet,
   Package,
-  AlertCircle,
+  Tag,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { generateTicketPDF } from "@/utils/generateTicketPDF";
@@ -37,8 +37,9 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CoinService } from "@/services/CoinService";
+import { usePromoCode } from "@/hooks/usePromoCode";
 
-const FCFA_PER_COIN = 10; // taux de conversion
+const FCFA_PER_COIN = 10;
 
 // Ticket Colors constant
 const TICKET_COLORS = {
@@ -110,7 +111,23 @@ const TicketingInterface = ({
 }) => {
   const { user } = useAuth();
   const { userProfile } = useData();
+  const { applyPromoCode, removePromoCode, recordPromoCodeUsage, promoConfig } =
+    usePromoCode(event?.id);
 
+  // Promo code state
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [isPromoApplied, setIsPromoApplied] = useState(false);
+  const [promoDiscountAmount, setPromoDiscountAmount] = useState(0);
+  const [promoCommissionAmount, setPromoCommissionAmount] = useState(0);
+  const [appliedPromoCodeId, setAppliedPromoCodeId] = useState(null);
+  const [promoCodeError, setPromoCodeError] = useState("");
+  const [applyingPromoCode, setApplyingPromoCode] = useState(false);
+  const [appliedInfluencerId, setAppliedInfluencerId] = useState(null);
+  const [pendingCommissionAmount, setPendingCommissionAmount] = useState(0);
+  const [appliedDiscountValue, setAppliedDiscountValue] = useState(0);
+  const [appliedDiscountType, setAppliedDiscountType] = useState(null);
+  const isPurchasingRef = useRef(false);
+  
   // Initialize cart from localStorage
   const [cart, setCart] = useState(() => {
     try {
@@ -127,10 +144,22 @@ const TicketingInterface = ({
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [showCartDetails, setShowCartDetails] = useState(false);
-  const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] =
-    useState(false);
+  const [showInsufficientBalanceModal, setShowInsufficientBalanceModal] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
+  const [transactionId, setTransactionId] = useState(null);
+  const [isMobileView, setIsMobileView] = useState(false);
+const [promoDiscountValue, setPromoDiscountValue] = useState(0); // AJOUTÉ
+const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
+  // Detect screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Clear cart if event is closed
   useEffect(() => {
@@ -147,20 +176,16 @@ const TicketingInterface = ({
     }
   }, [cart, event?.id, isClosed]);
 
-  // Fetch user balance when checkout modal is opened
+  // Fetch user balance
   useEffect(() => {
     const fetchUserBalance = async () => {
       if (!user) return;
-
       setIsCheckingBalance(true);
       try {
-        // Use CoinService to get correct balances
         const balances = await CoinService.getWalletBalances(user.id);
-        // For tickets, we strictly use PAID COINS (coin_balance)
         setUserBalance(balances.coin_balance);
       } catch (error) {
         console.error("Error fetching user balance:", error);
-        // Fallback to userProfile if fetch fails
         if (userProfile?.coin_balance !== undefined) {
           setUserBalance(userProfile.coin_balance);
         }
@@ -172,7 +197,6 @@ const TicketingInterface = ({
     if (showCheckoutModal || showCartDetails) {
       fetchUserBalance();
     } else if (userProfile?.coin_balance !== undefined) {
-      // Initial load from context if modal not open
       setUserBalance(userProfile.coin_balance);
     }
   }, [user, showCheckoutModal, showCartDetails, userProfile]);
@@ -185,8 +209,8 @@ const TicketingInterface = ({
   const handleQuantityChange = (typeId, delta) => {
     if (isClosed) {
       toast({
-        title: "Ventes fermées",
-        description: "La billetterie est actuellement fermée.",
+        title: "Ventes fermees",
+        description: "La billetterie est actuellement fermee.",
         variant: "destructive",
       });
       return;
@@ -194,107 +218,60 @@ const TicketingInterface = ({
     setCart((prev) => {
       const current = prev[typeId] || 0;
       const type = ticketTypes?.find((t) => t.id === typeId);
-
       if (!type) return prev;
-
-      // Calculate available tickets
-      const available =
-        (type.quantity_available || 0) - (type.quantity_sold || 0);
-
-      // Calculate new quantity
+      const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
       let next;
       if (delta > 0) {
-        // Adding tickets - check if we exceed available
         next = Math.min(current + delta, available);
       } else {
-        // Removing tickets - minimum is 0
         next = Math.max(0, current + delta);
       }
-
       const newCart = { ...prev };
-
       if (next === 0) {
         delete newCart[typeId];
-        toast({
-          title: "Retiré du panier",
-          description: `${type.name} a été retiré de votre panier`,
-        });
       } else {
         newCart[typeId] = next;
-
-        // Show feedback when adding/removing
-        if (delta > 0 && next > current) {
-          toast({
-            title: "Ajouté au panier",
-            description: `${delta} x ${type.name} ajouté(s)`,
-          });
-        } else if (delta < 0 && next < current) {
-          toast({
-            title: "Retiré du panier",
-            description: `${Math.abs(delta)} x ${type.name} retiré(s)`,
-          });
-        }
       }
-
       return newCart;
     });
   };
 
-  // Add multiple tickets at once
   const handleAddMultiple = (typeId, quantity) => {
     if (isClosed) {
       toast({
-        title: "Ventes fermées",
-        description: "La billetterie est actuellement fermée.",
+        title: "Ventes fermees",
+        description: "La billetterie est actuellement fermee.",
         variant: "destructive",
       });
       return;
     }
     const type = ticketTypes?.find((t) => t.id === typeId);
     if (!type) return;
-
-    const available =
-      (type.quantity_available || 0) - (type.quantity_sold || 0);
+    const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
     const current = cart[typeId] || 0;
-
     if (quantity <= 0) {
-      // Remove from cart
       setCart((prev) => {
         const newCart = { ...prev };
         delete newCart[typeId];
         return newCart;
       });
-      toast({
-        title: "Retiré du panier",
-        description: `${type.name} a été retiré de votre panier`,
-      });
       return;
     }
-
-    // Calculate how many we can actually add
     const maxToAdd = Math.min(quantity, available - current);
-
     if (maxToAdd <= 0) {
       toast({
-        title: "Quantité non disponible",
+        title: "Quantite non disponible",
         description: `Seulement ${available} places disponibles pour ${type.name}`,
         variant: "destructive",
       });
       return;
     }
-
     setCart((prev) => ({
       ...prev,
       [typeId]: (prev[typeId] || 0) + maxToAdd,
     }));
-
-    toast({
-      title: "Ajouté au panier",
-      description: `${maxToAdd} x ${type.name} ajouté(s)`,
-    });
   };
 
-  // Remove specific ticket type from cart
   const removeFromCart = (typeId) => {
     const type = ticketTypes?.find((t) => t.id === typeId);
     setCart((prev) => {
@@ -302,23 +279,20 @@ const TicketingInterface = ({
       delete newCart[typeId];
       return newCart;
     });
-
     if (type) {
       toast({
-        title: "Retiré du panier",
-        description: `${type.name} a été retiré de votre panier`,
+        title: "Retire du panier",
+        description: `${type.name} a ete retire de votre panier`,
       });
     }
   };
 
-  // Clear entire cart
   const clearCart = () => {
     if (Object.keys(cart).length === 0) return;
-
     setCart({});
     toast({
-      title: "Panier vidé",
-      description: "Tous les billets ont été retirés de votre panier",
+      title: "Panier vide",
+      description: "Tous les billets ont ete retires de votre panier",
     });
   };
 
@@ -329,19 +303,15 @@ const TicketingInterface = ({
     return type.price_coins || type.price_pi || 0;
   };
 
-  // Calculate cart totals
   const cartItems = useMemo(() => {
     if (!ticketTypes) return [];
-
     return Object.entries(cart)
       .map(([id, qty]) => {
         const type = ticketTypes.find((t) => t.id === id);
         if (!type) return null;
-
         const unitPrice = getActivePrice(type);
         const total = unitPrice * qty;
         const totalFcfa = total * 10;
-
         return {
           id,
           type,
@@ -354,32 +324,95 @@ const TicketingInterface = ({
       .filter(Boolean);
   }, [cart, ticketTypes, isPresale]);
 
-  const cartTotal = useMemo(() => {
+  const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.total, 0);
   }, [cartItems]);
 
-  const cartTotalFcfa = useMemo(() => {
-    return cartTotal * 10;
-  }, [cartTotal]);
+  const cartTotal = useMemo(() => {
+    return Math.max(0, subtotal - promoDiscountAmount);
+  }, [subtotal, promoDiscountAmount]);
 
-  const totalTicketsInCart = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cartItems]);
-
-  // Check if user has sufficient balance (checking PAID balance)
-  const hasSufficientBalance = useMemo(() => {
-    return (userBalance || 0) >= cartTotal;
-  }, [userBalance, cartTotal]);
-
-  // Calculate how much more pi needed
-  const balanceDeficit = useMemo(() => {
-    return Math.max(0, cartTotal - (userBalance || 0));
-  }, [userBalance, cartTotal]);
-
-  // Convert to FCFA for display
+  const cartTotalFcfa = useMemo(() => cartTotal * 10, [cartTotal]);
+  const totalTicketsInCart = useMemo(() => cartItems.reduce((sum, item) => sum + item.quantity, 0), [cartItems]);
+  const hasSufficientBalance = useMemo(() => (userBalance || 0) >= cartTotal, [userBalance, cartTotal]);
+  const balanceDeficit = useMemo(() => Math.max(0, cartTotal - (userBalance || 0)), [userBalance, cartTotal]);
   const userBalanceCfa = (userBalance || 0) * FCFA_PER_COIN;
-  const cartTotalCfa = cartTotal * FCFA_PER_COIN;
   const deficitCfa = balanceDeficit * FCFA_PER_COIN;
+
+  // Handle promo code application
+  const handleApplyPromoCode = async () => {
+    if (!promoCodeInput.trim()) {
+      setPromoCodeError("Veuillez entrer un code");
+      return;
+    }
+
+    setApplyingPromoCode(true);
+    setPromoCodeError("");
+
+    try {
+      const result = await applyPromoCode(promoCodeInput, subtotal, user?.id);
+
+      if (!result.codeId) {
+        setPromoCodeError(result.message || "Code promo invalide");
+        toast({
+          title: "Code promo invalide",
+          description: result.message || "Verifiez que le code est correct",
+          variant: "destructive",
+        });
+        setApplyingPromoCode(false);
+        return;
+      }
+
+      if (result.newTotal !== subtotal && result.codeId) {
+        setIsPromoApplied(true);
+        setPromoDiscountAmount(subtotal - result.newTotal);
+        setPromoCommissionAmount(result.commissionAmount);
+        setAppliedPromoCodeId(result.codeId);
+        setAppliedInfluencerId(result.influencerId);
+        setPendingCommissionAmount(result.commissionAmount);
+        setAppliedDiscountValue(result.discountValue);
+        setAppliedDiscountType(result.discountType);
+        setPromoCodeInput("");
+
+        if (result.influencerId === user?.id) {
+          toast({
+            title: "Code promo applique",
+            description: "Reduction appliquee, mais vous ne recevrez pas de commission",
+            className: "bg-yellow-600 text-white",
+            duration: 5000,
+          });
+        } else {
+          toast({
+            title: "Code promo applique !",
+            description: `Reduction de ${(subtotal - result.newTotal).toFixed(2)} pieces`,
+            className: "bg-green-600 text-white",
+            duration: 4000,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error applying promo code:", error);
+      setPromoCodeError("Erreur lors de l'application du code");
+    } finally {
+      setApplyingPromoCode(false);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    removePromoCode();
+    setIsPromoApplied(false);
+    setPromoDiscountAmount(0);
+    setPromoCommissionAmount(0);
+    setAppliedPromoCodeId(null);
+    setAppliedInfluencerId(null);
+    setPendingCommissionAmount(0);
+    setAppliedDiscountValue(0);
+    setAppliedDiscountType(null);
+    toast({
+      title: "Code promo supprime",
+      description: "La reduction a ete retiree",
+    });
+  };
 
   const redirectToPacks = () => {
     setShowInsufficientBalanceModal(false);
@@ -387,15 +420,22 @@ const TicketingInterface = ({
     window.location.href = "/packs";
   };
 
+  // CORRECTION PRINCIPALE: handlePurchase modifié pour correspondre exactement à la base de données
   const handlePurchase = async () => {
+    if (isPurchasingRef.current) {
+      console.log("Achat deja en cours, ignore");
+      return;
+    }
+
     if (isClosed) {
       toast({
         title: "Impossible",
-        description: "Les ventes sont fermées.",
+        description: "Les ventes sont fermees.",
         variant: "destructive",
       });
       return;
     }
+
     if (!user) {
       toast({
         title: "Connexion requise",
@@ -409,55 +449,98 @@ const TicketingInterface = ({
     if (totalTicketsInCart === 0) {
       toast({
         title: "Panier vide",
-        description: "Veuillez ajouter des billets à votre panier",
+        description: "Veuillez ajouter des billets a votre panier",
         variant: "destructive",
       });
       return;
     }
 
-    // Vérifier le solde avant de procéder
     if (!hasSufficientBalance) {
       setShowInsufficientBalanceModal(true);
       return;
     }
 
+    isPurchasingRef.current = true;
     setLoading(true);
+
+    const promoCodeId = appliedPromoCodeId;
+    const promoCommission = pendingCommissionAmount || promoCommissionAmount;
+    const promoDiscount = promoDiscountAmount;
+
     try {
+      // Appel à purchase_tickets_v2 avec les bons paramètres
       const { data, error } = await supabase.rpc("purchase_tickets_v2", {
         p_user_id: user.id,
         p_event_id: event.id,
         p_cart: cart,
+        p_final_amount: cartTotal,
+        p_promo_code_id: promoCodeId || null,
+        p_commission_amount: promoCommission || 0,
       });
 
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
 
-      // Prepare tickets for PDF generation
-      const generatedTickets = data.tickets || [];
+      // Si un code promo a été utilisé, enregistrer l'utilisation
+      if (isPromoApplied && promoCodeId && promoCommission > 0) {
+        const transactionIdForPromo = data.transaction_id;
+        
+        const { error: promoError } = await supabase.rpc("process_promo_usage", {
+          p_code_id: promoCodeId,
+          p_user_id: user.id,
+          p_discount: promoDiscount,
+          p_commission: promoCommission,
+          p_purchase: cartTotal,
+          p_transaction_id: transactionIdForPromo,
+        });
 
-      // Map RPC result to what generateTicketPDF expects
+        if (promoError) {
+          console.error("Error processing promo usage:", promoError);
+        } else {
+          console.log("Promo usage recorded successfully");
+        }
+      }
+
+      // Gérer les tickets retournés
+      const generatedTickets = data.tickets || [];
       const pdfTickets = generatedTickets.map((t) => ({
-        ticket_number: t.number,
+        ticket_number: t.qr_code || t.number,
         type_name: t.type,
         price: t.price,
         price_fcfa: t.price_fcfa || t.price * 10,
-        ticket_code_short: t.short_code,
-        qr_code: t.number,
+        ticket_code_short: t.qr_code?.substring(0, 8),
+        qr_code: t.qr_code,
       }));
 
       setPurchasedTickets(pdfTickets);
+      setTransactionId(data.transaction_id);
       setShowCheckoutModal(false);
-
-      // Clear cart after successful purchase
       clearCart();
 
-      // Afficher la notification toast
+      // Réinitialiser les states promo
+      setIsPromoApplied(false);
+      setPromoDiscountAmount(0);
+      setPromoCommissionAmount(0);
+      setAppliedPromoCodeId(null);
+      setAppliedInfluencerId(null);
+      setPendingCommissionAmount(0);
+      setPromoCodeInput("");
+
+      // Toast de succès
       toast({
-        title: "🎉 Commande validée !",
+        title: "Commande validee !",
         description: (
           <div className="flex flex-col gap-1">
-            <span>Votre commande a été effectuée avec succès.</span>
-            <span className="font-medium text-primary">
+            <span>Votre commande a ete effectuee avec succes.</span>
+            {promoDiscount > 0 && (
+              <div className="mt-1 p-2 bg-green-100 rounded-md">
+                <span className="font-medium text-green-700">
+                  Reduction appliquee : {promoDiscount.toFixed(2)} pieces (
+                  {Math.floor(promoDiscount * 10).toLocaleString()} FCFA)
+                </span>
+              </div>
+            )}
+            <span className="font-medium text-primary mt-1">
               <Bell className="w-3 h-3 inline mr-1" />
               Vos billets sont disponibles dans votre profil !
             </span>
@@ -466,16 +549,16 @@ const TicketingInterface = ({
         duration: 5000,
       });
 
-      // Afficher le modal de succès après un court délai
-      setTimeout(() => {
-        setShowSuccessModal(true);
-      }, 1000);
-
-      // Afficher une notification en haut de l'écran
+      setTimeout(() => setShowSuccessModal(true), 1000);
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 5000);
 
       if (onRefresh) onRefresh();
+      
+      // Rafraîchir le solde utilisateur
+      const newBalance = await CoinService.getWalletBalances(user.id);
+      setUserBalance(newBalance.coin_balance);
+      
     } catch (error) {
       console.error("Purchase error:", error);
       toast({
@@ -485,25 +568,26 @@ const TicketingInterface = ({
       });
     } finally {
       setLoading(false);
+      isPurchasingRef.current = false;
     }
   };
 
   const handleDownloadPDF = async () => {
     if (purchasedTickets && purchasedTickets.length > 0) {
       toast({
-        title: "Génération en cours...",
-        description: "Préparation de votre PDF de billets.",
+        title: "Generation en cours...",
+        description: "Preparation de votre PDF de billets.",
       });
       try {
         await generateTicketPDF(event, purchasedTickets, user);
         toast({
-          title: "✅ Succès",
-          description: "Vos billets ont été téléchargés.",
+          title: "Succes",
+          description: "Vos billets ont ete telecharges.",
         });
       } catch (error) {
         toast({
           title: "Erreur",
-          description: "Impossible de télécharger les billets",
+          description: "Impossible de telecharger les billets",
           variant: "destructive",
         });
       }
@@ -521,19 +605,18 @@ const TicketingInterface = ({
     }
   };
 
-  // Quick add buttons for common quantities
   const quickAddOptions = [1, 2, 3, 5];
 
   if (!isUnlocked) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative px-2 sm:px-0">
-      {/* Notification flottante */}
+      {/* Notification flottante - garder le même JSX */}
       {showNotification && (
         <div className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-500 w-[90vw] sm:w-auto">
           <Alert className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl max-w-md mx-auto">
             <CheckCircle2 className="h-5 w-5" />
-            <AlertTitle className="text-white">Commande confirmée !</AlertTitle>
+            <AlertTitle className="text-white">Commande confirmee !</AlertTitle>
             <AlertDescription className="text-white/90">
               Vos billets sont disponibles dans l'onglet{" "}
               <strong>"Mes Billets"</strong> de votre profil.
@@ -542,183 +625,99 @@ const TicketingInterface = ({
         </div>
       )}
 
-      {/* Header */}
+      {/* Header - garder le même JSX */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gradient-to-r from-primary/10 to-purple-500/10 p-4 sm:p-6 rounded-xl border border-primary/20 gap-3 sm:gap-0">
         <div className="w-full sm:w-auto">
           <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-foreground">
-            <Ticket className="text-primary h-5 w-5 sm:h-6 sm:w-6" />{" "}
-            Billetterie
+            <Ticket className="text-primary h-5 w-5 sm:h-6 sm:w-6" /> Billetterie
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Sélectionnez vos billets ci-dessous
-          </p>
+          <p className="text-muted-foreground text-sm">Selectionnez vos billets ci-dessous</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
           {isPresale ? (
-            <Badge
-              variant="secondary"
-              className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse text-xs sm:text-sm"
-            >
-              🌟 Prévente
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300 animate-pulse text-xs sm:text-sm">
+              Prevente
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-xs sm:text-sm">
-              Tarif Normal
-            </Badge>
+            <Badge variant="outline" className="text-xs sm:text-sm">Tarif Normal</Badge>
           )}
-          {/* User Balance Display */}
           <div className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-primary/10 rounded-lg">
             <Wallet className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium whitespace-nowrap">
-              Solde:{" "}
-              <span className="font-bold">{userBalance.toFixed(2)}pièces </span>
+              Solde: <span className="font-bold">{userBalance.toFixed(2)} pieces</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Ticket Grid */}
+      {/* Ticket Grid - garder le même JSX */}
       {!ticketTypes || ticketTypes.length === 0 ? (
         <Alert>
           <AlertTitle>Aucun billet disponible</AlertTitle>
-          <AlertDescription>
-            La billetterie est fermée ou les billets sont épuisés.
-          </AlertDescription>
+          <AlertDescription>La billetterie est fermee ou les billets sont epuises.</AlertDescription>
         </Alert>
       ) : (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
           {ticketTypes.map((type) => {
             const price = getActivePrice(type);
-            const available =
-              (type.quantity_available || 0) - (type.quantity_sold || 0);
+            const available = (type.quantity_available || 0) - (type.quantity_sold || 0);
             const isSoldOut = available <= 0;
             const inCart = cart[type.id] || 0;
             const style = TICKET_COLORS[type.color] || TICKET_COLORS.blue;
 
             return (
-              <Card
-                key={type.id}
-                className={`relative overflow-hidden transition-all hover:shadow-xl ${style.bg} ${style.border} ${isSoldOut || isClosed ? "opacity-80 grayscale" : "hover:scale-[1.02]"} group`}
-              >
+              <Card key={type.id} className={`relative overflow-hidden transition-all hover:shadow-xl ${style.bg} ${style.border} ${isSoldOut || isClosed ? "opacity-80 grayscale" : "hover:scale-[1.02]"} group`}>
                 <CardContent className="p-4 sm:p-6 flex flex-col h-full justify-between gap-3 sm:gap-4">
                   <div className="flex flex-col gap-1">
-                    {/* First row: icon and name */}
                     <div className="flex items-center gap-2">
                       {getTicketIcon(type.color)}
-                      <h3
-                        className={`font-bold text-lg sm:text-xl ${style.text} break-words`}
-                      >
-                        {type.name}
-                      </h3>
+                      <h3 className={`font-bold text-lg sm:text-xl ${style.text} break-words`}>{type.name}</h3>
                     </div>
-                    {/* Second row: price and FCFA */}
                     <div>
-                      <div
-                        className={`font-bold text-xl sm:text-2xl ${style.text} flex items-center`}
-                      >
-                        {price.toFixed(2)}{" "}
-                        <Coins className="w-4 h-4 sm:w-5 sm:h-5 ml-1 text-yellow-300" />
+                      <div className={`font-bold text-xl sm:text-2xl ${style.text} flex items-center`}>
+                        {price.toFixed(2)} <Coins className="w-4 h-4 sm:w-5 sm:h-5 ml-1 text-yellow-300" />
                       </div>
-                      <div
-                        className={`text-xs sm:text-sm ${style.text} opacity-80`}
-                      >
-                        {(price * 10).toLocaleString()} FCFA
-                      </div>
+                      <div className={`text-xs sm:text-sm ${style.text} opacity-80`}>{(price * 10).toLocaleString()} FCFA</div>
                     </div>
                   </div>
-
                   {type.description && (
-                    <p
-                      className={`text-xs sm:text-sm ${style.text} opacity-90 mt-2 line-clamp-2`}
-                    >
-                      {type.description}
-                    </p>
+                    <p className={`text-xs sm:text-sm ${style.text} opacity-90 mt-2 line-clamp-2`}>{type.description}</p>
                   )}
-
                   <div className="space-y-3">
-                    {/* Stock info */}
                     <div className="flex items-center justify-between">
-                      <span
-                        className={`text-xs ${style.text} font-medium ${isSoldOut ? "text-red-200" : ""} truncate`}
-                      >
-                        {isClosed
-                          ? "🚫 Terminé"
-                          : isSoldOut
-                            ? "🚫 Épuisé"
-                            : `🎟️ ${available} places`}
+                      <span className={`text-xs ${style.text} font-medium ${isSoldOut ? "text-red-200" : ""} truncate`}>
+                        {isClosed ? "Termine" : isSoldOut ? "Epuise" : `${available} places`}
                       </span>
                       {inCart > 0 && !isClosed && (
-                        <Badge
-                          variant="secondary"
-                          className={`${style.badge} text-xs px-2`}
-                        >
-                          {inCart} dans le panier
-                        </Badge>
+                        <Badge variant="secondary" className={`${style.badge} text-xs px-2`}>{inCart} dans le panier</Badge>
                       )}
                     </div>
-
-                    {/* Quick add buttons - Disabled if Closed */}
                     {!isSoldOut && !isClosed && (
                       <div className="flex flex-wrap gap-1">
                         {quickAddOptions.map((qty) => (
-                          <Button
-                            key={qty}
-                            size="sm"
-                            variant="outline"
-                            className={`h-6 sm:h-7 px-2 text-xs ${style.text} border-white/30 hover:bg-white/20`}
-                            onClick={() => handleAddMultiple(type.id, qty)}
-                            disabled={available < inCart + qty}
-                          >
+                          <Button key={qty} size="sm" variant="outline" className={`h-6 sm:h-7 px-2 text-xs ${style.text} border-white/30 hover:bg-white/20`} onClick={() => handleAddMultiple(type.id, qty)} disabled={available < inCart + qty}>
                             +{qty}
                           </Button>
                         ))}
                       </div>
                     )}
-
-                    {/* Quantity controls */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-2 border-t border-white/20 gap-3 sm:gap-0">
                       {isClosed ? (
-                        <div className="w-full text-center py-2 bg-black/20 rounded-lg text-white font-medium text-sm">
-                          Billetterie fermée
-                        </div>
+                        <div className="w-full text-center py-2 bg-black/20 rounded-lg text-white font-medium text-sm">Billetterie fermee</div>
                       ) : (
                         <>
                           <div className="flex items-center gap-2 sm:gap-3 bg-black/20 p-1 rounded-lg backdrop-blur-sm w-full sm:w-auto justify-center">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors"
-                              onClick={() => handleQuantityChange(type.id, -1)}
-                              disabled={!inCart || isSoldOut}
-                            >
+                            <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" onClick={() => handleQuantityChange(type.id, -1)} disabled={!inCart || isSoldOut}>
                               <Minus className="w-3 h-3 sm:w-3 sm:h-3" />
                             </Button>
-                            <span
-                              className={`w-8 text-center font-bold ${style.text} text-lg`}
-                            >
-                              {inCart || 0}
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors"
-                              onClick={() => handleQuantityChange(type.id, 1)}
-                              disabled={available <= inCart || isSoldOut}
-                            >
+                            <span className={`w-8 text-center font-bold ${style.text} text-lg`}>{inCart || 0}</span>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/20 transition-colors" onClick={() => handleQuantityChange(type.id, 1)} disabled={available <= inCart || isSoldOut}>
                               <Plus className="w-3 h-3 sm:w-3 sm:h-3" />
                             </Button>
                           </div>
-
-                          {/* Remove all button */}
                           {inCart > 0 && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20 w-full sm:w-auto mt-2 sm:mt-0`}
-                              onClick={() => removeFromCart(type.id)}
-                            >
-                              <X className="w-3 h-3 mr-1" />
-                              Retirer
+                            <Button size="sm" variant="ghost" className={`h-7 px-2 text-xs ${style.text} hover:bg-white/20 w-full sm:w-auto mt-2 sm:mt-0`} onClick={() => removeFromCart(type.id)}>
+                              <X className="w-3 h-3 mr-1" /> Retirer
                             </Button>
                           )}
                         </>
@@ -732,148 +731,106 @@ const TicketingInterface = ({
         </div>
       )}
 
-      {/* Floating Cart - Hidden if Closed */}
+      {/* Floating Cart - garder le même JSX avec les corrections mineures */}
       {totalTicketsInCart > 0 && !isClosed && (
         <>
-          {/* Cart Details Panel */}
           {showCartDetails && (
-            <div
-              className="fixed inset-0 z-40 bg-black/50"
-              onClick={() => setShowCartDetails(false)}
-            >
-              <div
-                className="fixed bottom-0 left-0 right-0 sm:bottom-24 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-full sm:max-w-md max-h-[85vh] overflow-hidden"
-                onClick={(e) => e.stopPropagation()}
-              >
+            <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setShowCartDetails(false)}>
+              <div className="fixed bottom-0 left-0 right-0 sm:bottom-24 sm:left-1/2 sm:transform sm:-translate-x-1/2 w-full sm:max-w-md max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <Card className="bg-card shadow-2xl border-t-4 border-t-primary rounded-t-2xl sm:rounded-xl h-full overflow-hidden">
                   <CardContent className="p-4 h-full flex flex-col">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-lg">
-                        Votre panier ({totalTicketsInCart} billet
-                        {totalTicketsInCart > 1 ? "s" : ""})
-                      </h3>
+                      <h3 className="font-bold text-lg">Votre panier ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? "s" : ""})</h3>
                       <div className="flex items-center gap-2">
-                        {/* Balance display in cart */}
                         <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 rounded text-sm">
                           <Wallet className="w-3 h-3" />
-                          <span className="font-medium">
-                            {userBalance.toFixed(2)} pièces
-                          </span>
+                          <span className="font-medium">{userBalance.toFixed(2)} pieces</span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearCart}
-                          className="text-destructive hover:text-destructive p-2"
-                        >
+                        <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive hover:text-destructive p-2">
                           <Trash2 className="w-4 h-4" />
-                          <span className="sr-only sm:not-sr-only sm:ml-1">
-                            Vider
-                          </span>
+                          <span className="sr-only sm:not-sr-only sm:ml-1">Vider</span>
                         </Button>
                       </div>
                     </div>
-
                     <ScrollArea className="flex-1 pr-2 sm:pr-4">
                       {cartItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-3 mb-2 bg-muted/30 rounded-lg"
-                        >
+                        <div key={item.id} className="flex items-center justify-between p-3 mb-2 bg-muted/30 rounded-lg">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">
-                              {item.type.name}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {item.unitPrice.toFixed(2)} pièces ×{" "}
-                              {item.quantity}
-                            </div>
+                            <div className="font-medium truncate">{item.type.name}</div>
+                            <div className="text-sm text-muted-foreground">{item.unitPrice.toFixed(2)} pieces x {item.quantity}</div>
                           </div>
                           <div className="flex items-center gap-2 sm:gap-3 ml-2">
                             <div className="text-right">
-                              <div className="font-bold text-sm sm:text-base">
-                                {item.total.toFixed(2)} pièces
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {item.totalFcfa.toLocaleString()} FCFA
-                              </div>
+                              <div className="font-bold text-sm sm:text-base">{item.total.toFixed(2)} pieces</div>
+                              <div className="text-xs text-muted-foreground">{item.totalFcfa.toLocaleString()} FCFA</div>
                             </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive flex-shrink-0"
-                              onClick={() => removeFromCart(item.id)}
-                            >
+                            <Button size="icon" variant="ghost" className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive flex-shrink-0" onClick={() => removeFromCart(item.id)}>
                               <X className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
                     </ScrollArea>
-
                     <div className="mt-4 pt-4 border-t">
-                      {/* Balance check */}
+                      {!isPromoApplied && (
+                        <div className="mb-3 p-3 bg-muted/20 rounded-lg">
+                          <div className="flex gap-2">
+                            <input type="text" placeholder="Code promo" value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())} className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background" />
+                            <Button onClick={handleApplyPromoCode} disabled={applyingPromoCode || !promoCodeInput.trim()} variant="outline" size="sm">
+                              {applyingPromoCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />} Appliquer
+                            </Button>
+                          </div>
+                          {promoCodeError && <p className="text-xs text-destructive mt-1">{promoCodeError}</p>}
+                        </div>
+                      )}
+                      {isPromoApplied && (
+                        <div className="mb-3 p-2 bg-green-500/10 rounded-lg border border-green-500/20 animate-in zoom-in duration-300">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Tag className="w-4 h-4 text-green-600 animate-bounce" />
+                              <span className="text-sm font-medium text-green-600">Reduction appliquee</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-green-600 animate-pulse">-{promoDiscountAmount.toFixed(2)} pieces</div>
+                              <div className="text-xs text-green-600">-{Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA</div>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={handleRemovePromoCode} className="h-7 px-2 text-destructive absolute right-2 top-2 hover:scale-110 transition-transform">
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
                       {!hasSufficientBalance && (
                         <Alert variant="destructive" className="mb-3">
-                          <AlertTitle className="text-sm">
-                            Solde insuffisant
-                          </AlertTitle>
-                          <AlertDescription className="text-xs">
-                            Il vous manque {balanceDeficit.toFixed(2)} pièces
-                          </AlertDescription>
+                          <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
+                          <AlertDescription className="text-xs">Il vous manque {balanceDeficit.toFixed(2)} pieces</AlertDescription>
                         </Alert>
                       )}
-
                       <div className="flex justify-between items-center mb-3">
                         <div className="min-w-0">
-                          <span className="font-bold text-sm sm:text-base">
-                            Total
-                          </span>
-                          <div className="text-xs sm:text-sm text-muted-foreground truncate">
-                            Solde disponible: {userBalance.toFixed(2)} pièces
-                          </div>
+                          <span className="font-bold text-sm sm:text-base">Total</span>
+                          <div className="text-xs sm:text-sm text-muted-foreground truncate">Solde disponible: {userBalance.toFixed(2)} pieces</div>
+                          {isPromoApplied && <div className="text-xs text-green-600">(reduction appliquee)</div>}
                         </div>
                         <div className="text-right ml-2">
-                          <div className="text-xl sm:text-2xl font-bold text-primary">
-                            {cartTotal.toFixed(2)} pièces
-                          </div>
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            {cartTotalCfa.toLocaleString()} FCFA
-                          </div>
+                          <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} pieces</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground">{cartTotalFcfa.toLocaleString()} FCFA</span>
+                          {isPromoApplied && (
+                            <div className="text-xs text-green-600">
+                              <span className="line-through">(au lieu de {(subtotal * 10).toLocaleString()} FCFA)</span>
+                              <br />
+                              <span>Economie : {promoDiscountAmount.toFixed(2)} pieces ({Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <Button
-                        onClick={() => {
-                          setShowCartDetails(false);
-                          if (!hasSufficientBalance) {
-                            setShowInsufficientBalanceModal(true);
-                          } else {
-                            setShowCheckoutModal(true);
-                          }
-                        }}
-                        className="w-full"
-                        size="lg"
-                        disabled={isCheckingBalance}
-                      >
+                      <Button onClick={() => { setShowCartDetails(false); if (!hasSufficientBalance) setShowInsufficientBalanceModal(true); else setShowCheckoutModal(true); }} className="w-full" size="lg" disabled={isCheckingBalance}>
                         {isCheckingBalance ? (
-                          <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            <span className="truncate">Vérification...</span>
-                          </>
+                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /><span>Verification...</span></>
                         ) : !hasSufficientBalance ? (
-                          <>
-                            <Package className="w-5 h-5 mr-2" />
-                            <span className="truncate">
-                              Recharger mon compte
-                            </span>
-                          </>
+                          <><Package className="w-5 h-5 mr-2" /><span>Recharger mon compte</span></>
                         ) : (
-                          <>
-                            <ShoppingCart className="w-5 h-5 mr-2" />
-                            <span className="truncate">
-                              Commander maintenant
-                            </span>
-                          </>
+                          <><ShoppingCart className="w-5 h-5 mr-2" /><span>Commander maintenant</span></>
                         )}
                       </Button>
                     </div>
@@ -882,62 +839,27 @@ const TicketingInterface = ({
               </div>
             </div>
           )}
-
-          {/* Floating Cart Button */}
           <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4 animate-in slide-in-from-bottom duration-500">
             <div className="flex flex-col sm:flex-row items-center gap-2 bg-card/95 backdrop-blur-md rounded-2xl sm:rounded-full shadow-2xl border-t-4 border-t-primary p-3 sm:p-2 sm:pl-4 w-full max-w-md sm:max-w-none">
               <div className="flex items-center gap-3 mb-2 sm:mb-0 w-full sm:w-auto justify-between sm:justify-start">
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <ShoppingCart className="w-6 h-6 text-primary" />
-                    {totalTicketsInCart > 0 && (
-                      <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">
-                        {totalTicketsInCart}
-                      </Badge>
-                    )}
+                    {totalTicketsInCart > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center">{totalTicketsInCart}</Badge>}
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-medium whitespace-nowrap">
-                      {totalTicketsInCart} billet
-                      {totalTicketsInCart > 1 ? "s" : ""}
-                    </p>
+                    <p className="text-sm font-medium whitespace-nowrap">{totalTicketsInCart} billet{totalTicketsInCart > 1 ? "s" : ""}</p>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-primary whitespace-nowrap">
-                        {cartTotal.toFixed(2)} pièces
-                      </p>
-                      {!hasSufficientBalance && (
-                        <Badge
-                          variant="destructive"
-                          className="h-4 px-1 text-[10px] whitespace-nowrap"
-                        >
-                          Solde insuffisant
-                        </Badge>
-                      )}
+                      <p className="text-xs font-bold text-primary whitespace-nowrap">{cartTotal.toFixed(2)} pieces</p>
+                      {isPromoApplied && <Badge variant="secondary" className="text-[10px] bg-green-500/20">Promo</Badge>}
+                      {!hasSufficientBalance && <Badge variant="destructive" className="h-4 px-1 text-[10px] whitespace-nowrap">Solde insuffisant</Badge>}
                     </div>
                   </div>
                 </div>
               </div>
-
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCartDetails(true)}
-                  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm"
-                >
-                  Voir détails
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() => {
-                    if (!hasSufficientBalance) {
-                      setShowInsufficientBalanceModal(true);
-                    } else {
-                      setShowCheckoutModal(true);
-                    }
-                  }}
-                  className={`rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
-                >
+                <Button variant="outline" size="sm" onClick={() => setShowCartDetails(true)} className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm">Voir details</Button>
+                <Button size="lg" onClick={() => { if (!hasSufficientBalance) setShowInsufficientBalanceModal(true); else setShowCheckoutModal(true); }} className={`rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}>
                   {!hasSufficientBalance ? "Recharger" : "Commander"}
                 </Button>
               </div>
@@ -946,76 +868,59 @@ const TicketingInterface = ({
         </>
       )}
 
-      {/* Empty Cart State - Only if Not Closed */}
+      {/* Empty Cart State */}
       {totalTicketsInCart === 0 && !isClosed && (
         <div className="fixed bottom-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-4">
           <Card className="bg-card/95 backdrop-blur-md border-t-4 border-t-primary shadow-lg w-full max-w-md">
             <CardContent className="p-4">
               <div className="flex items-center justify-center gap-3">
                 <ShoppingCart className="w-6 h-6 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Votre panier est vide
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    window.scrollTo({ top: 0, behavior: "smooth" })
-                  }
-                  className="whitespace-nowrap"
-                >
-                  Ajouter des billets
-                </Button>
+                <p className="text-sm text-muted-foreground">Votre panier est vide</p>
+                <Button variant="outline" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="whitespace-nowrap">Ajouter des billets</Button>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Checkout Modal */}
+      {/* Checkout Modal - garder le même JSX */}
       <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
         <DialogContent className="w-[95vw] max-w-lg mx-auto p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">
-              Validation de commande
-            </DialogTitle>
-            <DialogDescription>
-              Vérifiez et modifiez votre commande avant de finaliser
-            </DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Validation de commande</DialogTitle>
+            <DialogDescription>Verifiez et modifiez votre commande avant de finaliser</DialogDescription>
           </DialogHeader>
-
-          {/* User Balance Summary */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 rounded-lg border border-blue-200">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div className="flex items-center gap-3">
                 <Wallet className="w-5 h-5 text-primary" />
                 <div>
                   <p className="text-sm font-medium">Votre solde</p>
-                  <p className="text-xl sm:text-2xl font-bold text-primary">
-                    {userBalance.toFixed(2)} pièces
-                  </p>
+                  <p className="text-xl sm:text-2xl font-bold text-primary">{userBalance.toFixed(2)} pieces</p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">Total panier</p>
-                <p
-                  className={`text-xl sm:text-2xl font-bold ${hasSufficientBalance ? "text-green-600" : "text-destructive"}`}
-                >
-                  {cartTotal.toFixed(2)} pièces
-                </p>
+                <p className={`text-xl sm:text-2xl font-bold ${hasSufficientBalance ? "text-green-600" : "text-destructive"}`}>{cartTotal.toFixed(2)} pieces</p>
+                {isPromoApplied && <p className="text-xs text-green-600">(reduction de {promoDiscountAmount.toFixed(2)} pieces)</p>}
               </div>
             </div>
             {!hasSufficientBalance && (
               <Alert variant="destructive" className="mt-3">
                 <AlertTitle className="text-sm">Solde insuffisant</AlertTitle>
-                <AlertDescription className="text-xs">
-                  Il vous manque {balanceDeficit.toFixed(2)} pièces pour valider
-                  cette commande.
-                </AlertDescription>
+                <AlertDescription className="text-xs">Il vous manque {balanceDeficit.toFixed(2)} pieces pour valider cette commande.</AlertDescription>
               </Alert>
             )}
           </div>
-
+          <div id="promo-section" className="mb-3 p-3 bg-muted/20 rounded-lg">
+            <div className="flex gap-2">
+              <input id="promo-code-input" type="text" placeholder="Code promo" value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())} className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background transition-all duration-200 focus:ring-2 focus:ring-green-500" />
+              <Button onClick={handleApplyPromoCode} disabled={applyingPromoCode || !promoCodeInput.trim()} variant="outline" size="sm" className={`transition-all duration-300 ${applyingPromoCode ? "opacity-70" : "hover:scale-105"}`}>
+                {applyingPromoCode ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4 transition-transform group-hover:rotate-12" />} Appliquer
+              </Button>
+            </div>
+            {promoCodeError && <p id="promo-error" className="text-xs text-destructive mt-1">{promoCodeError}</p>}
+          </div>
           <ScrollArea className="max-h-[40vh] sm:max-h-[50vh] pr-2 sm:pr-4">
             <div className="space-y-3 sm:space-y-4 py-2">
               {cartItems.length === 0 ? (
@@ -1025,166 +930,79 @@ const TicketingInterface = ({
                 </div>
               ) : (
                 cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg"
-                  >
+                  <div key={item.id} className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg">
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-base sm:text-lg truncate">
-                        {item.type.name}
-                      </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-1">
-                        {item.type.description || "Billet standard"}
-                      </div>
+                      <div className="font-bold text-base sm:text-lg truncate">{item.type.name}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-1">{item.type.description || "Billet standard"}</div>
                       <div className="flex items-center gap-2 sm:gap-4">
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
-                            onClick={() => handleQuantityChange(item.id, -1)}
-                            disabled={item.quantity <= 1}
-                          >
+                          <Button size="icon" variant="outline" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => handleQuantityChange(item.id, -1)} disabled={item.quantity <= 1}>
                             <Minus className="w-3 h-3" />
                           </Button>
-                          <span className="font-bold w-6 sm:w-8 text-center text-sm sm:text-base">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
-                            onClick={() => handleQuantityChange(item.id, 1)}
-                            disabled={
-                              (item.type.quantity_available || 0) -
-                                (item.type.quantity_sold || 0) <=
-                              item.quantity
-                            }
-                          >
+                          <span className="font-bold w-6 sm:w-8 text-center text-sm sm:text-base">{item.quantity}</span>
+                          <Button size="icon" variant="outline" className="h-7 w-7 sm:h-8 sm:w-8" onClick={() => handleQuantityChange(item.id, 1)} disabled={(item.type.quantity_available || 0) - (item.type.quantity_sold || 0) <= item.quantity}>
                             <Plus className="w-3 h-3" />
                           </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-7 sm:h-8 px-2"
-                          onClick={() => removeFromCart(item.id)}
-                        >
+                        <Button size="sm" variant="destructive" className="h-7 sm:h-8 px-2" onClick={() => removeFromCart(item.id)}>
                           <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="sr-only sm:not-sr-only sm:ml-1">
-                            Supprimer
-                          </span>
+                          <span className="sr-only sm:not-sr-only sm:ml-1">Supprimer</span>
                         </Button>
                       </div>
                     </div>
                     <div className="text-right ml-2">
-                      <div className="text-base sm:text-lg font-bold">
-                        {item.total.toFixed(2)} pièces
-                      </div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">
-                        {item.totalFcfa.toLocaleString()} FCFA
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {item.unitPrice.toFixed(2)} pièces / billet
-                      </div>
+                      <div className="text-base sm:text-lg font-bold">{item.total.toFixed(2)} pieces</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">{item.totalFcfa.toLocaleString()} FCFA</div>
+                      <div className="text-xs text-muted-foreground mt-1">{item.unitPrice.toFixed(2)} pieces / billet</div>
                     </div>
                   </div>
                 ))
               )}
             </div>
           </ScrollArea>
-
           {cartItems.length > 0 && (
             <>
               <div className="space-y-3">
                 <div className="flex justify-between items-center pt-4 border-t">
                   <div className="min-w-0">
-                    <span className="text-base sm:text-lg font-bold">
-                      Total ({totalTicketsInCart} billet
-                      {totalTicketsInCart > 1 ? "s" : ""})
-                    </span>
-                    <div className="text-xs sm:text-sm text-muted-foreground truncate">
-                      {cartItems.length} type{cartItems.length > 1 ? "s" : ""}{" "}
-                      de billet
-                    </div>
+                    <span className="text-base sm:text-lg font-bold">Total ({totalTicketsInCart} billet{totalTicketsInCart > 1 ? "s" : ""})</span>
+                    <div className="text-xs sm:text-sm text-muted-foreground truncate">{cartItems.length} type{cartItems.length > 1 ? "s" : ""} de billet</div>
                   </div>
                   <div className="text-right ml-2">
-                    <span className="text-xl sm:text-2xl font-bold text-primary block">
-                      {cartTotal.toFixed(2)} pièces
-                    </span>
-                    <span className="text-xs sm:text-sm text-muted-foreground">
-                      {cartTotalCfa.toLocaleString()} FCFA
-                    </span>
+                    <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} pieces</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">{cartTotalFcfa.toLocaleString()} FCFA</span>
+                    {isPromoApplied && <div className="text-xs text-green-600 line-through">(au lieu de {(subtotal * 10).toLocaleString()} FCFA)</div>}
                   </div>
                 </div>
-
                 {!hasSufficientBalance && (
                   <Alert className="bg-amber-50 border-amber-200">
                     <AlertDescription className="text-xs sm:text-sm text-amber-800">
-                      <Package className="w-4 h-4 inline mr-2" />
-                      Votre solde est insuffisant.{" "}
-                      <strong>Rechargez vos pièces pour continuer.</strong>
+                      <Package className="w-4 h-4 inline mr-2" /> Votre solde est insuffisant. <strong>Rechargez vos pieces pour continuer.</strong>
                     </AlertDescription>
                   </Alert>
                 )}
-
                 <Alert className="bg-blue-50 border-blue-200">
                   <AlertDescription className="text-xs sm:text-sm text-blue-700">
-                    <Bell className="w-4 h-4 inline mr-2" />
-                    Après paiement, vos billets seront disponibles dans votre
-                    profil.
+                    <Bell className="w-4 h-4 inline mr-2" /> Apres paiement, vos billets seront disponibles dans votre profil.
                   </AlertDescription>
                 </Alert>
               </div>
-
               <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
                 <div className="flex flex-col sm:flex-row gap-2 w-full">
-                  <Button
-                    variant="destructive"
-                    onClick={clearCart}
-                    className="w-full sm:flex-1"
-                    disabled={cartItems.length === 0}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Vider le panier
+                  <Button variant="destructive" onClick={clearCart} className="w-full sm:flex-1" disabled={cartItems.length === 0}>
+                    <Trash2 className="w-4 h-4 mr-2" /> Vider le panier
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCheckoutModal(false)}
-                    className="w-full sm:flex-1"
-                  >
+                  <Button variant="outline" onClick={() => setShowCheckoutModal(false)} className="w-full sm:flex-1">
                     Continuer mes achats
                   </Button>
                 </div>
-                <Button
-                  onClick={
-                    hasSufficientBalance
-                      ? handlePurchase
-                      : () => setShowInsufficientBalanceModal(true)
-                  }
-                  disabled={
-                    loading || cartItems.length === 0 || !hasSufficientBalance
-                  }
-                  className={`w-full sm:w-48 ${hasSufficientBalance ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700"}`}
-                  size="lg"
-                >
+                <Button onClick={hasSufficientBalance ? handlePurchase : () => setShowInsufficientBalanceModal(true)} disabled={loading || cartItems.length === 0 || !hasSufficientBalance} className={`w-full sm:w-48 ${hasSufficientBalance ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700"}`} size="lg">
                   {loading ? (
-                    <>
-                      <Loader2 className="animate-spin mr-2 w-5 h-5" />
-                      <span className="truncate">Traitement...</span>
-                    </>
+                    <><Loader2 className="animate-spin mr-2 w-5 h-5" /><span>Traitement...</span></>
                   ) : hasSufficientBalance ? (
-                    <>
-                      <Check className="mr-2 w-5 h-5" />
-                      <span className="truncate">
-                        Payer {cartTotal.toFixed(2)} pièces
-                      </span>
-                    </>
+                    <><Check className="mr-2 w-5 h-5" /><span>Payer {cartTotal.toFixed(2)} pieces</span></>
                   ) : (
-                    <>
-                      <Package className="mr-2 w-5 h-5" />
-                      <span className="truncate">Faire un dépôt dans mon compte</span>
-                    </>
+                    <><Package className="mr-2 w-5 h-5" /><span>Recharger mon compte</span></>
                   )}
                 </Button>
               </DialogFooter>
@@ -1193,127 +1011,54 @@ const TicketingInterface = ({
         </DialogContent>
       </Dialog>
 
-      {/* Insufficient Balance Modal */}
-      <Dialog
-        open={showInsufficientBalanceModal}
-        onOpenChange={setShowInsufficientBalanceModal}
-      >
+      {/* Insufficient Balance Modal - garder le même JSX */}
+      <Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
         <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
           <DialogHeader>
             <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
               <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
             </div>
-            <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">
-              Solde insuffisant
-            </DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
             <DialogDescription className="text-center text-sm sm:text-base space-y-2">
-              <div>
-                Votre solde actuel de{" "}
-                <strong>{userBalance.toLocaleString()} pièces</strong>{" "}
-                <span className="text-muted-foreground">
-                  (≈ {userBalanceCfa.toLocaleString()} FCFA)
-                </span>{" "}
-                ne permet pas d'acheter le panier de{" "}
-                <strong>{cartTotal.toLocaleString()} pièces</strong>{" "}
-                <span className="text-muted-foreground">
-                  (≈ {cartTotalCfa.toLocaleString()} FCFA)
-                </span>.
-              </div>
-              <div>
-                Il vous manque{" "}
-                <strong className="text-destructive">
-                  {balanceDeficit.toLocaleString()} pièces
-                </strong>{" "}
-                <span className="text-muted-foreground">
-                  (≈ {deficitCfa.toLocaleString()} FCFA)
-                </span>.
-              </div>
+              <div>Votre solde actuel de <strong>{userBalance.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {userBalanceCfa.toLocaleString()} FCFA)</span> ne permet pas d'acheter le panier de <strong>{cartTotal.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {cartTotalFcfa.toLocaleString()} FCFA)</span>.</div>
+              <div>Il vous manque <strong className="text-destructive">{balanceDeficit.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {deficitCfa.toLocaleString()} FCFA)</span>.</div>
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4 py-4">
             <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-              <AlertTitle className="text-amber-800 text-sm sm:text-base">
-                💡 Solution rapide
-              </AlertTitle>
-              <AlertDescription className="text-amber-700 text-xs sm:text-sm">
-                Rechargez votre compte avec un pack de pièces pour finaliser
-                votre achat et profiter de l'événement !
-              </AlertDescription>
+              <AlertTitle className="text-amber-800 text-sm sm:text-base">Solution rapide</AlertTitle>
+              <AlertDescription className="text-amber-700 text-xs sm:text-sm">Rechargez votre compte avec un pack de pieces pour finaliser votre achat !</AlertDescription>
             </Alert>
-
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="h-14 sm:h-16 flex-col gap-1"
-                onClick={() => setShowInsufficientBalanceModal(false)}
-              >
-                <X className="w-5 h-5" />
-                <span className="text-xs">Annuler</span>
+              <Button variant="outline" className="h-14 sm:h-16 flex-col gap-1" onClick={() => setShowInsufficientBalanceModal(false)}>
+                <X className="w-5 h-5" /><span className="text-xs">Annuler</span>
               </Button>
-              <Button
-                onClick={redirectToPacks}
-                className="h-14 sm:h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1"
-              >
-                <Package className="w-5 h-5" />
-                <span className="text-xs font-bold">Voir les packs</span>
+              <Button onClick={redirectToPacks} className="h-14 sm:h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1">
+                <Package className="w-5 h-5" /><span className="text-xs font-bold">Voir les packs</span>
               </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground text-center pt-4 border-t">
-              <p>
-                💎 Les packs pièces vous permettent d'acheter des billets et de
-                participer à tous les événements.
-                <br />
-                🎁 Profitez de promotions exclusives sur les gros packs !
-              </p>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Success Modal */}
+      {/* Success Modal - garder le même JSX */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6 text-center">
           <DialogHeader>
             <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center mb-4 animate-in zoom-in duration-500">
               <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
             </div>
-            <DialogTitle className="text-xl sm:text-2xl text-green-700">
-              🎉 Félicitations !
-            </DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl text-green-700">Felicitations !</DialogTitle>
             <DialogDescription className="text-sm sm:text-base">
-              Votre commande a été effectuée avec succès !
-              <br />
-              <strong className="text-primary font-semibold">
-                Vos billets sont disponibles dans l'onglet "Mes Billets" de
-                votre profil en bas a droite de l'écran.
-              </strong>{" "}
-              pour un téléchargement ultérieur.
+              Votre commande a ete effectuee avec succes !<br />
+              <strong className="text-primary font-semibold">Vos billets sont disponibles dans l'onglet "Mes Billets" de votre profil.</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 sm:py-6 space-y-3">
-            <Button
-              onClick={handleDownloadPDF}
-              className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold shadow-lg bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
-            >
-              <Download className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="truncate">Télécharger les Billets (PDF)</span>
+            <Button onClick={handleDownloadPDF} className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold shadow-lg bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
+              <Download className="mr-2 h-5 w-5 sm:h-6 sm:w-6" /><span>Telecharger les Billets (PDF)</span>
             </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowSuccessModal(false)}
-            >
-              Continuer la navigation
-            </Button>
-          </div>
-          <div className="text-xs text-muted-foreground pt-4 border-t">
-            <p>
-              📍 Les billets sont également sauvegardés dans votre compte.
-              <br />
-              🔄 Vous pouvez y accéder à tout moment depuis votre profil.
-            </p>
+            <Button variant="outline" className="w-full" onClick={() => setShowSuccessModal(false)}>Continuer la navigation</Button>
           </div>
         </DialogContent>
       </Dialog>

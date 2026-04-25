@@ -624,8 +624,6 @@ const CandidateCard = ({
           created_at: new Date().toISOString(),
           description: `Gains de vote: ${candidate.name} - ${eventData.title} (${voteCount} voix)`,
         });
-
-      
       }
 
       toast({
@@ -717,6 +715,7 @@ const CandidateCard = ({
         className={`bg-gradient-to-br from-gray-900 to-gray-800 border ${isSelected ? "border-emerald-500 ring-2 ring-emerald-500/50" : "border-gray-700"} rounded-2xl p-4 relative overflow-hidden group hover:border-emerald-500/50 transition-all cursor-pointer`}
         onClick={() => setShowDetails(true)}
       >
+        {/* Badges de catégorie et rang - inchangés */}
         {candidate.category && candidate.category !== "Général" && (
           <div className="absolute top-0 right-0 z-10">
             <Badge
@@ -752,6 +751,7 @@ const CandidateCard = ({
           </div>
         )}
 
+        {/* En-tête avec photo et nom - inchangé */}
         <div className="flex items-start gap-3 mb-3 mt-2">
           <div className="relative">
             <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500/50 cursor-pointer shrink-0 shadow-lg group-hover:shadow-emerald-900/50 transition-all">
@@ -810,193 +810,227 @@ const CandidateCard = ({
           </div>
         </div>
 
+        {/* SECTION MODIFIÉE : Bloc de vote avec vérification de connexion */}
         {!isVotingLocked ? (
-          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between bg-gray-800 p-1.5 rounded-lg border border-gray-700/50">
+          !user ? (
+            // 📢 Message pour inviter à se connecter
+            <div className="space-y-3 p-3 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-700/30 text-center">
+              <UserCircle className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+              <p className="text-sm text-blue-300 font-medium">
+                Connectez-vous pour voter !
+              </p>
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:text-emerald-400"
-                onClick={() => setVoteCount((v) => Math.max(1, v - 1))}
-              >
-                <Minus className="w-3 h-3" />
-              </Button>
-              <span className="text-white font-bold font-mono text-lg min-w-[2ch] text-center">
-                {voteCount}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 hover:text-emerald-400"
-                onClick={() => setVoteCount((v) => v + 1)}
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-12 gap-1.5 sm:gap-2">
-              <Button
-                onClick={() => {
-                  onSelect(candidate, voteCount);
-                  toast({
-                    title: "✅ Ajouté au panier",
-                    description: (
-                      <div className="flex flex-col gap-1">
-                        <span className="font-bold">
-                          {voteCount} voix pour {candidate.name}
-                        </span>
-                        <span className="text-xs opacity-90">
-                          👍 Vous pouvez ajouter d'autres candidats
-                        </span>
-                      </div>
-                    ),
-                    className:
-                      "bg-gradient-to-r from-purple-600 to-indigo-600 text-white",
-                  });
-                }}
+                onClick={() => navigate("/auth")}
                 variant="outline"
                 size="sm"
-                className="col-span-4 text-[11px] sm:text-xs bg-transparent border-gray-600 hover:bg-gray-800 hover:text-white px-1 py-1.5 group relative"
-                title="Ajouter au panier pour voter pour plusieurs candidats"
+                className="w-full border-blue-600 text-blue-400 hover:bg-blue-950/50"
               >
-                <ShoppingCart className="w-3.5 h-3.5 sm:mr-1 group-hover:scale-110 transition-transform" />
-                <span className="ml-0.5 sm:ml-1">📦</span>
-                <span className="hidden sm:inline ml-1">Panier</span>
+                Se connecter / S'inscrire
               </Button>
-
-              <Button
-                onClick={handleShare}
-                variant="outline"
-                size="sm"
-                className="col-span-3 text-xs bg-transparent border-gray-600 hover:bg-gray-800 hover:text-white p-0 group relative"
-                title="Partager pour mobiliser vos amis"
-              >
-                <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                <span className="sr-only">Partager</span>
-              </Button>
-
-              <Button
-                onClick={() =>
-                  setConfirmation({ isOpen: true, onConfirm: handleVote })
-                }
-                disabled={loading}
-                size="sm"
-                className={`col-span-5 text-[11px] sm:text-xs text-white border-0 shadow-lg relative overflow-hidden group/vote
-                  ${
-                    rank === 1
-                      ? "bg-yellow-600 hover:bg-yellow-700 shadow-yellow-900/20"
-                      : rank === 2
-                        ? "bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600 shadow-gray-900/20"
-                        : rank === 3
-                          ? "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-orange-900/20"
-                          : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-900/20"
-                  }`}
-                title={`Voter ${voteCount} fois pour ${candidate.name}`}
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin w-3 h-3" />
-                ) : (
-                  <>
-                    <Zap className="w-3 h-3 mr-1 group-hover/vote:animate-pulse" />
-                    <span className="font-bold mr-0.5">{voteCount}</span>
-                    <span className="text-[9px] sm:text-[10px] opacity-90">
-                      voix
-                    </span>
-                    <span className="ml-1 text-[9px] opacity-75">
-                      ({totalCostPi}⚡)
-                    </span>
-                  </>
-                )}
-              </Button>
+              <p className="text-[10px] text-gray-400 mt-2">
+                1 vote = {votePrice} pièces (≈ {votePrice * 10} FCFA)
+              </p>
             </div>
+          ) : (
+            // Interface de vote pour les utilisateurs connectés
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between bg-gray-800 p-1.5 rounded-lg border border-gray-700/50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:text-emerald-400"
+                  onClick={() => setVoteCount((v) => Math.max(1, v - 1))}
+                >
+                  <Minus className="w-3 h-3" />
+                </Button>
+                <span className="text-white font-bold font-mono text-lg min-w-[2ch] text-center">
+                  {voteCount}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:text-emerald-400"
+                  onClick={() => setVoteCount((v) => v + 1)}
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
 
-            {!isVotingLocked && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-3 flex items-center justify-center gap-3 text-[11px] text-gray-400"
-              >
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
-                    <span className="text-purple-400 text-[10px] font-bold">
-                      1
-                    </span>
+              <div className="grid grid-cols-12 gap-1.5 sm:gap-2">
+                <Button
+                  onClick={() => {
+                    if (!user) {
+                      navigate("/auth");
+                      toast({
+                        title: "Connexion requise",
+                        description: "Connectez-vous pour ajouter des votes",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    onSelect(candidate, voteCount);
+                    toast({
+                      title: "✅ Ajouté au panier",
+                      description: (
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold">
+                            {voteCount} voix pour {candidate.name}
+                          </span>
+                          <span className="text-xs opacity-90">
+                            👍 Vous pouvez ajouter d'autres candidats
+                          </span>
+                        </div>
+                      ),
+                      className:
+                        "bg-gradient-to-r from-purple-600 to-indigo-600 text-white",
+                    });
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="col-span-4 text-[11px] sm:text-xs bg-transparent border-gray-600 hover:bg-gray-800 hover:text-white px-1 py-1.5 group relative"
+                  title="Ajouter au panier pour voter pour plusieurs candidats"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 sm:mr-1 group-hover:scale-110 transition-transform" />
+                  <span className="ml-0.5 sm:ml-1">📦</span>
+                  <span className="hidden sm:inline ml-1">Panier</span>
+                </Button>
+
+                <Button
+                  onClick={handleShare}
+                  variant="outline"
+                  size="sm"
+                  className="col-span-3 text-xs bg-transparent border-gray-600 hover:bg-gray-800 hover:text-white p-0 group relative"
+                  title="Partager pour mobiliser vos amis"
+                >
+                  <Share2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                  <span className="sr-only">Partager</span>
+                </Button>
+
+                <Button
+                  onClick={() =>
+                    setConfirmation({ isOpen: true, onConfirm: handleVote })
+                  }
+                  disabled={loading}
+                  size="sm"
+                  className={`col-span-5 text-[11px] sm:text-xs text-white border-0 shadow-lg relative overflow-hidden group/vote
+                    ${
+                      rank === 1
+                        ? "bg-yellow-600 hover:bg-yellow-700 shadow-yellow-900/20"
+                        : rank === 2
+                          ? "bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600 shadow-gray-900/20"
+                          : rank === 3
+                            ? "bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-orange-900/20"
+                            : "bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-emerald-900/20"
+                    }`}
+                  title={`Voter ${voteCount} fois pour ${candidate.name}`}
+                >
+                  {loading ? (
+                    <Loader2 className="animate-spin w-3 h-3" />
+                  ) : (
+                    <>
+                      <Zap className="w-3 h-3 mr-1 group-hover/vote:animate-pulse" />
+                      <span className="font-bold mr-0.5">{voteCount}</span>
+                      <span className="text-[9px] sm:text-[10px] opacity-90">
+                        voter ici
+                      </span>
+                      <span className="ml-1 text-[9px] opacity-75">
+                        ({totalCostPi}⚡)
+                      </span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Messages de motivation existants */}
+              {!isVotingLocked && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-3 flex items-center justify-center gap-3 text-[11px] text-gray-400"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
+                      <span className="text-purple-400 text-[10px] font-bold">
+                        1
+                      </span>
+                    </div>
+                    <span>Clique sur Panier</span>
                   </div>
-                  <span>Clique sur Panier</span>
-                </div>
-                <div className="w-4 h-[2px] bg-gray-700"></div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
-                    <span className="text-purple-400 text-[10px] font-bold">
-                      2
-                    </span>
+                  <div className="w-4 h-[2px] bg-gray-700"></div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
+                      <span className="text-purple-400 text-[10px] font-bold">
+                        2
+                      </span>
+                    </div>
+                    <span>📦 Tes candidats au choix</span>
                   </div>
-                  <span>📦 Tes candidats au choix</span>
-                </div>
-                <div className="w-4 h-[2px] bg-gray-700"></div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
-                    <span className="text-purple-400 text-[10px] font-bold">
-                      3
-                    </span>
+                  <div className="w-4 h-[2px] bg-gray-700"></div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-purple-900/30 flex items-center justify-center">
+                      <span className="text-purple-400 text-[10px] font-bold">
+                        3
+                      </span>
+                    </div>
+                    <span>💳 Ajoute+ et Payer</span>
                   </div>
-                  <span>💳 Ajoute+ et Payer</span>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
-            {rank === 2 && gapToNext && (
-              <motion.p
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="text-[11px] text-blue-400 mt-2 text-center font-bold bg-gradient-to-r from-blue-950/30 to-transparent py-2 px-3 rounded-xl border border-blue-800/40 shadow-lg"
-              >
-                <span className="animate-pulse inline-block mr-1">⚡</span>
-                PLUS QUE {gapToNext} VOIX POUR DÉTRÔNER LE LEADER !
-                <span className="animate-pulse inline-block ml-1">⚡</span>
-              </motion.p>
-            )}
+              {/* Messages de rang existants */}
+              {rank === 2 && gapToNext && (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="text-[11px] text-blue-400 mt-2 text-center font-bold bg-gradient-to-r from-blue-950/30 to-transparent py-2 px-3 rounded-xl border border-blue-800/40 shadow-lg"
+                >
+                  <span className="animate-pulse inline-block mr-1">⚡</span>
+                  PLUS QUE {gapToNext} VOIX POUR DÉTRÔNER LE LEADER !
+                  <span className="animate-pulse inline-block ml-1">⚡</span>
+                </motion.p>
+              )}
 
-            {rank === 3 && gapToNext && (
-              <motion.p
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="text-[11px] text-orange-400 mt-2 text-center font-bold bg-gradient-to-r from-orange-950/30 to-transparent py-2 px-3 rounded-xl border border-orange-800/40 shadow-lg"
-              >
-                <span className="animate-bounce inline-block mr-1">🎯</span>À
-                SEULEMENT {gapToNext} VOIX DE LA 2ÈME PLACE !
-                <span className="animate-bounce inline-block ml-1">🎯</span>
-              </motion.p>
-            )}
+              {rank === 3 && gapToNext && (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="text-[11px] text-orange-400 mt-2 text-center font-bold bg-gradient-to-r from-orange-950/30 to-transparent py-2 px-3 rounded-xl border border-orange-800/40 shadow-lg"
+                >
+                  <span className="animate-bounce inline-block mr-1">🎯</span>À
+                  SEULEMENT {gapToNext} VOIX DE LA 2ÈME PLACE !
+                  <span className="animate-bounce inline-block ml-1">🎯</span>
+                </motion.p>
+              )}
 
-            {rank > 3 && rank <= 5 && gapToNext && (
-              <motion.p
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="text-[11px] text-green-400 mt-2 text-center font-bold bg-gradient-to-r from-green-950/30 to-transparent py-2 px-3 rounded-xl border border-green-800/40 shadow-lg"
-              >
-                <span className="animate-pulse inline-block mr-1">🚀</span>
-                TOP 5 ! PLUS QUE {gapToNext} VOIX POUR LE PODIUM !
-                <span className="animate-pulse inline-block ml-1">🚀</span>
-              </motion.p>
-            )}
+              {rank > 3 && rank <= 5 && gapToNext && (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="text-[11px] text-green-400 mt-2 text-center font-bold bg-gradient-to-r from-green-950/30 to-transparent py-2 px-3 rounded-xl border border-green-800/40 shadow-lg"
+                >
+                  <span className="animate-pulse inline-block mr-1">🚀</span>
+                  TOP 5 ! PLUS QUE {gapToNext} VOIX POUR LE PODIUM !
+                  <span className="animate-pulse inline-block ml-1">🚀</span>
+                </motion.p>
+              )}
 
-            {rank === 1 && (
-              <motion.p
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                className="text-[11px] text-yellow-400 mt-2 text-center font-bold bg-gradient-to-r from-yellow-950/30 to-transparent py-2 px-3 rounded-xl border border-yellow-800/40 shadow-lg"
-              >
-                <span className="animate-pulse inline-block mr-1">👑</span>
-                GARDE TON TRÔNE !
-                <span className="animate-pulse inline-block ml-1">👑</span>
-              </motion.p>
-            )}
-          </div>
+              {rank === 1 && (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="text-[11px] text-yellow-400 mt-2 text-center font-bold bg-gradient-to-r from-yellow-950/30 to-transparent py-2 px-3 rounded-xl border border-yellow-800/40 shadow-lg"
+                >
+                  <span className="animate-pulse inline-block mr-1">👑</span>
+                  GARDE TON TRÔNE !
+                  <span className="animate-pulse inline-block ml-1">👑</span>
+                </motion.p>
+              )}
+            </div>
+          )
         ) : (
           <div className="bg-gray-800/50 p-2 rounded text-center border border-gray-700/50">
             <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
@@ -1258,7 +1292,7 @@ const CandidateCard = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="text-black">
+            <AlertDialogCancel className="text-wite bg-gray-700 hover:bg-gray-600 border-0">
               Annuler
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1298,10 +1332,13 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [availableCategories, setAvailableCategories] = useState(["Tous"]);
   const [rankingFilter, setRankingFilter] = useState("Tous");
 
-  const fetchData = useCallback(async () => {
-    if (!event?.id) return; // Vérification avant de set loading
+  // Dans VotingInterface.jsx
+
+const fetchData = useCallback(async () => {
+    if (!event?.id) return;
     setLoadingCandidates(true);
     try {
+      // Charger les candidats (toujours, même si événement terminé)
       const { data: cData, error: cError } = await supabase
         .from("candidates")
         .select("*")
@@ -1310,9 +1347,10 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
 
       if (cError) throw cError;
 
+      // Vérifier le statut de l'événement
       const { data: sData, error: sError } = await supabase
         .from("events")
-        .select("*")
+        .select("event_end_at, is_sales_closed")
         .eq("id", event.id)
         .maybeSingle();
 
@@ -1320,6 +1358,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         console.error("Error loading settings:", sError);
       }
 
+      // Récupérer le solde de l'utilisateur si connecté
       if (user) {
         const { data: uData, error: uError } = await supabase
           .from("profiles")
@@ -1332,6 +1371,16 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         }
       }
 
+      // Déterminer si l'événement est terminé (basé sur la date)
+      const now = new Date();
+      const endDate = sData?.event_end_at ? new Date(sData.event_end_at) : null;
+      const isExpired = endDate ? now > endDate : false;
+
+      // Si l'événement est terminé via la date, ou si isClosed est true
+      const finalIsFinished = isExpired || isClosed;
+
+      setIsVoteFinished(finalIsFinished);
+
       if (cData) {
         setCandidates(cData);
         const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
@@ -1340,6 +1389,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         }
       }
 
+      // Configuration du prix (même si événement terminé)
       let votePrice = 1;
       if (sData) {
         const possiblePriceColumns = [
@@ -1366,12 +1416,6 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       };
 
       setSettings(settingsData);
-
-      const now = new Date();
-      const endDate = new Date(settingsData.event_end_at);
-      const isExpired = now.getTime() > endDate.getTime();
-
-      setIsVoteFinished(isExpired);
     } catch (error) {
       console.error("Error fetching voting data:", error);
       toast({
@@ -1382,11 +1426,12 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     } finally {
       setLoadingCandidates(false);
     }
-  }, [event?.id, user]);
+  }, [event?.id, user, isClosed]);
 
+  // MODIFICATION ICI : Enlever isClosed des dépendances
   useEffect(() => {
     fetchData();
-  }, [fetchData, isClosed, event?.id]);
+  }, [fetchData, event?.id]); // isClosed retiré !
 
   useEffect(() => {
     if (!settings?.event_end_at) return;
@@ -1428,9 +1473,21 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   }, [settings?.event_end_at, isVoteFinished, onRefresh]);
 
   const handleCheckout = async () => {
+    // 🔐 VÉRIFICATION PRIORITAIRE : Utilisateur connecté ?
+    if (!user) {
+      navigate("/auth");
+      toast({
+        title: "Connexion requise",
+        description:
+          "Veuillez vous connecter pour valider votre panier et voter",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const isLocked = isVoteFinished || isClosed;
 
-    if (!user || isLocked) {
+    if (isLocked) {
       toast({
         title: "Action impossible",
         description: isVoteFinished
@@ -1608,8 +1665,6 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               created_at: new Date().toISOString(),
               description: `Gains de vote: ${item.candidate.name} - ${eventData.title} (${item.quantity} voix)`,
             });
-
-         
           }
         } catch (itemError) {
           errors.push(
@@ -1646,7 +1701,6 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       setIsProcessingCheckout(false);
     }
   };
-
   const totalVotes = candidates.reduce(
     (sum, c) => sum + (c.vote_count || 0),
     0,

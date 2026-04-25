@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet';
-import { motion } from 'framer-motion';
-import { supabase } from '@/lib/customSupabaseClient';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Loader2, Newspaper } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { toast } from '@/components/ui/use-toast';
+import React, { useState, useEffect } from "react";
+import { Helmet } from "react-helmet-async";
+import { motion } from "framer-motion";
+import { supabase } from "@/lib/customSupabaseClient";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
+import { Loader2, Newspaper } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { toast } from "@/components/ui/use-toast";
 
 const NewsPage = () => {
   const { t } = useTranslation();
@@ -17,20 +23,20 @@ const NewsPage = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false });
+          .from("announcements")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
 
         setAnnouncements(data || []);
       } catch (error) {
-        console.error('Error fetching announcements:', error);
+        console.error("Error fetching announcements:", error);
         toast({
-          title: t('news.error.title'),
+          title: t("news.error.title"),
           description: error.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -56,7 +62,7 @@ const NewsPage = () => {
       y: 0,
       opacity: 1,
       transition: {
-        type: 'spring',
+        type: "spring",
         stiffness: 100,
       },
     },
@@ -65,8 +71,8 @@ const NewsPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Helmet>
-        <title>{t('news.meta.title')}</title>
-        <meta name="description" content={t('news.meta.description')} />
+        <title>{t("news.meta.title")}</title>
+        <meta name="description" content={t("news.meta.description")} />
       </Helmet>
       <main className="container mx-auto px-4 pt-8 pb-16">
         <motion.div
@@ -76,9 +82,11 @@ const NewsPage = () => {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-black font-heading uppercase tracking-wider text-primary">
-            {t('news.title')}
+            {t("news.title")}
           </h1>
-          <p className="text-lg text-muted-foreground mt-2">{t('news.subtitle')}</p>
+          <p className="text-lg text-muted-foreground mt-2">
+            {t("news.subtitle")}
+          </p>
         </motion.div>
 
         {loading ? (
@@ -96,13 +104,21 @@ const NewsPage = () => {
               <motion.div key={announcement.id} variants={itemVariants}>
                 <Card className="glass-effect overflow-hidden hover:border-primary/50 transition-all duration-300">
                   <CardHeader>
-                    <CardTitle className="text-xl md:text-2xl text-white">{announcement.title}</CardTitle>
+                    <CardTitle className="text-xl md:text-2xl text-white">
+                      {announcement.title}
+                    </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground pt-1">
-                      {t('news.publishedOn', { date: new Date(announcement.created_at).toLocaleDateString() })}
+                      {t("news.publishedOn", {
+                        date: new Date(
+                          announcement.created_at,
+                        ).toLocaleDateString(),
+                      })}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-foreground/90 whitespace-pre-wrap">{announcement.content}</p>
+                    <p className="text-foreground/90 whitespace-pre-wrap">
+                      {announcement.content}
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -116,10 +132,10 @@ const NewsPage = () => {
           >
             <Newspaper className="w-24 h-24 text-muted-foreground mb-6" />
             <h2 className="text-2xl font-bold text-foreground mb-2">
-              {t('news.noNews.title')}
+              {t("news.noNews.title")}
             </h2>
             <p className="text-muted-foreground max-w-md">
-              {t('news.noNews.description')}
+              {t("news.noNews.description")}
             </p>
           </motion.div>
         )}
