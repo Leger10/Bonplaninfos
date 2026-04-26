@@ -106,38 +106,38 @@ const CreateTicketingEventPage = () => {
       color: "blue",
     },
   ]);
-// Chargement des catégories - VERSION CORRIGÉE
-useEffect(() => {
-  const fetchCategories = async () => {
-    try {
-      console.log("🔍 Fetching categories from event_categories...");
-      
-      const { data, error } = await supabase
-        .from("event_categories")
-        .select("id, name, color_hex, display_order")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true, nullsFirst: false });
-      
-      if (error) {
-        console.error("❌ Error fetching categories:", error);
-        setCategories([]);
-        return;
-      }
-      
-      console.log("✅ Categories loaded successfully:", data?.length || 0, "categories");
-      console.log("🎨 First category color:", data?.[0]?.color_hex);
-      
-      setCategories(data || []);
-      
-    } catch (err) {
-      console.error("❌ Exception fetching categories:", err);
-      setCategories([]);
-    }
-  };
-  
-  fetchCategories();
-}, []);
 
+  // Chargement des catégories - VERSION CORRIGÉE
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        console.log("🔍 Fetching categories from event_categories...");
+        
+        const { data, error } = await supabase
+          .from("event_categories")
+          .select("id, name, color_hex, display_order")
+          .eq("is_active", true)
+          .order("display_order", { ascending: true, nullsFirst: false });
+        
+        if (error) {
+          console.error("❌ Error fetching categories:", error);
+          setCategories([]);
+          return;
+        }
+        
+        console.log("✅ Categories loaded successfully:", data?.length || 0, "categories");
+        console.log("🎨 First category color:", data?.[0]?.color_hex);
+        
+        setCategories(data || []);
+        
+      } catch (err) {
+        console.error("❌ Exception fetching categories:", err);
+        setCategories([]);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
 
   // Restaurer les données du brouillon si disponible
   useEffect(() => {
@@ -251,202 +251,221 @@ useEffect(() => {
     setPromoConfigSaved(true);
   };
 
-const performSubmission = async () => {
-  // Vérification 1 : Contrat accepté (OBLIGATOIRE)
-  if (!termsAccepted) {
-    toast({
-      title: "Contrat requis",
-      description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
-      variant: "destructive",
-    });
-    setShowContractModal(true);
-    return;
-  }
-
-  // Vérification 2 : Utilisateur connecté
-  if (!user) {
-    toast({
-      title: "Erreur",
-      description: "Vous devez être connecté.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const eventStartAt = new Date(eventDate);
-    const eventEndAt = endDate
-      ? new Date(endDate)
-      : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000);
-
-    console.log("📝 Création de l'événement...");
-    console.log("💰 Taux de conversion:", COIN_RATE, "FCFA = 1 pièce");
-
-    // 1. Création de l'événement
-    const { data: eventData, error: eventError } = await supabase
-      .from("events")
-      .insert({
-        title,
-        description: description || "",
-        event_start_at: eventStartAt.toISOString(),
-        event_end_at: eventEndAt.toISOString(),
-        city,
-        country: country || null,
-        address: address || null,
-        cover_image: coverImage,
-        organizer_id: user.id,
-        event_type: "ticketing",
-        category_id: categoryId,
-        status: "active",
-        max_attendees: parseInt(maxAttendees, 10) || null,
-        is_public: isPublic,
-        requires_approval: requiresApproval,
-        contract_accepted_at: new Date().toISOString(),
-        contract_version: "v1.0",
-      })
-      .select()
-      .single();
-
-    if (eventError) throw eventError;
-
-    const newEventId = eventData.id;
-    console.log("✅ Événement créé avec ID:", newEventId);
-
-    // 2. Enregistrer l'acceptation du contrat
-    await supabase.from("user_contract_acceptances").insert({
-      user_id: user.id,
-      event_id: newEventId,
-      contract_type: "organizer",
-      accepted_at: new Date().toISOString(),
-      contract_version: "v1.0",
-    }).catch(err => console.warn("⚠️ Erreur contrat (non bloquante):", err));
-
-    // 3. Sauvegarder la configuration des codes promo si activée
-    if (promoConfig && promoConfig.enabled) {
-      let discountValueToSave = promoConfig.discount_value;
-      
-      if (promoConfig.discount_type === 'fixed') {
-        // S'assurer que la valeur est bien en FCFA
-        discountValueToSave = promoConfig.discount_value;
-        console.log("💰 Réduction fixe:", discountValueToSave, "FCFA =", discountValueToSave / COIN_RATE, "pièces");
-      } else {
-        console.log("💰 Réduction pourcentage:", promoConfig.discount_value, "%");
-      }
-      
-      await supabase.from("event_promo_config").insert({
-        event_id: newEventId,
-        enabled: promoConfig.enabled,
-        discount_type: promoConfig.discount_type,
-        discount_value: discountValueToSave,
-        commission_rate: promoConfig.commission_rate,
-        usage_limit: promoConfig.usage_limit || null,
-      }).catch(err => console.warn("⚠️ Erreur promo config (non bloquante):", err));
+  const performSubmission = async () => {
+    // Vérification 1 : Contrat accepté (OBLIGATOIRE)
+    if (!termsAccepted) {
+      toast({
+        title: "Contrat requis",
+        description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        variant: "destructive",
+      });
+      setShowContractModal(true);
+      return;
     }
 
-    // 4. Créer l'entrée ticketing_events
-    const totalTickets = ticketTypes.reduce(
-      (acc, tt) => acc + (parseInt(tt.quantity_available, 10) || 0),
-      0,
-    );
+    // Vérification 2 : Utilisateur connecté
+    if (!user) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    await supabase.from("ticketing_events").insert({
-      event_id: newEventId,
-      total_tickets: totalTickets,
-      tickets_sold: 0,
-    });
+    setLoading(true);
 
-    // 5. Insérer les types de billets avec conversion correcte (1 pièce = 10 FCFA)
-    const ticketTypesToInsert = ticketTypes.map((tt) => {
-      const priceFcfa = parseInt(tt.price, 10) || 0;
-      const presalePriceFcfa = parseInt(tt.presale_price, 10) || 0;
-      const quantityAvailable = parseInt(tt.quantity_available, 10) || 0;
-      
-      // Conversion: 1 pièce = 10 FCFA (arrondi à l'entier supérieur)
-      const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
-      const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+    try {
+      const eventStartAt = new Date(eventDate);
+      const eventEndAt = endDate
+        ? new Date(endDate)
+        : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000);
 
-      console.log(`🎫 Billet "${tt.name}":`, {
-        priceFcfa: `${priceFcfa.toLocaleString()} FCFA`,
-        priceCoins: `${priceCoins} pièces`,
-        quantity: quantityAvailable
+      console.log("📝 Création de l'événement...");
+      console.log("💰 Taux de conversion:", COIN_RATE, "FCFA = 1 pièce");
+
+      // 1. Création de l'événement
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .insert({
+          title,
+          description: description || "",
+          event_start_at: eventStartAt.toISOString(),
+          event_end_at: eventEndAt.toISOString(),
+          city,
+          country: country || null,
+          address: address || null,
+          cover_image: coverImage,
+          organizer_id: user.id,
+          event_type: "ticketing",
+          category_id: categoryId,
+          status: "active",
+          max_attendees: parseInt(maxAttendees, 10) || null,
+          is_public: isPublic,
+          requires_approval: requiresApproval,
+          contract_accepted_at: new Date().toISOString(),
+          contract_version: "v1.0",
+        })
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
+
+      const newEventId = eventData.id;
+      console.log("✅ Événement créé avec ID:", newEventId);
+
+      // 2. Enregistrer l'acceptation du contrat (avec gestion d'erreur)
+      try {
+        const { error: contractError } = await supabase.from("user_contract_acceptances").insert({
+          user_id: user.id,
+          event_id: newEventId,
+          contract_type: "organizer",
+          accepted_at: new Date().toISOString(),
+          contract_version: "v1.0",
+        });
+        
+        if (contractError) {
+          console.warn("⚠️ Erreur contrat (non bloquante):", contractError);
+        }
+      } catch (err) {
+        console.warn("⚠️ Exception contrat (non bloquante):", err);
+      }
+
+      // 3. Sauvegarder la configuration des codes promo si activée
+      if (promoConfig && promoConfig.enabled) {
+        let discountValueToSave = promoConfig.discount_value;
+        
+        if (promoConfig.discount_type === 'fixed') {
+          discountValueToSave = promoConfig.discount_value;
+          console.log("💰 Réduction fixe:", discountValueToSave, "FCFA =", discountValueToSave / COIN_RATE, "pièces");
+        } else {
+          console.log("💰 Réduction pourcentage:", promoConfig.discount_value, "%");
+        }
+        
+        try {
+          const { error: promoError } = await supabase.from("event_promo_config").insert({
+            event_id: newEventId,
+            enabled: promoConfig.enabled,
+            discount_type: promoConfig.discount_type,
+            discount_value: discountValueToSave,
+            commission_rate: promoConfig.commission_rate,
+            usage_limit: promoConfig.usage_limit || null,
+          });
+          
+          if (promoError) {
+            console.warn("⚠️ Erreur promo config (non bloquante):", promoError);
+          }
+        } catch (err) {
+          console.warn("⚠️ Exception promo config (non bloquante):", err);
+        }
+      }
+
+      // 4. Créer l'entrée ticketing_events
+      const totalTickets = ticketTypes.reduce(
+        (acc, tt) => acc + (parseInt(tt.quantity_available, 10) || 0),
+        0,
+      );
+
+      const { error: ticketingError } = await supabase.from("ticketing_events").insert({
+        event_id: newEventId,
+        total_tickets: totalTickets,
+        tickets_sold: 0,
       });
 
-      return {
-        event_id: newEventId,
-        name: tt.name || "Standard",
-        description: tt.description || "",
-        price: priceFcfa.toString(),
-        price_pi: priceCoins,
-        price_coins: priceCoins,
-        quantity_available: quantityAvailable,
-        quantity_sold: 0,
-        presale_price_pi: presalePriceCoins,
-        presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
-        sales_start: tt.sales_start_date
-          ? new Date(tt.sales_start_date).toISOString()
-          : new Date().toISOString(),
-        sales_end: tt.sales_event_end_at
-          ? new Date(tt.sales_event_end_at).toISOString()
-          : eventEndAt.toISOString(),
-        is_active: true,
-        color: tt.color || "blue",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    });
+      if (ticketingError) {
+        console.warn("⚠️ Erreur ticketing_events (non bloquante):", ticketingError);
+      }
 
-    const { error: ticketTypesError } = await supabase
-      .from("ticket_types")
-      .insert(ticketTypesToInsert);
+      // 5. Insérer les types de billets avec conversion correcte (1 pièce = 10 FCFA)
+      const ticketTypesToInsert = ticketTypes.map((tt) => {
+        const priceFcfa = parseInt(tt.price, 10) || 0;
+        const presalePriceFcfa = parseInt(tt.presale_price, 10) || 0;
+        const quantityAvailable = parseInt(tt.quantity_available, 10) || 0;
+        
+        // Conversion: 1 pièce = 10 FCFA (arrondi à l'entier supérieur)
+        const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
+        const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
 
-    if (ticketTypesError) throw ticketTypesError;
+        console.log(`🎫 Billet "${tt.name}":`, {
+          priceFcfa: `${priceFcfa.toLocaleString()} FCFA`,
+          priceCoins: `${priceCoins} pièces`,
+          quantity: quantityAvailable
+        });
 
-    console.log("✅", ticketTypesToInsert.length, "types de billets créés");
+        return {
+          event_id: newEventId,
+          name: tt.name || "Standard",
+          description: tt.description || "",
+          price: priceFcfa.toString(),
+          price_pi: priceCoins,
+          price_coins: priceCoins,
+          quantity_available: quantityAvailable,
+          quantity_sold: 0,
+          presale_price_pi: presalePriceCoins,
+          presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
+          sales_start: tt.sales_start_date
+            ? new Date(tt.sales_start_date).toISOString()
+            : new Date().toISOString(),
+          sales_end: tt.sales_event_end_at
+            ? new Date(tt.sales_event_end_at).toISOString()
+            : eventEndAt.toISOString(),
+          is_active: true,
+          color: tt.color || "blue",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+      });
 
-    // 6. Nettoyer les brouillons
-    localStorage.removeItem("draftEvent");
-    localStorage.removeItem("event_promo_config_draft");
+      const { error: ticketTypesError } = await supabase
+        .from("ticket_types")
+        .insert(ticketTypesToInsert);
 
-    // 7. Notification de succès
-    toast({
-      title: "🎉 Succès !",
-      description: (
-        <div className="space-y-1">
-          <p>Votre événement billetterie a été créé avec succès !</p>
-          <p className="text-xs opacity-90">
-            {totalTickets} billets • Potentiel: {ticketTypesToInsert.reduce((acc, t) => acc + (t.price_coins * t.quantity_available), 0).toLocaleString()} pièces
-          </p>
-          {promoConfig?.enabled && (
-            <p className="text-xs opacity-90 mt-1">
-              🏷️ Code promo activé: {promoConfig.discount_type === 'fixed' 
-                ? `${promoConfig.discount_value.toLocaleString()} FCFA de réduction (${promoConfig.discount_value / COIN_RATE} pièces)` 
-                : `${promoConfig.discount_value}% de réduction`}
+      if (ticketTypesError) throw ticketTypesError;
+
+      console.log("✅", ticketTypesToInsert.length, "types de billets créés");
+
+      // 6. Nettoyer les brouillons
+      localStorage.removeItem("draftEvent");
+      localStorage.removeItem("event_promo_config_draft");
+
+      // 7. Notification de succès
+      toast({
+        title: "🎉 Succès !",
+        description: (
+          <div className="space-y-1">
+            <p>Votre événement billetterie a été créé avec succès !</p>
+            <p className="text-xs opacity-90">
+              {totalTickets} billets • Potentiel: {ticketTypesToInsert.reduce((acc, t) => acc + (t.price_coins * t.quantity_available), 0).toLocaleString()} pièces
             </p>
-          )}
-        </div>
-      ),
-      duration: 6000,
-      className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
-    });
+            {promoConfig?.enabled && (
+              <p className="text-xs opacity-90 mt-1">
+                🏷️ Code promo activé: {promoConfig.discount_type === 'fixed' 
+                  ? `${promoConfig.discount_value.toLocaleString()} FCFA de réduction (${promoConfig.discount_value / COIN_RATE} pièces)` 
+                  : `${promoConfig.discount_value}% de réduction`}
+              </p>
+            )}
+          </div>
+        ),
+        duration: 6000,
+        className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
+      });
 
-    // 8. Redirection vers l'événement
-    setTimeout(() => {
-      navigate(`/event/${newEventId}`);
-    }, 2000);
-    
-  } catch (error) {
-    console.error("❌ Erreur création événement:", error);
-    toast({
-      title: "Erreur",
-      description: error.message || "Une erreur est survenue lors de la création",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+      // 8. Redirection vers l'événement
+      setTimeout(() => {
+        navigate(`/event/${newEventId}`);
+      }, 2000);
+      
+    } catch (error) {
+      console.error("❌ Erreur création événement:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue lors de la création",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8 pb-20">

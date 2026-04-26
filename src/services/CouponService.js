@@ -81,14 +81,13 @@ export class CouponService {
   }
 
   /**
-   * Utilise un coupon et crédite les gains au propriétaire
-   * @param {string} couponCode - Code du coupon à utiliser
-   * @param {string} buyerUserId - ID de l'acheteur qui utilise le coupon
-   * @param {number} amountFcfa - Montant de la transaction en FCFA
-   * @param {string|null} transactionId - ID optionnel de la transaction
-   * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+   * ⚠️ DEPRECATED: Cette méthode ne doit plus être utilisée directement.
+   * Elle crédite la commission immédiatement, ce qui n'est pas le comportement souhaité.
+   * Utilisez plutôt registerCouponUsage() + finalizeCouponUsage()
    */
   static async useCoupon(couponCode, buyerUserId, amountFcfa, transactionId = null) {
+    console.warn('[CouponService] useCoupon is deprecated. Use registerCouponUsage + finalizeCouponUsage instead.');
+    
     try {
       const { data, error } = await supabase.rpc('credit_coupon_earnings', {
         p_coupon_code: couponCode,
@@ -104,6 +103,224 @@ export class CouponService {
     } catch (error) {
       console.error('[CouponService] useCoupon error:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enregistre l'intention d'utiliser un coupon (sans créditer la commission)
+   * @param {string} couponCode - Code du coupon
+   * @param {string} buyerUserId - ID de l'acheteur
+   * @param {number} amountFcfa - Montant de la transaction en FCFA
+   * @param {string} paymentId - ID du paiement associé
+   * @returns {Promise<{success: boolean, usageId?: string, error?: string}>}
+   */
+  static async registerCouponUsage(couponCode, buyerUserId, amountFcfa, paymentId) {
+    try {
+      // Vérifier d'abord que le coupon est valide et actif
+      const { valid, coupon, error: validateError } = await this.validateCoupon(couponCode);
+      if (!valid) {
+        return { success: false, error: validateError || 'Code invalide' };
+      }
+
+      // Vérifier que l'utilisateur n'utilise pas son propre coupon
+      if (coupon.user_id === buyerUserId) {
+        return { success: false, error: 'Vous ne pouvez pas utiliser votre propre coupon de parrainage' };
+      }
+
+      // Enregistrer l'utilisation en attente (sans créditer)
+      const { data, error } = await supabase
+        .from('coupon_usages')
+        .insert({
+          coupon_code: couponCode,
+          user_id: buyerUserId,
+          amount_fcfa: amountFcfa,
+          payment_id: paymentId,
+          status: 'pending',  // En attente de validation du paiement
+          created_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, usageId: data.id, error: null };
+    } catch (error) {
+      console.error('[CouponService] registerCouponUsage error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Finalise l'utilisation du coupon après paiement réussi
+   * Crédite la commission au propriétaire
+   * @param {string} paymentId - ID du paiement complété
+   * @returns {Promise<{success: boolean, commissionAmount?: number, error?: string}>}
+   */
+  static async finalizeCouponUsage(paymentId) {
+    try {
+      // 1. Récupérer le paiement avec les infos du coupon
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .select(`
+          id,
+          user_id,
+          amount_fcfa,
+          coupon_code,
+          status,
+          transaction_id
+        `)
+        .eq('id', paymentId)
+        .single();
+
+      if (paymentError) throw paymentError;
+      
+      // Vérifier que le paiement est bien complété
+      if (payment.status !== 'completed') {
+        return { 
+          success: false, 
+          error: `Le paiement n'est pas complété (statut: ${payment.status})` 
+        };
+      }
+
+      // Vérifier qu'un coupon a été utilisé
+      if (!payment.coupon_code) {
+        return { success: true, commissionAmount: 0, message: 'Aucun coupon utilisé' };
+      }
+
+      // 2. Vérifier si la commission a déjà été créditée
+      const { data: existingUsage, error: usageCheckError } = await supabase
+        .from('coupon_usages')
+        .select('id, status, commission_credited_at')
+        .eq('payment_id', paymentId)
+        .eq('coupon_code', payment.coupon_code)
+        .maybeSingle();
+
+      if (existingUsage && existingUsage.status === 'completed') {
+        return { 
+          success: true, 
+          commissionAmount: existingUsage.commission_amount,
+          message: 'Commission déjà créditée' 
+        };
+      }
+
+      // 3. Récupérer le coupon
+      const { data: coupon, error: couponError } = await supabase
+        .from('coupons')
+        .select('id, user_id, usage_count, total_amount, commission_earned')
+        .eq('code', payment.coupon_code)
+        .single();
+
+      if (couponError) throw couponError;
+
+      // 4. Calculer la commission (2%)
+      const commissionAmount = Math.floor(payment.amount_fcfa * 0.02);
+      
+      if (commissionAmount <= 0) {
+        return { success: false, error: 'Montant de commission invalide' };
+      }
+
+      // 5. Créditer le propriétaire du coupon (en FCFA ou en crédits)
+      // Convertir en crédits si nécessaire (10 FCFA = 1 crédit)
+      const commissionCoins = Math.floor(commissionAmount / 10);
+
+      // Mettre à jour le solde du propriétaire
+      const { error: balanceError } = await supabase.rpc('add_commission_to_user', {
+        p_user_id: coupon.user_id,
+        p_amount_fcfa: commissionAmount,
+        p_payment_id: paymentId,
+        p_commission_coins: commissionCoins
+      });
+
+      if (balanceError) throw balanceError;
+
+      // 6. Mettre à jour les statistiques du coupon
+      const { error: updateCouponError } = await supabase
+        .from('coupons')
+        .update({
+          usage_count: (coupon.usage_count || 0) + 1,
+          total_amount: (coupon.total_amount || 0) + payment.amount_fcfa,
+          commission_earned: (coupon.commission_earned || 0) + commissionAmount,
+          last_used_at: new Date().toISOString()
+        })
+        .eq('id', coupon.id);
+
+      if (updateCouponError) throw updateCouponError;
+
+      // 7. Mettre à jour la table coupon_usages
+      if (existingUsage) {
+        await supabase
+          .from('coupon_usages')
+          .update({
+            status: 'completed',
+            commission_amount: commissionAmount,
+            commission_credited_at: new Date().toISOString()
+          })
+          .eq('id', existingUsage.id);
+      } else {
+        await supabase
+          .from('coupon_usages')
+          .insert({
+            coupon_code: payment.coupon_code,
+            user_id: payment.user_id,
+            amount_fcfa: payment.amount_fcfa,
+            payment_id: paymentId,
+            commission_amount: commissionAmount,
+            status: 'completed',
+            commission_credited_at: new Date().toISOString()
+          });
+      }
+
+      // 8. Enregistrer la transaction de commission
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: coupon.user_id,
+          amount: commissionAmount,
+          type: 'commission',
+          reference_id: paymentId,
+          description: `Commission de parrainage (2%) pour l'utilisation du coupon ${payment.coupon_code}`,
+          status: 'completed',
+          created_at: new Date().toISOString()
+        });
+
+      return { 
+        success: true, 
+        commissionAmount,
+        commissionCoins,
+        couponOwnerId: coupon.user_id
+      };
+
+    } catch (error) {
+      console.error('[CouponService] finalizeCouponUsage error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Vérifie le statut d'un coupon pour un paiement donné
+   * @param {string} paymentId - ID du paiement
+   * @returns {Promise<{status: string, commissionCredited: boolean, error?: string}>}
+   */
+  static async getCouponUsageStatus(paymentId) {
+    try {
+      const { data, error } = await supabase
+        .from('coupon_usages')
+        .select('status, commission_amount, commission_credited_at')
+        .eq('payment_id', paymentId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      return {
+        status: data?.status || 'none',
+        commissionCredited: data?.status === 'completed',
+        commissionAmount: data?.commission_amount || 0,
+        creditedAt: data?.commission_credited_at || null,
+        error: null
+      };
+    } catch (error) {
+      console.error('[CouponService] getCouponUsageStatus error:', error);
+      return { status: 'error', commissionCredited: false, error: error.message };
     }
   }
 
@@ -157,7 +374,7 @@ export class CouponService {
           *,
           coupon:coupon_code(code),
           user:user_id(full_name, email),
-          transaction:transaction_id(*)
+          payment:payment_id(*)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;

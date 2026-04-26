@@ -79,7 +79,6 @@
         "npm:react-day-picker@^8.10.1",
         "npm:react-dom@^18.2.0",
         "npm:react-helmet-async@3",
-        "npm:react-helmet@^6.1.0",
         "npm:react-hot-toast@^2.6.0",
         "npm:react-i18next@^14.1.0",
         "npm:react-router-dom@^6.16.0",
