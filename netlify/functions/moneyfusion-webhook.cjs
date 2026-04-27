@@ -21,8 +21,9 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'Event ignored' };
     }
 
-    // Vérifier le statut du paiement
-    if (statut !== 'SUCCESS') {
+    // ✅ Vérifier le statut du paiement (CORRIGÉ)
+    const isSuccess = statut === 'SUCCESS' || statut === 'paid' || statut === 'PAID';
+    if (!isSuccess) {
       console.log(`⚠️ Paiement non réussi, statut: ${statut}`);
       return { statusCode: 200, body: 'Payment not successful' };
     }
@@ -136,8 +137,8 @@ exports.handler = async (event) => {
               .from('coupon_usages')
               .insert({
                 coupon_code: finalCouponCode,
-                user_id: userId, // L'acheteur qui a utilisé le coupon
-                owner_id: coupon.user_id, // Le propriétaire du coupon
+                user_id: userId,
+                owner_id: coupon.user_id,
                 payment_id: payment.id,
                 transaction_id: orderId,
                 amount_fcfa: amountFcfa,
