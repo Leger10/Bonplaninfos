@@ -393,33 +393,51 @@ const CreditPacksPage = () => {
     }
   };
 
-  const handlePhoneSubmit = async () => {
-    if (!tempPhone || tempPhone.trim() === "") {
-      toast({
-        title: "Numéro requis",
-        description: "Veuillez entrer votre numéro de téléphone.",
-        variant: "destructive",
-      });
-      return;
-    }
+const handlePhoneSubmit = async () => {
+  if (!tempPhone || tempPhone.trim() === "") {
+    toast({
+      title: "Numéro requis",
+      description: "Veuillez entrer votre numéro de téléphone.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const phoneRegex = /^[0-9]{9,12}$/;
-    if (!phoneRegex.test(tempPhone.replace(/\s/g, ''))) {
-      toast({
-        title: "Numéro invalide",
-        description: "Veuillez entrer un numéro valide (ex: 771234567).",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Nettoie le numéro : garde uniquement les chiffres
+  let cleanPhone = tempPhone.replace(/\D/g, '');
+  
+  // Si le numéro fait plus de 12 chiffres, on prend les 12 derniers
+  if (cleanPhone.length > 12) {
+    cleanPhone = cleanPhone.slice(-12);
+  }
+  
+  // Si le numéro commence par 226 (indicatif Burkina), on l'enlève
+  if (cleanPhone.startsWith('226') && cleanPhone.length > 8) {
+    cleanPhone = cleanPhone.substring(3);
+  }
+  
+  // Si le numéro a 9 chiffres et commence par 0, on enlève le 0
+  if (cleanPhone.startsWith('0') && cleanPhone.length === 9) {
+    cleanPhone = cleanPhone.substring(1);
+  }
+  
+  // Vérifie que le numéro fait entre 8 et 12 chiffres
+  if (cleanPhone.length < 8 || cleanPhone.length > 12) {
+    toast({
+      title: "Numéro invalide",
+      description: "Veuillez entrer un numéro valide (8 à 12 chiffres). Exemples: 73790978, +22673790978, 0022673790978",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const saved = await saveUserPhone(tempPhone);
-    if (saved && pendingPurchase) {
-      setShowPhoneModal(false);
-      await processPayment(pendingPurchase.amountFcfa, pendingPurchase.coinsAmount, pendingPurchase.packId);
-      setPendingPurchase(null);
-    }
-  };
+  const saved = await saveUserPhone(cleanPhone);
+  if (saved && pendingPurchase) {
+    setShowPhoneModal(false);
+    await processPayment(pendingPurchase.amountFcfa, pendingPurchase.coinsAmount, pendingPurchase.packId);
+    setPendingPurchase(null);
+  }
+};
 
   const handlePurchase = (pack) => {
     const bonusCoins = pack.bonus ? Math.round((pack.coins * pack.bonus) / 100) : 0;
