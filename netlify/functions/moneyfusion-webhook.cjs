@@ -21,7 +21,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'Event ignored' };
     }
 
-    // ✅ Vérifier le statut du paiement (CORRIGÉ)
+    // ✅ Vérifier le statut du paiement (accepte SUCCESS, paid, PAID)
     const isSuccess = statut === 'SUCCESS' || statut === 'paid' || statut === 'PAID';
     if (!isSuccess) {
       console.log(`⚠️ Paiement non réussi, statut: ${statut}`);
@@ -64,7 +64,9 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'Payment cancelled' };
     }
 
-    // 1. Ajouter les crédits à l'acheteur
+    // ============================================
+    // 1. AJOUTER LES CRÉDITS À L'ACHETEUR
+    // ============================================
     const coinsToAdd = payment.coins_amount;
     
     const { data: buyerProfile, error: buyerError } = await supabase
@@ -75,7 +77,6 @@ exports.handler = async (event) => {
 
     if (buyerError) {
       console.error('❌ Erreur récupération profil acheteur:', buyerError);
-      // Continuer quand même, on peut réessayer plus tard
     }
 
     const newBalance = (buyerProfile?.coin_balance || 0) + coinsToAdd;
@@ -95,11 +96,12 @@ exports.handler = async (event) => {
 
     console.log(`✅ ${coinsToAdd} crédits ajoutés à l'acheteur ${userId}`);
 
-    // 2. Traiter le coupon si présent - UNIQUEMENT APRÈS PAIEMENT RÉUSSI
+    // ============================================
+    // 2. TRAITER LE COUPON (COMMISSION POUR LE PARRAIN)
+    // ============================================
     let commissionCredited = 0;
     let couponOwnerId = null;
     
-    // Utiliser le coupon_code du paiement ou celui du webhook
     const finalCouponCode = payment.coupon_code || couponCode;
     
     if (finalCouponCode && finalCouponCode !== 'null' && finalCouponCode !== '') {
@@ -133,7 +135,7 @@ exports.handler = async (event) => {
 
           if (!existingUsage) {
             // Enregistrer l'utilisation
-            const { error: usageError } = await supabase
+            await supabase
               .from('coupon_usages')
               .insert({
                 coupon_code: finalCouponCode,
@@ -147,14 +149,10 @@ exports.handler = async (event) => {
                 commission_credited_at: new Date().toISOString(),
                 created_at: new Date().toISOString()
               });
-
-            if (usageError) {
-              console.error('❌ Erreur insertion coupon_usage:', usageError);
-            }
           }
 
           // Mettre à jour les statistiques du coupon
-          const { error: updateCouponError } = await supabase
+          await supabase
             .from('coupons')
             .update({
               usage_count: (coupon.usage_count || 0) + 1,
@@ -164,16 +162,14 @@ exports.handler = async (event) => {
             })
             .eq('code', finalCouponCode);
 
-          if (updateCouponError) {
-            console.error('❌ Erreur mise à jour stats coupon:', updateCouponError);
-          }
-
-          // Créditer le propriétaire du coupon (en crédits, pas en FCFA)
+          // ============================================
+          // ✅ CRÉDITER LE PROPRIÉTAIRE DU COUPON
+          // ============================================
           const commissionCoins = Math.floor(commission / 10); // 10 FCFA = 1 crédit
           
           const { data: ownerProfile, error: ownerError } = await supabase
             .from('profiles')
-            .select('coin_balance')
+            .select('coin_balance, available_earnings')
             .eq('id', coupon.user_id)
             .single();
 
@@ -181,11 +177,13 @@ exports.handler = async (event) => {
             console.error('❌ Erreur récupération profil propriétaire:', ownerError);
           } else {
             const newOwnerBalance = (ownerProfile?.coin_balance || 0) + commissionCoins;
+            const newAvailableEarnings = (ownerProfile?.available_earnings || 0) + commission;
             
             const { error: updateOwnerError } = await supabase
               .from('profiles')
               .update({
                 coin_balance: newOwnerBalance,
+                available_earnings: newAvailableEarnings,
                 updated_at: new Date().toISOString()
               })
               .eq('id', coupon.user_id);
@@ -196,10 +194,13 @@ exports.handler = async (event) => {
               commissionCredited = commission;
               couponOwnerId = coupon.user_id;
               console.log(`✅ Commission de ${commission} FCFA (${commissionCoins} crédits) créditée au parrain ${coupon.user_id}`);
+              console.log(`   Nouveau available_earnings: ${newAvailableEarnings} FCFA`);
             }
           }
 
-          // Enregistrer la transaction de commission
+          // ============================================
+          // ENREGISTRER LA TRANSACTION DE COMMISSION
+          // ============================================
           await supabase
             .from('transactions')
             .insert({
@@ -213,7 +214,9 @@ exports.handler = async (event) => {
               metadata: {
                 coupon_code: finalCouponCode,
                 buyer_id: userId,
-                payment_id: payment.id
+                payment_id: payment.id,
+                amount_fcfa: amountFcfa,
+                commission_rate: 2
               },
               created_at: new Date().toISOString()
             });
@@ -221,12 +224,15 @@ exports.handler = async (event) => {
       }
     }
 
-    // 3. Mettre à jour le statut du paiement
+    // ============================================
+    // 3. METTRE À JOUR LE STATUT DU PAIEMENT
+    // ============================================
     const { error: updatePaymentError } = await supabase
       .from('payments')
       .update({ 
         status: 'completed', 
         processed_at: new Date().toISOString(),
+        credits_added: true,
         coupon_commission: commissionCredited,
         coupon_owner_id: couponOwnerId
       })
@@ -236,8 +242,10 @@ exports.handler = async (event) => {
       console.error('❌ Erreur mise à jour paiement:', updatePaymentError);
     }
 
-    // 4. Enregistrer la transaction principale
-    const { error: transactionError } = await supabase
+    // ============================================
+    // 4. ENREGISTRER LA TRANSACTION PRINCIPALE
+    // ============================================
+    await supabase
       .from('transactions')
       .insert({
         user_id: userId,
@@ -256,27 +264,14 @@ exports.handler = async (event) => {
         created_at: new Date().toISOString()
       });
 
-    if (transactionError) {
-      console.error('❌ Erreur enregistrement transaction:', transactionError);
-    }
-
-    // 5. Nettoyer le localStorage côté client (optionnel, via une notification)
-    // On peut stocker un flag pour que la page de succès sache que c'est traité
-    await supabase
-      .from('payment_notifications')
-      .insert({
-        transaction_id: orderId,
-        user_id: userId,
-        status: 'completed',
-        processed_at: new Date().toISOString()
-      })
-      .select();
-
     console.log(`🎉 Transaction ${orderId} complétée avec succès`);
-    console.log(`📊 Résumé: ${coinsToAdd} crédits pour acheteur, ${commissionCredited} FCFA de commission pour parrain`);
+    console.log(`📊 Résumé:`);
+    console.log(`   - Acheteur: +${coinsToAdd} crédits`);
+    console.log(`   - Parrain: +${commissionCredited} FCFA (${Math.floor(commissionCredited / 10)} crédits)`);
 
     return {
       statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         success: true, 
         coins_added: coinsToAdd,
@@ -288,7 +283,7 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('❌ Erreur webhook:', error);
     
-    // Tentative d'enregistrement de l'erreur pour debugging
+    // Tentative d'enregistrement de l'erreur
     try {
       await supabase
         .from('webhook_errors')
@@ -303,6 +298,7 @@ exports.handler = async (event) => {
     
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: error.message }),
     };
   }
