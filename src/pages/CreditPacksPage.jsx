@@ -31,11 +31,7 @@ const CREDIT_PACKS = [
     amount: 500,
     coins: 50,
     bonus: 0,
-    features: [
-      "50 Crédits",
-      "Idéal pour tester",
-      "Validité illimitée",
-    ],
+    features: ["50 Crédits", "Idéal pour tester", "Validité illimitée"],
     icon: Coins,
     color: "text-yellow-400",
     glowColor: "rgba(250, 204, 21, 0.4)",
@@ -47,11 +43,7 @@ const CREDIT_PACKS = [
     amount: 1000,
     coins: 100,
     bonus: 0,
-    features: [
-      "100 Crédits",
-      "Participation simple",
-      "Support standard",
-    ],
+    features: ["100 Crédits", "Participation simple", "Support standard"],
     icon: Zap,
     color: "text-blue-400",
     glowColor: "rgba(59, 130, 246, 0.4)",
@@ -63,11 +55,7 @@ const CREDIT_PACKS = [
     amount: 5000,
     coins: 500,
     bonus: 0,
-    features: [
-      "500 Crédits",
-      "Création d'événements",
-      "Boost léger",
-    ],
+    features: ["500 Crédits", "Création d'événements", "Boost léger"],
     icon: Star,
     color: "text-indigo-400",
     glowColor: "rgba(99, 102, 241, 0.4)",
@@ -80,11 +68,7 @@ const CREDIT_PACKS = [
     amount: 10000,
     coins: 1000,
     bonus: 0,
-    features: [
-      "1000 Crédits",
-      "Visibilité accrue",
-      "Support prioritaire",
-    ],
+    features: ["1000 Crédits", "Visibilité accrue", "Support prioritaire"],
     icon: Sparkles,
     color: "text-purple-400",
     glowColor: "rgba(168, 85, 247, 0.4)",
@@ -97,11 +81,7 @@ const CREDIT_PACKS = [
     amount: 25000,
     coins: 2500,
     bonus: 0,
-    features: [
-      "2500 Crédits",
-      "Statut VIP",
-      "Support dédié",
-    ],
+    features: ["2500 Crédits", "Statut VIP", "Support dédié"],
     icon: Crown,
     color: "text-red-400",
     glowColor: "rgba(239, 68, 68, 0.4)",
@@ -114,11 +94,7 @@ const CREDIT_PACKS = [
     amount: 50000,
     coins: 5000,
     bonus: 0,
-    features: [
-      "5000 Crédits",
-      "Boost Maximum",
-      "Partenariat exclusif",
-    ],
+    features: ["5000 Crédits", "Boost Maximum", "Partenariat exclusif"],
     icon: Crown,
     color: "text-orange-400",
     glowColor: "rgba(249, 115, 22, 0.4)",
@@ -142,18 +118,40 @@ const CreditPacksPage = () => {
   const [tempPhone, setTempPhone] = useState("");
   const [pendingPurchase, setPendingPurchase] = useState(null);
 
+  // ✅ Récupération des frais MoneyFusion (avec fallback)
   useEffect(() => {
     const fetchFees = async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "moneyfusion_fee_percent")
-        .single();
-      if (data) setFeePercent(parseFloat(data.value));
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "moneyfusion_fee_percent")
+          .maybeSingle();
+
+        if (error) {
+          console.warn("⚠️ Erreur chargement frais:", error.message);
+          setFeePercent(3);
+          return;
+        }
+
+        if (data && data.value) {
+          const percent = parseFloat(data.value);
+          setFeePercent(isNaN(percent) ? 3 : percent);
+          console.log(`💰 Frais MoneyFusion: ${percent}%`);
+        } else {
+          console.log("💰 Utilisation 3% par défaut");
+          setFeePercent(3);
+        }
+      } catch (err) {
+        console.error("❌ Exception chargement frais:", err);
+        setFeePercent(3);
+      }
     };
+
     fetchFees();
   }, []);
 
+  // ✅ Récupération du téléphone utilisateur
   useEffect(() => {
     const fetchUserPhone = async () => {
       if (user?.id) {
@@ -161,8 +159,8 @@ const CreditPacksPage = () => {
           .from("profiles")
           .select("phone")
           .eq("id", user.id)
-          .single();
-        
+          .maybeSingle();
+
         if (data && !error) {
           const phone = data.phone || "";
           setUserPhone(phone);
@@ -171,10 +169,11 @@ const CreditPacksPage = () => {
         }
       }
     };
-    
+
     fetchUserPhone();
   }, [user?.id]);
 
+  // ✅ Récupération du coupon sauvegardé
   useEffect(() => {
     const savedCoupon = localStorage.getItem("appliedCoupon");
     if (savedCoupon) {
@@ -207,7 +206,7 @@ const CreditPacksPage = () => {
         .from("profiles")
         .select("email, full_name")
         .eq("id", coupon.user_id)
-        .single();
+        .maybeSingle();
 
       setAppliedCoupon({
         code: coupon.code,
@@ -259,17 +258,17 @@ const CreditPacksPage = () => {
 
   const saveUserPhone = async (phone) => {
     if (!user?.id) return false;
-    
+
     const { error } = await supabase
       .from("profiles")
       .update({ phone: phone })
       .eq("id", user.id);
-    
+
     if (error) {
       console.error("❌ Erreur sauvegarde téléphone:", error);
       return false;
     }
-    
+
     setUserPhone(phone);
     console.log("✅ Téléphone sauvegardé:", phone);
     return true;
@@ -298,24 +297,25 @@ const CreditPacksPage = () => {
   const processPayment = async (amountFcfa, coinsAmount, packId) => {
     setIsProcessing(true);
     const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // ✅ LOGIQUE CORRECTE:
     // - amountFcfa = prix que l'utilisateur voit (ex: 500 FCFA)
     // - L'utilisateur paie exactement amountFcfa sur MoneyFusion
-    // - MoneyFusion prend 3%, tu reçois 97%
+    // - MoneyFusion prend feePercent%, tu reçois (100 - feePercent)%
     // - L'utilisateur reçoit des crédits = amountFcfa / 10 (ex: 50 crédits = 500 FCFA)
-    
-    const totalWithFees = amountFcfa; // Ce que l'utilisateur paie (500)
-    const finalCoinsAmount = Math.floor(amountFcfa / 10); // Crédits reçus (50)
-    
-    const moneyFusionFee = Math.floor(amountFcfa * feePercent / 100);
+
+    const totalWithFees = amountFcfa;
+    const finalCoinsAmount = Math.floor(amountFcfa / 10);
+    const moneyFusionFee = Math.floor((amountFcfa * feePercent) / 100);
     const whatYouReceive = amountFcfa - moneyFusionFee;
-    
+
     console.log(`💰 Transaction ${packId}:`);
     console.log(`   Utilisateur voit et paie: ${amountFcfa} FCFA`);
     console.log(`   MoneyFusion prend ${feePercent}%: -${moneyFusionFee} FCFA`);
     console.log(`   Tu reçois: ${whatYouReceive} FCFA`);
-    console.log(`   Utilisateur reçoit: ${finalCoinsAmount} crédits (${finalCoinsAmount * 10} FCFA)`);
+    console.log(
+      `   Utilisateur reçoit: ${finalCoinsAmount} crédits (${finalCoinsAmount * 10} FCFA)`,
+    );
 
     try {
       const { data: paymentData, error: paymentError } = await supabase
@@ -336,7 +336,9 @@ const CreditPacksPage = () => {
 
       if (paymentError) {
         console.error("❌ Erreur Supabase insert :", paymentError);
-        throw new Error(`Erreur lors de l'enregistrement: ${paymentError.message}`);
+        throw new Error(
+          `Erreur lors de l'enregistrement: ${paymentError.message}`,
+        );
       }
 
       console.log("✅ Paiement enregistré en attente:", paymentData);
@@ -383,15 +385,16 @@ const CreditPacksPage = () => {
           numeroSend: userPhone,
           nomclient: user.email || "Client",
           return_url: `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
-          webhook_url: "https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook",
+          webhook_url:
+            "https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook",
         }),
       });
 
       const result = await response.json();
-      if (!result.success) throw new Error(result.message || "Erreur création paiement");
+      if (!result.success)
+        throw new Error(result.message || "Erreur création paiement");
 
       window.location.href = result.redirect_url;
-      
     } catch (err) {
       console.error("Payment init error:", err);
       toast({
@@ -413,24 +416,25 @@ const CreditPacksPage = () => {
       return;
     }
 
-    let cleanPhone = tempPhone.replace(/\D/g, '');
-    
+    let cleanPhone = tempPhone.replace(/\D/g, "");
+
     if (cleanPhone.length > 12) {
       cleanPhone = cleanPhone.slice(-12);
     }
-    
-    if (cleanPhone.startsWith('226') && cleanPhone.length > 8) {
+
+    if (cleanPhone.startsWith("226") && cleanPhone.length > 8) {
       cleanPhone = cleanPhone.substring(3);
     }
-    
-    if (cleanPhone.startsWith('0') && cleanPhone.length === 9) {
+
+    if (cleanPhone.startsWith("0") && cleanPhone.length === 9) {
       cleanPhone = cleanPhone.substring(1);
     }
-    
+
     if (cleanPhone.length < 8 || cleanPhone.length > 12) {
       toast({
         title: "Numéro invalide",
-        description: "Veuillez entrer un numéro valide (8 à 12 chiffres).",
+        description:
+          "Veuillez entrer un numéro valide (8 à 12 chiffres). Ex: 73790978",
         variant: "destructive",
       });
       return;
@@ -439,13 +443,16 @@ const CreditPacksPage = () => {
     const saved = await saveUserPhone(cleanPhone);
     if (saved && pendingPurchase) {
       setShowPhoneModal(false);
-      await processPayment(pendingPurchase.amountFcfa, pendingPurchase.coinsAmount, pendingPurchase.packId);
+      await processPayment(
+        pendingPurchase.amountFcfa,
+        pendingPurchase.coinsAmount,
+        pendingPurchase.packId,
+      );
       setPendingPurchase(null);
     }
   };
 
   const handlePurchase = (pack) => {
-    // Pas de bonus supplémentaire, l'utilisateur reçoit exactement amount/10 crédits
     const totalCoins = pack.coins;
     initPayment(pack.amount, totalCoins, pack.id);
   };
@@ -469,11 +476,13 @@ const CreditPacksPage = () => {
     <div className="min-h-screen bg-black py-12 px-4 text-gray-100">
       <MultilingualSeoHead
         pageData={{
-          title: "Acheter des Crédits - BonPlanInfos",
-          description: "Rechargez votre compte en crédits avec nos packs exclusifs.",
+          title: "Acheter des Crédits - Recharge BonPlanInfos",
+          description:
+            "Rechargez votre compte en crédits BonPlanInfos. Achetez des crédits pour participer aux événements et concours.",
         }}
       />
 
+      {/* Modal numéro de téléphone */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <motion.div
@@ -492,14 +501,14 @@ const CreditPacksPage = () => {
                 Pour effectuer un paiement, nous avons besoin de votre numéro.
               </p>
             </div>
-            
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 📱 Votre numéro WhatsApp / Mobile
               </label>
               <Input
                 type="tel"
-                placeholder="Ex: 771234567"
+                placeholder="Ex: 73790978"
                 value={tempPhone}
                 onChange={(e) => setTempPhone(e.target.value)}
                 className="bg-gray-800 border-gray-700 text-white text-lg"
@@ -509,7 +518,7 @@ const CreditPacksPage = () => {
                 Format: 8 à 12 chiffres (sans espaces)
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 onClick={() => {
@@ -532,18 +541,19 @@ const CreditPacksPage = () => {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-16">
+      <div className="max-w-7xl mx-auto space-y-12">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-4"
         >
           <h1 className="text-4xl md:text-5xl font-extrabold text-white">
-            💳 Boutique de crédits BonPlanInfos
+            💳 Recharge de crédits
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Rechargez votre compte en toute sécurité, choisissez un pack adapté
-            à vos besoins et participez facilement aux événements.
+            Rechargez votre compte en toute sécurité. Les crédits sont
+            utilisables immédiatement sur tous les événements de la plateforme.
           </p>
         </motion.div>
 
@@ -552,9 +562,9 @@ const CreditPacksPage = () => {
           <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border border-yellow-500/50 p-6">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-3xl animate-bounce">🎁</span>
-              <h2 className="text-xl font-bold text-white">Entrez votre Code coupon</h2>
+              <h2 className="text-xl font-bold text-white">Code promo</h2>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
                 <Input
@@ -586,9 +596,16 @@ const CreditPacksPage = () => {
 
             {appliedCoupon && (
               <div className="mt-4 p-3 bg-green-900/40 border border-green-500/50 rounded-lg">
-                <p className="text-green-300 font-medium">✓ Code {appliedCoupon.code} appliqué</p>
+                <p className="text-green-300 font-medium flex items-center gap-2">
+                  ✓ Code {appliedCoupon.code} appliqué
+                </p>
                 <p className="text-gray-300 text-xs mt-1">
-                  👤 Parrain : {appliedCoupon.ownerName || appliedCoupon.ownerEmail}
+                  👤 Parrain :{" "}
+                  {appliedCoupon.ownerName || appliedCoupon.ownerEmail}
+                </p>
+                <p className="text-yellow-400 text-xs mt-1">
+                  🎁 2% de commission sera versée au parrain après validation du
+                  paiement
                 </p>
               </div>
             )}
@@ -596,11 +613,10 @@ const CreditPacksPage = () => {
         </div>
 
         {/* Packs Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {CREDIT_PACKS.map((pack, index) => {
             const Icon = pack.icon;
             const totalCoins = pack.coins;
-            // Calcul de ce que l'utilisateur reçoit en valeur FCFA
             const valueInFcfa = totalCoins * 10;
 
             return (
@@ -612,45 +628,65 @@ const CreditPacksPage = () => {
                 className="relative group bg-gray-900 rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden border border-gray-800 flex flex-col"
               >
                 {pack.badge && (
-                  <div className="absolute top-0 right-0 bg-purple-600 text-white text-xs font-bold px-4 py-1 rounded-bl-lg z-10">
+                  <div className="absolute top-0 right-0 bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
                     {pack.badge}
                   </div>
                 )}
-                <div className="p-8 text-center border-b border-gray-800 bg-gray-950">
-                  <div className={`w-20 h-20 mx-auto bg-gray-800 rounded-full flex items-center justify-center mb-6 ${pack.color}`}>
-                    <Icon className="w-10 h-10" />
+                <div className="p-6 text-center border-b border-gray-800 bg-gray-950">
+                  <div
+                    className={`w-16 h-16 mx-auto bg-gray-800 rounded-full flex items-center justify-center mb-4 ${pack.color}`}
+                  >
+                    <Icon className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">{pack.name}</h3>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    {pack.name}
+                  </h3>
                   <div className="flex items-baseline justify-center mb-2">
-                    <span className="text-5xl font-extrabold text-white">{pack.amount.toLocaleString()}</span>
-                    <span className="text-lg font-medium text-gray-400 ml-1">FCFA</span>
+                    <span className="text-3xl md:text-4xl font-extrabold text-white">
+                      {pack.amount.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-medium text-gray-400 ml-1">
+                      FCFA
+                    </span>
                   </div>
-                  <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-3 py-1 rounded-full text-sm font-bold">
-                    <Coins className="w-4 h-4 mr-1" />
+                  <div className="inline-flex items-center bg-gray-800 border border-gray-700 text-yellow-300 px-3 py-1 rounded-full text-xs font-bold">
+                    <Coins className="w-3 h-3 mr-1" />
                     {totalCoins.toLocaleString()} Crédits
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className="text-xs text-gray-500 mt-1">
                     (Soit {valueInFcfa.toLocaleString()} FCFA)
                   </div>
                 </div>
-                <div className="p-6 bg-gray-900">
-                  <ul className="space-y-3 mb-6">
+                <div className="p-4 bg-gray-900 flex-1 flex flex-col">
+                  <ul className="space-y-2 mb-4">
                     {pack.features.map((feature, i) => (
-                      <li key={i} className="flex items-start text-sm text-gray-300">
-                        <Check className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <li
+                        key={i}
+                        className="flex items-start text-xs text-gray-300"
+                      >
+                        <Check className="w-3 h-3 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
                   <Button
                     disabled={isProcessing}
-                    className={`w-full font-bold ${
-                      pack.badge ? "bg-purple-600 hover:bg-purple-700" : "bg-yellow-500 hover:bg-yellow-600 text-black"
+                    className={`w-full font-bold text-sm ${
+                      pack.badge
+                        ? "bg-purple-600 hover:bg-purple-700"
+                        : "bg-yellow-500 hover:bg-yellow-600 text-black"
                     }`}
                     onClick={() => handlePurchase(pack)}
+                    title="Recharger mon compte"
                   >
-                    {isProcessing ? "Redirection..." : `Acheter ${pack.amount.toLocaleString()} FCFA`}
-                    {!isProcessing && <Rocket className="ml-2 w-4 h-4" />}
+                    {isProcessing ? (
+                      "Redirection..."
+                    ) : (
+                      <span className="flex items-center justify-center">
+                        Recharger
+                        <Rocket className="ml-2 w-4 h-4" />
+                      </span>
+                    )}
                   </Button>
                 </div>
               </motion.div>
@@ -660,49 +696,88 @@ const CreditPacksPage = () => {
 
         {/* Montant Personnalisé */}
         <motion.div className="max-w-2xl mx-auto">
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-shrink-0 bg-gray-800 p-4 rounded-full">
-                <Calculator className="w-10 h-10 text-yellow-400" />
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-shrink-0 bg-gray-800 p-3 rounded-full">
+                <Calculator className="w-8 h-8 text-yellow-400" />
               </div>
               <div className="flex-grow text-center md:text-left">
-                <h3 className="text-xl font-bold text-white mb-2">Montant Personnalisé</h3>
-                <p className="text-gray-400 text-sm mb-6">Vous avez un budget spécifique ?</p>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <h3 className="text-lg font-bold text-white mb-1">
+                  Montant Personnalisé
+                </h3>
+                <p className="text-gray-400 text-xs mb-4">
+                  Vous avez un budget spécifique ?
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative w-full">
                     <Input
                       type="number"
                       placeholder="Montant en FCFA"
                       value={customAmount}
                       onChange={(e) => setCustomAmount(e.target.value)}
-                      className="pr-16 bg-gray-800 border-gray-700 text-white"
+                      className="pr-16 bg-gray-800 border-gray-700 text-white h-11"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">FCFA</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                      FCFA
+                    </span>
                   </div>
                   <Button
                     disabled={isProcessing}
-                    className="bg-gray-800 border border-gray-700 text-white hover:border-yellow-500"
+                    className="bg-gray-800 border border-gray-700 text-white hover:border-yellow-500 h-11"
                     onClick={handleCustomAmountPurchase}
                   >
                     <Target className="mr-2 w-4 h-4" />
-                    Payer personnalisé
+                    Recharger
                   </Button>
                 </div>
                 {customAmount && parseInt(customAmount) > 0 && (
-                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <p className="text-sm font-medium text-gray-300">
+                  <div className="mt-3 p-2 bg-gray-800/50 rounded-lg">
+                    <p className="text-xs font-medium text-gray-300">
                       Vous recevrez{" "}
                       <span className="font-bold text-yellow-300">
-                        {Math.floor(parseInt(customAmount) / 10).toLocaleString()} Crédits
-                      </span>
+                        {Math.floor(
+                          parseInt(customAmount) / 10,
+                        ).toLocaleString()}
+                      </span>{" "}
+                      crédits
                     </p>
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mt-4">
-                  💡 Tous nos prix incluent les frais de transaction
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Informations */}
+        <motion.div className="max-w-3xl mx-auto">
+          <div className="bg-gray-900/50 rounded-xl border border-gray-800 p-6 text-center">
+            <h3 className="text-white font-bold mb-3">
+              ℹ️ Comment ça fonctionne ?
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-yellow-400 font-bold">1. Rechargez</span>
+                <p className="text-gray-400 text-xs">
+                  Choisissez votre pack ou montant personnalisé
+                </p>
+              </div>
+              <div>
+                <span className="text-yellow-400 font-bold">2. Payez</span>
+                <p className="text-gray-400 text-xs">
+                  Paiement sécurisé via MoneyFusion (Orange Money, Moov)
+                </p>
+              </div>
+              <div>
+                <span className="text-yellow-400 font-bold">3. Utilisez</span>
+                <p className="text-gray-400 text-xs">
+                  Crédits disponibles immédiatement sur la plateforme
                 </p>
               </div>
             </div>
+            <p className="text-xs text-gray-500 mt-4">
+              💡 Tous les prix affichés sont TTC. Les frais de transaction sont
+              inclus.
+            </p>
           </div>
         </motion.div>
       </div>
