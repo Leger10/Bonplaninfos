@@ -30,12 +30,11 @@ const CREDIT_PACKS = [
     name: "Pack Débutant",
     amount: 500,
     coins: 50,
-    bonus: 3,
+    bonus: 0,
     features: [
       "50 Crédits",
       "Idéal pour tester",
       "Validité illimitée",
-      "3% Crédits Bonus",
     ],
     icon: Coins,
     color: "text-yellow-400",
@@ -47,12 +46,11 @@ const CREDIT_PACKS = [
     name: "Pack Standard",
     amount: 1000,
     coins: 100,
-    bonus: 3,
+    bonus: 0,
     features: [
       "100 Crédits",
       "Participation simple",
       "Support standard",
-      "3% Crédits Bonus",
     ],
     icon: Zap,
     color: "text-blue-400",
@@ -64,12 +62,11 @@ const CREDIT_PACKS = [
     name: "Pack Start",
     amount: 5000,
     coins: 500,
-    bonus: 3,
+    bonus: 0,
     features: [
       "500 Crédits",
       "Création d'événements",
       "Boost léger",
-      "3% Crédits Bonus",
     ],
     icon: Star,
     color: "text-indigo-400",
@@ -82,17 +79,16 @@ const CREDIT_PACKS = [
     name: "Pack Premium",
     amount: 10000,
     coins: 1000,
-    bonus: 3,
+    bonus: 0,
     features: [
       "1000 Crédits",
-      "3% Crédits Bonus",
       "Visibilité accrue",
       "Support prioritaire",
     ],
     icon: Sparkles,
     color: "text-purple-400",
     glowColor: "rgba(168, 85, 247, 0.4)",
-    actionTags: ["Boost +3%", "Prioritaire"],
+    actionTags: ["Prioritaire"],
     badge: "🚀 Le plus acheté",
   },
   {
@@ -100,17 +96,16 @@ const CREDIT_PACKS = [
     name: "Pack VIP",
     amount: 25000,
     coins: 2500,
-    bonus: 3,
+    bonus: 0,
     features: [
       "2500 Crédits",
-      "3% Crédits Bonus",
       "Statut VIP",
       "Support dédié",
     ],
     icon: Crown,
     color: "text-red-400",
     glowColor: "rgba(239, 68, 68, 0.4)",
-    actionTags: ["Exclusif", "+3%"],
+    actionTags: ["Exclusif"],
     badge: "👑 Élite",
   },
   {
@@ -118,17 +113,16 @@ const CREDIT_PACKS = [
     name: "Pack King",
     amount: 50000,
     coins: 5000,
-    bonus: 3,
+    bonus: 0,
     features: [
       "5000 Crédits",
-      "3% Crédits Bonus",
       "Boost Maximum",
       "Partenariat exclusif",
     ],
     icon: Crown,
     color: "text-orange-400",
     glowColor: "rgba(249, 115, 22, 0.4)",
-    actionTags: ["Maximum", "+3%"],
+    actionTags: ["Maximum"],
     badge: "🏆 Ultime",
   },
 ];
@@ -304,15 +298,31 @@ const CreditPacksPage = () => {
   const processPayment = async (amountFcfa, coinsAmount, packId) => {
     setIsProcessing(true);
     const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const feeAmount = Math.ceil(amountFcfa * (feePercent / 100));
-    const totalWithFees = amountFcfa + feeAmount;
+    
+    // ✅ LOGIQUE CORRECTE:
+    // - amountFcfa = prix que l'utilisateur voit (ex: 500 FCFA)
+    // - L'utilisateur paie exactement amountFcfa sur MoneyFusion
+    // - MoneyFusion prend 3%, tu reçois 97%
+    // - L'utilisateur reçoit des crédits = amountFcfa / 10 (ex: 50 crédits = 500 FCFA)
+    
+    const totalWithFees = amountFcfa; // Ce que l'utilisateur paie (500)
+    const finalCoinsAmount = Math.floor(amountFcfa / 10); // Crédits reçus (50)
+    
+    const moneyFusionFee = Math.floor(amountFcfa * feePercent / 100);
+    const whatYouReceive = amountFcfa - moneyFusionFee;
+    
+    console.log(`💰 Transaction ${packId}:`);
+    console.log(`   Utilisateur voit et paie: ${amountFcfa} FCFA`);
+    console.log(`   MoneyFusion prend ${feePercent}%: -${moneyFusionFee} FCFA`);
+    console.log(`   Tu reçois: ${whatYouReceive} FCFA`);
+    console.log(`   Utilisateur reçoit: ${finalCoinsAmount} crédits (${finalCoinsAmount * 10} FCFA)`);
 
     try {
       const { data: paymentData, error: paymentError } = await supabase
         .from("payments")
         .insert({
           user_id: user.id,
-          coins_amount: coinsAmount,
+          coins_amount: finalCoinsAmount,
           amount_fcfa: amountFcfa,
           status: "pending",
           payment_method: "moneyfusion",
@@ -347,35 +357,35 @@ const CreditPacksPage = () => {
 
       localStorage.setItem("pendingPaymentTxnId", txnId);
       localStorage.setItem("pendingPaymentAmount", amountFcfa);
-      localStorage.setItem("pendingPaymentCoins", coinsAmount);
+      localStorage.setItem("pendingPaymentCoins", finalCoinsAmount);
       localStorage.setItem("pendingPaymentPackId", packId);
       localStorage.setItem("pendingPaymentUserId", user.id);
       if (couponUsageId) {
         localStorage.setItem("pendingCouponUsageId", couponUsageId);
       }
 
-     const response = await fetch("/.netlify/functions/create-payment", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    totalPrice: totalWithFees,
-    article: [{ [packId]: amountFcfa }],
-    personal_Info: [
-      {
-        userId: user.id,
-        orderId: txnId,
-        couponCode: appliedCoupon?.code || null,
-        amountFcfa: amountFcfa,
-        paymentId: paymentData.id,
-        couponUsageId: couponUsageId,
-      },
-    ],
-    numeroSend: userPhone,
-    nomclient: user.email || "Client",
-    return_url: `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
-    webhook_url: "https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook", // ← URL complète !
-  }),
-});
+      const response = await fetch("/.netlify/functions/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalPrice: totalWithFees,
+          article: [{ [packId]: amountFcfa }],
+          personal_Info: [
+            {
+              userId: user.id,
+              orderId: txnId,
+              couponCode: appliedCoupon?.code || null,
+              amountFcfa: amountFcfa,
+              paymentId: paymentData.id,
+              couponUsageId: couponUsageId,
+            },
+          ],
+          numeroSend: userPhone,
+          nomclient: user.email || "Client",
+          return_url: `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
+          webhook_url: "https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook",
+        }),
+      });
 
       const result = await response.json();
       if (!result.success) throw new Error(result.message || "Erreur création paiement");
@@ -393,55 +403,50 @@ const CreditPacksPage = () => {
     }
   };
 
-const handlePhoneSubmit = async () => {
-  if (!tempPhone || tempPhone.trim() === "") {
-    toast({
-      title: "Numéro requis",
-      description: "Veuillez entrer votre numéro de téléphone.",
-      variant: "destructive",
-    });
-    return;
-  }
+  const handlePhoneSubmit = async () => {
+    if (!tempPhone || tempPhone.trim() === "") {
+      toast({
+        title: "Numéro requis",
+        description: "Veuillez entrer votre numéro de téléphone.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // Nettoie le numéro : garde uniquement les chiffres
-  let cleanPhone = tempPhone.replace(/\D/g, '');
-  
-  // Si le numéro fait plus de 12 chiffres, on prend les 12 derniers
-  if (cleanPhone.length > 12) {
-    cleanPhone = cleanPhone.slice(-12);
-  }
-  
-  // Si le numéro commence par 226 (indicatif Burkina), on l'enlève
-  if (cleanPhone.startsWith('226') && cleanPhone.length > 8) {
-    cleanPhone = cleanPhone.substring(3);
-  }
-  
-  // Si le numéro a 9 chiffres et commence par 0, on enlève le 0
-  if (cleanPhone.startsWith('0') && cleanPhone.length === 9) {
-    cleanPhone = cleanPhone.substring(1);
-  }
-  
-  // Vérifie que le numéro fait entre 8 et 12 chiffres
-  if (cleanPhone.length < 8 || cleanPhone.length > 12) {
-    toast({
-      title: "Numéro invalide",
-      description: "Veuillez entrer un numéro valide (8 à 12 chiffres). Exemples: 73790978, +22673790978, 0022673790978",
-      variant: "destructive",
-    });
-    return;
-  }
+    let cleanPhone = tempPhone.replace(/\D/g, '');
+    
+    if (cleanPhone.length > 12) {
+      cleanPhone = cleanPhone.slice(-12);
+    }
+    
+    if (cleanPhone.startsWith('226') && cleanPhone.length > 8) {
+      cleanPhone = cleanPhone.substring(3);
+    }
+    
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 9) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+    
+    if (cleanPhone.length < 8 || cleanPhone.length > 12) {
+      toast({
+        title: "Numéro invalide",
+        description: "Veuillez entrer un numéro valide (8 à 12 chiffres).",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const saved = await saveUserPhone(cleanPhone);
-  if (saved && pendingPurchase) {
-    setShowPhoneModal(false);
-    await processPayment(pendingPurchase.amountFcfa, pendingPurchase.coinsAmount, pendingPurchase.packId);
-    setPendingPurchase(null);
-  }
-};
+    const saved = await saveUserPhone(cleanPhone);
+    if (saved && pendingPurchase) {
+      setShowPhoneModal(false);
+      await processPayment(pendingPurchase.amountFcfa, pendingPurchase.coinsAmount, pendingPurchase.packId);
+      setPendingPurchase(null);
+    }
+  };
 
   const handlePurchase = (pack) => {
-    const bonusCoins = pack.bonus ? Math.round((pack.coins * pack.bonus) / 100) : 0;
-    const totalCoins = pack.coins + bonusCoins;
+    // Pas de bonus supplémentaire, l'utilisateur reçoit exactement amount/10 crédits
+    const totalCoins = pack.coins;
     initPayment(pack.amount, totalCoins, pack.id);
   };
 
@@ -456,9 +461,8 @@ const handlePhoneSubmit = async () => {
       return;
     }
 
-    let estimatedCoins = Math.floor(amount / 10);
-    let bonus = Math.round(estimatedCoins * 0.03);
-    initPayment(amount, estimatedCoins + bonus, "custom");
+    const estimatedCoins = Math.floor(amount / 10);
+    initPayment(amount, estimatedCoins, "custom");
   };
 
   return (
@@ -502,7 +506,7 @@ const handlePhoneSubmit = async () => {
                 autoFocus
               />
               <p className="text-xs text-gray-500 mt-2">
-                Format: 9 à 12 chiffres (sans espaces)
+                Format: 8 à 12 chiffres (sans espaces)
               </p>
             </div>
             
@@ -595,8 +599,9 @@ const handlePhoneSubmit = async () => {
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {CREDIT_PACKS.map((pack, index) => {
             const Icon = pack.icon;
-            const bonusCoins = pack.bonus ? Math.round((pack.coins * pack.bonus) / 100) : 0;
-            const totalCoins = pack.coins + bonusCoins;
+            const totalCoins = pack.coins;
+            // Calcul de ce que l'utilisateur reçoit en valeur FCFA
+            const valueInFcfa = totalCoins * 10;
 
             return (
               <motion.div
@@ -624,6 +629,9 @@ const handlePhoneSubmit = async () => {
                     <Coins className="w-4 h-4 mr-1" />
                     {totalCoins.toLocaleString()} Crédits
                   </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    (Soit {valueInFcfa.toLocaleString()} FCFA)
+                  </div>
                 </div>
                 <div className="p-6 bg-gray-900">
                   <ul className="space-y-3 mb-6">
@@ -633,12 +641,6 @@ const handlePhoneSubmit = async () => {
                         <span>{feature}</span>
                       </li>
                     ))}
-                    {bonusCoins > 0 && (
-                      <li className="flex items-start text-sm font-bold text-green-400 bg-gray-800/50 p-2 rounded">
-                        <Sparkles className="w-4 h-4 text-green-400 mr-2" />
-                        <span>+{bonusCoins} Crédits Bonus</span>
-                      </li>
-                    )}
                   </ul>
                   <Button
                     disabled={isProcessing}
@@ -647,7 +649,7 @@ const handlePhoneSubmit = async () => {
                     }`}
                     onClick={() => handlePurchase(pack)}
                   >
-                    {isProcessing ? "Redirection..." : "Acheter maintenant"}
+                    {isProcessing ? "Redirection..." : `Acheter ${pack.amount.toLocaleString()} FCFA`}
                     {!isProcessing && <Rocket className="ml-2 w-4 h-4" />}
                   </Button>
                 </div>
@@ -686,6 +688,19 @@ const handlePhoneSubmit = async () => {
                     Payer personnalisé
                   </Button>
                 </div>
+                {customAmount && parseInt(customAmount) > 0 && (
+                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <p className="text-sm font-medium text-gray-300">
+                      Vous recevrez{" "}
+                      <span className="font-bold text-yellow-300">
+                        {Math.floor(parseInt(customAmount) / 10).toLocaleString()} Crédits
+                      </span>
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-4">
+                  💡 Tous nos prix incluent les frais de transaction
+                </p>
               </div>
             </div>
           </div>
