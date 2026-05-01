@@ -111,8 +111,7 @@ const TicketingInterface = ({
 }) => {
   const { user } = useAuth();
   const { userProfile } = useData();
-  const { applyPromoCode, removePromoCode, recordPromoCodeUsage, promoConfig } =
-    usePromoCode(event?.id);
+  const { applyPromoCode, removePromoCode, promoConfig } = usePromoCode(event?.id);
 
   // Promo code state
   const [promoCodeInput, setPromoCodeInput] = useState("");
@@ -149,8 +148,9 @@ const TicketingInterface = ({
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
   const [transactionId, setTransactionId] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
-const [promoDiscountValue, setPromoDiscountValue] = useState(0); // AJOUTÉ
-const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
+  const [promoDiscountValue, setPromoDiscountValue] = useState(0);
+  const [promoDiscountType, setPromoDiscountType] = useState(null);
+  
   // Detect screen size
   useEffect(() => {
     const checkMobile = () => {
@@ -420,7 +420,11 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
     window.location.href = "/packs";
   };
 
-  // CORRECTION PRINCIPALE: handlePurchase modifié pour correspondre exactement à la base de données
+  const redirectToMyTickets = () => {
+    window.location.href = "/profile?tab=tickets";
+  };
+
+  // handlePurchase corrigé - PLUS D'APPEL DOUBLE À process_promo_usage
   const handlePurchase = async () => {
     if (isPurchasingRef.current) {
       console.log("Achat deja en cours, ignore");
@@ -463,43 +467,22 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
     isPurchasingRef.current = true;
     setLoading(true);
 
-    const promoCodeId = appliedPromoCodeId;
-    const promoCommission = pendingCommissionAmount || promoCommissionAmount;
-    const promoDiscount = promoDiscountAmount;
-
     try {
-      // Appel à purchase_tickets_v2 avec les bons paramètres
+      // Appel à purchase_tickets_v2 (il gère déjà tout : achat + promo + commission)
       const { data, error } = await supabase.rpc("purchase_tickets_v2", {
         p_user_id: user.id,
         p_event_id: event.id,
         p_cart: cart,
         p_final_amount: cartTotal,
-        p_promo_code_id: promoCodeId || null,
-        p_commission_amount: promoCommission || 0,
+        p_promo_code_id: appliedPromoCodeId || null,
+        p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
       });
 
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
 
-      // Si un code promo a été utilisé, enregistrer l'utilisation
-      if (isPromoApplied && promoCodeId && promoCommission > 0) {
-        const transactionIdForPromo = data.transaction_id;
-        
-        const { error: promoError } = await supabase.rpc("process_promo_usage", {
-          p_code_id: promoCodeId,
-          p_user_id: user.id,
-          p_discount: promoDiscount,
-          p_commission: promoCommission,
-          p_purchase: cartTotal,
-          p_transaction_id: transactionIdForPromo,
-        });
-
-        if (promoError) {
-          console.error("Error processing promo usage:", promoError);
-        } else {
-          console.log("Promo usage recorded successfully");
-        }
-      }
+      // ✅ PLUS BESOIN D'APPELER process_promo_usage ici
+      // purchase_tickets_v2 l'a déjà fait automatiquement
 
       // Gérer les tickets retournés
       const generatedTickets = data.tickets || [];
@@ -526,36 +509,35 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
       setPendingCommissionAmount(0);
       setPromoCodeInput("");
 
-      // Toast de succès
       toast({
-        title: "Commande validee !",
+        title: "Commande validee ! 🎉",
         description: (
           <div className="flex flex-col gap-1">
             <span>Votre commande a ete effectuee avec succes.</span>
-            {promoDiscount > 0 && (
+            {promoDiscountAmount > 0 && (
               <div className="mt-1 p-2 bg-green-100 rounded-md">
                 <span className="font-medium text-green-700">
-                  Reduction appliquee : {promoDiscount.toFixed(2)} pieces (
-                  {Math.floor(promoDiscount * 10).toLocaleString()} FCFA)
+                  Reduction appliquee : {promoDiscountAmount.toFixed(2)} pieces (
+                  {Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
                 </span>
               </div>
             )}
             <span className="font-medium text-primary mt-1">
               <Bell className="w-3 h-3 inline mr-1" />
-              Vos billets sont disponibles dans votre profil !
+              Redirection vers vos billets...
             </span>
           </div>
         ),
-        duration: 5000,
+        duration: 3000,
       });
 
-      setTimeout(() => setShowSuccessModal(true), 1000);
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 5000);
+      // Redirection vers l'onglet des billets après 2.5 secondes
+      setTimeout(() => {
+        redirectToMyTickets();
+      }, 2500);
 
       if (onRefresh) onRefresh();
       
-      // Rafraîchir le solde utilisateur
       const newBalance = await CoinService.getWalletBalances(user.id);
       setUserBalance(newBalance.coin_balance);
       
@@ -611,7 +593,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 relative px-2 sm:px-0">
-      {/* Notification flottante - garder le même JSX */}
+      {/* Notification flottante */}
       {showNotification && (
         <div className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top duration-500 w-[90vw] sm:w-auto">
           <Alert className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl max-w-md mx-auto">
@@ -625,7 +607,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </div>
       )}
 
-      {/* Header - garder le même JSX */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gradient-to-r from-primary/10 to-purple-500/10 p-4 sm:p-6 rounded-xl border border-primary/20 gap-3 sm:gap-0">
         <div className="w-full sm:w-auto">
           <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-foreground">
@@ -650,7 +632,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </div>
       </div>
 
-      {/* Ticket Grid - garder le même JSX */}
+      {/* Ticket Grid */}
       {!ticketTypes || ticketTypes.length === 0 ? (
         <Alert>
           <AlertTitle>Aucun billet disponible</AlertTitle>
@@ -731,7 +713,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </div>
       )}
 
-      {/* Floating Cart - garder le même JSX avec les corrections mineures */}
+      {/* Floating Cart */}
       {totalTicketsInCart > 0 && !isClosed && (
         <>
           {showCartDetails && (
@@ -883,7 +865,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </div>
       )}
 
-      {/* Checkout Modal - garder le même JSX */}
+      {/* Checkout Modal */}
       <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
         <DialogContent className="w-[95vw] max-w-lg mx-auto p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -977,7 +959,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
                 {!hasSufficientBalance && (
                   <Alert className="bg-amber-50 border-amber-200">
                     <AlertDescription className="text-xs sm:text-sm text-amber-800">
-                      <Package className="w-4 h-4 inline mr-2" /> Votre solde est insuffisant. <strong>Rechargez vos pieces pour continuer.</strong>
+                      <Package className="w-4 h-4 inline mr-2" /> Votre solde est insuffissant. <strong>Rechargez vos pieces pour continuer.</strong>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1011,7 +993,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </DialogContent>
       </Dialog>
 
-      {/* Insufficient Balance Modal - garder le même JSX */}
+      {/* Insufficient Balance Modal */}
       <Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
         <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
           <DialogHeader>
@@ -1041,7 +1023,7 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
         </DialogContent>
       </Dialog>
 
-      {/* Success Modal - garder le même JSX */}
+      {/* Success Modal - Optionnel maintenant car redirection auto */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6 text-center">
           <DialogHeader>
@@ -1058,7 +1040,10 @@ const [promoDiscountType, setPromoDiscountType] = useState(null); // AJOUTÉ
             <Button onClick={handleDownloadPDF} className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold shadow-lg bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
               <Download className="mr-2 h-5 w-5 sm:h-6 sm:w-6" /><span>Telecharger les Billets (PDF)</span>
             </Button>
-            <Button variant="outline" className="w-full" onClick={() => setShowSuccessModal(false)}>Continuer la navigation</Button>
+            <Button variant="outline" className="w-full" onClick={redirectToMyTickets}>
+              <Ticket className="mr-2 h-5 w-5" />
+              Voir mes billets
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

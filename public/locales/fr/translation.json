@@ -86,6 +86,9 @@
       "terms_required": "Vous devez accepter les conditions d'utilisation."
     },
     "full_name": "Nom complet",
+    "phone": "Téléphone",
+    "phone_optional": "Téléphone",
+    "phone_invalid": "Numéro de téléphone invalide (8 à 12 chiffres)",
     "country": "Pays",
     "select_country_placeholder": "Sélectionnez votre pays",
     "city": "Ville",
@@ -321,7 +324,7 @@
       "popular_by_category": "Populaires par catégorie",
       "free_weekend": "Gratuits ce week-end",
       "ending_soon": "Bientôt terminés",
-       "with_promo": "🎫 Avec code promo"
+      "with_promo": "🎫 Avec code promo"
     },
     "event_types": "Types d'événement",
     "categories": "Catégories",

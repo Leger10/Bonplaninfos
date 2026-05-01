@@ -135,7 +135,7 @@ const formatCurrency = (amount) => {
 const addLogo = (doc, x, y, width = 24, height = 24) => {
   try {
     // Chemin vers votre logo (dans le dossier public)
-    const logoPath = "/logo.png";
+    const logoPath = "/pwa-192x192.png";
 
     // Ajouter l'image du logo
     doc.addImage(logoPath, "PNG", x, y, width, height);

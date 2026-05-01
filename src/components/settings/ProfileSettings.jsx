@@ -17,6 +17,7 @@ const ProfileSettings = () => {
     const [loading, setLoading] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
     const [cooldown, setCooldown] = useState(0);
+    const [phoneError, setPhoneError] = useState("");
     
     // Form State
     const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
@@ -25,6 +26,13 @@ const ProfileSettings = () => {
     const [city, setCity] = useState(user?.user_metadata?.city || '');
     const [bio, setBio] = useState(user?.user_metadata?.bio || '');
     const [cities, setCities] = useState([]);
+
+    // Validation du téléphone
+    const validatePhone = (phoneNumber) => {
+        if (!phoneNumber) return true;
+        const phoneRegex = /^[0-9]{8,12}$/;
+        return phoneRegex.test(phoneNumber.replace(/\D/g, ''));
+    };
 
     useEffect(() => {
         if (country) {
@@ -44,49 +52,78 @@ const ProfileSettings = () => {
     }, [cooldown]);
 
     const handleUpdateProfile = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+    e.preventDefault();
+    
+    // Validation du téléphone
+    if (phone && !validatePhone(phone)) {
+        setPhoneError("Numéro de téléphone invalide (8 à 12 chiffres)");
+        return;
+    }
+    
+    setPhoneError("");
+    setLoading(true);
 
-        try {
-            const updates = {
+    try {
+        const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+        
+        const updates = {
+            full_name: fullName,
+            phone: cleanPhone,
+            country,
+            city,
+            bio,
+            updated_at: new Date(),
+        };
+
+        // 1. Mettre à jour auth.users
+        const { error: authError } = await supabase.auth.updateUser({
+            data: updates
+        });
+
+        if (authError) throw authError;
+
+        // 2. Mettre à jour profiles
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .update({
                 full_name: fullName,
-                phone,
-                country,
-                city,
-                bio,
-                updated_at: new Date(),
-            };
+                phone: cleanPhone,
+                country: country,
+                city: city,
+                bio: bio,
+                updated_at: new Date()
+            })
+            .eq('id', user.id);
 
-            const { error } = await supabase.auth.updateUser({
-                data: updates
+        if (profileError) {
+            // Log l'erreur mais ne pas bloquer car auth.users est déjà à jour
+            console.error("Profile update error:", profileError);
+            toast({
+                title: "Attention",
+                description: "Profil mis à jour partiellement. Rechargez la page.",
+                variant: "warning",
             });
-
-            if (error) throw error;
-
-            // Also update public profile table
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update(updates)
-                .eq('id', user.id);
-
-            if (profileError) throw profileError;
-
+        } else {
             toast({
                 title: "Profil mis à jour",
                 description: "Vos informations ont été enregistrées avec succès.",
             });
-            
-            setForceRefresh(prev => !prev);
-        } catch (error) {
-            toast({
-                title: "Erreur",
-                description: error.message,
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
         }
-    };
+        
+        // Forcer le refresh des données
+        setForceRefresh(prev => !prev);
+        
+    } catch (error) {
+        console.error("Update error:", error);
+        toast({
+            title: "Erreur",
+            description: error.message || "Erreur lors de la mise à jour",
+            variant: "destructive",
+        });
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleResendConfirmation = async () => {
         if (cooldown > 0) return;
@@ -109,11 +146,7 @@ const ProfileSettings = () => {
                 className: "bg-green-600 text-white"
             });
             
-            // Start 60s cooldown
             setCooldown(60);
-            
-            // Log for debugging
-            console.log(`Email verification resent to ${user.email} at ${new Date().toISOString()}`);
 
         } catch (error) {
             console.error("Resend error:", error);
@@ -216,8 +249,14 @@ const ProfileSettings = () => {
                                     id="phone" 
                                     value={phone} 
                                     onChange={(e) => setPhone(e.target.value)} 
-                                    placeholder="+225..." 
+                                    placeholder="Ex: 73790978" 
                                 />
+                                {phoneError && (
+                                    <p className="text-xs text-destructive">{phoneError}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                    Format: 8 à 12 chiffres (sans espaces ni indicatif)
+                                </p>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="country" className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Pays</Label>

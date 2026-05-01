@@ -75,6 +75,9 @@
       "meta_title": "Sign Up",
       "meta_description": "Create an account on BonPlanInfos and start discovering the best deals.",
       "title": "Sign up here",
+      "phone": "Phone",
+      "phone_optional": "Phone (optional)",
+      "phone_invalid": "Invalid phone number (8 to 12 digits)",
       "subtitle": "Create your account.",
       "button": "Sign Up",
       "country_city_required": "Please select a country and city.",
@@ -1972,8 +1975,7 @@
     "updateError": "Error updating password"
   },
 
-
-   "privacy": {
+  "privacy": {
     "meta_title": "Privacy Policy",
     "meta_description": "Read our privacy policy to understand how we collect, use, and protect your personal data.",
     "title": "Privacy Policy",

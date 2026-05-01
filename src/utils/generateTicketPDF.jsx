@@ -228,8 +228,8 @@ export const generateTicketPDF = async (event, tickets, user) => {
     const bottomMargin = 15;
 
     // Charger le logo
-    const logoUrl = "https://res.cloudinary.com/dprp6vxv6/image/upload/v1722428610/bpi/logo-BPI-v2-transparent_pmsz7v.png";
-    const logoImg = await getBase64ImageFromURL(logoUrl);
+     const logoUrl = "/pwa-192x192.png";
+    let logoImg = null;
 
     // Préparer les données pour chaque ticket
     const ticketsData = tickets.map((ticket, index) => {
@@ -296,23 +296,30 @@ export const generateTicketPDF = async (event, tickets, user) => {
       // --- 1. EN-TÊTE (Barre colorée avec Logo) ---
       doc.setFillColor(...ticketColor);
       doc.rect(0, 0, pageWidth, 18, "F");
+ try {
+      logoImg = await getBase64ImageFromURL(logoUrl);
+    } catch (err) {
+      // Ignorer silencieusement
+    }
 
       // Ajouter le logo si disponible
       if (logoImg) {
-        try {
-          doc.addImage(logoImg, "PNG", margin, 2, 14, 14);
-        } catch (error) {
-          console.warn("Could not add logo to PDF:", error);
-        }
+        if (logoImg) {
+      try {
+        doc.addImage(logoImg, "PNG", margin, 2, 14, 14);
+      } catch (error) {
+        // Ignorer
+      }
+    }
       }
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
       
-      const headerText = "BON PLAN INFOS";
+      // const headerText = "BON PLAN INFOS";
       const headerX = logoImg ? margin + 16 : margin;
-      doc.text(headerText, headerX, 11);
+      // doc.text(headerText, headerX, 11);
 
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");

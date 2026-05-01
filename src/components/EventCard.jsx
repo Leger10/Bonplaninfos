@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, Users, Eye, Zap, Clock, Sparkles, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,8 @@ const EventCard = ({ event, onClick }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isOwner = user && event.organizer_id === user.id;
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -30,7 +32,7 @@ const EventCard = ({ event, onClick }) => {
   };
 
   const handlePromoteClick = (e) => {
-    e.stopPropagation(); // Prevent the card's onClick from firing
+    e.stopPropagation();
     navigate('/boost', { state: { preselectedContent: `event_${event.id}` } });
   };
 
@@ -52,12 +54,10 @@ const EventCard = ({ event, onClick }) => {
     return formatDistanceToNowStrict(end, { locale: fr, addSuffix: true });
   };
   
-  // Determine the best date to use for promotion status
   const getBestPromotionDate = () => {
     const d1 = event.promoted_until ? new Date(event.promoted_until) : null;
     const d2 = event.promotion_end ? new Date(event.promotion_end) : null;
     
-    // Return the one that is in the future, or the latest one if both are present
     if (d1 && d2) return d1 > d2 ? event.promoted_until : event.promotion_end;
     if (d1) return event.promoted_until;
     if (d2) return event.promotion_end;
@@ -65,6 +65,27 @@ const EventCard = ({ event, onClick }) => {
   };
 
   const promotionTimeLeft = getBestPromotionDate() ? getPromotionTimeLeft(getBestPromotionDate()) : null;
+
+  // Optimisation critique : URL avec paramètres de cache et redimensionnement
+  const getOptimizedImageUrl = () => {
+    if (imageError) return '/photoequipe.jpg';
+    if (!event.cover_image) return '/photoequipe.jpg';
+    
+    // Pour les images Supabase, ajouter des paramètres d'optimisation
+    if (event.cover_image.includes('supabase.co')) {
+      const separator = event.cover_image.includes('?') ? '&' : '?';
+      // Redimensionnement + qualité optimisée + cache
+      return `${event.cover_image}${separator}width=400&height=300&quality=75&resize=cover`;
+    }
+    
+    return event.cover_image;
+  };
+
+  // Placeholder style pendant chargement
+  const imageStyle = {
+    transition: 'opacity 0.3s ease-in-out',
+    opacity: imageLoaded ? 1 : 0,
+  };
 
   return (
     <motion.div
@@ -77,15 +98,30 @@ const EventCard = ({ event, onClick }) => {
         className="h-full card-hover glass-effect border-[#C9A227]/20 overflow-hidden flex flex-col flex-grow"
       >
         <div className="relative">
-          <div className="w-full h-48 bg-muted-foreground/20">
-             <img  
-                className="w-full h-48 object-cover transition-all duration-300"
-                alt={`Image de l'événement ${event.title}`}
-                src={event.cover_image || "https://images.unsplash.com/photo-1703269074563-938cdd3a40e5"} 
-              />
+          <div className="w-full h-48 bg-muted-foreground/20 relative">
+            {/* Image avec lazy loading et optimisation */}
+            <img  
+              className="w-full h-48 object-cover transition-all duration-300"
+              alt={`Image de l'événement ${event.title}`}
+              src={getOptimizedImageUrl()}
+              loading="lazy"
+              decoding="async"
+              style={imageStyle}
+              onLoad={() => setImageLoaded(true)}
+              onError={(e) => {
+                setImageError(true);
+                setImageLoaded(false);
+                e.target.onerror = null;
+                e.target.src = '/photoequipe.jpg';
+              }}
+            />
+            
+            {/* Skeleton loader pendant chargement */}
+            {!imageLoaded && !imageError && (
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-800 to-gray-700 animate-pulse" />
+            )}
           </div>
           
-          {/* Synchronized Countdown */}
           {event.event_start_at && (
             <EventCountdown 
               eventDate={event.event_start_at} 

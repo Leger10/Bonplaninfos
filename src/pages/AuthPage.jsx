@@ -14,6 +14,7 @@ import {
   Lock,
   RefreshCw,
   AlertTriangle,
+  Phone,
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { COUNTRIES, CITIES_BY_COUNTRY } from "@/constants/countries";
@@ -42,7 +43,6 @@ const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
     setIsSubmitting(true);
 
     try {
-      // Simulate sending request
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       setIsSubmitted(true);
@@ -152,6 +152,8 @@ const AuthPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [cities, setCities] = useState([]);
@@ -171,6 +173,13 @@ const AuthPage = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const { toast } = useToast();
+
+  // Validation du téléphone
+  const validatePhone = (phoneNumber) => {
+    if (!phoneNumber) return true;
+    const phoneRegex = /^[0-9]{8,12}$/;
+    return phoneRegex.test(phoneNumber.replace(/\D/g, ''));
+  };
 
   // Cooldown timer effect
   useEffect(() => {
@@ -232,7 +241,7 @@ const AuthPage = () => {
         className: "bg-green-600 text-white",
       });
 
-      setCooldown(60); // 60s cooldown
+      setCooldown(60);
       setShowResendLink(false);
       setError("");
       setShowConfirmationMessage(true);
@@ -256,6 +265,7 @@ const AuthPage = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setPhoneError("");
     setShowConfirmationMessage(false);
     setShowDeactivatedForm(false);
     setShowResendLink(false);
@@ -265,7 +275,6 @@ const AuthPage = () => {
       if (error) {
         const errorMessage = error.message || "";
 
-        // Handle specific error cases
         if (errorMessage === "ACCOUNT_DEACTIVATED") {
           setShowDeactivatedForm(true);
         } else if (
@@ -293,13 +302,26 @@ const AuthPage = () => {
         setLoading(false);
         return;
       }
+      
+      // Validation du téléphone
+      if (phone && !validatePhone(phone)) {
+        setPhoneError("Numéro de téléphone invalide (8 à 12 chiffres)");
+        setLoading(false);
+        return;
+      }
+      
+      // Nettoyer le numéro de téléphone
+      const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+      
       const metadata = {
         full_name: fullName,
         country: country,
         city: city,
         referral_code: referralCode,
         user_type: role,
+        phone: cleanPhone,
       };
+      
       const { data, error } = await signUp(email, password, metadata);
       if (error) {
         setError(error.message);
@@ -323,12 +345,14 @@ const AuthPage = () => {
   const toggleForm = () => {
     setIsLogin(!isLogin);
     setError("");
+    setPhoneError("");
     setShowConfirmationMessage(false);
     setShowDeactivatedForm(false);
     setShowResendLink(false);
     setEmail("");
     setPassword("");
     setFullName("");
+    setPhone("");
     setCountry("");
     setCity("");
     setReferralCode("");
@@ -505,8 +529,35 @@ const AuthPage = () => {
                           variants={itemVariants}
                           className="space-y-2"
                         >
+                          <Label htmlFor="phone">Téléphone</Label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              id="phone"
+                              type="tel"
+                              placeholder="Ex:00226 73790978"
+                              value={phone}
+                              onChange={(e) => {
+                                setPhone(e.target.value);
+                                setPhoneError("");
+                              }}
+                              className="pl-10"
+                              autoComplete="tel"
+                            />
+                          </div>
+                          {phoneError && (
+                            <p className="text-xs text-destructive mt-1">{phoneError}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Format: 8 à 12 chiffres (sans espaces ni indicatif)
+                          </p>
+                        </motion.div>
+                        <motion.div
+                          variants={itemVariants}
+                          className="space-y-2"
+                        >
                           <Label htmlFor="country">{t("auth.country")}</Label>
-                          <Select onValueChange={setCountry} value={country}>
+                          <Select onValueChange={setCountry} value={country || undefined}>
                             <SelectTrigger autoComplete="country-name">
                               <SelectValue
                                 placeholder={t(

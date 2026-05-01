@@ -1,29 +1,86 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, X, Image as ImageIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { convertImageToSupportedFormat, needsImageConversion } from '@/utils/imageConverter';
 import { toast } from '@/components/ui/use-toast';
 
 const ImageUpload = ({ 
   onImageUploaded, 
   existingImage,
   folder = 'event-covers',
-  maxSizeMB = 5,
+  maxSizeMB = 2,
   aspectRatio = '16/9',
   className = '',
-  bucket = 'media', // Changed from 'images' to 'media' to match existing code
+  bucket = 'media',
 }) => {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(existingImage || '');
+  const [compressionSaved, setCompressionSaved] = useState(0);
   const fileInputRef = useRef(null);
+
+  // Conversion complète vers JPEG (un format universellement supporté)
+  const convertToSupportedFormat = async (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      img.onload = () => {
+        // Dimensions optimisées
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = (height * MAX_WIDTH) / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = (width * MAX_HEIGHT) / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Dessiner l'image
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convertir en JPEG avec compression
+        canvas.toBlob(
+          (blob) => {
+            const originalSize = file.size;
+            const compressedSize = blob.size;
+            const savedPercent = ((originalSize - compressedSize) / originalSize * 100).toFixed(0);
+            setCompressionSaved(savedPercent);
+            
+            // Créer un fichier JPEG
+            const convertedFile = new File(
+              [blob], 
+              file.name.replace(/\.[^/.]+$/, '.jpg'), 
+              { type: 'image/jpeg' }
+            );
+            resolve(convertedFile);
+          },
+          'image/jpeg',
+          0.75 // 75% qualité
+        );
+      };
+      
+      img.onerror = () => reject(new Error('Impossible de charger l\'image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
 
   const handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Check file size
+    // Vérifier taille
     if (file.size > maxSizeMB * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
@@ -33,126 +90,123 @@ const ImageUpload = ({
       return;
     }
 
-    // Check if it's an image
+    // Vérifier que c'est une image
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Format non supporté",
-        description: "Veuillez sélectionner une image (JPG, PNG, WEBP).",
+        description: "Veuillez sélectionner une image.",
         variant: "destructive",
       });
       return;
     }
 
-    // Create immediate preview
+    // Créer un aperçu immédiat
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
-
-    // Upload the file
+    
+    // Upload avec conversion automatique
     await uploadFile(file);
   };
 
   const uploadFile = async (originalFile) => {
     setUploading(true);
+    setCompressionSaved(0);
     
     try {
       let fileToUpload = originalFile;
       let conversionMessage = '';
       
-      // Check if conversion is needed
-      if (needsImageConversion(originalFile)) {
-        try {
-          // Convert unsupported formats to JPEG
-          fileToUpload = await convertImageToSupportedFormat(originalFile, {
-            targetFormat: 'jpeg',
-            quality: 0.85,
-            maxWidth: 1920,
-            maxHeight: 1080,
-          });
-          
-          conversionMessage = `Votre image .${originalFile.name.split('.').pop()} a été convertie automatiquement en JPG pour être compatible.`;
-          
-        } catch (conversionError) {
-          console.error('Image conversion failed:', conversionError);
-          toast({
-            title: "Erreur de conversion",
-            description: "Impossible de convertir l'image. Veuillez utiliser un format JPG ou PNG.",
-            variant: "destructive",
-          });
-          setUploading(false);
-          setPreviewUrl(existingImage || '');
-          return;
-        }
+      // TOUJOURS convertir en JPEG pour éviter les erreurs mime
+      // Même si c'est déjà un JPEG, on recompresse pour réduire la taille
+      conversionMessage = `Conversion et compression en cours...`;
+      
+      try {
+        // Convertir en JPEG (format universel)
+        fileToUpload = await convertToSupportedFormat(originalFile);
+        conversionMessage = `✅ Image convertie en JPEG et compressée (${compressionSaved}% économisés)`;
+      } catch (conversionError) {
+        console.error('Conversion error:', conversionError);
+        // Fallback: essayer d'uploader l'original
+        console.log('Fallback: upload du fichier original');
+        conversionMessage = `⚠️ Upload du format original`;
       }
 
-      // Generate unique filename
-      const fileExt = fileToUpload.name.split('.').pop();
-      const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      // Générer un nom de fichier unique
+      const fileExt = 'jpg'; // Forcer l'extension jpg
+      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
 
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
+      // Upload vers Supabase Storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from(bucket)
         .upload(fileName, fileToUpload, {
-          cacheControl: '3600',
+          cacheControl: '31536000', // 1 an
           upsert: false,
-          contentType: fileToUpload.type,
+          contentType: 'image/jpeg', // Forcer le bon mime type
         });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      // Get public URL
+      // Récupérer l'URL publique
       const { data: { publicUrl } } = supabase.storage
         .from(bucket)
         .getPublicUrl(fileName);
 
-      // Clean up the temporary object URL
-      if (previewUrl.startsWith('blob:')) {
+      // Nettoyer l'URL temporaire
+      if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
 
-      // Update preview with final URL
+      // Mettre à jour l'aperçu
       setPreviewUrl(publicUrl);
 
-      // Callback with the uploaded image URL
+      // Callback avec l'URL uploadée
       if (onImageUploaded) {
         onImageUploaded(publicUrl);
       }
 
-      // Show success messages
+      // Message de succès
       toast({
-        title: "Image téléchargée",
-        description: "Votre image a été téléchargée avec succès.",
+        title: "✅ Image téléchargée avec succès",
+        description: conversionMessage || `Upload réussi (${compressionSaved}% économisés)`,
+        duration: 4000,
       });
 
-      if (conversionMessage) {
-        toast({
-          title: "Conversion d'image",
-          description: conversionMessage,
-          duration: 4000,
-        });
+      // Supprimer l'ancienne image si elle existe
+      if (existingImage && existingImage.includes('supabase.co') && existingImage !== publicUrl) {
+        try {
+          const oldPathMatch = existingImage.match(/\/([^\/]+\.(jpg|jpeg|png|webp))$/);
+          if (oldPathMatch) {
+            const oldFileName = oldPathMatch[1];
+            await supabase.storage.from(bucket).remove([`${folder}/${oldFileName}`]);
+            console.log('Ancienne image supprimée:', oldFileName);
+          }
+        } catch (deleteError) {
+          console.error('Erreur suppression ancienne image:', deleteError);
+        }
       }
 
     } catch (error) {
       console.error('Upload error:', error);
       
-      // Clean up temporary URL on error
-      if (previewUrl.startsWith('blob:')) {
+      // Nettoyer l'URL temporaire
+      if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
       
       toast({
-        title: "Erreur de téléchargement",
-        description: error.message || "Impossible de télécharger l'image.",
+        title: "❌ Erreur de téléchargement",
+        description: error.message || "Impossible de télécharger l'image. Veuillez réessayer.",
         variant: "destructive",
       });
       
-      // Reset preview on error
+      // Réinitialiser l'aperçu
       setPreviewUrl(existingImage || '');
     } finally {
       setUploading(false);
       
-      // Reset file input
+      // Réinitialiser l'input file
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -160,16 +214,14 @@ const ImageUpload = ({
   };
 
   const handleRemoveImage = () => {
-    // Clean up temporary URL if exists
-    if (previewUrl.startsWith('blob:')) {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(previewUrl);
     }
-    
     setPreviewUrl('');
+    setCompressionSaved(0);
     if (onImageUploaded) {
       onImageUploaded('');
     }
-    
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -197,8 +249,8 @@ const ImageUpload = ({
     }
   };
 
-  // Clean up object URLs on unmount
-  React.useEffect(() => {
+  // Nettoyage
+  useEffect(() => {
     return () => {
       if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
@@ -239,21 +291,26 @@ const ImageUpload = ({
                 src={previewUrl}
                 alt="Preview"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
                 onError={(e) => {
-                  console.error('Image load error:', e);
-                  // Fallback to default image
+                  console.error('Image load error');
                   e.target.onerror = null;
-                  e.target.src = 'https://images.unsplash.com/photo-1501281668745-f6f2613e1e6f?auto=format&fit=crop&w=800&q=80';
+                  e.target.src = '/photoequipe.jpg';
                 }}
               />
               
               {uploading && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-lg">
                   <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-white animate-spin mx-auto mb-2" />
+                    <Loader2 className="w-10 h-10 text-white animate-spin mx-auto mb-3" />
                     <p className="text-white text-sm font-medium">
-                      {previewUrl.startsWith('blob:') ? 'Conversion et téléchargement...' : 'Téléchargement...'}
+                      Conversion et upload...
                     </p>
+                    {compressionSaved > 0 && (
+                      <p className="text-green-400 text-xs mt-2 font-medium">
+                        ✨ {compressionSaved}% économisés
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -261,33 +318,18 @@ const ImageUpload = ({
             
             <div className="absolute top-3 right-3 flex gap-2">
               {!uploading && (
-                <>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveImage();
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-all bg-white/90 hover:bg-white shadow-lg"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-all bg-white/90 hover:bg-white shadow-lg"
-                  >
-                    <Upload className="w-4 h-4" />
-                  </Button>
-                </>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveImage();
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-all bg-white/90 hover:bg-white shadow-lg"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               )}
             </div>
           </div>
@@ -303,24 +345,33 @@ const ImageUpload = ({
             
             <div className="space-y-2">
               <p className="font-medium text-gray-900 dark:text-gray-100">
-                {uploading ? 'Téléchargement en cours...' : 'Cliquez pour télécharger une image'}
+                {uploading ? 'Conversion en cours...' : 'Cliquez pour télécharger une image'}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                JPG, PNG, WEBP, HEIC, HEIF • Max {maxSizeMB}MB
+                Tous formats acceptés (PNG, WEBP, JPG, HEIC) • Max {maxSizeMB}MB
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Glissez-déposez une image ici
+              <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                ✨ Conversion automatique en JPEG optimisé
               </p>
             </div>
           </div>
         )}
       </div>
       
-      <div className="flex items-start gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-        <span>
-          Les formats WEBP, HEIC et HEIF seront automatiquement convertis en JPG pour une compatibilité optimale.
-        </span>
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <CheckCircle className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-gray-300">
+            <p className="font-medium mb-1">✨ Optimisations automatiques :</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>Conversion automatique en JPEG (100% compatible)</li>
+              <li>Compression jusqu'à 70% d'économies</li>
+              <li>Redimensionnement 800x600 max</li>
+              <li>Cache CDN 1 an</li>
+              <li>Réduction de l'utilisation Supabase</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );

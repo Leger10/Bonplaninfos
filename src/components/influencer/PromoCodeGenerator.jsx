@@ -427,77 +427,80 @@ export const PromoCodeGenerator = ({
               </div>
             </div>
 
-            {/* Section des gains corrigée */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-800 rounded-2xl p-5 shadow-2xl transform transition-all duration-500 hover:scale-[1.02] group animate-in fade-in slide-in-from-bottom-4 border border-emerald-500/30">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
-              <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute top-2 left-4 w-1.5 h-1.5 bg-amber-300 rounded-full animate-ping" style={{ animationDelay: '0s', animationDuration: '2s' }}></div>
-                <div className="absolute top-4 right-8 w-2 h-2 bg-amber-400 rounded-full animate-ping" style={{ animationDelay: '0.3s', animationDuration: '2.5s' }}></div>
-                <div className="absolute bottom-3 left-6 w-1.5 h-1.5 bg-amber-300 rounded-full animate-ping" style={{ animationDelay: '0.6s', animationDuration: '1.8s' }}></div>
-                <div className="absolute top-1/2 right-3 w-2 h-2 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                <div className="absolute bottom-8 right-12 w-1.5 h-1.5 bg-amber-300 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-              </div>
-              <div className="absolute -inset-full w-1/2 h-full bg-gradient-to-r from-transparent via-amber-400/15 to-transparent transform -skew-x-12 group-hover:translate-x-full transition-transform duration-1000"></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/0 via-black/0 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
-              
-              <div className="relative z-10">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <div className="bg-amber-400/20 rounded-full p-3 animate-bounce shadow-lg">
-                    <Gift className="w-6 h-6 text-amber-300" />
-                  </div>
-                  <h4 className="font-black text-white text-xl tracking-wide drop-shadow-lg">
-                    🎖️ MES GAINS PREMIUM 🎖️
-                  </h4>
-                  <div className="bg-amber-400/20 rounded-full p-3 animate-bounce shadow-lg" style={{ animationDelay: '0.5s' }}>
-                    <Coins className="w-6 h-6 text-amber-300" />
-                  </div>
-                </div>
-                
-                <div className="flex justify-center mb-3">
-                  <div className="bg-amber-500/20 backdrop-blur-sm rounded-full px-3 py-1 border border-amber-400/40">
-                    <span className="text-xs font-semibold text-amber-300 tracking-wider">✦ COMMISSIONS ÉLIGIBLES ✦</span>
-                  </div>
-                </div>
-                
-                <div className="bg-gradient-to-r from-emerald-900/80 to-teal-900/80 rounded-xl p-3 mb-3 backdrop-blur-sm border border-amber-500/30 shadow-lg">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></div>
-                        <div className="absolute inset-0 w-3 h-3 bg-amber-400 rounded-full animate-ping opacity-75"></div>
-                      </div>
-                      <div>
-                        <span className="text-sm font-bold text-white">
-                          {stats.total_commission_coins > 0 
-                            ? `🎯 ${stats.total_commission_coins.toLocaleString()} pièces disponibles`
-                            : "🌟 Générez des commissions"}
-                        </span>
-                        {stats.total_commission_coins > 0 && (
-                          <p className="text-[10px] text-emerald-300/80">éligible au retrait immédiat</p>
-                        )}
-                      </div>
-                    </div>
-                    <Link to="/profile?tab=creator">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 gap-2 rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg border border-amber-500/30"
-                      >
-                        <span className="text-base">💰</span> demander Retrait <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-center gap-2 mt-3 pt-2 border-t border-emerald-500/20">
-                  <span className="text-sm text-amber-400/80 animate-pulse">✨</span>
-                  <p className="text-xs text-emerald-200/80 text-center font-medium tracking-wide">
-                    Statut PREMIUM • Commission automatique sous 24h
-                  </p>
-                  <span className="text-sm text-amber-400/80 animate-pulse">✨</span>
-                </div>
-              </div>
-            </div>
+        
+            {/* Section des gains - Version finale corrigée */}
+<div className="relative overflow-hidden bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-800 rounded-2xl p-5 shadow-2xl transform transition-all duration-500 hover:scale-[1.02] group animate-in fade-in slide-in-from-bottom-4 border border-emerald-500/30">
+  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+  <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute top-2 left-4 w-1.5 h-1.5 bg-amber-300 rounded-full animate-ping" style={{ animationDelay: '0s', animationDuration: '2s' }}></div>
+    <div className="absolute top-4 right-8 w-2 h-2 bg-amber-400 rounded-full animate-ping" style={{ animationDelay: '0.3s', animationDuration: '2.5s' }}></div>
+    <div className="absolute bottom-3 left-6 w-1.5 h-1.5 bg-amber-300 rounded-full animate-ping" style={{ animationDelay: '0.6s', animationDuration: '1.8s' }}></div>
+    <div className="absolute top-1/2 right-3 w-2 h-2 bg-amber-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+    <div className="absolute bottom-8 right-12 w-1.5 h-1.5 bg-amber-300 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+  </div>
+  <div className="absolute -inset-full w-1/2 h-full bg-gradient-to-r from-transparent via-amber-400/15 to-transparent transform -skew-x-12 group-hover:translate-x-full transition-transform duration-1000"></div>
+  <div className="absolute inset-0 bg-gradient-to-t from-black/0 via-black/0 to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
+  
+  <div className="relative z-10">
+    <div className="flex items-center justify-center gap-3 mb-4">
+      <div className="bg-amber-400/20 rounded-full p-3 animate-bounce shadow-lg">
+        <Gift className="w-6 h-6 text-amber-300" />
+      </div>
+      <h4 className="font-black text-white text-xl tracking-wide drop-shadow-lg">
+        🎖️ MES GAINS PREMIUM 🎖️
+      </h4>
+      <div className="bg-amber-400/20 rounded-full p-3 animate-bounce shadow-lg" style={{ animationDelay: '0.5s' }}>
+        <Coins className="w-6 h-6 text-amber-300" />
+      </div>
+    </div>
+    
+    <div className="flex justify-center mb-3">
+      <div className="bg-amber-500/20 backdrop-blur-sm rounded-full px-3 py-1 border border-amber-400/40">
+        <span className="text-xs font-semibold text-amber-300 tracking-wider">✦ COMMISSIONS ÉLIGIBLES ✦</span>
+      </div>
+    </div>
+    
+    <div className="bg-gradient-to-r from-emerald-900/80 to-teal-900/80 rounded-xl p-3 mb-3 backdrop-blur-sm border border-amber-500/30 shadow-lg">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></div>
+            <div className="absolute inset-0 w-3 h-3 bg-amber-400 rounded-full animate-ping opacity-75"></div>
+          </div>
+          <div>
+            <span className="text-sm font-bold text-white">
+              {stats.total_commission_coins > 0 
+                ? `🎯 ${stats.total_commission_coins.toLocaleString()} pièces disponibles`
+                : "🌟 Générez des commissions"}
+            </span>
+            {stats.total_commission_coins > 0 && (
+              <p className="text-[10px] text-emerald-300/80">
+                {stats.total_commission.toLocaleString()} FCFA
+              </p>
+            )}
+          </div>
+        </div>
+        <Link to="/profile?tab=creator">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 gap-2 rounded-full transition-all duration-300 hover:scale-105 hover:shadow-lg border border-amber-500/30"
+          >
+            <span className="text-base">💰</span> demander Retrait <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </Link>
+      </div>
+    </div>
+    
+    <div className="flex items-center justify-center gap-2 mt-3 pt-2 border-t border-emerald-500/20">
+      <span className="text-sm text-amber-400/80 animate-pulse">✨</span>
+      <p className="text-xs text-emerald-200/80 text-center font-medium tracking-wide">
+        Statut PREMIUM • Commission automatique sous 24h
+      </p>
+      <span className="text-sm text-amber-400/80 animate-pulse">✨</span>
+    </div>
+  </div>
+</div>
 
             {/* Statistiques d'utilisation corrigées */}
             <div className="grid grid-cols-2 gap-3">

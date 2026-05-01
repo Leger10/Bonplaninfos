@@ -108,7 +108,7 @@ const MarketingPage = () => {
     },
   ];
 
-  // Version améliorée du carousel avec défilement automatique
+  // Version améliorée du carousel avec défilement automatique - SANS DÉBORDEMENT
   const TestimonialsCarousel = ({ testimonials }) => {
     const carouselRef = useRef(null);
     const [width, setWidth] = useState(0);
@@ -138,9 +138,8 @@ const MarketingPage = () => {
 
       const startAutoPlay = () => {
         const currentX = x.get();
-        let newX = currentX - 1; // Vitesse de défilement (ajustable)
+        let newX = currentX - 0.8;
 
-        // Si on arrive à la fin, revenir au début
         if (newX < -width) {
           newX = 0;
         }
@@ -158,86 +157,85 @@ const MarketingPage = () => {
       };
     }, [isDragging, width, x]);
 
-    // Gestion du drag avec plus de sensibilité
     const handleDrag = (event, info) => {
       const currentX = x.get();
-      const newX = currentX + info.delta.x * 1.5; // Multiplicateur pour plus de vitesse
+      const newX = currentX + info.delta.x;
       x.set(newX);
     };
 
-    // Dupliquer les témoignages pour une boucle infinie fluide
     const duplicatedTestimonials = [...testimonials, ...testimonials];
 
     return (
-      <motion.div
-        ref={carouselRef}
-        className="cursor-grab overflow-hidden touch-pan-x relative"
-        onMouseDown={() => setIsDragging(true)}
-        onMouseUp={() => setIsDragging(false)}
-        onTouchStart={() => setIsDragging(true)}
-        onTouchEnd={() => setIsDragging(false)}
-      >
+      <div className="overflow-hidden w-full">
         <motion.div
-          drag="x"
-          dragConstraints={{ right: 0, left: -width }}
-          dragElastic={0.3} // Plus élastique pour un effet plus dynamique
-          dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
-          style={{ x }}
-          onDrag={handleDrag}
-          className="flex gap-4 md:gap-6 lg:gap-8 px-4 md:px-0"
-          whileTap={{ cursor: "grabbing", scale: 0.98 }}
+          ref={carouselRef}
+          className="cursor-grab overflow-visible touch-pan-y relative w-full"
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={() => setIsDragging(false)}
+          onTouchStart={() => setIsDragging(true)}
+          onTouchEnd={() => setIsDragging(false)}
         >
-          {duplicatedTestimonials.map((testimonial, index) => (
-            <motion.div
-              key={index}
-              className="min-w-[85vw] sm:min-w-[60vw] md:min-w-[45vw] lg:min-w-[35vw] flex-shrink-0"
-              whileHover={{
-                scale: isDragging ? 1 : 1.03,
-                y: -5,
-                transition: { duration: 0.2 },
-              }}
-            >
-              <Card className="h-full glass-effect flex flex-col shadow-lg border hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-4 md:p-6 flex-grow">
-                  <p className="text-foreground/80 italic text-sm md:text-base leading-relaxed">
-                    "{testimonial.quote}"
-                  </p>
-                </CardContent>
-                <CardHeader className="pt-0 px-4 md:px-6 pb-4 md:pb-6">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white font-bold text-lg md:text-xl flex-shrink-0 shadow-md">
-                      {testimonial.name.charAt(0)}
+          <motion.div
+            drag="x"
+            dragConstraints={{ right: 0, left: -width }}
+            dragElastic={0.2}
+            dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+            style={{ x }}
+            onDrag={handleDrag}
+            className="flex gap-4 md:gap-6 lg:gap-8"
+            whileTap={{ cursor: "grabbing" }}
+          >
+            {duplicatedTestimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                className="w-[85vw] sm:w-[60vw] md:w-[45vw] lg:w-[35vw] flex-shrink-0"
+                whileHover={{
+                  scale: isDragging ? 1 : 1.02,
+                  transition: { duration: 0.2 },
+                }}
+              >
+                <Card className="h-full glass-effect flex flex-col shadow-lg border hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-4 md:p-6 flex-grow">
+                    <p className="text-foreground/80 italic text-sm md:text-base leading-relaxed">
+                      "{testimonial.quote}"
+                    </p>
+                  </CardContent>
+                  <CardHeader className="pt-0 px-4 md:px-6 pb-4 md:pb-6">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white font-bold text-lg md:text-xl flex-shrink-0 shadow-md">
+                        {testimonial.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground text-sm md:text-base truncate">
+                          {testimonial.name}
+                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
+                          {testimonial.role}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-foreground text-sm md:text-base truncate">
-                        {testimonial.name}
-                      </p>
-                      <p className="text-xs md:text-sm text-muted-foreground truncate">
-                        {testimonial.role}
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
+                  </CardHeader>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
 
-        {/* Indicateur de défilement */}
-        <div className="flex justify-center mt-6 space-x-2">
-          {testimonials.slice(0, 5).map((_, index) => (
-            <div
-              key={index}
-              className="w-2 h-2 rounded-full bg-primary/30 transition-all duration-300"
-            />
-          ))}
-        </div>
-      </motion.div>
+          {/* Indicateur de défilement */}
+          <div className="flex justify-center mt-6 space-x-2">
+            {testimonials.slice(0, 5).map((_, index) => (
+              <div
+                key={index}
+                className="w-2 h-2 rounded-full bg-primary/30 transition-all duration-300"
+              />
+            ))}
+          </div>
+        </motion.div>
+      </div>
     );
   };
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="bg-background text-foreground overflow-x-hidden w-full max-w-full">
       <MultilingualSeoHead
         pageData={{
           title: t("marketing.meta_title"),
@@ -248,7 +246,7 @@ const MarketingPage = () => {
       {/* Hero Section */}
       <section className="relative pt-20 pb-20 md:pt-32 md:pb-24 text-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10"></div>
-        <div className="container mx-auto px-4 relative">
+        <div className="container mx-auto px-4 relative overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -292,7 +290,7 @@ const MarketingPage = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 md:py-24 bg-muted/30">
+      <section className="py-16 md:py-24 bg-muted/30 overflow-x-hidden">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold">
@@ -337,14 +335,14 @@ const MarketingPage = () => {
       <RevenueSimulation onCtaClick={() => navigate("/create-event")} />
 
       {/* Testimonials Section */}
-      <section className="py-16 md:py-24 bg-muted/30">
+      <section className="py-16 md:py-24 bg-muted/30 overflow-x-hidden">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold">
               {t("marketing.testimonials.title")}
             </h2>
             <p className="mt-2 text-muted-foreground text-sm md:text-base">
-              Défilement automatique - Glissez pour accélérer le défilement
+              Défilement automatique - Glissez pour accélérer
             </p>
           </div>
           <TestimonialsCarousel testimonials={testimonials} />
@@ -353,7 +351,7 @@ const MarketingPage = () => {
 
       {/* Section Paiements */}
       <motion.div
-        className="my-8 md:my-12 container px-4"
+        className="my-8 md:my-12 container px-4 mx-auto overflow-x-hidden"
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
@@ -374,8 +372,9 @@ const MarketingPage = () => {
           </CardContent>
         </Card>
       </motion.div>
+
       {/* CTA Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 overflow-x-hidden">
         <div className="container mx-auto px-4">
           <div className="relative bg-gradient-to-r from-primary to-red-500 rounded-lg p-8 md:p-12 text-center text-primary-foreground overflow-hidden">
             <div className="absolute -top-4 -left-4 w-32 h-32 bg-white/10 rounded-full opacity-50"></div>
@@ -399,6 +398,7 @@ const MarketingPage = () => {
           </div>
         </div>
       </section>
+
       <Footer />
     </div>
   );
