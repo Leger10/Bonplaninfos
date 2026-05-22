@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Coins, Search, TrendingUp, RefreshCw, MapPin, Eraser, Users } from "lucide-react";
+import { Loader2, Coins, Search, TrendingUp, RefreshCw, MapPin, Eraser, Users, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ const AdminCreditsGlobalTab = () => {
   const [purchaseTotals, setPurchaseTotals] = useState({ totalCoins: 0, totalFCFA: 0, uniqueUsers: 0 });
   const [countryTotals, setCountryTotals] = useState([]);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [countryResetDialogOpen, setCountryResetDialogOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(null);
   const [resetting, setResetting] = useState(false);
 
   const coinToFcfaRate = adminConfig?.coin_to_fcfa_rate || 10;
@@ -65,34 +67,67 @@ const AdminCreditsGlobalTab = () => {
 
       const validAdminLogs = adminLogs.filter((log) => !(log.details?.reversed));
 
-      // 2. Récupérer les achats automatiques (coin_transactions)
-      // Inclure les transactions avec transaction_type = 'credit_purchase' OU null (cas MoneyFusion)
-     // Version plus explicite
-const { data: purchases, error: purchaseError } = await supabase
-  .from("coin_transactions")
-  .select(`
-    id,
-    created_at,
-    amount_paid,
-    coins_credited,
-    user_id,
-    transaction_type,
-    profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
-  `)
-  .in('transaction_type', ['credit_purchase', null, ''])
-  .order("created_at", { ascending: false });
-      if (purchaseError) {
-        console.error("Erreur lors de la récupération des achats :", purchaseError);
-        // On continue sans les achats
+      // 2. Récupérer les paiements MoneyFusion depuis la table payments
+      let allPayments = [];
+
+      const { data: moneyFusionPayments, error: paymentsError } = await supabase
+        .from("payments")
+        .select(`
+          id,
+          created_at,
+          amount_fcfa,
+          coins_amount,
+          user_id,
+          status,
+          payment_method,
+          transaction_id,
+          pack_id,
+          profiles!payments_user_id_fkey (full_name, email, country, city)
+        `)
+        .eq('payment_method', 'moneyfusion')
+        .in('status', ['completed', 'pending', 'success'])
+        .order('created_at', { ascending: false });
+
+      if (!paymentsError && moneyFusionPayments) {
+        console.log(`✅ ${moneyFusionPayments.length} paiements MoneyFusion trouvés`);
+        allPayments = [...allPayments, ...moneyFusionPayments];
       }
 
-      // Transformer les achats pour qu'ils aient la même structure que les logs admin
-      const formattedPurchases = (purchases || []).map((tx) => ({
+      // 3. Récupérer aussi les transactions coin_transactions
+      const { data: coinTx, error: coinTxError } = await supabase
+        .from("coin_transactions")
+        .select(`
+          id,
+          created_at,
+          amount_paid,
+          coins_credited,
+          user_id,
+          transaction_type,
+          status,
+          profiles!coin_transactions_user_id_fkey (full_name, email, country, city)
+        `)
+        .eq('status', 'completed')
+        .not('amount_paid', 'is', null)
+        .order("created_at", { ascending: false });
+
+      if (!coinTxError && coinTx) {
+        console.log(`✅ ${coinTx.length} transactions coin_transactions trouvées`);
+        allPayments = [...allPayments, ...coinTx];
+      }
+
+      // Transformer tous les paiements
+      const formattedPurchases = allPayments.map((tx) => ({
         id: tx.id,
         created_at: tx.created_at,
-        details: { amount: tx.coins_credited, amount_fcfa: tx.amount_paid },
+        details: { 
+          amount: tx.coins_amount || tx.coins_credited || 0,
+          amount_fcfa: tx.amount_fcfa || tx.amount_paid || 0 
+        },
         source: "purchase",
-        actor: { full_name: "Achat automatique", user_type: "system" },
+        actor: { 
+          full_name: tx.payment_method === 'moneyfusion' ? "MoneyFusion" : "Achat automatique", 
+          user_type: "system" 
+        },
         target_user: {
           full_name: tx.profiles?.full_name || "Utilisateur inconnu",
           email: tx.profiles?.email,
@@ -112,6 +147,8 @@ const { data: purchases, error: purchaseError } = await supabase
         (a, b) => new Date(b.created_at) - new Date(a.created_at)
       );
 
+      console.log(`Total: ${combined.length} entrées (Admin: ${formattedAdmin.length}, Achats: ${formattedPurchases.length})`);
+
       setAllEntries(combined);
 
       // Calcul des totaux globaux
@@ -127,7 +164,6 @@ const { data: purchases, error: purchaseError } = await supabase
         const country = entry.target_user?.country || "Inconnu";
         totalCoinsGlobal += amount;
 
-        // Totaux pour les achats uniquement
         if (entry.source === "purchase") {
           purchaseCoins += amount;
           purchaseFcfa += amountFcfa;
@@ -155,7 +191,7 @@ const { data: purchases, error: purchaseError } = await supabase
       });
       setPurchaseTotals({
         totalCoins: purchaseCoins,
-        totalFCFA: purchaseCoins * coinToFcfaRate,
+        totalFCFA: purchaseFcfa,
         uniqueUsers: purchaseUserIds.size,
       });
     } catch (error) {
@@ -194,13 +230,14 @@ const { data: purchases, error: purchaseError } = await supabase
     return () => window.removeEventListener("zone-reset-completed", handleZoneReset);
   }, [fetchAllCredits]);
 
+  // Réinitialisation globale des crédits manuels seulement
   const handleResetAll = async () => {
     if (!user) return;
     setResetting(true);
     try {
-    const { data, error } = await supabase.rpc("reset_admin_stats_only", {
-  p_admin_id: user.id,
-});
+      const { data, error } = await supabase.rpc("reset_admin_stats_only", {
+        p_admin_id: user.id,
+      });
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
       toast({
@@ -210,6 +247,97 @@ const { data: purchases, error: purchaseError } = await supabase
         className: "bg-green-600 text-white",
       });
       fetchAllCredits();
+    } catch (err) {
+      console.error("Reset error:", err);
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de réinitialiser les données.",
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+      setResetDialogOpen(false);
+    }
+  };
+
+  // Réinitialisation complète des statistiques par pays
+  const handleResetCountry = (country) => {
+    setSelectedCountry(country);
+    setCountryResetDialogOpen(true);
+  };
+
+  const handleResetCountryConfirm = async () => {
+    if (!user || !selectedCountry) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.rpc("reset_country_stats_only", {
+        p_country: selectedCountry,
+        p_admin_id: user.id,
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
+      
+      toast({
+        title: "✅ Réinitialisation réussie",
+        description: data.message || `Les statistiques pour ${selectedCountry} ont été réinitialisées.`,
+        variant: "default",
+        className: "bg-green-600 text-white",
+      });
+      
+      fetchAllCredits();
+      
+      window.dispatchEvent(new CustomEvent('zone-reset-completed', {
+        detail: {
+          country: selectedCountry,
+          resetType: 'stats_only',
+          timestamp: new Date().toISOString()
+        }
+      }));
+      
+    } catch (err) {
+      console.error("Reset error:", err);
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible de réinitialiser les données.",
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+      setCountryResetDialogOpen(false);
+      setSelectedCountry(null);
+    }
+  };
+
+  // Réinitialisation globale de TOUTES les statistiques
+  const handleResetAllStats = async () => {
+    if (!user) return;
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.rpc("reset_all_countries_stats_only", {
+        p_admin_id: user.id,
+      });
+      
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
+      
+      toast({
+        title: "✅ Réinitialisation globale réussie",
+        description: data.message || "Toutes les statistiques ont été réinitialisées.",
+        variant: "default",
+        className: "bg-green-600 text-white",
+      });
+      
+      fetchAllCredits();
+      
+      window.dispatchEvent(new CustomEvent('zone-reset-completed', {
+        detail: {
+          country: 'ALL',
+          resetType: 'stats_only',
+          timestamp: new Date().toISOString()
+        }
+      }));
+      
     } catch (err) {
       console.error("Reset error:", err);
       toast({
@@ -269,7 +397,17 @@ const { data: purchases, error: purchaseError } = await supabase
                 className="gap-2"
               >
                 <Eraser className="w-4 h-4" />
-                Réinitialiser les crédits
+                Réinitialiser crédits manuels
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleResetAllStats}
+                disabled={resetting}
+                className="gap-2 bg-red-700 hover:bg-red-800"
+              >
+                <Trash2 className="w-4 h-4" />
+                Réinitialiser TOUTES les stats
               </Button>
             </div>
           </div>
@@ -357,7 +495,7 @@ const { data: purchases, error: purchaseError } = await supabase
             </Card>
           </div>
 
-          {/* Tableau récapitulatif par pays */}
+          {/* Tableau récapitulatif par pays AVEC BOUTONS DE RÉINITIALISATION */}
           {countryTotals.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3">
@@ -376,6 +514,9 @@ const { data: purchases, error: purchaseError } = await supabase
                       </TableHead>
                       <TableHead className="text-right">
                         Valeur FCFA
+                      </TableHead>
+                      <TableHead className="text-center">
+                        Actions
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -398,6 +539,18 @@ const { data: purchases, error: purchaseError } = await supabase
                         </TableCell>
                         <TableCell className="text-right text-green-600 font-semibold">
                           {formatCurrency(country.totalCoins * coinToFcfaRate)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResetCountry(country.country)}
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-100"
+                            disabled={resetting}
+                          >
+                            <Eraser className="w-4 h-4 mr-1" />
+                            Réinitialiser
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -582,6 +735,7 @@ const { data: purchases, error: purchaseError } = await supabase
 
       <ZoneResetManager />
 
+      {/* Dialogue pour réinitialiser les crédits manuels seulement */}
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -596,6 +750,44 @@ const { data: purchases, error: purchaseError } = await supabase
             <AlertDialogAction onClick={handleResetAll} disabled={resetting} className="bg-red-600 hover:bg-red-700">
               {resetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Oui, réinitialiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialogue pour réinitialiser les statistiques par pays */}
+      <AlertDialog open={countryResetDialogOpen} onOpenChange={setCountryResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmation de réinitialisation par pays</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de réinitialiser TOUTES les statistiques pour le pays : 
+              <span className="font-bold text-destructive block mt-2 text-lg">
+                {selectedCountry}
+              </span>
+              <br />
+              <br />
+              Cette action supprimera :
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Les logs de crédits manuels</li>
+                <li>Les historiques de paiements MoneyFusion</li>
+                <li>Les transactions de pièces</li>
+              </ul>
+              <br />
+              <span className="text-green-600 font-semibold">
+                ✓ Les soldes des utilisateurs ne seront PAS modifiés
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleResetCountryConfirm} 
+              disabled={resetting} 
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {resetting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Oui, réinitialiser les stats
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
