@@ -180,16 +180,16 @@
 
   "faq": {
     "meta_title": "Frequently Asked Questions - BonPlanInfos.net",
-    "meta_description": "Find answers about BonPlanInfos.net, the African event platform, monetization and real profits with only 5% commission",
+    "meta_description": "Find answers about BonPlanInfos.net, the African event platform, monetization and real profits with only 10% commission",
     "title": "Frequently Asked Questions",
     "subtitle": "Quickly find answers about our African event platform",
     "questions": {
       "general": {
         "title": "General Questions about BonPlanInfos",
         "q1": "What exactly is BonPlanInfos.net?",
-        "a1": "<b>BonPlanInfos.net</b> is the first African platform dedicated to events and their monetization. We offer event organizers, artists, cultural promoters and entrepreneurs professional tools to create, manage and monetize their activities with only <b>5% platform commission</b>.",
+        "a1": "<b>BonPlanInfos.net</b> is the first African platform dedicated to events and their monetization. We offer event organizers, artists, cultural promoters and entrepreneurs professional tools to create, manage and monetize their activities with only <b>10% platform commission</b>.",
         "q2": "How is the platform different from others?",
-        "a2": "Our difference: <b>Ultra-low 5% commission</b> (you keep 95%), <b>focus on Africa</b>, <b>guaranteed real payments</b>, and <b>complete suite of tools</b> (ticketing, voting, raffles, stand rental). We are not just a platform, but a concrete business opportunity.",
+        "a2": "Our difference: <b>Ultra-low 10% commission</b> (you keep 90%), <b>focus on Africa</b>, <b>guaranteed real payments</b>, and <b>complete suite of tools</b> (ticketing, voting, raffles, stand rental). We are not just a platform, but a concrete business opportunity.",
         "q3": "Who can use BonPlanInfos.net?",
         "a3": "Our platform is designed for: <b>Event organizers</b>, <b>Cultural promoters</b>, <b>Artists and managers</b>, <b>Associations</b>, <b>Schools</b>, <b>Fair and exhibition managers</b>. Any creator wanting to monetize their event activities in Africa.",
         "q4": "Is the platform secure?",
@@ -197,18 +197,18 @@
         "q5": "How do I create an organizer account?",
         "a5": "To create your account: <b>1) Register for free</b> on the platform, <b>2) Complete your organizer profile</b>, <b>3) Accept our organizer contract</b>, <b>4) Start creating your events</b>. If you have any difficulties, contact our support via WhatsApp: +225 0712275374.",
         "q6": "What are the terms and conditions?",
-        "a6": "By creating an account, you accept our <b>Organizer Contract</b> which states: You are solely responsible for your events, we are a technical service provider. The commission is 5%, withdrawals are simple, and you keep 95% of your revenue. Download the full contract from your dashboard.",
+        "a6": "By creating an account, you accept our <b>Organizer Contract</b> which states: You are solely responsible for your events, we are a technical service provider. The commission is 10%, withdrawals are simple, and you keep 90% of your revenue. Download the full contract from your dashboard.",
         "q7": "How do payments and withdrawals work?",
-        "a7": "<b>Payments</b>: Collected via local means (mobile money, cards). <b>Withdrawals</b>: Available on your organizer account. <b>Commission</b>: 5% deducted from each participation. <b>Example</b>: For 1,000,000 FCFA in sales → You receive 950,000 FCFA, we take 50,000 FCFA.",
+        "a7": "<b>Payments</b>: Collected via local means (mobile money, cards). <b>Withdrawals</b>: Available on your organizer account. <b>Commission</b>: 10% deducted from each participation. <b>Example</b>: For 1,000,000 FCFA in sales → You receive 900,000 FCFA, we take 100,000 FCFA.",
         "q8": "Where can I get help or support?",
         "a8": "Several channels: <b>1) WhatsApp Support</b>: +225 0712275374, <b>2) Email</b>: support@bonplaninfos.net, <b>3) Live chat</b> on the platform. Response within 24h."
       },
       "features": {
         "title": "Features and Services",
         "q1": "How does online ticket sales work?",
-        "a1": "Our ticketing system: <b>1) Create your event</b> with details and prices, <b>2) Generate unique tickets with QR code</b>, <b>3) Share the link</b> on social networks, <b>4) Participants buy online</b>, <b>5) Scan QR on the day</b> for validation. <b>Commission</b>: only 5%, you keep 95%.",
+        "a1": "Our ticketing system: <b>1) Create your event</b> with details and prices, <b>2) Generate unique tickets with QR code</b>, <b>3) Share the link</b> on social networks, <b>4) Participants buy online</b>, <b>5) Scan QR on the day</b> for validation. <b>Commission</b>: only 10%, you keep 90%.",
         "q2": "Can I organize voting contests?",
-        "a2": "Yes! Our voting system allows: <b>Real-time elections</b>, <b>Interactive rankings</b>, <b>Unique link per candidate</b>, <b>Results visible instantly</b>. <b>Example</b>: Revenue 500,000 FCFA → You receive 475,000 FCFA, commission 25,000 FCFA.",
+        "a2": "Yes! Our voting system allows: <b>Real-time elections</b>, <b>Interactive rankings</b>, <b>Unique link per candidate</b>, <b>Results visible instantly</b>. <b>Example</b>: Revenue 500,000 FCFA → You receive 450,000 FCFA, commission 50,000 FCFA.",
         "q3": "How do I organize raffles and draws?",
         "a3": "Raffle feature: <b>1) Set up your game</b>, <b>2) Sell participation tickets</b>, <b>3) Live transparent draw</b>, <b>4) Participants see winners in real time</b>. <b>Example</b>: 200,000 FCFA revenue → 190,000 FCFA for you, 10,000 FCFA commission.",
         "q4": "How do I rent stands for events?",
@@ -229,7 +229,7 @@
         "q2": "What dealer levels are available?",
         "a2": "3 levels: <b>1) STARTER – CITY</b>: 1 year, 1M FCFA entry fee, 20% of commissions, <b>2) BUSINESS – REGION</b>: 2 years, 3M FCFA, 30% of commissions, <b>3) PREMIUM – COUNTRY</b>: 3 years, 5-10M FCFA, 40% of commissions. See details in 'Partnerships' tab.",
         "q3": "How are dealer revenues calculated?",
-        "a3": "Dealers receive a percentage of the <b>5% platform commission</b> generated in their zone: <b>City</b>: 20% (i.e., 1% of transactions), <b>Region</b>: 30% (1.5% of transactions), <b>Country</b>: 40% (2% of transactions). Revenue from: tickets, votes, raffles, rentals.",
+        "a3": "Dealers receive a percentage of the <b>10% platform commission</b> generated in their zone: <b>City</b>: 20% (i.e., 1% of transactions), <b>Region</b>: 30% (1.5% of transactions), <b>Country</b>: 40% (2% of transactions). Revenue from: tickets, votes, raffles, rentals.",
         "q4": "What are a dealer's obligations?",
         "a4": "Depending on level: <b>City</b>: Representation point, local manager, active promotion, <b>Region</b>: Regional office, minimum 2 agents, supervision of cities, <b>Country</b>: National headquarters, 3-5 employees, national supervision, legal compliance. Monthly reports required.",
         "q5": "Can I transfer my dealership to someone else?",
@@ -617,7 +617,7 @@
       "title": "Why Choose Our Platform?",
       "subtitle": "Discover the unique advantages that make us the preferred choice for event organizers",
       "feature1": "Maximum Revenue",
-      "feature1_desc": "Keep 95% of your revenue with only 5% platform fees",
+      "feature1_desc": "Keep 90% of your revenue with only 10% platform fees",
       "feature2": "Instant Monetization",
       "feature2_desc": "Start earning from the first view, like and share on your events",
       "feature3": "Growth Tools",
@@ -636,7 +636,7 @@
       "ticket_price": "Ticket Price",
       "number_of_tickets": "Number of Tickets",
       "potential_revenue": "Potential Revenue",
-      "platform_fee": "Platform Fee (5%)",
+      "platform_fee": "Platform Fee (10%)",
       "your_net_earning": "Your Net Gain",
       "cta": "Start Earning Now",
       "note": "Simulation based on current rates. Actual results may vary.",
@@ -654,7 +654,7 @@
       "fatou_sylla_quote": "The revenue simulation helped me understand my potential. I now earn a stable monthly income from my cultural events.",
       "aisha_traore_name": "Aisha Traoré",
       "aisha_traore_role": "Music Festival Organizer, Côte d'Ivoire",
-      "eric_b_quote": "95% revenue retention is incredible! My last festival generated 2.5 million FCFA in net earnings.",
+      "eric_b_quote": "90% revenue retention is incredible! My last festival generated 2.5 million FCFA in net earnings.",
       "amadou_ba_name": "Amadou Ba",
       "amadou_ba_role": "Startup Founder, Senegal",
       "amadou_ba_quote": "As a partner, I built a sustainable business representing the platform in my region. A life-changing opportunity!",
@@ -686,7 +686,7 @@
 
   "about": {
     "meta_title": "About BonPlanInfos - The African event platform",
-    "meta_description": "Discover BonPlanInfos, the platform revolutionizing event organization and monetization in Africa with only 5% commission",
+    "meta_description": "Discover BonPlanInfos, the platform revolutionizing event organization and monetization in Africa with only 10% commission",
     "hero": {
       "title": "Revolutionizing events in Africa",
       "subtitle": "BonPlanInfos is the first pan-African platform dedicated to organizing, promoting and monetizing events. We connect creators, organizers and participants in an innovative and profitable ecosystem.",
@@ -721,7 +721,7 @@
         "label": "Active members"
       },
       "success": {
-        "metric": "95%",
+        "metric": "90%",
         "label": "Revenue retained"
       },
       "growth": {
@@ -738,7 +738,7 @@
       },
       "trust": {
         "title": "Trust & Transparency",
-        "description": "Secure transactions, clear commissions (only 5%) and open communication with our community"
+        "description": "Secure transactions, clear commissions (only 10%) and open communication with our community"
       },
       "agility": {
         "title": "Agility & Adaptability",
@@ -839,7 +839,7 @@
 
   "partner_signup": {
     "meta_title": "Become a Partner - BonPlanInfos",
-    "meta_description": "Become an official BonPlanInfos partner and generate stable monthly income. Territorial dealership program with 5% platform commission.",
+    "meta_description": "Become an official BonPlanInfos partner and generate stable monthly income. Territorial dealership program with 10% platform commission.",
     "unauthorized_title": "Unauthorized access",
     "unauthorized_desc": "You must be logged in to access the partner area.",
     "unauthorized_cta": "Login",
@@ -854,7 +854,7 @@
         "territory": "Entire country",
         "duration": "3-year contract",
         "entry_fee": "5,000,000 - 10,000,000 FCFA",
-        "revenue_share": "40% on 5% platform commission",
+        "revenue_share": "40% on 10% platform commission",
         "features": [
           "National exclusivity",
           "National headquarters required",
@@ -869,7 +869,7 @@
         "territory": "Entire region",
         "duration": "2-year contract",
         "entry_fee": "3,000,000 FCFA",
-        "revenue_share": "30% on 5% platform commission",
+        "revenue_share": "30% on 10% platform commission",
         "features": [
           "Regional exclusivity",
           "Regional office required",
@@ -884,7 +884,7 @@
         "territory": "Single city",
         "duration": "2-year contract",
         "entry_fee": "1,000,000 FCFA",
-        "revenue_share": "20% on 5% platform commission",
+        "revenue_share": "20% on 10% platform commission",
         "features": [
           "Urban exclusivity",
           "Physical representation point",
@@ -894,13 +894,13 @@
           "Monthly reports"
         ]
       },
-      "commission_explanation": "Partners receive a percentage of the 5% platform commission generated in their territory from: event participations, votes, raffles, ticketing and stand rentals.",
-      "revenue_share_based": "Revenue share based on 5% platform commission"
+      "commission_explanation": "Partners receive a percentage of the 10% platform commission generated in their territory from: event participations, votes, raffles, ticketing and stand rentals.",
+      "revenue_share_based": "Revenue share based on 10% platform commission"
     },
     "license_card": {
       "active": "Active",
       "expired": "Expired",
-      "revenue_share": "Revenue share: {{percent}}% on 5% platform commission",
+      "revenue_share": "Revenue share: {{percent}}% on 10% platform commission",
       "territory": "Territory: {{location}}",
       "purchased_on": "Contracted on",
       "expires_on": "Expires on",
@@ -909,7 +909,7 @@
       "contract_duration": "Contract: {{years}} years"
     },
     "per_month": "/month",
-    "revenue_label": "Revenue share (on 5% commission)",
+    "revenue_label": "Revenue share (on 10% commission)",
     "duration_label": "{{years}}-year contract",
     "entry_fee_label": "Entry fee",
     "purchase_cta": "Request Dealership",
@@ -917,7 +917,7 @@
     "submit_contract": "Submit Completed Contract",
     "days_remaining_suffix": "day(s)",
     "commission_explanation_title": "How commissions work",
-    "commission_explanation_desc": "As a partner, you earn a share of the 5% platform commission generated in your territory. For example, if an event generates 100,000 FCFA in ticket sales with a 5% commission, i.e., 5,000 FCFA, and you have a 20% revenue share, you will receive 1,000 FCFA.",
+    "commission_explanation_desc": "As a partner, you earn a share of the 10% platform commission generated in your territory. For example, if an event generates 100,000 FCFA in ticket sales with a 10% commission, i.e., 10,000 FCFA, and you have a 20% revenue share, you will receive 2,000 FCFA.",
     "confirm_purchase_title": "Confirm Dealership Request",
     "confirm_purchase_desc": "Once the request is submitted, our team will review your application and contact you to finalize the contract.",
     "purchase_success_title": "Request Submitted",
@@ -977,17 +977,17 @@
   "user_guide_page": {
     "meta": {
       "title": "BonPlanInfos - 100% African Event Platform",
-      "description": "Create, manage and monetize your events with BonPlanInfos. The African platform that gives you back 95% of your revenue."
+      "description": "Create, manage and monetize your events with BonPlanInfos. The African platform that gives you back 90% of your revenue."
     },
     "hero": {
       "title": "BonPlanInfos",
       "subtitle": "Your Event Success",
-      "description": "The African platform that gives you back <strong>95% of your revenue</strong>",
+      "description": "The African platform that gives you back <strong>90% of your revenue</strong>",
       "coin_info": "1 coin = 10F • 1 interaction = 1 coin",
       "create_event": "Create an Event",
       "become_partner": "Become a Partner",
       "features": {
-        "revenue": "95% revenue returned",
+        "revenue": "90% revenue returned",
         "coin": "1 coin = 10F CFA",
         "support": "24/7 Support"
       }
@@ -997,23 +997,23 @@
       "subtitle": "Powerful tools to maximize your revenue and visibility",
       "ticketing": {
         "title": "Smart Ticketing",
-        "description": "Sell tickets for your concerts and events. Set your prices and receive 95% of revenue directly",
-        "stats": "95% revenue returned"
+        "description": "Sell tickets for your concerts and events. Set your prices and receive 90% of revenue directly",
+        "stats": "90% revenue returned"
       },
       "voting": {
         "title": "Contests & Votes",
         "description": "Organize interactive contests with voting system. Monetize each participation",
-        "stats": "95% on each participation"
+        "stats": "90% on each participation"
       },
       "raffle": {
         "title": "Raffle",
         "description": "Create raffles with attractive prizes. Paid or free participation as you choose",
-        "stats": "Automatic management with 95% on each participation"
+        "stats": "Automatic management with 90% on each participation"
       },
       "stand_rental": {
         "title": "Stand Rental",
         "description": "Rent stands for exhibitions and fairs. Manage reservations and payments online",
-        "stats": "95% of rental price returned to you"
+        "stats": "90% of rental price returned to you"
       },
       "protected_events": {
         "title": "Protected Events",
@@ -1074,7 +1074,7 @@
       "testimonial2": {
         "name": "Jean A.",
         "role": "Artist Manager",
-        "content": "Ticketing is revolutionary. 95% of revenue goes directly to me, no middleman."
+        "content": "Ticketing is revolutionary. 90% of revenue goes directly to me, no middleman."
       },
       "testimonial3": {
         "name": "Sophie T.",
@@ -1149,7 +1149,7 @@
       "become_partner": "Become a Partner"
     },
     "footer": {
-      "description": "The African event platform that gives you back 95% of your revenue.",
+      "description": "The African event platform that gives you back 90% of your revenue.",
       "navigation": "Navigation",
       "home": "Home",
       "events": "Events",
@@ -1188,7 +1188,7 @@
         "q3": "What types of events can I find?",
         "a3": "You'll find: concerts, festivals, conferences, workshops, sports events, exhibitions, parties, and more. Our platform covers all types of events in Africa.",
         "q4": "How do payments work?",
-        "a4": "We accept: mobile money (Orange Money, MTN Mobile Money, Moov Money), bank cards, and transfers. Payments are secure and encrypted. You receive 95% of the amount, we take 5% commission."
+        "a4": "We accept: mobile money (Orange Money, MTN Mobile Money, Moov Money), bank cards, and transfers. Payments are secure and encrypted. You receive 90% of the amount, we take 10% commission."
       },
       "organizer": {
         "title": "For Organizers",
@@ -1405,8 +1405,8 @@
       "title": "Stand Dashboard",
       "rented": "Stands Rented",
       "grossRevenue": "Gross Revenue",
-      "fees": "Fees (5%)",
-      "netEarnings": "Your Net Earnings (95%)"
+      "fees": "Fees (10%)",
+      "netEarnings": "Your Net Earnings (90%)"
     },
     "admin": {
       "title": "Administration",
@@ -1535,7 +1535,7 @@
       "title": "My Coin Balance",
       "coins": "coins",
       "approx": "≈ {{balance}} FCFA",
-      "description": "Coins purchased or earned, usable for events or convertible into earnings. 5% commission on transfers to earnings.",
+      "description": "Coins purchased or earned, usable for events or convertible into earnings. 10% commission on transfers to earnings.",
       "locked": "🔒 Locked",
       "lockedDescription": "Unlock your wallet to see your balance.",
       "unlockButton": "Unlock",
@@ -1543,7 +1543,7 @@
     },
     "pendingEarnings": {
       "title": "Earnings pending transfer",
-      "feeLabel": "Fee: 5%",
+      "feeLabel": "Fee: 10%",
       "totalPending": "Total pending:",
       "netReceivable": "Net receivable:",
       "unlockToTransfer": "Unlock to transfer",

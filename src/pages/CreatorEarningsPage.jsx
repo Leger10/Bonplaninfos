@@ -153,7 +153,7 @@ const CreatorEarningsPage = () => {
                         <span>{Math.round(currentMonth.score / (currentMonth.estimated_earnings / (currentMonth.pool_total || 1)) || 1).toLocaleString()} pts</span>
                     </div>
                     <div className="flex justify-between border-b pb-2">
-                        <span>Pool Global (0.5% CA):</span>
+                        <span>Pool Global (0.1% CA):</span>
                         <span className="font-bold text-emerald-600">{formatCurrency(currentMonth.pool_total)}</span>
                     </div>
                     <div className="flex justify-between pt-2 text-base font-bold">
@@ -212,7 +212,7 @@ const CreatorEarningsPage = () => {
                 <ul className="text-xs text-blue-600 list-disc list-inside space-y-1">
                 <li>Source: Vues, Parrainage, Bonus</li>
                 <li>Calcul: Score d'engagement mensuel</li>
-                <li>Distribution: Part du pool global (0.5% du CA)</li>
+                <li>Distribution: Part du pool global (0.1% du CA)</li>
                 <li><strong>Pas de revenu direct sur l'événement</strong></li>
                 </ul>
             </div>
@@ -224,7 +224,7 @@ const CreatorEarningsPage = () => {
                 </p>
                 <ul className="text-xs text-emerald-600 list-disc list-inside space-y-1">
                 <li>Source: Ventes directes aux participants</li>
-                <li>Calcul: 95% pour vous, 5% plateforme</li>
+                <li>Calcul: 90% pour vous, 10% plateforme</li>
                 <li>Distribution: Immédiate (Solde "Événements")</li>
                 <li><strong>Les vues ne génèrent pas de revenus ici</strong></li>
                 </ul>

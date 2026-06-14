@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 
 // Simple form for deactivated users to contact support
-const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
+const DeactivatedAccountForm = ({ onBack, email: initialEmail, userId }) => {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -40,21 +40,49 @@ const DeactivatedAccountForm = ({ onBack, email: initialEmail }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!message.trim()) {
+      toast({
+        title: "Message requis",
+        description: "Veuillez expliquer pourquoi votre compte devrait être réactivé.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!userId) {
+      toast({
+        title: "Erreur",
+        description: "Identifiant utilisateur non trouvé. Veuillez vous reconnecter.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Enregistrer la demande dans Supabase
+      const { error: insertError } = await supabase
+        .from('reactivation_requests')
+        .insert({
+          user_id: userId,
+          request_message: message.trim(),
+          status: 'pending'
+        });
+
+      if (insertError) throw insertError;
 
       setIsSubmitted(true);
       toast({
         title: "Message envoyé",
-        description: "L'administration a été notifiée de votre demande.",
+        description: "L'administration a été notifiée de votre demande. Vous serez contacté par email.",
       });
     } catch (error) {
+      console.error("Error submitting reactivation request:", error);
       toast({
         title: "Erreur",
-        description:
-          "Impossible d'envoyer le message. Veuillez réessayer plus tard.",
+        description: error.message || "Impossible d'envoyer le message. Veuillez réessayer plus tard.",
         variant: "destructive",
       });
     } finally {
@@ -167,6 +195,7 @@ const AuthPage = () => {
   const [showDeactivatedForm, setShowDeactivatedForm] = useState(false);
   const [showResendLink, setShowResendLink] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [deactivatedUserId, setDeactivatedUserId] = useState(null);
 
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -269,13 +298,44 @@ const AuthPage = () => {
     setShowConfirmationMessage(false);
     setShowDeactivatedForm(false);
     setShowResendLink(false);
+    setDeactivatedUserId(null);
 
     if (isLogin) {
-      const { error } = await signIn(email, password);
+      const { data, error } = await signIn(email, password);
       if (error) {
         const errorMessage = error.message || "";
 
         if (errorMessage === "ACCOUNT_DEACTIVATED") {
+          // Récupérer l'ID de l'utilisateur pour la demande
+          try {
+            const { data: userData, error: userError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', email)
+              .maybeSingle();
+            
+            if (userError) {
+              console.error("Error fetching profile:", userError);
+            }
+            
+            if (userData?.id) {
+              setDeactivatedUserId(userData.id);
+              console.log("User ID récupéré depuis profiles:", userData.id);
+            } else {
+              // Fallback: essayer de récupérer depuis auth.users via une requête
+              console.warn("Impossible de récupérer l'ID utilisateur depuis profiles");
+              // Note: On ne peut pas utiliser admin.getUserByEmail côté client
+              // L'utilisateur devra réessayer ou contacter le support
+              toast({
+                title: "Information",
+                description: "Veuillez contacter le support directement pour la réactivation de votre compte.",
+                variant: "default",
+              });
+            }
+          } catch (err) {
+            console.error("Error in deactivated user flow:", err);
+          }
+          
           setShowDeactivatedForm(true);
         } else if (
           errorMessage.includes("Email not confirmed") ||
@@ -359,6 +419,7 @@ const AuthPage = () => {
     setRole("user");
     setAgreedToTerms(false);
     setCooldown(0);
+    setDeactivatedUserId(null);
   };
 
   const containerVariants = {
@@ -398,8 +459,12 @@ const AuthPage = () => {
             {showDeactivatedForm ? (
               <DeactivatedAccountForm
                 key="deactivated"
-                onBack={() => setShowDeactivatedForm(false)}
+                onBack={() => {
+                  setShowDeactivatedForm(false);
+                  setDeactivatedUserId(null);
+                }}
                 email={email}
+                userId={deactivatedUserId}
               />
             ) : showConfirmationMessage ? (
               <motion.div

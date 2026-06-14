@@ -283,29 +283,37 @@ const UserManagement = ({ onRefresh, userProfile }) => {
     fetchUsers();
   }, [fetchUsers]);
 
-  // Initial fetch for counters (optional, as tabs will trigger it, but good for initial load)
-  useEffect(() => {
-    const fetchCounters = async () => {
-        // Fetch initial report count
-        const { count: reports } = await supabase
-            .from('content_reports')
-            .select('*', { count: 'exact', head: true })
-            .eq('target_type', 'user');
-        setReportCount(reports || 0);
+  // Fetch counters for tabs
+  const fetchCounters = useCallback(async () => {
+    try {
+      // Fetch report count
+      const { count: reports } = await supabase
+        .from('content_reports')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_type', 'user');
+      setReportCount(reports || 0);
 
-        // Fetch initial reactivation count
-        const { count: reactivations } = await supabase
-            .from('reactivation_requests')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
-        setReactivationCount(reactivations || 0);
-    };
-    fetchCounters();
+      // Fetch pending reactivation requests count
+      const { count: reactivations } = await supabase
+        .from('reactivation_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      setReactivationCount(reactivations || 0);
+      
+      console.log("Counters fetched - Reports:", reports, "Reactivations:", reactivations);
+    } catch (error) {
+      console.error("Error fetching counters:", error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCounters();
+  }, [fetchCounters]);
 
   const handleSave = () => {
     setIsFormOpen(false);
     fetchUsers();
+    fetchCounters(); // Refresh counters after update
     if (onRefresh) onRefresh();
   };
 
@@ -328,10 +336,28 @@ const UserManagement = ({ onRefresh, userProfile }) => {
         toast({
             title: newStatus ? "Utilisateur réactivé" : "Utilisateur désactivé",
             description: `Le compte de ${user.full_name || user.email} est maintenant ${newStatus ? 'actif' : 'inactif'}.`,
-            variant: newStatus ? "success" : "destructive"
+            variant: newStatus ? "default" : "destructive"
         });
         
+        // If reactivating, also update any pending requests to approved
+        if (newStatus) {
+          const { error: reqError } = await supabase
+            .from('reactivation_requests')
+            .update({ 
+              status: 'approved',
+              reviewed_by: userProfile.id,
+              reviewed_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('status', 'pending');
+          
+          if (reqError) {
+            console.error("Error updating reactivation request:", reqError);
+          }
+        }
+        
         fetchUsers();
+        fetchCounters(); // Refresh counters
     } catch (err) {
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
     }
@@ -352,6 +378,7 @@ const UserManagement = ({ onRefresh, userProfile }) => {
         
         toast({ title: 'Succès', description: 'Utilisateur supprimé définitivement.' });
         fetchUsers();
+        fetchCounters(); // Refresh counters
         setUserToDelete(null);
     } catch (err) {
         toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
@@ -360,37 +387,37 @@ const UserManagement = ({ onRefresh, userProfile }) => {
     }
   };
 
-const confirmResetPassword = async () => {
-  if (!resetUser || !newPassword) return;
-  setResetLoading(true);
-  try {
-    const { data, error } = await supabase.rpc('admin_reset_password', {
-      target_user_id: resetUser.id,
-      new_password: newPassword
-    });
+  const confirmResetPassword = async () => {
+    if (!resetUser || !newPassword) return;
+    setResetLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_reset_password', {
+        target_user_id: resetUser.id,
+        new_password: newPassword
+      });
 
-    if (error) throw error;
-    
-    if (data && !data.success) {
-      throw new Error(data.error);
+      if (error) throw error;
+      
+      if (data && !data.success) {
+        throw new Error(data.error);
+      }
+
+      toast({ 
+        title: "Mot de passe réinitialisé", 
+        description: `Nouveau mot de passe : ${newPassword}`,
+        duration: 10000 
+      });
+      setResetPasswordDialog(false);
+    } catch (err) {
+      toast({ 
+        title: 'Erreur', 
+        description: err.message, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setResetLoading(false);
     }
-
-    toast({ 
-      title: "Mot de passe réinitialisé", 
-      description: `Nouveau mot de passe : ${newPassword}`,
-      duration: 10000 
-    });
-    setResetPasswordDialog(false);
-  } catch (err) {
-    toast({ 
-      title: 'Erreur', 
-      description: err.message, 
-      variant: 'destructive' 
-    });
-  } finally {
-    setResetLoading(false);
-  }
-};
+  };
 
   const copyCode = (code) => {
     if (!code) return;
@@ -407,7 +434,7 @@ const confirmResetPassword = async () => {
             Utilisateurs ({totalUsers})
         </TabsTrigger>
         <TabsTrigger value="reports">
-            Utilisateurs Signalés ({reportCount})
+            Signalements ({reportCount})
         </TabsTrigger>
         <TabsTrigger value="reactivations">
             Demandes de Réactivation ({reactivationCount})
@@ -508,7 +535,7 @@ const confirmResetPassword = async () => {
                         )}
                     </TableCell>
                     <TableCell>
-                        <Badge variant={user.is_active ? "outline" : "destructive"} className={user.is_active ? "bg-green-100 text-green-800 border-green-200" : "text-[10px]"}>
+                        <Badge variant={user.is_active ? "outline" : "destructive"} className={user.is_active ? "bg-green-100 text-green-800 border-green-200" : ""}>
                         {user.is_active ? "Actif" : "Inactif"}
                         </Badge>
                     </TableCell>
@@ -516,8 +543,8 @@ const confirmResetPassword = async () => {
                         <Badge variant="outline" className="capitalize">{user.user_type}</Badge>
                     </TableCell>
                     <TableCell>
-                        <div className="text-sm">{user.country}</div>
-                        <div className="text-xs text-muted-foreground">{user.city}</div>
+                        <div className="text-sm">{user.country || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{user.city || '-'}</div>
                     </TableCell>
                     <TableCell className="text-right">
                         <DropdownMenu>

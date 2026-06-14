@@ -684,7 +684,7 @@ export const generateEarningsSlip = (data) => {
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...secondaryColor);
-  doc.text("Frais de service (5%):", margin + 10, y + 5);
+  doc.text("Frais de service (10%):", margin + 10, y + 5);
 
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
@@ -753,7 +753,7 @@ export const generateEarningsSlip = (data) => {
 
   const earningsMentions = [
     "Ce document présente un récapitulatif des gains générés sur la période.",
-    "Les frais de service de 5% sont prélevés sur les revenus bruts.",
+    "Les frais de service de 10% sont prélevés sur les revenus bruts.",
     "Les gains nets sont disponibles pour retrait selon les modalités contractuelles.",
     "Document généré automatiquement par la plateforme BonPlanInfos.",
   ];

@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -33,13 +33,14 @@ const UserReactivationsTab = ({ onCountChange }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [actionType, setActionType] = useState(null); // 'approve' | 'reject'
+  const [actionType, setActionType] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('pending'); // 'pending' | 'all' | 'approved' | 'rejected'
+  const [statusFilter, setStatusFilter] = useState('pending');
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     console.log("Fetching reactivation requests with status:", statusFilter);
+    
     try {
       // 1. Récupérer les demandes
       let query = supabase
@@ -59,54 +60,67 @@ const UserReactivationsTab = ({ onCountChange }) => {
       }
 
       console.log("Raw Requests Data:", requestsData);
+      console.log("Number of requests:", requestsData?.length || 0);
 
-      // 2. Récupérer les profils utilisateurs manuellement pour éviter les erreurs de jointure FK
-      if (requestsData && requestsData.length > 0) {
-        const userIds = [...new Set(requestsData.map(r => r.user_id).filter(Boolean))];
-        
-        if (userIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email, is_active, avatar_url, country, city')
-            .in('id', userIds);
-
-          if (profilesError) {
-            console.error("Error fetching profiles:", profilesError);
-          } else {
-            const profilesMap = profilesData.reduce((acc, profile) => {
-              acc[profile.id] = profile;
-              return acc;
-            }, {});
-
-            // Fusionner les données
-            const enrichedRequests = requestsData.map(req => ({
-              ...req,
-              user: profilesMap[req.user_id] || null
-            }));
-            
-            setRequests(enrichedRequests);
-            console.log("Enriched Data:", enrichedRequests);
-            
-            // Notify parent about count
-            if (onCountChange) {
-              onCountChange(enrichedRequests.length);
-            }
-            return;
-          }
-        }
+      // 2. Si pas de demandes, on met à jour l'état et on sort
+      if (!requestsData || requestsData.length === 0) {
+        setRequests([]);
+        if (onCountChange) onCountChange(0);
+        setLoading(false);
+        return;
       }
+
+      // 3. Récupérer les profils utilisateurs
+      const userIds = [...new Set(requestsData.map(r => r.user_id).filter(Boolean))];
+      console.log("User IDs to fetch:", userIds);
       
-      setRequests(requestsData || []);
-      // Notify parent about count (if no enriched data)
+      if (userIds.length === 0) {
+        setRequests(requestsData);
+        if (onCountChange) onCountChange(requestsData.length);
+        setLoading(false);
+        return;
+      }
+
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, is_active, avatar_url, country, city')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        setRequests(requestsData);
+        if (onCountChange) onCountChange(requestsData.length);
+        setLoading(false);
+        return;
+      }
+
+      console.log("Profiles Data:", profilesData);
+
+      // 4. Fusionner les données
+      const profilesMap = (profilesData || []).reduce((acc, profile) => {
+        acc[profile.id] = profile;
+        return acc;
+      }, {});
+
+      const enrichedRequests = requestsData.map(req => ({
+        ...req,
+        user: profilesMap[req.user_id] || null
+      }));
+      
+      console.log("Enriched Data:", enrichedRequests);
+      setRequests(enrichedRequests);
+      
+      // Notifier le parent du nombre de demandes
       if (onCountChange) {
-        onCountChange(requestsData?.length || 0);
+        const pendingCount = enrichedRequests.filter(r => r.status === 'pending').length;
+        onCountChange(pendingCount);
       }
 
     } catch (error) {
       console.error('Error in fetchRequests:', error);
       toast({ 
         title: 'Erreur', 
-        description: 'Impossible de charger les demandes de réactivation. ' + error.message, 
+        description: 'Impossible de charger les demandes de réactivation. ' + (error.message || 'Erreur inconnue'), 
         variant: 'destructive' 
       });
     } finally {
@@ -146,16 +160,7 @@ const UserReactivationsTab = ({ onCountChange }) => {
           
         if (reqError) throw reqError;
 
-        // 3. Notification
-        await supabase.from('notifications').insert({
-          user_id: selectedRequest.user_id,
-          title: 'Compte réactivé ✅',
-          message: 'Votre demande de réactivation a été approuvée. Bon retour parmi nous !',
-          type: 'system',
-          is_global: false
-        });
-
-        toast({ title: 'Succès', description: 'Utilisateur réactivé et notifié.' });
+        toast({ title: 'Succès', description: 'Utilisateur réactivé avec succès.' });
 
       } else {
         // Rejeter
@@ -170,17 +175,10 @@ const UserReactivationsTab = ({ onCountChange }) => {
           
         if (reqError) throw reqError;
 
-        await supabase.from('notifications').insert({
-          user_id: selectedRequest.user_id,
-          title: 'Demande refusée ❌',
-          message: 'Votre demande de réactivation a été refusée après examen.',
-          type: 'system',
-          is_global: false
-        });
-
         toast({ title: 'Refusé', description: 'La demande a été rejetée.' });
       }
 
+      // Rafraîchir la liste
       fetchRequests();
       setSelectedRequest(null);
       setActionType(null);
@@ -253,7 +251,7 @@ const UserReactivationsTab = ({ onCountChange }) => {
               <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center justify-center">
                     <CheckCircle className="h-8 w-8 mb-2 text-muted-foreground/50" />
-                    Aucune demande {statusFilter !== 'all' ? statusFilter === 'pending' ? 'en attente' : statusFilter : ''} trouvée.
+                    Aucune demande {statusFilter !== 'all' ? (statusFilter === 'pending' ? 'en attente' : statusFilter) : ''} trouvée.
                   </div>
               </TableCell></TableRow>
             ) : (
@@ -336,13 +334,13 @@ const UserReactivationsTab = ({ onCountChange }) => {
             </AlertDialogTitle>
             <AlertDialogDescription>
                 {actionType === 'approve' 
-                    ? `Êtes-vous sûr de vouloir réactiver le compte de ${selectedRequest?.user?.full_name} ? L'utilisateur recevra une notification et pourra se reconnecter immédiatement.`
-                    : `Êtes-vous sûr de vouloir rejeter cette demande ? L'utilisateur ${selectedRequest?.user?.full_name} restera bloqué.`
+                    ? `Êtes-vous sûr de vouloir réactiver le compte de ${selectedRequest?.user?.full_name || 'cet utilisateur'} ? L'utilisateur recevra une notification et pourra se reconnecter immédiatement.`
+                    : `Êtes-vous sûr de vouloir rejeter cette demande ? L'utilisateur ${selectedRequest?.user?.full_name || 'cet utilisateur'} restera bloqué.`
                 }
             </AlertDialogDescription>
             {selectedRequest && (
                 <div className="mt-4 p-3 bg-muted rounded-md border text-sm">
-                    <p className="font-semibold text-xs text-muted-foreground uppercase mb-1">Rappel du motif :</p>
+                    <p className="font-semibold text-xs text-muted-foreground uppercase mb-1">Raison fournie :</p>
                     <p className="italic">"{selectedRequest.request_message}"</p>
                 </div>
             )}

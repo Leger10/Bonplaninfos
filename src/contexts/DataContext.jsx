@@ -59,13 +59,17 @@ export const DataProvider = ({ children }) => {
   // États principaux
   const [userProfile, setUserProfile] = useState(null);
   const [welcomePopups, setWelcomePopups] = useState([]);
-  const [appSettings, setAppSettings] = useState({
-    app_name: "BonPlanInfos",
-    maintenance_mode: false,
-    coin_to_fcfa_rate: 10,
-    min_withdrawal_pi: 50,
-    support_email: "support@bonplaninfos.net",
-  });
+ const [appSettings, setAppSettings] = useState({
+  app_name: "BonPlanInfos",
+  maintenance_mode: false,
+  coin_to_fcfa_rate: 10,
+  min_withdrawal_pi: 50,
+  currency_eur_rate: 650,
+  currency_usd_rate: 550,
+  transaction_fee_percent: 0,
+  contact_email: "bonplaninfos@gmail.com",
+  support_email: "support@bonplaninfos.net",
+});
   const [loading, setLoading] = useState(true);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [notificationBellAnimation, setNotificationBellAnimation] = useState(false);
@@ -140,26 +144,68 @@ export const DataProvider = ({ children }) => {
     }
   }, [user, refreshTrigger]);
 
-  const fetchAppSettings = useCallback(async () => {
-    if (isFetchingSettings.current) return;
-    isFetchingSettings.current = true;
-    safeTime("fetchAppSettings");
+ const fetchAppSettings = useCallback(async () => {
+  if (isFetchingSettings.current) return;
+  isFetchingSettings.current = true;
+  safeTime("fetchAppSettings");
 
-    try {
-      const { data, error } = await fetchWithRetry(
-        () => supabase.from("app_settings").select("*").limit(1).maybeSingle(),
-        2, 1000, {}
-      );
-      if (!error && data) setAppSettings(prev => ({ ...prev, ...data }));
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn("Exception fetching app_settings:", err);
+  try {
+    const { data, error } = await fetchWithRetry(
+      () => supabase.from("app_settings").select("*").limit(1).maybeSingle(),
+      2, 1000, {}
+    );
+    
+    if (!error && data) {
+      // S'assurer que toutes les colonnes nécessaires ont des valeurs par défaut
+      const defaultSettings = {
+        app_name: "BonPlanInfos",
+        maintenance_mode: false,
+        coin_to_fcfa_rate: 10,
+        min_withdrawal_pi: 50,
+        currency_eur_rate: 650,
+        currency_usd_rate: 550,
+        transaction_fee_percent: 0,
+        contact_email: "contact@bonplaninfos.com",
+        support_email: "support@bonplaninfos.net",
+        ...data
+      };
+      setAppSettings(prev => ({ ...prev, ...defaultSettings }));
+    } else if (!data) {
+      // Si pas de données, créer une ligne par défaut
+      const { error: insertError } = await supabase
+        .from("app_settings")
+        .insert({
+          app_name: "BonPlanInfos",
+          coin_to_fcfa_rate: 10,
+          min_withdrawal_pi: 50,
+          currency_eur_rate: 650,
+          currency_usd_rate: 550,
+          contact_email: "contact@bonplaninfos.com",
+          maintenance_mode: false
+        });
+      
+      if (!insertError) {
+        // Recharger après insertion
+        const { data: newData } = await supabase
+          .from("app_settings")
+          .select("*")
+          .limit(1)
+          .maybeSingle();
+        
+        if (newData) {
+          setAppSettings(prev => ({ ...prev, ...newData }));
+        }
       }
-    } finally {
-      safeTimeEnd("fetchAppSettings");
-      isFetchingSettings.current = false;
     }
-  }, []);
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn("Exception fetching app_settings:", err);
+    }
+  } finally {
+    safeTimeEnd("fetchAppSettings");
+    isFetchingSettings.current = false;
+  }
+}, []);
 
   const fetchWelcomePopups = useCallback(async () => {
     if (isFetchingPopups.current) return;

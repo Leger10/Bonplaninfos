@@ -683,7 +683,7 @@ const CreateTicketingEventPage = () => {
                   </p>
                   <p className="text-muted-foreground">
                     Le système calcule automatiquement le prix en Pièces (10
-                    FCFA = 1 pièces). Les revenus sont partagés à 95% pour vous.
+                    FCFA = 1 pièces). Les revenus sont partagés à 90% pour vous.
                   </p>
                 </div>
               </div>

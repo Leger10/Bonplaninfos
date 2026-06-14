@@ -228,7 +228,7 @@ const AdminSalaryDashboard = () => {
         <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-gray-400">
-              Commission (5%)
+              Commission (10%)
             </CardTitle>
           </CardHeader>
           <CardContent>

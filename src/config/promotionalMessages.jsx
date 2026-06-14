@@ -407,7 +407,7 @@ export const promotionalMessages = {
     {
       icon: <Store className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🏪 Stands = Revenus",
-      description: "95% pour vous, 5% pour nous. Générez des revenus en ligne !",
+      description: "90% pour vous, 10% pour nous. Générez des revenus en ligne !",
       button: "Louer",
       color: "from-orange-500 to-amber-500",
       action: () => window.location.href = '/create-stand-event',
@@ -419,7 +419,7 @@ export const promotionalMessages = {
     {
       icon: <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />,
       title: "🎫 Billetterie = Ventes",
-      description: "95% pour vous. Vendez en ligne facilement. Sécurisé !",
+      description: "90% pour vous. Vendez en ligne facilement. Sécurisé !",
       button: "Vendre",
       color: "from-teal-500 to-green-500",
       action: () => window.location.href = '/create-ticketing-event',

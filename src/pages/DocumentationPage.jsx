@@ -1061,7 +1061,7 @@ const DocumentationPage = () => {
     doc.setFontSize(9);
     doc.text("4.1 Commission plateforme", 20, y);
     y += 6;
-    doc.text("BonPlanInfos prélève une commission de 5% sur :", 25, y);
+    doc.text("BonPlanInfos prélève une commission de 10% sur :", 25, y);
     y += 5;
     doc.text(
       "• chaque participation payante (billet, vote, tombola, stand)",
@@ -1072,7 +1072,7 @@ const DocumentationPage = () => {
     doc.text("• chaque retrait effectué par l'Organisateur", 30, y);
     y += 7;
     doc.text(
-      "L'Organisateur perçoit 95% des montants générés, nets de la commission.",
+      "L'Organisateur perçoit 90% des montants générés, nets de la commission.",
       25,
       y,
     );
@@ -1425,7 +1425,7 @@ const DocumentationPage = () => {
               des utilisateurs, nous appliquons un protocole strict de
               validation et de déblocage progressif des fonds. Notre modèle
               économique repose sur une commission de{" "}
-              <span className="text-blue-400 font-semibold">5%</span> prélevée
+              <span className="text-blue-400 font-semibold">10%</span> prélevée
               sur chaque transaction.
             </p>
           </section>
@@ -1801,7 +1801,7 @@ const DocumentationPage = () => {
             <p className="text-xs md:text-sm lg:text-base text-gray-400">
               Modèle économique :{" "}
               <span className="text-blue-400 font-semibold">
-                Commission plateforme de 5%
+                Commission plateforme de 10%
               </span>{" "}
               sur toutes les transactions. Redistribution aux partenaires selon
               leur niveau territorial :{" "}
@@ -1851,7 +1851,7 @@ const DocumentationPage = () => {
                     <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">
-                        20% des 5%
+                        20% des 10%
                       </span>
                     </div>
                   </div>
@@ -1920,7 +1920,7 @@ const DocumentationPage = () => {
                     <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">
-                        30% des 5%
+                        30% des 10%
                       </span>
                     </div>
                   </div>
@@ -1989,7 +1989,7 @@ const DocumentationPage = () => {
                     <div className="flex justify-between text-xs md:text-sm">
                       <span className="text-gray-400">Rémunération</span>
                       <span className="text-green-400 font-bold">
-                        40% des 5%
+                        40% des 10%
                       </span>
                     </div>
                   </div>
@@ -2364,7 +2364,7 @@ const DocumentationPage = () => {
                       </p>
                       <p className="text-gray-400 text-xs md:text-sm">
                         BonPlanInfos prélève une commission de{" "}
-                        <span className="text-green-400 font-bold">5%</span> sur
+                        <span className="text-green-400 font-bold">10%</span> sur
                         :
                       </p>
                       <ul className="list-disc list-inside text-gray-400 text-xs md:text-sm ml-2 md:ml-4 space-y-0.5 md:space-y-1">
@@ -2377,7 +2377,7 @@ const DocumentationPage = () => {
                       <p className="text-gray-400 text-xs md:text-sm mt-1 md:mt-2">
                         👉{" "}
                         <span className="text-white">
-                          L'Organisateur perçoit 95% des montants générés
+                          L'Organisateur perçoit 90% des montants générés
                         </span>
                         , nets de la commission.
                       </p>
@@ -2522,18 +2522,18 @@ const DocumentationPage = () => {
                 </summary>
                 <div className="text-gray-400 mt-2 md:mt-3 text-xs md:text-sm border-t border-gray-800 pt-2 md:pt-3 space-y-1 md:space-y-2">
                   <p>
-                    La commission plateforme de 5% est redistribuée selon le
+                    La commission plateforme de 10% est redistribuée selon le
                     niveau territorial :
                   </p>
                   <ul className="list-disc list-inside ml-2 md:ml-4 space-y-0.5 md:space-y-1">
                     <li>
-                      Concessionnaire Ville : 20% des 5% générés dans sa ville
+                      Concessionnaire Ville : 20% des 10% générés dans sa ville
                     </li>
                     <li>
-                      Concessionnaire Région : 30% des 5% générés dans sa région
+                      Concessionnaire Région : 30% des 10% générés dans sa région
                     </li>
                     <li>
-                      Franchisé National : 40% des 5% générés dans son pays
+                      Franchisé National : 40% des 10% générés dans son pays
                     </li>
                   </ul>
                 </div>

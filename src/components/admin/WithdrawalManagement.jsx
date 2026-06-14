@@ -159,7 +159,7 @@ const WithdrawalManagement = () => {
                 <Card className="bg-blue-50 border-blue-100">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
-                            <Calculator className="w-4 h-4" /> Frais Collectés (5%)
+                            <Calculator className="w-4 h-4" /> Frais Collectés (10%)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -218,7 +218,7 @@ const WithdrawalManagement = () => {
                         <TableRow>
                             <TableHead>Demandeur</TableHead>
                             <TableHead>Montant Brut</TableHead>
-                            <TableHead className="text-red-500">Frais (5%)</TableHead>
+                            <TableHead className="text-red-500">Frais (10%)</TableHead>
                             <TableHead className="text-emerald-600">Net à Payer</TableHead>
                             <TableHead>Info Paiement</TableHead>
                             <TableHead>Statut</TableHead>

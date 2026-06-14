@@ -18,7 +18,6 @@ import {
   Rocket,
   Target,
   X,
-  AlertCircle,
   Users,
   Shield,
   Clock,
@@ -30,6 +29,7 @@ import {
   Lock,
   MessageCircle,
   Phone,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import MultilingualSeoHead from "@/components/MultilingualSeoHead";
@@ -41,12 +41,9 @@ const CREDIT_PACKS = [
     name: "Pack Débutant",
     amount: 500,
     coins: 50,
-    bonus: 0,
     features: ["50 Crédits", "Idéal pour tester", "Validité illimitée", "Sans engagement"],
     icon: Coins,
     color: "text-yellow-400",
-    glowColor: "rgba(250, 204, 21, 0.4)",
-    actionTags: ["Démarrer", "Essentiel"],
     popular: false,
   },
   {
@@ -54,12 +51,9 @@ const CREDIT_PACKS = [
     name: "Pack Standard",
     amount: 1000,
     coins: 100,
-    bonus: 0,
     features: ["100 Crédits", "Participation simple", "Support standard", "Recharge rapide"],
     icon: Zap,
     color: "text-blue-400",
-    glowColor: "rgba(59, 130, 246, 0.4)",
-    actionTags: ["Populaire", "Sans risque"],
     popular: true,
   },
   {
@@ -67,12 +61,9 @@ const CREDIT_PACKS = [
     name: "Pack Start",
     amount: 5000,
     coins: 500,
-    bonus: 0,
     features: ["500 Crédits", "Création d'événements", "Boost léger", "Support prioritaire"],
     icon: Star,
     color: "text-indigo-400",
-    glowColor: "rgba(99, 102, 241, 0.4)",
-    actionTags: ["Recommandé"],
     badge: "🔥 Choix intelligent",
     popular: true,
   },
@@ -81,12 +72,9 @@ const CREDIT_PACKS = [
     name: "Pack Premium",
     amount: 10000,
     coins: 1000,
-    bonus: 0,
     features: ["1000 Crédits", "Visibilité accrue", "Support prioritaire", "Badge exclusif"],
     icon: Sparkles,
     color: "text-purple-400",
-    glowColor: "rgba(168, 85, 247, 0.4)",
-    actionTags: ["Prioritaire"],
     badge: "🚀 Le plus acheté",
     popular: true,
   },
@@ -95,12 +83,9 @@ const CREDIT_PACKS = [
     name: "Pack VIP",
     amount: 25000,
     coins: 2500,
-    bonus: 0,
     features: ["2500 Crédits", "Statut VIP", "Support dédié", "Accès anticipé"],
     icon: Crown,
     color: "text-red-400",
-    glowColor: "rgba(239, 68, 68, 0.4)",
-    actionTags: ["Exclusif"],
     badge: "👑 Élite",
     popular: false,
   },
@@ -109,12 +94,9 @@ const CREDIT_PACKS = [
     name: "Pack King",
     amount: 50000,
     coins: 5000,
-    bonus: 0,
     features: ["5000 Crédits", "Boost Maximum", "Partenariat exclusif", "Compte prioritaire"],
     icon: Crown,
     color: "text-orange-400",
-    glowColor: "rgba(249, 115, 22, 0.4)",
-    actionTags: ["Maximum"],
     badge: "🏆 Ultime",
     popular: false,
   },
@@ -129,44 +111,12 @@ const CreditPacksPage = () => {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
-  const [feePercent, setFeePercent] = useState(3);
   const [userPhone, setUserPhone] = useState("");
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [tempPhone, setTempPhone] = useState("");
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [totalRecharges, setTotalRecharges] = useState(0);
   const [recentRecharges, setRecentRecharges] = useState([]);
-
-  // Récupération des frais MoneyFusion
-  useEffect(() => {
-    const fetchFees = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("app_settings")
-          .select("value")
-          .eq("key", "moneyfusion_fee_percent")
-          .maybeSingle();
-
-        if (error) {
-          console.warn("⚠️ Erreur chargement frais:", error.message);
-          setFeePercent(3);
-          return;
-        }
-
-        if (data && data.value) {
-          const percent = parseFloat(data.value);
-          setFeePercent(isNaN(percent) ? 3 : percent);
-        } else {
-          setFeePercent(3);
-        }
-      } catch (err) {
-        console.error("❌ Exception chargement frais:", err);
-        setFeePercent(3);
-      }
-    };
-
-    fetchFees();
-  }, []);
 
   // Récupération des statistiques
   useEffect(() => {
@@ -343,95 +293,83 @@ const CreditPacksPage = () => {
     await processPayment(amountFcfa, coinsAmount, packId);
   };
 
-  const processPayment = async (amountFcfa, coinsAmount, packId) => {
-    setIsProcessing(true);
-    const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+// Dans CreditPacksPage.jsx, remplacez processPayment par :
 
-    const totalWithFees = amountFcfa;
-    const finalCoinsAmount = Math.floor(amountFcfa / 10);
-    const moneyFusionFee = Math.floor((amountFcfa * feePercent) / 100);
+const processPayment = async (amountFcfa, coinsAmount, packId) => {
+  setIsProcessing(true);
+  const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    try {
-      const { data: paymentData, error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          user_id: user.id,
-          coins_amount: finalCoinsAmount,
-          amount_fcfa: amountFcfa,
-          status: "pending",
-          payment_method: "moneyfusion",
-          transaction_id: txnId,
-          pack_id: packId,
-          coupon_code: appliedCoupon?.code || null,
-          credits_added: false,
-        })
-        .select()
-        .single();
+  try {
+    // Sauvegarder le paiement en attente
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("payments")
+      .insert({
+        user_id: user.id,
+        coins_amount: Math.floor(amountFcfa / 10),
+        amount_fcfa: amountFcfa,
+        status: "pending",
+        payment_method: "moneyfusion",
+        transaction_id: txnId,
+        pack_id: packId,
+        coupon_code: appliedCoupon?.code || null,
+        credits_added: false,
+      })
+      .select()
+      .single();
 
-      if (paymentError) {
-        throw new Error(`Erreur lors de l'enregistrement: ${paymentError.message}`);
-      }
-
-      let couponUsageId = null;
-      if (appliedCoupon?.code) {
-        const registerResult = await CouponService.registerCouponUsage(
-          appliedCoupon.code,
-          user.id,
-          amountFcfa,
-          paymentData.id,
-        );
-
-        if (registerResult.success) {
-          couponUsageId = registerResult.usageId;
-        }
-      }
-
-      localStorage.setItem("pendingPaymentTxnId", txnId);
-      localStorage.setItem("pendingPaymentAmount", amountFcfa);
-      localStorage.setItem("pendingPaymentCoins", finalCoinsAmount);
-      localStorage.setItem("pendingPaymentPackId", packId);
-      localStorage.setItem("pendingPaymentUserId", user.id);
-      if (couponUsageId) {
-        localStorage.setItem("pendingCouponUsageId", couponUsageId);
-      }
-
-      const response = await fetch("/.netlify/functions/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          totalPrice: totalWithFees,
-          article: [{ [packId]: amountFcfa }],
-          personal_Info: [
-            {
-              userId: user.id,
-              orderId: txnId,
-              couponCode: appliedCoupon?.code || null,
-              amountFcfa: amountFcfa,
-              paymentId: paymentData.id,
-              couponUsageId: couponUsageId,
-            },
-          ],
-          numeroSend: userPhone,
-          nomclient: user.email || "Client",
-          return_url: `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`,
-          webhook_url: "https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook",
-        }),
-      });
-
-      const result = await response.json();
-      if (!result.success) throw new Error(result.message || "Erreur création paiement");
-
-      window.location.href = result.redirect_url;
-    } catch (err) {
-      console.error("Payment init error:", err);
-      toast({
-        title: "Erreur",
-        description: err.message,
-        variant: "destructive",
-      });
-      setIsProcessing(false);
+    if (paymentError) {
+      throw new Error(`Erreur lors de l'enregistrement: ${paymentError.message}`);
     }
-  };
+
+    // URL de retour et webhook
+    const returnUrl = `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`;
+    const webhookUrl = `https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook`;
+
+    // ⚠️ IMPORTANT: Appeler la fonction create-payment, pas l'URL directe MoneyFusion
+    const response = await fetch('/.netlify/functions/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        totalPrice: amountFcfa,
+        article: [{ [packId]: amountFcfa }],
+        personal_Info: [{
+          userId: user.id,
+          orderId: txnId,
+          amountFcfa: amountFcfa,
+          paymentId: paymentData.id,
+          couponCode: appliedCoupon?.code || null
+        }],
+        numeroSend: userPhone,
+        nomclient: user.email || 'Client',
+        return_url: returnUrl,
+        webhook_url: webhookUrl
+      })
+    });
+
+    const result = await response.json();
+    console.log('Réponse create-payment:', result);
+
+    if (!result.success) {
+      throw new Error(result.message || 'Erreur création paiement');
+    }
+
+    // Rediriger vers l'URL fournie par MoneyFusion
+    if (result.redirect_url) {
+      window.location.href = result.redirect_url;
+    } else {
+      throw new Error('Aucune URL de redirection reçue');
+    }
+    
+  } catch (err) {
+    console.error("Payment init error:", err);
+    toast({
+      title: "Erreur",
+      description: err.message,
+      variant: "destructive",
+    });
+    setIsProcessing(false);
+  }
+};
 
   const handlePhoneSubmit = async () => {
     if (!tempPhone || tempPhone.trim() === "") {
@@ -744,7 +682,7 @@ const CreditPacksPage = () => {
                 {pack.badge && (
                   <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg z-10">
                     {pack.badge}
-        </div>
+                  </div>
                 )}
 
                 <div className="p-6 text-center border-b border-gray-800 bg-gray-950">
@@ -766,7 +704,7 @@ const CreditPacksPage = () => {
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     (Soit {valueInFcfa.toLocaleString()} FCFA)
-                </div>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-gray-900 flex-1 flex flex-col">

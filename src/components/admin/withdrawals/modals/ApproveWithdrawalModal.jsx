@@ -113,14 +113,14 @@ const ApproveWithdrawalModal = ({ isOpen, onClose, event, metrics, adminId, onCo
               </p>
             </div>
             <div>
-              <p className="text-xs text-gray-400">Net Organisateur (95%)</p>
+              <p className="text-xs text-gray-400">Net Organisateur (90%)</p>
               <p className="text-xl font-bold text-green-400">
                 {calculating ? "..." : `${netAmount} π`}
               </p>
             </div>
             <div className="col-span-2 border-t border-gray-700 pt-2 mt-2">
               <p className="text-xs text-gray-400 flex justify-between">
-                <span>Frais Plateforme (5%)</span>
+                <span>Frais Plateforme (10%)</span>
                 <span>{fees} π</span>
               </p>
             </div>

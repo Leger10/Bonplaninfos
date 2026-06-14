@@ -86,39 +86,39 @@ const LicenseConfiguration = ({ onUpdate }) => {
           slug: 'starter-license',
           coverage_type: 'ville',
           fcfa_price: 1000000,
-          revenue_share_percent: 2, // 2% des 5%
+          revenue_share_percent: 2, // 2% des 10%
           duration_days: 2 * 365,
           is_active: true,
           description: 'Concession Ville - 1 ans',
           level: 'starter',
           display_order: 1,
-          benefits: JSON.stringify(["Exclusivité Ville", "2% sur la commission plateforme (5%)", "Durée 1 ans", "Support standard"])
+          benefits: JSON.stringify(["Exclusivité Ville", "2% sur la commission plateforme (10%)", "Durée 1 ans", "Support standard"])
         },
         {
           name: 'BUSINESS',
           slug: 'business-license',
           coverage_type: 'region',
           fcfa_price: 3000000,
-          revenue_share_percent: 3, // 3% des 5%
+          revenue_share_percent: 3, // 3% des 10%
           duration_days: 3 * 365,
           is_active: true,
           description: 'Concession Régionale - 2 ans',
           level: 'business',
           display_order: 2,
-          benefits: JSON.stringify(["Exclusivité Région", "3% sur la commission plateforme (5%)", "Durée 2 ans", "Support prioritaire"])
+          benefits: JSON.stringify(["Exclusivité Région", "3% sur la commission plateforme (10%)", "Durée 2 ans", "Support prioritaire"])
         },
         {
           name: 'PREMIUM',
           slug: 'premium-license',
           coverage_type: 'pays',
           fcfa_price: 5000000,
-          revenue_share_percent: 4, // 4% des 5%
+          revenue_share_percent: 4, // 4% des 10%
           duration_days: 5 * 365,
           is_active: true,
           description: 'Concession Nationale - 3 ans',
           level: 'premium',
           display_order: 3,
-          benefits: JSON.stringify(["Exclusivité Pays", "4% sur la commission plateforme (5%)", "Durée 3 ans", "Support VIP"])
+          benefits: JSON.stringify(["Exclusivité Pays", "4% sur la commission plateforme (10%)", "Durée 3 ans", "Support VIP"])
         }
       ];
 
@@ -254,7 +254,7 @@ const LicenseConfiguration = ({ onUpdate }) => {
               <TableHead>Nom (Niveau)</TableHead>
               <TableHead>Territoire</TableHead>
               <TableHead>Prix (FCFA)</TableHead>
-              <TableHead>Commission (% des 5%)</TableHead>
+              <TableHead>Commission (% des 10%)</TableHead>
               <TableHead>Durée (Ans)</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -316,7 +316,7 @@ const LicenseConfiguration = ({ onUpdate }) => {
                           onChange={e => setEditForm({...editForm, revenue_share_percent: e.target.value})}
                           className={`h-8 w-20 text-center ${isChanged('revenue_share_percent') ? 'border-orange-400 bg-orange-50' : ''}`}
                         />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">% des 5%</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">% des 10%</span>
                       </div>
                     ) : (
                       <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">

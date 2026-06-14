@@ -42,7 +42,7 @@ const CreateWithdrawalRequestModal = ({ isOpen, onClose, event, metrics, adminId
 
       // Aggregation based on total_amount_pi
       const total = (data || []).reduce((sum, t) => sum + (t.total_amount_pi || 0), 0);
-      const netEstimate = Math.floor(total * 0.95); // 95% for organizer
+      const netEstimate = Math.floor(total * 0.9); // 90% for organizer
       
       setMaxAmount(netEstimate);
       setAmount(netEstimate); // Default to max

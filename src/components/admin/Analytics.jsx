@@ -308,8 +308,8 @@ const Analytics = () => {
                 <AreaChart data={userActivityData}>
                   <defs>
                     <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="10%" stopColor="#3b82f6" stopOpacity={0.8} />
+                      <stop offset="90%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis

@@ -379,9 +379,9 @@ const Step2Stands = ({
     <div className="bg-blue-900/30 p-4 rounded-xl border border-blue-800 mb-6 flex gap-3">
       <Store className="w-6 h-6 text-blue-400 mt-1 shrink-0" />
       <div>
-        <h4 className="font-bold text-blue-300">Gagnez 95% des revenus</h4>
+        <h4 className="font-bold text-blue-300">Gagnez 90% des revenus</h4>
         <p className="text-sm text-blue-200">
-          Configurez vos types de stands. La plateforme prélève 5%.
+          Configurez vos types de stands. La plateforme prélève 10%.
         </p>
       </div>
     </div>

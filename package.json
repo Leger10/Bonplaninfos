@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite --host --port 3000",
+     "dev:netlify": "netlify dev",
+    "dev:npx": "npx netlify-cli dev",
     "build": "node tools/generate-llms.js || true && node ./node_modules/vite/dist/node/cli.js build",
     "preview": "vite preview --host --port 3000",
     "sitemap": "node scripts/generate-sitemap.js",

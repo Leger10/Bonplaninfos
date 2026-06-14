@@ -90,7 +90,7 @@ const UserGuidePage = () => {
 
   // Stats data réelles
   const stats = [
-    { number: "95%", label: t("user_guide_page.stats.revenue") },
+    { number: "90%", label: t("user_guide_page.stats.revenue") },
     { number: "10F", label: t("user_guide_page.stats.coin_cost") },
     { number: "1", label: t("user_guide_page.stats.coin_earned") },
     { number: "0F", label: t("user_guide_page.stats.no_fees") },
@@ -903,7 +903,7 @@ const UserGuidePage = () => {
                 {t("user_guide_page.footer.information")}
               </h4>
               <ul className="space-y-2 text-gray-400">
-                <li>🎫 95% des revenus vous sont reversés</li>
+                <li>🎫 90% des revenus vous sont reversés</li>
                 <li>💰 1 pièce = 10F CFA</li>
                 <li>⚡ 1 interaction = 1 pièce</li>
                 <li>🚀 Support 24/7</li>

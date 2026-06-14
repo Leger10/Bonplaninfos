@@ -133,12 +133,12 @@ const AnalyticsDashboard = () => {
     }
   };
 
-  // ========== CALCUL DES COMMISSIONS (5%) ==========
+  // ========== CALCUL DES COMMISSIONS (10%) ==========
   const fetchMetrics = async () => {
     try {
       let totalCommissions = 0;
 
-      // 1. Commissions des gains organisateurs (5% des organizer_earnings)
+      // 1. Commissions des gains organisateurs (10% des organizer_earnings)
       const { data: earningsData, error: earningsError } = await supabase
         .from("organizer_earnings")
         .select("amount_pi");
@@ -149,14 +149,14 @@ const AnalyticsDashboard = () => {
         );
       }
 
-      // 2. Commissions des retraits (5% des withdrawals_completed)
+      // 2. Commissions des retraits (10% des withdrawals_completed)
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from("withdrawal_requests")
         .select("amount_pi, status")
         .eq("status", "completed");
       if (!withdrawalError && withdrawalData) {
         totalCommissions += withdrawalData.reduce(
-          (sum, item) => sum + (item.amount_pi || 0) * 0.05,
+          (sum, item) => sum + (item.amount_pi || 0) * 0.1,
           0,
         );
       }
@@ -165,7 +165,7 @@ const AnalyticsDashboard = () => {
       const { data: feesData, error: feesError } = await supabase
         .from("platform_fees")
         .select("amount, percentage")
-        .eq("percentage", 5);
+        .eq("percentage", 10);
       if (!feesError && feesData) {
         totalCommissions += feesData.reduce(
           (sum, item) => sum + (item.amount || 0),
@@ -524,12 +524,12 @@ const AnalyticsDashboard = () => {
                 <defs>
                   <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
                     <stop
-                      offset="5%"
+                      offset="10%"
                       stopColor="hsl(var(--primary))"
                       stopOpacity={0.3}
                     />
                     <stop
-                      offset="95%"
+                      offset="90%"
                       stopColor="hsl(var(--primary))"
                       stopOpacity={0}
                     />
