@@ -1,18 +1,22 @@
 // netlify/functions/moneyfusion-ticket-webhook.js
 const { createClient } = require('@supabase/supabase-js');
 
+// 🔥 VÉRIFICATION DES VARIABLES D'ENVIRONNEMENT
+console.log('🔍 Vérification des variables d\'environnement Supabase:');
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('❌ Variables d\'environnement Supabase manquantes');
+    console.error('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Présent' : '❌ Manquant');
+    console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✅ Présent' : '❌ Manquant');
+    throw new Error('Variables d\'environnement Supabase manquantes');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE
 const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
-    // Vérifier si l'utilisateur existe déjà
     if (userEmail) {
         const { data: existing } = await supabase
             .from('profiles')
@@ -25,7 +29,6 @@ const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
         }
     }
     
-    // Créer un nouvel utilisateur avec un UUID valide
     const newUserId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
     
     await supabase
@@ -92,11 +95,11 @@ exports.handler = async (event) => {
 
         console.log('✅ Paiement réussi:', { orderId, eventId, attendeeName, originalAmount, isGuest });
 
-        // --- 1. Gérer l'utilisateur avec UUID valide ---
+        // --- 1. Gérer l'utilisateur ---
         let finalUserId = info.userId;
 
         if (isGuest || !finalUserId || finalUserId.startsWith('guest_')) {
-            console.log('👤 Création compte invité avec UUID valide...');
+            console.log('👤 Création compte invité...');
             finalUserId = await generateUserId(userEmail, attendeeName, phoneNumber);
             console.log('✅ Compte invité créé:', finalUserId);
         }
@@ -113,7 +116,7 @@ exports.handler = async (event) => {
             tickets.push({
                 id: ticketId,
                 event_id: eventId,
-                user_id: finalUserId, // 🔥 UUID valide
+                user_id: finalUserId,
                 status: 'active',
                 payment_method: 'moneyfusion_ticket',
                 transaction_reference: orderId,
@@ -126,7 +129,6 @@ exports.handler = async (event) => {
             });
         }
 
-        // 🔥 Insérer les tickets
         if (tickets.length > 0) {
             const { error } = await supabase
                 .from('tickets')
@@ -145,7 +147,8 @@ exports.handler = async (event) => {
             .update({
                 status: 'completed',
                 processed_at: new Date().toISOString(),
-                user_id: finalUserId
+                user_id: finalUserId,
+                payment_method: 'moneyfusion_ticket'
             })
             .eq('transaction_id', orderId);
 

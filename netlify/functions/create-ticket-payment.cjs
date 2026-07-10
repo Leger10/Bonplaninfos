@@ -1,260 +1,194 @@
-// netlify/functions/moneyfusion-ticket-webhook.js
-const { createClient } = require('@supabase/supabase-js');
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Variables d\'environnement Supabase manquantes');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE
-const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
-    if (userEmail) {
-        const { data: existing } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('email', userEmail)
-            .maybeSingle();
-        
-        if (existing) {
-            return existing.id;
-        }
-    }
-    
-    const newUserId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-    
-    await supabase
-        .from('profiles')
-        .insert({
-            id: newUserId,
-            email: userEmail || `guest_${Date.now()}@temp.com`,
-            full_name: attendeeName || 'Invité',
-            phone: phoneNumber || '',
-            user_type: 'guest',
-            created_at: new Date().toISOString()
-        });
-    
-    return newUserId;
-};
+// netlify/functions/create-ticket-payment.js
+const axios = require('axios');
+const https = require('https');
 
 exports.handler = async (event) => {
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Content-Type': 'application/json'
     };
 
     if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 204, headers, body: '' };
+        return {
+            statusCode: 204,
+            headers,
+            body: ''
+        };
     }
 
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
             headers,
-            body: JSON.stringify({ error: 'Method Not Allowed' })
+            body: JSON.stringify({
+                success: false,
+                message: 'Method Not Allowed'
+            })
         };
     }
 
     try {
         if (!event.body) {
-            throw new Error('Body manquant');
+            throw new Error('Body manquant dans la requête');
         }
 
-        const payload = JSON.parse(event.body);
-        console.log('📦 Webhook reçu:', JSON.stringify(payload, null, 2));
+        const {
+            totalPrice,
+            article,
+            personal_Info,
+            numeroSend,
+            nomclient,
+            return_url,
+            webhook_url
+        } = JSON.parse(event.body);
 
-        const { event: eventType, personal_Info, statut } = payload;
-
-        if (eventType !== 'payin.session.completed' && statut !== 'paid') {
-            console.log('ℹ️ Événement non traité:', eventType);
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ received: true })
-            };
+        const cleanPhone = numeroSend.replace(/\s/g, '');
+        
+        if (!cleanPhone || cleanPhone.length < 8) {
+            throw new Error('Numéro de téléphone invalide. Veuillez fournir un numéro valide.');
         }
 
-        const info = personal_Info?.[0] || {};
-        const orderId = info.orderId;
-        const eventId = info.eventId;
-        const cart = info.cart || {};
-        const attendeeName = info.attendeeName || 'Invité';
-        const originalAmount = info.amountFcfa || 0;
-        const isGuest = info.isGuest || false;
-        const userEmail = info.userEmail || null;
-        const phoneNumber = info.phone || '';
-        const promoCodeId = info.promoCodeId || null;
-        const commissionAmount = info.commissionAmount || 0;
-
-        console.log('✅ Paiement réussi:', { orderId, eventId, attendeeName, originalAmount, isGuest });
-
-        // --- 1. Gérer l'utilisateur ---
-        let finalUserId = info.userId;
-
-        if (isGuest || !finalUserId || finalUserId.startsWith('guest_')) {
-            console.log('👤 Création compte invité avec UUID...');
-            finalUserId = await generateUserId(userEmail, attendeeName, phoneNumber);
-            console.log('✅ Compte invité créé:', finalUserId);
+        if (!totalPrice || totalPrice <= 0) {
+            throw new Error('Montant invalide');
         }
 
-        // --- 2. Créer les tickets DIRECTEMENT dans la table tickets ---
-        let ticketCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-        if (ticketCount === 0) ticketCount = 1;
-
-        const tickets = [];
-        for (let i = 0; i < ticketCount; i++) {
-            const ticketId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-            const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            
-            tickets.push({
-                id: ticketId,
-                event_id: eventId,
-                user_id: finalUserId,
-                status: 'active',
-                payment_method: 'moneyfusion_ticket',
-                transaction_reference: orderId,
-                attendee_name: attendeeName,
-                purchased_at: new Date().toISOString(),
-                qr_code: qrCode,
-                ticket_number: `MF-${Date.now()}-${String(i + 1).padStart(4, '0')}`,
-                purchase_price_pi: Math.floor(originalAmount / 10 / ticketCount),
-                ticket_type_id: null
-            });
+        if (!personal_Info || !personal_Info[0]) {
+            throw new Error('Informations personnelles requises');
         }
 
-        // 🔥 INSERTION DIRECTE DANS LA TABLE tickets (PAS event_tickets)
-        if (tickets.length > 0) {
-            const { error } = await supabase
-                .from('tickets')
-                .insert(tickets);
+        // 🔥 URL DE L'API MONEYFUSION
+        const apiUrl = process.env.MONEYFUSION_API_URL || 'https://pay.moneyfusion.net/api/payment';
 
-            if (error) {
-                console.error('❌ Erreur insertion tickets:', error);
-            } else {
-                console.log(`✅ ${tickets.length} tickets créés dans tickets`);
+        // 🔥 CONSTRUIRE L'URL DU WEBHOOK
+        let webhookUrl = webhook_url;
+        if (!webhookUrl) {
+            const siteUrl = process.env.URL || process.env.DEPLOY_URL || 'https://bonplaninfos.netlify.app';
+            webhookUrl = `${siteUrl}/.netlify/functions/moneyfusion-ticket-webhook`;
+        }
+
+        console.log('💰 Création paiement ticket MoneyFusion:', {
+            totalPrice,
+            numeroSend: cleanPhone,
+            nomclient,
+            eventId: personal_Info[0]?.eventId,
+            amountOriginal: personal_Info[0]?.amountFcfa,
+            isGuest: personal_Info[0]?.isGuest || false,
+            webhookUrl
+        });
+
+        const paymentData = {
+            totalPrice: totalPrice,
+            article: article || [{ ticket_payment: totalPrice }],
+            personal_Info: personal_Info,
+            numeroSend: cleanPhone,
+            nomclient: nomclient || 'Client',
+            return_url: return_url || `${process.env.URL || 'https://bonplaninfos.netlify.app'}/profile?tab=tickets&payment=success&order=${personal_Info[0]?.orderId || 'unknown'}`,
+            webhook_url: webhookUrl
+        };
+
+        console.log('📤 Envoi à MoneyFusion:', {
+            apiUrl,
+            totalPrice: paymentData.totalPrice,
+            numeroSend: paymentData.numeroSend,
+            return_url: paymentData.return_url,
+            webhook_url: paymentData.webhook_url
+        });
+
+        const agent = new https.Agent({
+            rejectUnauthorized: process.env.NODE_ENV === 'production'
+        });
+
+        const response = await axios.post(apiUrl, paymentData, {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            httpsAgent: agent,
+            timeout: 30000
+        });
+
+        console.log('✅ Réponse MoneyFusion reçue:', {
+            statut: response.data?.statut,
+            token: response.data?.token ? 'Présent' : 'Absent',
+            hasUrl: !!response.data?.url,
+            webhook_sent: !!paymentData.webhook_url
+        });
+
+        const { statut, token, message, url } = response.data;
+
+        if (!statut) {
+            throw new Error(message || 'Erreur lors de la création du paiement sur MoneyFusion');
+        }
+
+        let redirectUrl = url;
+        if (redirectUrl) {
+            if (redirectUrl.includes('www.pay.moneyfusion.net')) {
+                redirectUrl = redirectUrl.replace('www.pay.moneyfusion.net', 'pay.moneyfusion.net');
             }
-        }
-
-        // --- 3. Mettre à jour le paiement ---
-        await supabase
-            .from('payments')
-            .update({
-                status: 'completed',
-                processed_at: new Date().toISOString(),
-                user_id: finalUserId,
-                payment_method: 'moneyfusion_ticket'
-            })
-            .eq('transaction_id', orderId);
-
-        // --- 4. Créer les gains de l'organisateur ---
-        const { data: eventData } = await supabase
-            .from('events')
-            .select('organizer_id')
-            .eq('id', eventId)
-            .single();
-
-        if (eventData) {
-            const organizerId = eventData.organizer_id;
-            const amountCoins = Math.floor(originalAmount / 10);
-            const platformCommission = Math.floor(amountCoins * 0.05);
-            const netCoins = amountCoins - platformCommission;
-            const netFcfa = netCoins * 10;
-
-            await supabase
-                .from('organizer_earnings')
-                .insert({
-                    organizer_id: organizerId,
-                    event_id: eventId,
-                    transaction_id: orderId,
-                    transaction_type: 'ticket_sale',
-                    earnings_coins: netCoins,
-                    earnings_fcfa: netFcfa,
-                    status: 'pending',
-                    platform_commission: platformCommission,
-                    platform_fee: platformCommission * 10,
-                    net_amount: netFcfa,
-                    ticket_count: ticketCount || 1,
-                    earning_type: 'ticket_sale',
-                    event_type: 'ticketing',
-                    description: `💰 Vente de ${ticketCount} tickets via MoneyFusion - ${attendeeName}`,
-                    created_at: new Date().toISOString()
-                });
-
-            // Mettre à jour le profil de l'organisateur
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('total_earnings, available_earnings')
-                .eq('id', organizerId)
-                .single();
-
-            if (profile) {
-                await supabase
-                    .from('profiles')
-                    .update({
-                        total_earnings: (profile.total_earnings || 0) + netCoins,
-                        available_earnings: (profile.available_earnings || 0) + netCoins,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', organizerId);
-                console.log(`✅ Profil organisateur mis à jour: +${netCoins} coins`);
+            if (!redirectUrl.startsWith('http')) {
+                redirectUrl = `https://${redirectUrl}`;
             }
+        } else {
+            throw new Error('Aucune URL de redirection reçue de MoneyFusion');
         }
 
-        // --- 5. Commissions des codes promo ---
-        if (promoCodeId && commissionAmount > 0) {
-            const { data: promoData } = await supabase
-                .from('promo_codes')
-                .select('influencer_id')
-                .eq('id', promoCodeId)
-                .single();
-
-            if (promoData && promoData.influencer_id) {
-                await supabase
-                    .from('promo_code_commissions')
-                    .insert({
-                        promo_code_id: promoCodeId,
-                        user_id: promoData.influencer_id,
-                        commission_amount: commissionAmount,
-                        order_id: orderId,
-                        status: 'pending',
-                        source: 'moneyfusion_ticket',
-                        created_at: new Date().toISOString()
-                    });
-
-                await supabase
-                    .from('profiles')
-                    .update({
-                        commission_wallet: supabase.raw('commission_wallet + ?', [commissionAmount])
-                    })
-                    .eq('id', promoData.influencer_id);
-            }
-        }
-
-        console.log(`🎉 Traitement terminé pour ${orderId}`);
+        const originalAmount = personal_Info[0]?.amountFcfa || totalPrice;
+        const feesAmount = totalPrice - originalAmount;
 
         return {
             statusCode: 200,
-            headers,
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
-                received: true,
                 success: true,
-                tickets_created: tickets.length > 0,
-                ticket_count: tickets.length,
-                user_id: finalUserId
+                token: token,
+                redirect_url: redirectUrl,
+                message: message || 'Paiement créé avec succès',
+                fees: feesAmount,
+                amount_original: originalAmount,
+                amount_with_fees: totalPrice,
+                phone_used: cleanPhone,
+                webhook_url: webhookUrl
             })
         };
 
     } catch (error) {
-        console.error('❌ Erreur webhook:', error);
+        console.error('❌ Erreur détaillée:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            code: error.code
+        });
+
+        let statusCode = 500;
+        let errorMessage = error.message || 'Erreur lors de la création du paiement';
+
+        if (error.response?.status === 400) {
+            statusCode = 400;
+            errorMessage = error.response.data?.message || 'Données invalides';
+        } else if (error.response?.status === 401) {
+            statusCode = 401;
+            errorMessage = 'Non autorisé - Vérifiez vos clés API MoneyFusion';
+        } else if (error.response?.status === 404) {
+            statusCode = 404;
+            errorMessage = 'API MoneyFusion non trouvée - Vérifiez l\'URL';
+        } else if (error.response?.status === 500) {
+            statusCode = 500;
+            errorMessage = 'Erreur serveur MoneyFusion - Veuillez réessayer plus tard';
+        }
+
         return {
-            statusCode: 500,
-            headers,
+            statusCode: statusCode,
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
-                error: error.message,
+                success: false,
+                message: errorMessage,
                 details: process.env.NODE_ENV === 'development' ? error.stack : undefined
             })
         };
