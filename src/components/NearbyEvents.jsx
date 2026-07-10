@@ -66,35 +66,36 @@ const NearbyEvents = () => {
     try {
       const normalizedCity = city.trim().toLowerCase();
       const normalizedCountry = country.trim().toLowerCase();
-const { data, error } = await fetchWithRetry(() =>
-  supabase
-    .from('events')
-    .select(`
-      id,
-      title,
-      event_start_at,
-      event_end_at,
-      city,
-      country,
-      full_address,
-      cover_image,
-      event_type,
-      is_promoted,
-      interactions_count,
-      created_at,
-      organizer_id,
-      category:event_categories (name, slug),
-      organizer:profiles!organizer_id (full_name)
-    `)
-    .in('status', ['active', 'protected'])  // ← Modification ici
-    .eq('is_cancelled', false)
-    .gte('event_end_at', new Date().toISOString())
-    .ilike('city', `%${normalizedCity}%`)
-    .ilike('country', `%${normalizedCountry}%`)
-    .order('is_promoted', { ascending: false })
-    .order('event_start_at', { ascending: true })
-    .limit(4)
-);
+      
+      const { data, error } = await fetchWithRetry(() =>
+        supabase
+          .from('events')
+          .select(`
+            id,
+            title,
+            event_start_at,
+            event_end_at,
+            city,
+            country,
+            full_address,
+            cover_image,
+            event_type,
+            is_promoted,
+            interactions_count,
+            created_at,
+            organizer_id,
+            category:event_categories (name, slug),
+            organizer:profiles!organizer_id (full_name)
+          `)
+          .in('status', ['active', 'protected'])
+          .eq('is_cancelled', false)
+          .gte('event_end_at', new Date().toISOString())
+          .ilike('city', `%${normalizedCity}%`)
+          .ilike('country', `%${normalizedCountry}%`)
+          .order('is_promoted', { ascending: false })
+          .order('event_start_at', { ascending: true })
+          .limit(4)
+      );
 
       if (error) throw error;
 
@@ -115,6 +116,7 @@ const { data, error } = await fetchWithRetry(() =>
         is_promoted: event.is_promoted,
         interactions_count: event.interactions_count,
         created_at: event.created_at,
+        id: event.id,
       }));
 
       setLocalEvents(transformedEvents);
@@ -126,6 +128,7 @@ const { data, error } = await fetchWithRetry(() =>
     } catch (err) {
       console.error('Erreur lors de la récupération des événements locaux:', err);
       setLocalEvents([]);
+      setError('Impossible de charger les événements à proximité.');
     } finally {
       setLoading(false);
     }
@@ -194,7 +197,7 @@ const { data, error } = await fetchWithRetry(() =>
       const amountPaid = rpcData.amount_paid || 2;
       toast({ 
         title: "Contenu débloqué!", 
-        description: `Vous avez dépensé ${amountPaid}pièces. 1pièces a été transféré à l'organisateur.`,
+        description: `Vous avez dépensé ${amountPaid} pièces. 1 pièce a été transféré à l'organisateur.`,
         duration: 3000
       });
       
@@ -214,22 +217,21 @@ const { data, error } = await fetchWithRetry(() =>
     }
   };
 
+  // ✅ Gestion du clic sur une carte - ACCÈS PUBLIC
   const handleCardClick = (event) => {
     const eventId = event.id || event.event_id;
     
+    // ✅ Vérifier si l'utilisateur est connecté
     if (!user) {
-      toast({ 
-        title: "Connexion requise", 
-        description: "Vous devez être connecté pour voir les détails.", 
-        variant: "destructive" 
-      });
-      navigate('/auth');
+      // 🔥 ACCÈS PUBLIC - Rediriger vers la page de l'événement sans connexion
+      navigate(`/event/${eventId}`);
       return;
     }
     
     const isAdmin = userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type);
     const isUnlocked = unlockedEvents.has(eventId) || event.organizer_id === user?.id || isAdmin;
 
+    // Gérer les événements protégés
     if (event.event_type === 'protected' && !isUnlocked) {
       const cost = 2;
       const costFcfa = cost * (adminConfig?.coin_to_fcfa_rate || 10);
@@ -242,12 +244,14 @@ const { data, error } = await fetchWithRetry(() =>
         onConfirm: () => executeUnlock({ ...event, id: eventId }),
       });
     } else {
+      // ✅ ACCÈS AUTORISÉ - Navigation vers l'événement
       navigate(`/event/${eventId}`);
     }
   };
 
   const memoizedLocalEvents = useMemo(() => localEvents, [localEvents]);
 
+  // 🔄 Rendu en chargement
   if (loading) {
     return (
       <section className="mb-12">
@@ -264,6 +268,7 @@ const { data, error } = await fetchWithRetry(() =>
     );
   }
 
+  // 🔄 Rendu en erreur
   if (error) {
     return (
       <section className="mb-12">
@@ -280,8 +285,10 @@ const { data, error } = await fetchWithRetry(() =>
     );
   }
 
+  // 🔄 Aucun événement
   if (localEvents.length === 0) return null;
 
+  // ✅ Rendu principal
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
@@ -305,11 +312,13 @@ const { data, error } = await fetchWithRetry(() =>
           </h2>
         </div>
       </div>
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {memoizedLocalEvents.map(event => {
           const isAdmin = userProfile && ['super_admin', 'admin', 'secretary'].includes(userProfile.user_type);
           const eventId = event.id || event.event_id;
           const isUnlocked = unlockedEvents.has(eventId) || (user && event.organizer_id === user.id) || isAdmin;
+          
           return (
             <EventCard
               key={eventId}
@@ -321,6 +330,7 @@ const { data, error } = await fetchWithRetry(() =>
         })}
       </div>
       
+      {/* ✅ Wallet Info Modal */}
       <WalletInfoModal 
         isOpen={showWalletInfoModal} 
         onClose={() => setShowWalletInfoModal(false)}
@@ -330,7 +340,11 @@ const { data, error } = await fetchWithRetry(() =>
         }}
       />
       
-      <AlertDialog open={confirmation.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, event: null, cost: 0, costFcfa: 0, onConfirm: null })}>
+      {/* ✅ Alert Dialog pour la confirmation de déblocage */}
+      <AlertDialog 
+        open={confirmation.isOpen} 
+        onOpenChange={(isOpen) => !isOpen && setConfirmation({ isOpen: false, event: null, cost: 0, costFcfa: 0, onConfirm: null })}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Débloquer cet événement ?</AlertDialogTitle>
@@ -339,7 +353,7 @@ const { data, error } = await fetchWithRetry(() =>
                 <Coins className="w-12 h-12 text-primary mb-4" />
                 <p className="text-lg">
                   Voir les détails de "<strong className="text-foreground">{confirmation.event?.title}</strong>" vous coûtera{' '}
-                  <strong className="text-foreground">{confirmation.cost}pièces</strong> ({confirmation.costFcfa?.toLocaleString('fr-FR')} FCFA).
+                  <strong className="text-foreground">{confirmation.cost} pièces</strong> ({confirmation.costFcfa?.toLocaleString('fr-FR')} FCFA).
                 </p>
                 <div className="mt-4 text-sm text-muted-foreground p-4 bg-muted rounded-lg">
                   <div className="flex items-start gap-3">
@@ -347,9 +361,18 @@ const { data, error } = await fetchWithRetry(() =>
                     <div className="text-left">
                       <p className="font-medium mb-2 text-foreground">Comment fonctionne la rémunération :</p>
                       <ul className="space-y-2 text-xs md:text-sm">
-                        <li className="flex items-center gap-2"><span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">2pièces</span><span>sont déduits de votre solde</span></li>
-                        <li className="flex items-center gap-2"><span className="bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-semibold">1pièces</span><span>est transféré à l'organisateur</span></li>
-                        <li className="flex items-center gap-2"><span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded font-semibold">1pièces</span><span>reste dans l'écosystème BonPlanInfos</span></li>
+                        <li className="flex items-center gap-2">
+                          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">2 pièces</span>
+                          <span>sont déduits de votre solde</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="bg-green-500/10 text-green-600 px-2 py-0.5 rounded font-semibold">1 pièce</span>
+                          <span>est transféré à l'organisateur</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded font-semibold">1 pièce</span>
+                          <span>reste dans l'écosystème BonPlanInfos</span>
+                        </li>
                       </ul>
                       <p className="mt-3 text-xs italic">En débloquant cet événement, vous soutenez directement l'organisateur !</p>
                     </div>
@@ -361,7 +384,7 @@ const { data, error } = await fetchWithRetry(() =>
           <AlertDialogFooter>
             <AlertDialogCancel className="mt-2 sm:mt-0">Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={confirmation.onConfirm} className="bg-primary hover:bg-primary/90">
-              Confirmer et Payer {confirmation.cost}pièces
+              Confirmer et Payer {confirmation.cost} pièces
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

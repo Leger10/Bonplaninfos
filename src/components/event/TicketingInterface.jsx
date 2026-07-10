@@ -23,6 +23,11 @@ import {
   Wallet,
   Package,
   Tag,
+  Smartphone,
+  Phone,
+  Lock,
+  Info,
+  User,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { generateTicketPDF } from "@/utils/generateTicketPDF";
@@ -38,8 +43,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CoinService } from "@/services/CoinService";
 import { usePromoCode } from "@/hooks/usePromoCode";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const FCFA_PER_COIN = 10;
+const MONEYFUSION_FEE_RATE = 0.04; // 4% de frais
 
 // Ticket Colors constant
 const TICKET_COLORS = {
@@ -151,6 +159,15 @@ const TicketingInterface = ({
   const [promoDiscountValue, setPromoDiscountValue] = useState(0);
   const [promoDiscountType, setPromoDiscountType] = useState(null);
   
+  // États pour le paiement sans compte
+  const [isTicketPaymentProcessing, setIsTicketPaymentProcessing] = useState(false);
+  
+  // 🔥 MODIFICATION : Un seul modal avec 2 champs
+  const [showPaymentInfoModal, setShowPaymentInfoModal] = useState(false);
+  const [attendeeName, setAttendeeName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isInfoRequired, setIsInfoRequired] = useState(false);
+  
   // Detect screen size
   useEffect(() => {
     const checkMobile = () => {
@@ -200,6 +217,43 @@ const TicketingInterface = ({
       setUserBalance(userProfile.coin_balance);
     }
   }, [user, showCheckoutModal, showCartDetails, userProfile]);
+
+  // 🔥 Récupérer les infos sauvegardées
+  useEffect(() => {
+    const savedName = localStorage.getItem('guest_name');
+    if (savedName) {
+      setAttendeeName(savedName);
+    }
+    
+    const savedPhone = localStorage.getItem('guest_phone');
+    if (savedPhone) {
+      setPhoneNumber(savedPhone);
+    }
+  }, []);
+
+  // 🔥 Récupérer le nom de l'utilisateur connecté
+  useEffect(() => {
+    if (user) {
+      const userName = user?.full_name || user?.user_metadata?.full_name || '';
+      if (userName) {
+        setAttendeeName(userName);
+      }
+      // Récupérer le téléphone du profil
+      const fetchUserPhone = async () => {
+        if (user?.id) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("phone")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (data && !error && data.phone) {
+            setPhoneNumber(data.phone);
+          }
+        }
+      };
+      fetchUserPhone();
+    }
+  }, [user]);
 
   const isPresale = useMemo(() => {
     if (!event || !event.event_start_at) return false;
@@ -333,6 +387,12 @@ const TicketingInterface = ({
   }, [subtotal, promoDiscountAmount]);
 
   const cartTotalFcfa = useMemo(() => cartTotal * 10, [cartTotal]);
+  
+  const cartTotalWithFees = useMemo(() => {
+    const totalWithFees = cartTotalFcfa * (1 + MONEYFUSION_FEE_RATE);
+    return Math.ceil(totalWithFees);
+  }, [cartTotalFcfa]);
+
   const totalTicketsInCart = useMemo(() => cartItems.reduce((sum, item) => sum + item.quantity, 0), [cartItems]);
   const hasSufficientBalance = useMemo(() => (userBalance || 0) >= cartTotal, [userBalance, cartTotal]);
   const balanceDeficit = useMemo(() => Math.max(0, cartTotal - (userBalance || 0)), [userBalance, cartTotal]);
@@ -424,7 +484,316 @@ const TicketingInterface = ({
     window.location.href = "/profile?tab=tickets";
   };
 
-  // handlePurchase corrigé - PLUS D'APPEL DOUBLE À process_promo_usage
+  // Sauvegarder le téléphone de l'utilisateur
+  const saveUserPhone = async (phone) => {
+    if (!user?.id) return false;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ phone: phone })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error("❌ Erreur sauvegarde téléphone:", error);
+      return false;
+    }
+
+    return true;
+  };
+
+  // 🔥 SAUVEGARDER LE NOM DE L'UTILISATEUR
+  const saveUserName = async (name) => {
+    if (!user?.id) return false;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: name })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error("❌ Erreur sauvegarde nom:", error);
+      return false;
+    }
+
+    return true;
+  };
+
+  // 🔥 Traiter le paiement du ticket - NE CRÉE PAS DE TICKET ICI
+  const processTicketPayment = async () => {
+    if (isTicketPaymentProcessing) {
+      console.log('⏳ Paiement déjà en cours, ignore');
+      return;
+    }
+
+    setIsTicketPaymentProcessing(true);
+
+    try {
+      const cartData = {};
+      cartItems.forEach(item => {
+        cartData[item.id] = item.quantity;
+      });
+
+      const userId = user?.id || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const orderId = `ticket_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      const returnUrl = `${window.location.origin}/profile?tab=tickets&payment=success&order=${orderId}`;
+      const amountWithFees = cartTotalWithFees;
+      
+      // 🔥 Utiliser le nom saisi
+      let finalAttendeeName = attendeeName.trim();
+      if (!finalAttendeeName && user) {
+        finalAttendeeName = user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Participant';
+      }
+      if (!finalAttendeeName) {
+        finalAttendeeName = 'Invité';
+      }
+
+      // 🔥 UTILISER LE TÉLÉPHONE SAISI
+      const phoneToSend = phoneNumber.trim();
+      console.log('📱 Envoi du téléphone à MoneyFusion:', phoneToSend);
+      
+      if (!phoneToSend || phoneToSend.length < 8) {
+        toast({
+          title: "Numéro requis",
+          description: "Veuillez entrer un numéro de téléphone valide.",
+          variant: "destructive",
+        });
+        setShowPaymentInfoModal(true);
+        setIsTicketPaymentProcessing(false);
+        return;
+      }
+
+      // Récupérer le lieu complet
+      const fullAddress = event?.full_address || event?.address || event?.location || event?.city || 'Lieu non spécifié';
+      const location = event?.location || event?.city || 'Lieu non spécifié';
+      const city = event?.city || '';
+      const country = event?.country || '';
+      const address = event?.address || '';
+
+      // STOCKER LES DONNÉES DE PAIEMENT EN ATTENTE
+      const paymentData = {
+        order_id: orderId,
+        event_id: event.id,
+        cart: cartData,
+        promoCodeId: appliedPromoCodeId || null,
+        commissionAmount: pendingCommissionAmount || promoCommissionAmount || 0,
+        discountAmount: promoDiscountAmount || 0,
+        totalFcfa: cartTotalFcfa,
+        totalWithFees: amountWithFees,
+        feesAmount: amountWithFees - cartTotalFcfa,
+        timestamp: Date.now(),
+        isGuest: !user,
+        userEmail: user?.email || null,
+        phone: phoneToSend,
+        attendeeName: finalAttendeeName,
+        event_title: event.title,
+        event_start_at: event.event_start_at,
+        event_end_at: event.event_end_at,
+        event_location: location,
+        event_full_address: fullAddress,
+        event_city: city,
+        event_country: country,
+        event_address: address,
+        userId: userId,
+        ticketTypes: ticketTypes.map(t => ({
+          id: t.id,
+          name: t.name,
+          price: t.price,
+          color: t.color,
+          description: t.description
+        }))
+      };
+
+      // Sauvegarder dans localStorage pour le retour
+      localStorage.setItem('pending_ticket_payment', JSON.stringify(paymentData));
+
+      // APPELER MONEYFUSION POUR LE PAIEMENT
+      const response = await fetch('/.netlify/functions/create-ticket-payment', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          totalPrice: amountWithFees,
+          article: [{ 
+            ticket_payment: cartTotalFcfa,
+            fees: amountWithFees - cartTotalFcfa,
+            event_id: event.id,
+            cart: cartData
+          }],
+          personal_Info: [{
+            userId: userId,
+            orderId: orderId,
+            amountFcfa: cartTotalFcfa,
+            amountWithFees: amountWithFees,
+            eventId: event.id,
+            promoCodeId: appliedPromoCodeId || null,
+            commissionAmount: pendingCommissionAmount || promoCommissionAmount || 0,
+            cart: cartData,
+            discountAmount: promoDiscountAmount || 0,
+            isGuest: !user,
+            userEmail: user?.email || null,
+            attendeeName: finalAttendeeName,
+            event_full_address: fullAddress
+          }],
+          numeroSend: phoneToSend,
+          nomclient: finalAttendeeName,
+          return_url: returnUrl,
+          webhook_url: `${window.location.origin}/.netlify/functions/moneyfusion-ticket-webhook`
+        })
+      });
+
+      const responseText = await response.text();
+      console.log('📥 Réponse brute:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Erreur parsing JSON:', parseError);
+        throw new Error('La réponse du serveur n\'est pas un JSON valide');
+      }
+
+      if (!response.ok) {
+        throw new Error(result.message || `Erreur HTTP ${response.status}`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.message || 'Erreur lors de la création du paiement');
+      }
+
+      // REDIRECTION VERS MONEYFUSION
+      if (result.redirect_url) {
+        console.log('🔄 Redirection vers MoneyFusion:', result.redirect_url);
+        window.location.href = result.redirect_url;
+      } else {
+        throw new Error('Aucune URL de redirection reçue');
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur paiement ticket:', error);
+      
+      let errorMessage = error.message || "Une erreur est survenue lors du paiement.";
+      
+      if (error.message.includes('fetch')) {
+        errorMessage = "Impossible de contacter le serveur de paiement. Vérifiez votre connexion.";
+      } else if (error.message.includes('JSON')) {
+        errorMessage = "Erreur de communication avec le serveur de paiement.";
+      } else if (error.message.includes('404')) {
+        errorMessage = "Service de paiement temporairement indisponible. Veuillez réessayer.";
+      }
+      
+      toast({
+        title: "Erreur de paiement",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 6000,
+      });
+      
+      setIsTicketPaymentProcessing(false);
+    }
+  };
+
+  // 🔥 Paiement sans compte via MoneyFusion - Avec modal unique
+  const handleTicketPaymentWithoutAccount = async () => {
+    if (isTicketPaymentProcessing) {
+      toast({
+        title: "Paiement en cours",
+        description: "Veuillez patienter, le paiement est déjà en cours.",
+        variant: "default",
+      });
+      return;
+    }
+
+    if (totalTicketsInCart === 0) {
+      toast({
+        title: "Panier vide",
+        description: "Veuillez ajouter des billets à votre panier.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isClosed) {
+      toast({
+        title: "Ventes fermees",
+        description: "La billetterie est actuellement fermee.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 🔥 Vérifier si les infos sont déjà renseignées
+    const hasName = attendeeName.trim() && attendeeName.trim() !== 'Invité';
+    const hasPhone = phoneNumber.trim() && phoneNumber.trim().length >= 8;
+    
+    // Pour les invités, toujours demander les infos
+    if (!user || !hasName || !hasPhone) {
+      console.log('👤 Affichage du modal unique pour les informations');
+      setIsInfoRequired(true);
+      setShowPaymentInfoModal(true);
+      return;
+    }
+
+    // Si tout est OK, procéder au paiement
+    setTimeout(() => {
+      processTicketPayment();
+    }, 300);
+  };
+
+  // 🔥 Gestionnaire pour le modal unique
+  const handlePaymentInfoSubmit = async () => {
+    // Valider le nom
+    if (!attendeeName.trim()) {
+      toast({
+        title: "Nom requis",
+        description: "Veuillez entrer votre nom complet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Valider le téléphone
+    let cleanPhone = phoneNumber.replace(/\D/g, "");
+    if (cleanPhone.startsWith("226") && cleanPhone.length > 8) {
+      cleanPhone = cleanPhone.substring(3);
+    }
+    if (cleanPhone.startsWith("0") && cleanPhone.length === 9) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+
+    if (cleanPhone.length < 8 || cleanPhone.length > 12) {
+      toast({
+        title: "Numéro invalide",
+        description: "Veuillez entrer un numéro valide (8 à 12 chiffres).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Sauvegarder les informations
+    localStorage.setItem('guest_name', attendeeName.trim());
+    localStorage.setItem('guest_phone', cleanPhone);
+    
+    setPhoneNumber(cleanPhone);
+    
+    // Si l'utilisateur EST connecté, sauvegarder dans la base
+    if (user?.id) {
+      await saveUserName(attendeeName.trim());
+      await saveUserPhone(cleanPhone);
+    }
+    
+    setShowPaymentInfoModal(false);
+    setIsInfoRequired(false);
+    
+    // Procéder au paiement
+    setTimeout(() => {
+      processTicketPayment();
+    }, 300);
+  };
+
+  // 🔥 handlePurchase avec compte (pièces)
   const handlePurchase = async () => {
     if (isPurchasingRef.current) {
       console.log("Achat deja en cours, ignore");
@@ -464,11 +833,23 @@ const TicketingInterface = ({
       return;
     }
 
+    // Vérifier le nom
+    const currentName = attendeeName.trim();
+    const userFullName = user?.full_name || user?.user_metadata?.full_name || '';
+    const hasValidName = currentName && currentName !== 'Invité' && currentName.length > 0;
+    
+    if (!hasValidName && !userFullName) {
+      setIsInfoRequired(false);
+      setShowPaymentInfoModal(true);
+      return;
+    }
+
+    const userName = currentName || userFullName || user?.email?.split('@')[0] || 'Participant';
+
     isPurchasingRef.current = true;
     setLoading(true);
 
     try {
-      // Appel à purchase_tickets_v2 (il gère déjà tout : achat + promo + commission)
       const { data, error } = await supabase.rpc("purchase_tickets_v2", {
         p_user_id: user.id,
         p_event_id: event.id,
@@ -476,15 +857,20 @@ const TicketingInterface = ({
         p_final_amount: cartTotal,
         p_promo_code_id: appliedPromoCodeId || null,
         p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
+        p_payment_method: 'coins',
+        p_transaction_reference: null,
+        p_attendee_name: userName
       });
 
-      if (error) throw error;
-      if (!data.success) throw new Error(data.message);
+      if (error) {
+        console.error("RPC Error:", error);
+        throw new Error(error.message || "Erreur lors de l'achat");
+      }
+      
+      if (!data.success) {
+        throw new Error(data.message || "Erreur lors de l'achat");
+      }
 
-      // ✅ PLUS BESOIN D'APPELER process_promo_usage ici
-      // purchase_tickets_v2 l'a déjà fait automatiquement
-
-      // Gérer les tickets retournés
       const generatedTickets = data.tickets || [];
       const pdfTickets = generatedTickets.map((t) => ({
         ticket_number: t.qr_code || t.number,
@@ -500,7 +886,6 @@ const TicketingInterface = ({
       setShowCheckoutModal(false);
       clearCart();
 
-      // Réinitialiser les states promo
       setIsPromoApplied(false);
       setPromoDiscountAmount(0);
       setPromoCommissionAmount(0);
@@ -531,7 +916,6 @@ const TicketingInterface = ({
         duration: 3000,
       });
 
-      // Redirection vers l'onglet des billets après 2.5 secondes
       setTimeout(() => {
         redirectToMyTickets();
       }, 2500);
@@ -788,33 +1172,137 @@ const TicketingInterface = ({
                           <AlertDescription className="text-xs">Il vous manque {balanceDeficit.toFixed(2)} pieces</AlertDescription>
                         </Alert>
                       )}
-                      <div className="flex justify-between items-center mb-3">
-                        <div className="min-w-0">
-                          <span className="font-bold text-sm sm:text-base">Total</span>
-                          <div className="text-xs sm:text-sm text-muted-foreground truncate">Solde disponible: {userBalance.toFixed(2)} pieces</div>
-                          {isPromoApplied && <div className="text-xs text-green-600">(reduction appliquee)</div>}
-                        </div>
-                        <div className="text-right ml-2">
-                          <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} pieces</span>
-                          <span className="text-xs sm:text-sm text-muted-foreground">{cartTotalFcfa.toLocaleString()} FCFA</span>
-                          {isPromoApplied && (
-                            <div className="text-xs text-green-600">
-                              <span className="line-through">(au lieu de {(subtotal * 10).toLocaleString()} FCFA)</span>
-                              <br />
-                              <span>Economie : {promoDiscountAmount.toFixed(2)} pieces ({Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)</span>
-                            </div>
+                    <div className="flex flex-col gap-3 mb-3">
+  {/* Ligne principale - Total */}
+  <div className="flex justify-between items-center">
+    <div className="min-w-0">
+      <span className="font-bold text-sm sm:text-base">Total</span>
+      <div className="text-xs sm:text-sm text-muted-foreground truncate">
+        Solde disponible: {userBalance.toFixed(2)} pièces
+      </div>
+      {isPromoApplied && (
+        <div className="text-xs text-green-600 font-medium">✅ Réduction appliquée</div>
+      )}
+    </div>
+    <div className="text-right">
+      <span className="text-xl sm:text-2xl font-bold text-primary block">
+        {cartTotal.toFixed(2)} pièces
+      </span>
+      <span className="text-xs sm:text-sm text-muted-foreground">
+        {cartTotalFcfa.toLocaleString()} FCFA
+      </span>
+    </div>
+  </div>
+
+  {/* 🔥 Bannière d'information - Vous pouvez payer sans code promo */}
+  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 rounded-lg p-3 border border-amber-200/50 dark:border-amber-800/50">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div className="flex items-center gap-3">
+        <div className="bg-amber-500/20 p-1.5 rounded-full">
+          <Tag className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div>
+          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+            💡 Pas de code promo ? Pas de problème !
+          </span>
+          <p className="text-[10px] text-muted-foreground">
+            Vous pouvez payer sans code promo, le montant ci-dessous sera débité
+          </p>
+        </div>
+      </div>
+      <Badge variant="outline" className="border-amber-300 text-amber-600 dark:text-amber-400 text-[10px] whitespace-nowrap">
+        Paiement direct
+      </Badge>
+    </div>
+  </div>
+
+  {/* 🔥 Bannière SANS COMPTE */}
+  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 border border-blue-200/50 dark:border-blue-800/50">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div className="flex items-center gap-3">
+        <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-0.5">
+          SANS COMPTE
+        </Badge>
+        <div>
+          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+            Paiement rapide sans inscription
+          </span>
+          <p className="text-[10px] text-muted-foreground">
+            Aucun compte requis, payez en quelques clics
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+          {(cartTotalWithFees).toLocaleString()} FCFA
+        </span>
+        <span className="text-[10px] text-muted-foreground block">
+          frais 4% inclus
+        </span>
+      </div>
+    </div>
+  </div>
+
+  {/* Économie si promo appliquée */}
+  {isPromoApplied && (
+    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 border border-green-200/50 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="flex justify-between items-center text-xs text-green-700 dark:text-green-400">
+        <span className="flex items-center gap-1">
+          <Tag className="w-3 h-3" />
+          Économie réalisée
+        </span>
+        <span className="font-medium">
+          {promoDiscountAmount.toFixed(2)} pièces
+          <span className="text-[10px] text-muted-foreground ml-1">
+            ({Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
+          </span>
+        </span>
+      </div>
+      <div className="text-[10px] text-muted-foreground text-right line-through mt-0.5">
+        {(subtotal * 10).toLocaleString()} FCFA sans promo
+      </div>
+    </div>
+  )}
+</div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button 
+                          onClick={handleTicketPaymentWithoutAccount}
+                          disabled={isTicketPaymentProcessing || isClosed}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          size="lg"
+                        >
+                          {isTicketPaymentProcessing ? (
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          ) : (
+                            <Smartphone className="w-5 h-5 mr-2" />
                           )}
-                        </div>
+                          Payer sans compte
+                          <span className="ml-2 text-[10px] bg-white/20 px-1.5 py-0.5 rounded">
+                            {(cartTotalWithFees).toLocaleString()} FCFA
+                          </span>
+                        </Button>
+                        <Button 
+                          onClick={() => { 
+                            setShowCartDetails(false); 
+                            if (!hasSufficientBalance) {
+                              setShowInsufficientBalanceModal(true);
+                            } else {
+                              setShowCheckoutModal(true);
+                            }
+                          }} 
+                          className={`flex-1 ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
+                          size="lg"
+                          disabled={isCheckingBalance}
+                        >
+                          {isCheckingBalance ? (
+                            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /><span>Verification...</span></>
+                          ) : !hasSufficientBalance ? (
+                            <><Package className="w-5 h-5 mr-2" /><span>Recharger mon compte</span></>
+                          ) : (
+                            <><Wallet className="w-5 h-5 mr-2" /><span>Payer avec compte</span></>
+                          )}
+                        </Button>
                       </div>
-                      <Button onClick={() => { setShowCartDetails(false); if (!hasSufficientBalance) setShowInsufficientBalanceModal(true); else setShowCheckoutModal(true); }} className="w-full" size="lg" disabled={isCheckingBalance}>
-                        {isCheckingBalance ? (
-                          <><Loader2 className="w-5 h-5 mr-2 animate-spin" /><span>Verification...</span></>
-                        ) : !hasSufficientBalance ? (
-                          <><Package className="w-5 h-5 mr-2" /><span>Recharger mon compte</span></>
-                        ) : (
-                          <><ShoppingCart className="w-5 h-5 mr-2" /><span>Commander maintenant</span></>
-                        )}
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -839,10 +1327,38 @@ const TicketingInterface = ({
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button variant="outline" size="sm" onClick={() => setShowCartDetails(true)} className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm">Voir details</Button>
-                <Button size="lg" onClick={() => { if (!hasSufficientBalance) setShowInsufficientBalanceModal(true); else setShowCheckoutModal(true); }} className={`rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}>
-                  {!hasSufficientBalance ? "Recharger" : "Commander"}
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-center">
+                <Button variant="outline" size="sm" onClick={() => setShowCartDetails(true)} className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm">
+                  Voir details
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleTicketPaymentWithoutAccount}
+                  disabled={isTicketPaymentProcessing || isClosed}
+                  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isTicketPaymentProcessing ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4" />
+                  )}
+                  Sans compte
+                  <span className="ml-1 text-[8px] opacity-80">
+                    +3%
+                  </span>
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => { 
+                    if (!hasSufficientBalance) {
+                      setShowInsufficientBalanceModal(true);
+                    } else {
+                      setShowCheckoutModal(true);
+                    }
+                  }} 
+                  className={`h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
+                >
+                  {!hasSufficientBalance ? "Recharger" : "Avec compte"}
                 </Button>
               </div>
             </div>
@@ -865,13 +1381,39 @@ const TicketingInterface = ({
         </div>
       )}
 
-      {/* Checkout Modal */}
+      {/* Checkout Modal - Payer avec compte */}
       <Dialog open={showCheckoutModal} onOpenChange={setShowCheckoutModal}>
         <DialogContent className="w-[95vw] max-w-lg mx-auto p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Validation de commande</DialogTitle>
             <DialogDescription>Verifiez et modifiez votre commande avant de finaliser</DialogDescription>
           </DialogHeader>
+          
+          {/* Afficher le nom du titulaire */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 mb-3">
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium">Titulaire :</span>
+              <span className="text-sm font-bold text-blue-700">
+                {attendeeName || user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Non défini'}
+              </span>
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-blue-600 p-0 h-auto ml-auto"
+                onClick={() => {
+                  setShowCheckoutModal(false);
+                  setShowPaymentInfoModal(true);
+                }}
+              >
+                Modifier
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Ce nom apparaîtra sur vos billets
+            </p>
+          </div>
+          
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 rounded-lg border border-blue-200">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <div className="flex items-center gap-3">
@@ -936,6 +1478,7 @@ const TicketingInterface = ({
                       <div className="text-base sm:text-lg font-bold">{item.total.toFixed(2)} pieces</div>
                       <div className="text-xs sm:text-sm text-muted-foreground">{item.totalFcfa.toLocaleString()} FCFA</div>
                       <div className="text-xs text-muted-foreground mt-1">{item.unitPrice.toFixed(2)} pieces / billet</div>
+                      
                     </div>
                   </div>
                 ))
@@ -993,37 +1536,64 @@ const TicketingInterface = ({
         </DialogContent>
       </Dialog>
 
-      {/* Insufficient Balance Modal */}
-      <Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
-        <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
-          <DialogHeader>
-            <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
-              <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
-            </div>
-            <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">Solde insuffisant</DialogTitle>
-            <DialogDescription className="text-center text-sm sm:text-base space-y-2">
-              <div>Votre solde actuel de <strong>{userBalance.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {userBalanceCfa.toLocaleString()} FCFA)</span> ne permet pas d'acheter le panier de <strong>{cartTotal.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {cartTotalFcfa.toLocaleString()} FCFA)</span>.</div>
-              <div>Il vous manque <strong className="text-destructive">{balanceDeficit.toLocaleString()} pieces</strong> <span className="text-muted-foreground">(≈ {deficitCfa.toLocaleString()} FCFA)</span>.</div>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
-              <AlertTitle className="text-amber-800 text-sm sm:text-base">Solution rapide</AlertTitle>
-              <AlertDescription className="text-amber-700 text-xs sm:text-sm">Rechargez votre compte avec un pack de pieces pour finaliser votre achat !</AlertDescription>
-            </Alert>
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-14 sm:h-16 flex-col gap-1" onClick={() => setShowInsufficientBalanceModal(false)}>
-                <X className="w-5 h-5" /><span className="text-xs">Annuler</span>
-              </Button>
-              <Button onClick={redirectToPacks} className="h-14 sm:h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1">
-                <Package className="w-5 h-5" /><span className="text-xs font-bold">Voir les packs</span>
-              </Button>
-            </div>
+     {/* Insufficient Balance Modal - CORRIGÉ */}
+<Dialog open={showInsufficientBalanceModal} onOpenChange={setShowInsufficientBalanceModal}>
+  <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
+    <DialogHeader>
+      <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mb-4">
+        <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
+      </div>
+      <DialogTitle className="text-xl sm:text-2xl text-center text-amber-700">
+        Solde insuffisant
+      </DialogTitle>
+      {/* ✅ CORRECTION : Utiliser asChild avec un div */}
+      <DialogDescription asChild>
+        <div className="text-center text-sm sm:text-base space-y-2">
+          <div>
+            Votre solde actuel de <strong>{userBalance.toLocaleString()} pièces</strong>{' '}
+            <span className="text-muted-foreground">(≈ {userBalanceCfa.toLocaleString()} FCFA)</span>{' '}
+            ne permet pas d'acheter le panier de{' '}
+            <strong>{cartTotal.toLocaleString()} pièces</strong>{' '}
+            <span className="text-muted-foreground">(≈ {cartTotalFcfa.toLocaleString()} FCFA)</span>.
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Modal - Optionnel maintenant car redirection auto */}
+          <div>
+            Il vous manque{' '}
+            <strong className="text-destructive">{balanceDeficit.toLocaleString()} pièces</strong>{' '}
+            <span className="text-muted-foreground">(≈ {deficitCfa.toLocaleString()} FCFA)</span>.
+          </div>
+        </div>
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-4 py-4">
+      <Alert className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+        <AlertTitle className="text-amber-800 text-sm sm:text-base">
+          Solution rapide
+        </AlertTitle>
+        <AlertDescription className="text-amber-700 text-xs sm:text-sm">
+          Rechargez votre compte avec un pack de pièces pour finaliser votre achat !
+        </AlertDescription>
+      </Alert>
+      <div className="grid grid-cols-2 gap-3">
+        <Button 
+          variant="outline" 
+          className="h-14 sm:h-16 flex-col gap-1" 
+          onClick={() => setShowInsufficientBalanceModal(false)}
+        >
+          <X className="w-5 h-5" />
+          <span className="text-xs">Annuler</span>
+        </Button>
+        <Button 
+          onClick={redirectToPacks} 
+          className="h-14 sm:h-16 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 flex-col gap-1"
+        >
+          <Package className="w-5 h-5" />
+          <span className="text-xs font-bold">Voir les packs</span>
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
+      {/* Success Modal */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6 text-center">
           <DialogHeader>
@@ -1047,6 +1617,107 @@ const TicketingInterface = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 🔥 MODIFICATION : Modal unique avec Nom + Numéro - CORRIGÉ */}
+<Dialog open={showPaymentInfoModal} onOpenChange={(open) => {
+  if (!open && !attendeeName.trim() && isInfoRequired) {
+    return;
+  }
+  setShowPaymentInfoModal(open);
+}}>
+  <DialogContent className="w-[95vw] max-w-md mx-auto p-4 sm:p-6">
+    <DialogHeader>
+      <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600/20 rounded-full flex items-center justify-center mb-4">
+        <User className="w-8 h-8 text-blue-500" />
+      </div>
+      <DialogTitle className="text-xl text-center">👤 Informations requises</DialogTitle>
+      {/* ✅ CORRECTION : Utiliser un div au lieu d'un p */}
+      <DialogDescription asChild>
+        <div className="text-center">
+          {user 
+            ? "Veuillez confirmer vos informations pour le paiement." 
+            : "Veuillez renseigner vos informations pour le paiement."}
+        </div>
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      {/* Champ Nom */}
+      <div>
+        <Label htmlFor="name-modal" className="text-sm font-medium flex items-center gap-2">
+          <User className="w-4 h-4 text-blue-500" />
+          Nom complet
+        </Label>
+        <Input
+          id="name-modal"
+          type="text"
+          placeholder="Ex: Jean Dupont"
+          value={attendeeName}
+          onChange={(e) => setAttendeeName(e.target.value)}
+          className="text-lg mt-1"
+          autoFocus
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Ce nom sera imprimé sur vos billets.
+        </p>
+      </div>
+
+      {/* Champ Numéro de téléphone */}
+      <div>
+        <Label htmlFor="phone-modal" className="text-sm font-medium flex items-center gap-2">
+          <Phone className="w-4 h-4 text-green-500" />
+          Numéro à débiter
+        </Label>
+        <Input
+          id="phone-modal"
+          type="tel"
+          placeholder="Ex: 73790978"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+          className="text-lg mt-1"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Format: 8 à 12 chiffres (sans espaces ni indicatif)
+        </p>
+        <p className="text-xs text-yellow-500 mt-1">
+          🔒 Ce numéro sera utilisé pour le paiement via MoneyFusion.
+        </p>
+        <p className="text-xs text-blue-400 mt-1">
+          💡 {user ? 'Ce numéro sera associé à votre compte.' : 'Si vous créez un compte plus tard, ce numéro vous sera associé.'}
+        </p>
+      </div>
+      
+      <div className="flex gap-3 mt-4">
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            if (!isInfoRequired) {
+              setShowPaymentInfoModal(false);
+            } else {
+              toast({
+                title: "Informations requises",
+                description: "Vous devez remplir tous les champs pour continuer.",
+                variant: "destructive",
+              });
+            }
+          }} 
+          className="flex-1"
+          disabled={isInfoRequired}
+        >
+          Annuler
+        </Button>
+        <Button 
+          onClick={handlePaymentInfoSubmit} 
+          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+          disabled={!attendeeName.trim() || !phoneNumber.trim()}
+        >
+          <Lock className="w-4 h-4 mr-2" />
+          Paiement sécurisé
+        </Button>
+      </div>
+    </div>
+  </DialogContent>
+</Dialog>
     </div>
   );
 };

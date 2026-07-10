@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { BarChart, Users, CheckCircle, AlertTriangle, XCircle, User, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -72,113 +72,176 @@ const PromoCodeStatsCard = ({ eventId }) => {
 };
 
 const VerificationStats = ({ eventId, organizerId }) => {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-      const fetchStats = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const eventIdStr = String(eventId);
-    
-    // 1. Total des tickets vendus
-    const { count: totalTickets } = await supabase
-      .from('tickets')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', eventIdStr);
-    
-    // 2. Tickets qui ont fait leur première entrée (status = 'used')
-    const { count: verifiedTickets } = await supabase
-      .from('tickets')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', eventIdStr)
-      .eq('status', 'used');
-    
-    const total = totalTickets || 0;
-    const verified = verifiedTickets || 0;
-    const verificationRate = total > 0 ? (verified / total) * 100 : 0;
-    
-    setStats({
-      total_tickets: total,
-      verified_tickets: verified,
-      duplicate_scans: 0,
-      active_sessions: 0,
-      verification_rate: Math.round(verificationRate * 100) / 100
-    });
-    
-  } catch (err) {
-    console.error("Erreur stats:", err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const eventIdStr = String(eventId);
+        
+        // 1. Total des tickets vendus
+        const { count: totalTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr);
+        
+        // 2. Tickets qui ont fait leur première entrée (status = 'used')
+        const { count: verifiedTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('status', 'used');
+        
+        // 🔥 3. Tickets sans compte (guest)
+        const { count: guestTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .like('user_id', 'guest_%');
+        
+        // 🔥 4. Tickets payés par MoneyFusion
+        const { count: moneyFusionTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('payment_method', 'moneyfusion_ticket');
+        
+        // 5. Tickets avec status 'active' (non encore utilisés)
+        const { count: activeTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('status', 'active');
+        
+        const total = totalTickets || 0;
+        const verified = verifiedTickets || 0;
+        const verificationRate = total > 0 ? (verified / total) * 100 : 0;
+        
+        setStats({
+          total_tickets: total,
+          verified_tickets: verified,
+          active_tickets: activeTickets || 0,
+          guest_tickets: guestTickets || 0,
+          moneyfusion_tickets: moneyFusionTickets || 0,
+          duplicate_scans: 0,
+          active_sessions: 0,
+          verification_rate: Math.round(verificationRate * 100) / 100
+        });
+        
+      } catch (err) {
+        console.error("Erreur stats:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        if (eventId && organizerId) {
-            fetchStats();
-            // Poll every 30 seconds
-            const interval = setInterval(fetchStats, 30000);
-            return () => clearInterval(interval);
-        }
-    }, [eventId, organizerId]);
+    if (eventId && organizerId) {
+      fetchStats();
+      const interval = setInterval(fetchStats, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [eventId, organizerId]);
 
-    if (loading) return <div className="p-4 text-center text-muted-foreground">Chargement...</div>;
-    if (!stats) return null;
+  if (loading) return <div className="p-4 text-center text-muted-foreground">Chargement...</div>;
+  if (error) return <div className="p-4 text-center text-red-500">Erreur: {error}</div>;
+  if (!stats) return null;
 
-    return (
-        <div className="space-y-6">
-            {/* Première ligne : Statistiques de vérification */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Billets</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.total_tickets}</div>
-                        <p className="text-xs text-muted-foreground">vendus pour cet événement</p>
-                    </CardContent>
-                </Card>
+  return (
+    <div className="space-y-6">
+      {/* Première ligne : Statistiques de vérification */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Billets</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total_tickets}</div>
+            <p className="text-xs text-muted-foreground">vendus pour cet événement</p>
+          </CardContent>
+        </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Validés / Entrés</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{stats.verified_tickets}</div>
-                        <p className="text-xs text-muted-foreground">{stats.verification_rate}% de présence</p>
-                    </CardContent>
-                </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Validés / Entrés</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.verified_tickets}</div>
+            <p className="text-xs text-muted-foreground">{stats.verification_rate}% de présence</p>
+          </CardContent>
+        </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Doublons</CardTitle>
-                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{stats.duplicate_scans}</div>
-                        <p className="text-xs text-muted-foreground">tentatives rejetées</p>
-                    </CardContent>
-                </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En attente</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.active_tickets}</div>
+            <p className="text-xs text-muted-foreground">billets non encore utilisés</p>
+          </CardContent>
+        </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Sessions Actives</CardTitle>
-                        <BarChart className="h-4 w-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">{stats.active_sessions}</div>
-                        <p className="text-xs text-muted-foreground">scanners connectés</p>
-                    </CardContent>
-                </Card>
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taux de présence</CardTitle>
+            <BarChart className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.verification_rate}%</div>
+            <p className="text-xs text-muted-foreground">taux global</p>
+          </CardContent>
+        </Card>
+      </div>
 
-            {/* Deuxième ligne : Statistiques des codes promo influenceurs */}
-            <PromoCodeStatsCard eventId={eventId} />
-        </div>
-    );
+      {/* 🔥 Deuxième ligne : Statistiques des tickets sans compte */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-yellow-400 flex items-center gap-2">
+              <User className="h-4 w-4" /> Sans compte
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-400">{stats.guest_tickets}</div>
+            <p className="text-xs text-muted-foreground">billets invités</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border-blue-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-blue-400 flex items-center gap-2">
+              <Wallet className="h-4 w-4" /> Paiement externe
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-400">{stats.moneyfusion_tickets}</div>
+            <p className="text-xs text-muted-foreground">via MoneyFusion</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sessions Actives</CardTitle>
+            <BarChart className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.active_sessions || 0}</div>
+            <p className="text-xs text-muted-foreground">scanners connectés</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Troisième ligne : Statistiques des codes promo influenceurs */}
+      <PromoCodeStatsCard eventId={eventId} />
+    </div>
+  );
 };
 
 export default VerificationStats;

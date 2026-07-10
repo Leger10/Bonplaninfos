@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -9,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import {
     Loader2, CheckCircle, XCircle, ShieldCheck,
     Keyboard, Camera, LogOut, ArrowRightLeft,
-    DoorClosed, ShieldAlert
+    DoorClosed, ShieldAlert, User, Wallet
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -136,6 +137,61 @@ const VerifyTicketPage = () => {
         }
     }, []);
 
+    // 🔥 AFFICHER LES INFOS DU TICKET SANS COMPTE
+    const getTicketInfoDisplay = (result) => {
+        const isGuest = result.is_guest || result.isGuest || false;
+        const paymentMethod = result.payment_method || 'coins';
+        
+        if (isGuest) {
+            return (
+                <div className="mt-3 p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                    <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-yellow-400" />
+                        <p className="text-xs text-yellow-400 font-medium">🎟️ Billet sans compte</p>
+                    </div>
+                    {result.attendee_name && (
+                        <p className="text-sm font-medium text-white mt-1">
+                            {result.attendee_name}
+                        </p>
+                    )}
+                    {result.transaction_reference && (
+                        <p className="text-xs text-gray-400 mt-1">
+                            Réf: {result.transaction_reference.substring(0, 12)}...
+                        </p>
+                    )}
+                    {result.phone && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            📱 {result.phone}
+                        </p>
+                    )}
+                </div>
+            );
+        }
+        
+        if (paymentMethod === 'moneyfusion_ticket') {
+            return (
+                <div className="mt-3 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                    <div className="flex items-center gap-2">
+                        <Wallet className="w-4 h-4 text-blue-400" />
+                        <p className="text-xs text-blue-400 font-medium">💰 Paiement externe (MoneyFusion)</p>
+                    </div>
+                    {result.attendee_name && (
+                        <p className="text-sm font-medium text-white mt-1">
+                            {result.attendee_name}
+                        </p>
+                    )}
+                    {result.transaction_reference && (
+                        <p className="text-xs text-gray-400 mt-1">
+                            Réf: {result.transaction_reference.substring(0, 12)}...
+                        </p>
+                    )}
+                </div>
+            );
+        }
+        
+        return null;
+    };
+
     // 🧠 Vérification billet
     const handleVerification = async (codeToVerify, method = 'manual') => {
         const cleanCode = codeToVerify?.trim().toUpperCase();
@@ -167,17 +223,35 @@ const VerifyTicketPage = () => {
 
             if (error) throw error;
 
-            setVerificationResult(data);
+            // 🔥 AJOUTER LES INFOS POUR LES TICKETS SANS COMPTE
+            const enrichedData = {
+                ...data,
+                is_guest: data.is_guest || data.isGuest || false,
+                payment_method: data.payment_method || 'coins',
+                transaction_reference: data.transaction_reference || null,
+                phone: data.phone || null
+            };
 
-            if (data) {
-                setScanHistory(prev => [data, ...prev].slice(0, 10));
+            setVerificationResult(enrichedData);
+
+            if (enrichedData) {
+                setScanHistory(prev => [enrichedData, ...prev].slice(0, 10));
+                
+                // Log pour les tickets sans compte
+                if (enrichedData.is_guest) {
+                    console.log('🎟️ Ticket sans compte scanné:', {
+                        attendee: enrichedData.attendee_name,
+                        paymentMethod: enrichedData.payment_method,
+                        transactionRef: enrichedData.transaction_reference
+                    });
+                }
             }
 
-            playSound(data.status_code);
-            showFeedbackToast(data);
+            playSound(enrichedData.status_code);
+            showFeedbackToast(enrichedData);
 
             // clear champ manuel si succès
-            if (data?.success && method === 'manual') {
+            if (enrichedData?.success && method === 'manual') {
                 setTicketInput('');
             }
 
@@ -193,7 +267,9 @@ const VerifyTicketPage = () => {
             const errorData = {
                 success: false,
                 message: error.message || "Erreur serveur",
-                status_code: 'error'
+                status_code: 'error',
+                is_guest: false,
+                payment_method: 'unknown'
             };
 
             setVerificationResult(errorData);
@@ -342,19 +418,51 @@ const VerifyTicketPage = () => {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="absolute inset-0 bg-black/90 flex items-center justify-center text-center p-6"
+                                className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center text-center p-6"
                                 onClick={closeResult}
                             >
                                 <div>
                                     <h2 className="text-2xl font-black mb-2">
                                         {getStatusTitle(verificationResult.status_code)}
                                     </h2>
-                                    <p>{verificationResult.message}</p>
+                                    <p className="text-sm">{verificationResult.message}</p>
+                                    
+                                    {/* 🔥 AFFICHER LES INFOS POUR LES TICKETS SANS COMPTE */}
+                                    {getTicketInfoDisplay(verificationResult)}
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </Card>
+
+                {/* HISTORIQUE RAPIDE */}
+                {scanHistory.length > 0 && (
+                    <Card className="bg-gray-900/50 border-gray-800 p-3">
+                        <p className="text-xs text-gray-400 mb-2">Derniers scans</p>
+                        <div className="space-y-1 max-h-24 overflow-y-auto">
+                            {scanHistory.slice(0, 5).map((s, i) => {
+                                const isGuest = s.is_guest || false;
+                                const isMoneyFusion = s.payment_method === 'moneyfusion_ticket';
+                                
+                                return (
+                                    <div key={i} className="flex justify-between items-center text-xs">
+                                        <span className="truncate">
+                                            {s.attendee_name || s.code}
+                                            {(isGuest || isMoneyFusion) && (
+                                                <span className="ml-1 text-[8px] text-yellow-500/70">
+                                                    {isGuest ? '🎟️' : '💰'}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <Badge variant={s.success ? 'default' : 'destructive'} className="text-[10px]">
+                                            {s.success ? 'OK' : 'NOK'}
+                                        </Badge>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+                )}
             </div>
         </div>
     );

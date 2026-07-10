@@ -13,6 +13,7 @@ import {
   ArrowRight,
   LogIn,
   Lock,
+  Ticket,
 } from "lucide-react";
 
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -33,12 +34,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { fetchWithRetry } from "@/lib/utils";
 import { COIN_TO_FCFA_RATE } from "@/constants/coinRates";
+import MyTicketsTab from "@/components/profile/MyTicketsTab";
 
 const ProfilePage = () => {
   const { t } = useTranslation();
   const { user, loading: authLoading, session } = useAuth();
   const { userProfile, getEvents, forceRefreshUserProfile } = useData();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [userEvents, setUserEvents] = useState([]);
   const [userTransactions, setUserTransactions] = useState([]);
@@ -51,9 +55,12 @@ const ProfilePage = () => {
   const [transferring, setTransferring] = useState(false);
   const [refreshHistoryTrigger, setRefreshHistoryTrigger] = useState(0);
 
-  const { toast } = useToast();
-  const [searchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "events";
+  const paymentStatus = searchParams.get("payment");
+  const orderId = searchParams.get("order");
+
+  // 🔥 DÉTECTER SI C'EST UN PAIEMENT SANS COMPTE
+  const isGuestPayment = paymentStatus === 'success' && orderId;
 
   // Intégration globale de la sécurité portefeuille
   const {
@@ -64,15 +71,33 @@ const ProfilePage = () => {
     unlockWallet,
   } = useWalletSecurity(user?.id);
 
-  // Redirection de sécurité si pas de session
+  // 🔥 MODIFICATION: Ne pas rediriger si c'est un paiement invité
   useEffect(() => {
-    if (!authLoading && (!user || !session)) {
+    // Vérifier si c'est un paiement invité
+    if (isGuestPayment && !user) {
+      const pendingPayment = localStorage.getItem('pending_ticket_payment');
+      if (pendingPayment) {
+        try {
+          const paymentData = JSON.parse(pendingPayment);
+          if (paymentData.isGuest) {
+            // ✅ C'est un invité, NE PAS REDIRIGER
+            console.log('👤 Invité détecté, affichage des tickets sans connexion');
+            return;
+          }
+        } catch (e) {
+          console.error('Erreur lecture pending payment:', e);
+        }
+      }
+    }
+
+    // Redirection uniquement si pas de session ET pas de paiement invité
+    if (!authLoading && (!user || !session) && !isGuestPayment) {
       const timer = setTimeout(() => {
         navigate("/auth?redirect=/profile");
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [user, session, authLoading, navigate]);
+  }, [user, session, authLoading, navigate, isGuestPayment]);
 
   /* ===================== GAINS EN ATTENTE ===================== */
   const fetchAllEventEarnings = useCallback(async () => {
@@ -199,6 +224,27 @@ const ProfilePage = () => {
     }
   };
 
+  // 🔥 SI C'EST UN PAIEMENT INVITÉ, AFFICHER DIRECTEMENT LES TICKETS
+  if (isGuestPayment && !user) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="ghost" onClick={() => navigate('/')}>
+              <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
+              Retour
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/auth?redirect=/profile?tab=tickets&claim=guest')}>
+              <LogIn className="w-4 h-4 mr-2" />
+              Créer un compte
+            </Button>
+          </div>
+          <MyTicketsTab isGuestView={true} />
+        </div>
+      </div>
+    );
+  }
+
   if (authLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -228,6 +274,23 @@ const ProfilePage = () => {
   const pendingFee = Math.ceil(totalPending * 0.05);
   const pendingNet = totalPending - pendingFee;
   const balanceCfa = (userProfile?.coin_balance || 0) * COIN_TO_FCFA_RATE;
+
+  // 🔥 SI L'UTILISATEUR EST CONNECTÉ MAIS VEUT VOIR SES TICKETS
+  if (activeTab === 'tickets') {
+    return (
+      <div className="min-h-screen pb-20">
+        <Helmet>
+          <title>{userProfile?.full_name || t('profile.helmet.title')}</title>
+        </Helmet>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <ProfileHeader user={userProfile} />
+          <div className="mt-6">
+            <MyTicketsTab isGuestView={false} />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20">
@@ -392,7 +455,7 @@ const ProfilePage = () => {
         totalNetAmount={pendingNet}
         loading={transferring}
         onConfirm={confirmTransfer}
-         exchangeRate={COIN_TO_FCFA_RATE}   // Add this line
+        exchangeRate={COIN_TO_FCFA_RATE}
       />
 
       <CoinTransferModal

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  QrCode, LogIn, LogOut, History, Scan, FileSpreadsheet, Trash2
+  QrCode, LogIn, LogOut, History, Scan, FileSpreadsheet, Trash2, User, Wallet
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import QrScanner from '@/components/event/QrScanner';
@@ -91,6 +91,61 @@ export default function TicketScannerDialog({
     return result.message || 'Erreur lors du scan';
   };
 
+  // 🔥 AFFICHER LES INFOS DU TICKET SANS COMPTE
+  const getTicketInfoDisplay = (result) => {
+    const isGuest = result.is_guest || result.isGuest || false;
+    const paymentMethod = result.payment_method || 'coins';
+    
+    if (isGuest) {
+      return (
+        <div className="mt-2 p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-yellow-400" />
+            <p className="text-xs text-yellow-400 font-medium">🎟️ Billet sans compte</p>
+          </div>
+          {result.attendee_name && (
+            <p className="text-sm text-white font-medium mt-1">
+              {result.attendee_name}
+            </p>
+          )}
+          {result.transaction_reference && (
+            <p className="text-xs text-gray-400 mt-1">
+              Réf: {result.transaction_reference.substring(0, 12)}...
+            </p>
+          )}
+          {result.phone && (
+            <p className="text-xs text-gray-400 mt-0.5">
+              📱 {result.phone}
+            </p>
+          )}
+        </div>
+      );
+    }
+    
+    if (paymentMethod === 'moneyfusion_ticket') {
+      return (
+        <div className="mt-2 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-blue-400" />
+            <p className="text-xs text-blue-400 font-medium">💰 Paiement externe (MoneyFusion)</p>
+          </div>
+          {result.attendee_name && (
+            <p className="text-sm text-white font-medium mt-1">
+              {result.attendee_name}
+            </p>
+          )}
+          {result.transaction_reference && (
+            <p className="text-xs text-gray-400 mt-1">
+              Réf: {result.transaction_reference.substring(0, 12)}...
+            </p>
+          )}
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
   const processVerification = useCallback(async (code, isManual = false) => {
     if (!code || lockedRef.current || scanResult) return;
 
@@ -100,7 +155,6 @@ export default function TicketScannerDialog({
     try {
       const codeTrimmed = code.trim().toUpperCase();
       
-      // Utiliser la nouvelle fonction verify_ticket_direct
       const { data, error } = await supabase.rpc('verify_ticket_direct', {
         p_ticket_identifier: codeTrimmed,
         p_verification_method: isManual ? 'manual_entry' : 'qr_scanner_web',
@@ -121,6 +175,11 @@ export default function TicketScannerDialog({
         timestamp: Date.now(),
         mode: activeTab,
         isManual,
+        is_guest: data.is_guest || false,
+        payment_method: data.payment_method || 'coins',
+        transaction_reference: data.transaction_reference || null,
+        phone: data.phone || null,
+        status_code: data.status_code || 'unknown'
       };
 
       setScanResult(result);
@@ -142,6 +201,8 @@ export default function TicketScannerDialog({
         timestamp: Date.now(),
         mode: activeTab,
         isManual,
+        is_guest: false,
+        payment_method: 'unknown'
       };
       setScanResult(errorResult);
       setScanHistory(prev => [errorResult, ...prev].slice(0, 50));
@@ -184,7 +245,9 @@ export default function TicketScannerDialog({
       "Message": s.message,
       "Heure": new Date(s.timestamp).toLocaleTimeString(),
       "Date": new Date(s.timestamp).toLocaleDateString(),
-      "Type Billet": s.ticketType || "-"
+      "Type Billet": s.ticketType || "-",
+      "Paiement": s.payment_method === 'moneyfusion_ticket' ? 'Externe' : (s.is_guest ? 'Sans compte' : 'Compte'),
+      "Réf. Transaction": s.transaction_reference || "-"
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -203,7 +266,7 @@ export default function TicketScannerDialog({
     const doc = new jsPDF();
 
     autoTable(doc, {
-      head: [["#", "Participant", "Code Billet", "Statut", "Sens", "Méthode", "Message", "Heure", "Date", "Type Billet"]],
+      head: [["#", "Participant", "Code Billet", "Statut", "Sens", "Méthode", "Message", "Paiement", "Réf. Transaction"]],
       body: scanHistory.map((s, i) => [
         i + 1,
         s.attendee || "—",
@@ -212,9 +275,8 @@ export default function TicketScannerDialog({
         s.mode === "entry" ? "ENTRÉE" : "SORTIE",
         s.isManual ? "Manuel" : "QR Code",
         s.message,
-        new Date(s.timestamp).toLocaleTimeString(),
-        new Date(s.timestamp).toLocaleDateString(),
-        s.ticketType || "-"
+        s.payment_method === 'moneyfusion_ticket' ? 'Externe' : (s.is_guest ? 'Sans compte' : 'Compte'),
+        s.transaction_reference ? s.transaction_reference.substring(0, 12) + '...' : "-"
       ]),
       startY: 15,
       styles: { fontSize: 8 }
@@ -288,7 +350,7 @@ export default function TicketScannerDialog({
                   : "border-red-500 bg-red-900/40"
               )}>
                 <h3 className="font-bold text-lg text-center">
-                  {scanResult.success ? 'VALIDÉ' : 'REFUSÉ'}
+                  {scanResult.success ? '✅ VALIDÉ' : '❌ REFUSÉ'}
                 </h3>
                 <p className="text-sm text-center">
                   {getDisplayMessage(scanResult)}
@@ -297,6 +359,9 @@ export default function TicketScannerDialog({
                 {scanResult.attendee && (
                   <p className="mt-2 font-semibold text-center">{scanResult.attendee}</p>
                 )}
+                
+                {/* 🔥 AFFICHER LES INFOS DU TICKET SANS COMPTE */}
+                {getTicketInfoDisplay(scanResult)}
 
                 <Button
                   onClick={handleNextScan}
@@ -355,14 +420,26 @@ export default function TicketScannerDialog({
               <p className="text-xs text-gray-500 text-center mt-6">
                 Aucun scan
               </p>
-            ) : scanHistory.map((s, i) => (
-              <div key={i} className="flex justify-between text-xs p-1">
-                <span>{s.attendee || s.code}</span>
-                <Badge variant="outline" className={s.success ? 'text-green-400' : 'text-red-400'}>
-                  {s.success ? 'OK' : 'REFUS'}
-                </Badge>
-              </div>
-            ))}
+            ) : scanHistory.map((s, i) => {
+              const isGuest = s.is_guest || false;
+              const isMoneyFusion = s.payment_method === 'moneyfusion_ticket';
+              
+              return (
+                <div key={i} className="flex justify-between items-center text-xs p-1 border-b border-gray-800/50">
+                  <div className="flex-1 min-w-0">
+                    <span className="truncate block">{s.attendee || s.code}</span>
+                    {(isGuest || isMoneyFusion) && (
+                      <span className="text-[8px] text-yellow-500/70">
+                        {isGuest ? '🎟️ Sans compte' : '💰 Externe'}
+                      </span>
+                    )}
+                  </div>
+                  <Badge variant="outline" className={s.success ? 'text-green-400' : 'text-red-400'}>
+                    {s.success ? 'OK' : 'REFUS'}
+                  </Badge>
+                </div>
+              );
+            })}
           </ScrollArea>
         </div>
 

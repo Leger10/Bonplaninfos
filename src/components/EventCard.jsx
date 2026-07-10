@@ -66,6 +66,16 @@ const EventCard = ({ event, onClick }) => {
 
   const promotionTimeLeft = getBestPromotionDate() ? getPromotionTimeLeft(getBestPromotionDate()) : null;
 
+  // 🔥 GESTION DU CLIC - PERMET L'ACCÈS SANS CONNEXION
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick(event);
+    } else {
+      // Navigation directe vers la page de l'événement
+      navigate(`/event/${event.id}`);
+    }
+  };
+
   // Optimisation critique : URL avec paramètres de cache et redimensionnement
   const getOptimizedImageUrl = () => {
     if (imageError) return '/photoequipe.jpg';
@@ -94,7 +104,7 @@ const EventCard = ({ event, onClick }) => {
       className="cursor-pointer h-full group flex flex-col"
     >
       <Card 
-        onClick={onClick}
+        onClick={handleCardClick}  // 🔥 Utilise la nouvelle fonction
         className="h-full card-hover glass-effect border-[#C9A227]/20 overflow-hidden flex flex-col flex-grow"
       >
         <div className="relative">
@@ -200,6 +210,8 @@ const EventCard = ({ event, onClick }) => {
             </div>
         </CardContent>
       </Card>
+      
+      {/* Le bouton "Promouvoir" reste visible uniquement pour le propriétaire */}
       {isOwner && !event.is_promoted && (
         <Button onClick={handlePromoteClick} variant="premium" size="sm" className="mt-2 w-full">
           <Zap className="w-4 h-4 mr-2"/>

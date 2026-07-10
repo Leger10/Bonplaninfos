@@ -1576,7 +1576,7 @@
     },
     "pendingEarnings": {
       "title": "Gains en attente de transfert",
-      "feeLabel": "Frais: 10%",
+      "feeLabel": "Frais: 5%",
       "totalPending": "Total en attente :",
       "netReceivable": "Net à recevoir :",
       "unlockToTransfer": "Déverrouiller pour transférer",

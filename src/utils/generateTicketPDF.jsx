@@ -1,5 +1,4 @@
 // utils/generateTicketPDF.jsx
-
 import jsPDF from "jspdf";
 import QRCode from "qrcode";
 
@@ -41,26 +40,12 @@ const getBase64ImageFromURL = (url) => {
   });
 };
 
-/* =====================================================
-   SAUVEGARDE PDF MULTI-PLATEFORME SIMPLIFIÉE
-   - Desktop : ouvre dans nouvel onglet
-   - Android : ouvre dans navigateur
-   - iPhone : ouvre proprement
-   - Pas de popup UI stylée, pas d'écran intermédiaire
-===================================================== */
-
 // Sauvegarde universelle : ouvre le PDF dans un nouvel onglet/navigateur
 const openPDFInNewTab = (doc, fileName) => {
-  // Nettoyer le nom du fichier
   const safeName = fileName.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
-  
-  // Obtenir le blob avec le bon type MIME
   const blob = doc.output('blob');
-  
-  // Créer une URL pour le blob
   const blobUrl = URL.createObjectURL(blob);
   
-  // Détection précise des appareils (pour logging uniquement)
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua);
   const isIOS13 = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -69,58 +54,47 @@ const openPDFInNewTab = (doc, fileName) => {
   
   console.log(`Ouverture du PDF pour ${isIOSDevice ? 'iOS' : isAndroid ? 'Android' : 'Desktop'}`);
   
-  // Ouvrir dans un nouvel onglet (fonctionne sur toutes les plateformes)
   const newWindow = window.open(blobUrl, '_blank');
-  
-  // Si le popup est bloqué, essayer une ouverture directe
   if (!newWindow) {
     window.location.href = blobUrl;
   }
   
-  // Nettoyer l'URL après un délai (pour libérer la mémoire)
   setTimeout(() => {
     URL.revokeObjectURL(blobUrl);
-  }, 60000); // 1 minute
+  }, 60000);
 };
 
 // Colors Map for Ticket Types
 const DB_COLOR_MAP = {
-    blue: [59, 130, 246],     // #3b82f6
-    bronze: [205, 127, 50],   // #cd7f32
-    silver: [160, 160, 160],  // #a0a0a0
-    gold: [234, 179, 8],      // #eab308
-    purple: [147, 51, 234],   // #9333ea
-    red: [239, 68, 68],       // #ef4444
-    green: [34, 197, 94],     // #22c55e
-    black: [30, 30, 30]       // #1e1e1e
+    blue: [59, 130, 246],
+    bronze: [205, 127, 50],
+    silver: [160, 160, 160],
+    gold: [234, 179, 8],
+    purple: [147, 51, 234],
+    red: [239, 68, 68],
+    green: [34, 197, 94],
+    black: [30, 30, 30]
 };
 
-const DEFAULT_COLOR = [255, 140, 0]; // BonPlanInfos Orange
+const DEFAULT_COLOR = [255, 140, 0];
 
-// Helper to get color safely
 const getTicketColor = (type, colorKey) => {
   if (colorKey && DB_COLOR_MAP[colorKey]) {
       return DB_COLOR_MAP[colorKey];
   }
-
   if (!type) return DEFAULT_COLOR;
-
   const normalizedType = type.trim().toLowerCase();
-  
   if (normalizedType.includes("vip")) return DB_COLOR_MAP["purple"];
   if (normalizedType.includes("or") || normalizedType.includes("gold")) return DB_COLOR_MAP["gold"];
   if (normalizedType.includes("argent") || normalizedType.includes("silver")) return DB_COLOR_MAP["silver"];
   if (normalizedType.includes("bronze")) return DB_COLOR_MAP["bronze"];
   if (normalizedType.includes("invit")) return DB_COLOR_MAP["blue"];
-
   return DEFAULT_COLOR;
 };
 
-// Generate QR Code data URL with high resolution
 const generateQRCodeDataURL = async (data, size = 300) => {
   try {
-    const qrData = data.code || data.ticketCode || "XXXXXX";
-
+    const qrData = data.code || data.ticketCode || data.ticket_code_short || data.qr_code || "XXXXXX";
     return await QRCode.toDataURL(qrData, {
       width: size,
       margin: 1,
@@ -136,14 +110,12 @@ const generateQRCodeDataURL = async (data, size = 300) => {
   }
 };
 
-// Safe text cleaner to prevent PDF encoding issues
 const safeText = (text) => {
   if (text === null || text === undefined) return "";
   let str = String(text);
   return str.replace(/[^\x00-\x7F\u00C0-\u00FF\u0152\u0153\u20AC]/g, ""); 
 };
 
-// Format date for PDF (Event Date) - utilise event_end_at
 const formatDate = (dateString) => {
   if (!dateString) return "Date non définie";
   try {
@@ -156,11 +128,9 @@ const formatDate = (dateString) => {
       hour: "2-digit",
       minute: "2-digit",
     };
-    
     if (isNaN(date.getTime())) {
       return dateString;
     }
-    
     return date.toLocaleDateString("fr-FR", options);
   } catch (e) {
     console.error("Date formatting error:", e);
@@ -168,16 +138,13 @@ const formatDate = (dateString) => {
   }
 };
 
-// Format purchase timestamp
 const formatPurchaseDate = (dateString) => {
   if (!dateString) return "";
   try {
     const date = new Date(dateString);
-    
     if (isNaN(date.getTime())) {
       return "";
     }
-    
     return date.toLocaleString("fr-FR", {
       day: "numeric",
       month: "long",
@@ -193,15 +160,12 @@ const formatPurchaseDate = (dateString) => {
 
 export const generateTicketPDF = async (event, tickets, user) => {
   try {
-    // Validation améliorée
     if (!event || !tickets || tickets.length === 0) {
       throw new Error("Données manquantes pour générer le PDF");
     }
 
-    // CORRECTION : Validation plus souple
     const validTickets = tickets.filter(t => {
-      // Accepter si au moins un des champs d'identification est présent
-      const hasValidId = t.ticket_number || t.ticket_code_short || t.ticket_code;
+      const hasValidId = t.ticket_number || t.ticket_code_short || t.ticket_code || t.qr_code;
       console.log("Ticket validation:", { ticket: t, hasValidId });
       return hasValidId;
     });
@@ -213,7 +177,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
 
     console.log(`${validTickets.length} ticket(s) valide(s) trouvé(s)`);
 
-    // A6 Size: 105mm x 148mm
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
@@ -227,35 +190,93 @@ export const generateTicketPDF = async (event, tickets, user) => {
     const contentWidth = pageWidth - margin * 2;
     const bottomMargin = 15;
 
-    // Charger le logo
-     const logoUrl = "/pwa-192x192.png";
+    const logoUrl = "/pwa-192x192.png";
     let logoImg = null;
 
-    // Préparer les données pour chaque ticket
+    // 🔥 PRÉPARER LES DONNÉES POUR CHAQUE TICKET - PRIORITÉ AUX DONNÉES DU TICKET
     const ticketsData = tickets.map((ticket, index) => {
-      // CORRECTION : Utiliser des valeurs par défaut si les champs sont manquants
-      const pricePi = Number(ticket.price) || 0;
-      const priceFcfa = Number(ticket.price_fcfa) || pricePi * 10 || 0;
+      // 🔥 PRIX - Priorité aux données du ticket
+      const pricePi = Number(ticket.price) || 
+                      Number(ticket.purchase_amount_pi) || 
+                      Number(ticket.purchase_price_pi) || 0;
+      const priceFcfa = Number(ticket.price_fcfa) || 
+                        Number(ticket.purchase_amount_fcfa) || 
+                        pricePi * 10 || 0;
       
-      // Générer un numéro de ticket si manquant
+      // 🔥 NUMÉRO DE TICKET
       const ticketNum = ticket.ticket_number || 
                         ticket.ticket_code || 
+                        ticket.qr_code ||
                         `TKT${Date.now()}${index}`;
       
-      // Générer un code court si manquant
+      // 🔥 CODE COURT
       const ticketCode = ticket.ticket_code_short || 
                          ticket.ticket_code || 
+                         ticket.qr_code ||
                          (ticketNum ? String(ticketNum).slice(-6).toUpperCase() : "XXXXXX");
       
-      const holderName = safeText(user?.full_name || user?.email?.split("@")[0] || "Invité");
-      const eventTitle = safeText(event?.title || "Événement BonPlanInfos");
-      // Utilisation de event_end_at pour la date de l'événement
-      const eventDate = formatDate(event?.event_end_at);
-      const location = safeText(event?.location || event?.city || "Lieu à confirmer");
-      const ticketType = safeText(ticket.type_name || "Standard");
-      const purchaseDateDisplay = formatPurchaseDate(ticket.purchase_date || ticket.purchased_at);
+      // 🔥 NOM DU TITULAIRE - Priorité aux données du ticket
+      const holderName = safeText(
+        ticket.attendee_name || 
+        ticket.holderName || 
+        ticket.attendeeName ||
+        user?.full_name || 
+        user?.email?.split("@")[0] || 
+        "Invité"
+      );
       
-      const ticketColor = getTicketColor(ticketType, ticket.color);
+      // 🔥 TITRE DE L'ÉVÉNEMENT - Priorité aux données du ticket
+      const eventTitle = safeText(
+        ticket.event_title || 
+        ticket.events?.title || 
+        event?.title || 
+        "Événement BonPlanInfos"
+      );
+      
+      // 🔥 DATE - Priorité aux données du ticket
+      const eventDate = formatDate(
+        ticket.event_end_at || 
+        ticket.events?.event_end_at || 
+        event?.event_end_at || 
+        ticket.event_start_at || 
+        ticket.events?.event_start_at || 
+        event?.event_start_at
+      );
+      
+      // 🔥 LIEU - Priorité aux données du ticket (comme pour les tickets avec compte)
+      const location = safeText(
+        ticket.full_address || 
+        ticket.location || 
+        ticket.events?.full_address || 
+        ticket.events?.address || 
+        ticket.events?.location || 
+        ticket.events?.city ||
+        event?.full_address ||
+        event?.address ||
+        event?.location || 
+        event?.city || 
+        "Lieu à confirmer"
+      );
+      
+      // 🔥 TYPE DE BILLET
+      const ticketType = safeText(
+        ticket.type_name || 
+        ticket.ticket_types?.name || 
+        "Standard"
+      );
+      
+      // 🔥 DATE D'ACHAT
+      const purchaseDateDisplay = formatPurchaseDate(
+        ticket.purchase_date || 
+        ticket.purchased_at || 
+        ticket.purchasedAt
+      );
+      
+      // 🔥 COULEUR
+      const ticketColor = getTicketColor(
+        ticketType, 
+        ticket.color || ticket.ticket_types?.color
+      );
 
       return {
         pricePi,
@@ -272,8 +293,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
       };
     });
 
-  
-    // Générer chaque page de ticket
     for (let i = 0; i < ticketsData.length; i++) {
       if (i > 0) doc.addPage();
       
@@ -293,61 +312,49 @@ export const generateTicketPDF = async (event, tickets, user) => {
 
       let cursorY = 0;
 
-      // --- 1. EN-TÊTE (Barre colorée avec Logo) ---
+      // --- 1. EN-TÊTE ---
       doc.setFillColor(...ticketColor);
       doc.rect(0, 0, pageWidth, 18, "F");
- try {
-      logoImg = await getBase64ImageFromURL(logoUrl);
-    } catch (err) {
-      // Ignorer silencieusement
-    }
-
-      // Ajouter le logo si disponible
-      if (logoImg) {
-        if (logoImg) {
+      
       try {
-        doc.addImage(logoImg, "PNG", margin, 2, 14, 14);
-      } catch (error) {
+        logoImg = await getBase64ImageFromURL(logoUrl);
+      } catch (err) {
         // Ignorer
       }
-    }
+
+      if (logoImg) {
+        try {
+          doc.addImage(logoImg, "PNG", margin, 2, 14, 14);
+        } catch (error) {
+          // Ignorer
+        }
       }
 
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      
-      // const headerText = "BON PLAN INFOS";
-      const headerX = logoImg ? margin + 16 : margin;
-      // doc.text(headerText, headerX, 11);
-
       doc.setFontSize(7);
       doc.setFont("helvetica", "normal");
       doc.text("BILLET OFFICIEL", pageWidth - margin, 11, { align: "right" });
 
       cursorY = 24;
 
-      // --- 2. SECTION PRIX ---
+      // --- 2. PRIX ---
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...ticketColor);
-      
-      const priceText = `Valeur: ${priceFcfa}F CFA`;
+      const priceText = `Valeur: ${priceFcfa.toLocaleString()} F CFA`;
       doc.text(priceText, pageWidth / 2, cursorY, { align: "center" });
-      
       cursorY += 8;
 
       // --- 3. TITRE DE L'ÉVÉNEMENT ---
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-
       const titleLines = doc.splitTextToSize(eventTitle, contentWidth);
-      const titleHeight = titleLines.length * 5;
+      const titleHeight = Math.min(titleLines.length * 5, 15);
       doc.text(titleLines, pageWidth / 2, cursorY, { align: "center" });
-      cursorY += titleHeight + 4;
+      cursorY += titleHeight + 3;
 
-      // --- 4. DÉTAILS (LIEU + DATE) ---
+      // --- 4. LIEU + DATE ---
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(60, 60, 60);
@@ -357,20 +364,21 @@ export const generateTicketPDF = async (event, tickets, user) => {
       doc.text("LIEU:", margin, cursorY);
       doc.setFont("helvetica", "normal");
       const locationLines = doc.splitTextToSize(location, contentWidth - 15);
+      const locationHeight = Math.min(locationLines.length * 4, 12);
       doc.text(locationLines, margin + 12, cursorY);
-      cursorY += locationLines.length * 4 + 6;
+      cursorY += locationHeight + 4;
 
-      // Date (uniquement si elle est définie et valide)
+      // Date
       if (eventDate && eventDate !== "Date non définie") {
         doc.setFont("helvetica", "bold");
         doc.text("DATE:", margin, cursorY);
         doc.setFont("helvetica", "normal");
         const dateLines = doc.splitTextToSize(eventDate, contentWidth - 15);
         doc.text(dateLines, margin + 12, cursorY);
-        cursorY += dateLines.length * 2 + 4;
+        cursorY += dateLines.length * 2 + 3;
       }
 
-      // --- 5. BADGE TYPE DE BILLET ---
+      // --- 5. BADGE TYPE DE BILLET AVEC NOM DU TITULAIRE ---
       doc.setDrawColor(...ticketColor);
       doc.setLineWidth(0.5);
       doc.setFillColor(250, 250, 250);
@@ -385,7 +393,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
       if (doc.getStringUnitWidth(displayType) * 10 / doc.internal.scaleFactor > maxTypeWidth) {
         displayType = doc.splitTextToSize(displayType, maxTypeWidth)[0];
       }
-      
       doc.text(displayType, margin + 4, cursorY + 8);
 
       doc.setTextColor(0, 0, 0);
@@ -397,35 +404,33 @@ export const generateTicketPDF = async (event, tickets, user) => {
       if (doc.getStringUnitWidth(displayName) * 9 / doc.internal.scaleFactor > maxNameWidth) {
         displayName = doc.splitTextToSize(displayName, maxNameWidth)[0];
       }
-      
       doc.text(displayName, pageWidth - margin - 4, cursorY + 8, { align: "right" });
 
-      cursorY += 15;
+      cursorY += 14;
 
-      // --- 6. ZONE QR CODE ---
-      const qrSize = 45;
+      // --- 6. QR CODE ---
+      const qrSize = 42;
       const qrX = (pageWidth - qrSize) / 2;
 
-      // Ajouter les bordures d'angle pour le QR
       doc.setDrawColor(...ticketColor);
       doc.setLineWidth(1);
       const cornerLen = 5;
       
-      // Haut gauche
       doc.line(qrX - 2, cursorY - 2, qrX - 2 + cornerLen, cursorY - 2);
       doc.line(qrX - 2, cursorY - 2, qrX - 2, cursorY - 2 + cornerLen);
-      // Haut droite
       doc.line(qrX + qrSize + 2, cursorY - 2, qrX + qrSize + 2 - cornerLen, cursorY - 2);
       doc.line(qrX + qrSize + 2, cursorY - 2, qrX + qrSize + 2, cursorY - 2 + cornerLen);
-      // Bas gauche
       doc.line(qrX - 2, cursorY + qrSize + 2, qrX - 2 + cornerLen, cursorY + qrSize + 2);
       doc.line(qrX - 2, cursorY + qrSize + 2, qrX - 2, cursorY + qrSize + 2 - cornerLen);
-      // Bas droite
       doc.line(qrX + qrSize + 2, cursorY + qrSize + 2, qrX + qrSize + 2 - cornerLen, cursorY + qrSize + 2);
       doc.line(qrX + qrSize + 2, cursorY + qrSize + 2, qrX + qrSize + 2, cursorY + qrSize + 2 - cornerLen);
 
-      // Générer et ajouter le QR Code
-      const qrCodeImg = await generateQRCodeDataURL({ code: ticketCode }, 500);
+      const qrCodeImg = await generateQRCodeDataURL({ 
+        code: ticketCode, 
+        ticketCode: ticketCode,
+        qr_code: ticketCode 
+      }, 500);
+      
       if (qrCodeImg) {
         try {
           doc.addImage(qrCodeImg, "PNG", qrX, cursorY, qrSize, qrSize);
@@ -439,59 +444,51 @@ export const generateTicketPDF = async (event, tickets, user) => {
         }
       }
 
-      cursorY += qrSize + 8;
+      cursorY += qrSize + 6;
 
-      // --- 7. CODE DU BILLET ET ID ---
+      // --- 7. CODE DU BILLET ---
       doc.setFont("courier", "bold");
-      doc.setFontSize(14);
+      doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
       doc.text(ticketCode.split("").join(" "), pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 6;
       
-      // --- 8. DATE D'ACHAT (si disponible) ---
+      // --- 8. DATE D'ACHAT ---
       if (purchaseDateDisplay) {
-        cursorY += 7;
         doc.setFont("helvetica", "italic");
-        doc.setFontSize(7);
+        doc.setFontSize(6);
         doc.setTextColor(120, 120, 120);
         doc.text(`Acheté le ${purchaseDateDisplay}`, pageWidth / 2, cursorY, { align: "center" });
-        // Ajout d'un espace supplémentaire après la date d'achat pour éviter qu'elle ne colle au footer
-        cursorY += 3;
-       
+        cursorY += 4;
       }
 
       // --- 9. LIEN DU SITE ---
-      cursorY += 9;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(...ticketColor);
       doc.text("www.bonplaninfos.net", pageWidth / 2, cursorY, { align: "center" });
+      cursorY += 5;
 
       // --- 10. FOOTER ---
-      const footerY = pageHeight - bottomMargin + 5;
-      
-      doc.setFontSize(7);
+      const footerY = pageHeight - bottomMargin;
+      doc.setFontSize(5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(150, 150, 150);
       doc.text("Valable une seule fois • scannez à l'entrée et à la sortie", pageWidth / 2, footerY, { align: "center" });
     }
 
-    // Générer un nom de fichier propre
-    const cleanTitle = (event?.title || "billet")
+    const cleanTitle = (event?.title || tickets[0]?.event_title || "billet")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/(^_+|_+$)/g, "")
       .substring(0, 30);
     
     const fileName = `Billet_${cleanTitle}_${Date.now()}.pdf`;
-    
-    // Utiliser la fonction de sauvegarde simplifiée
     openPDFInNewTab(doc, fileName);
     
     return true;
   } catch (error) {
     console.error("Error generating PDF:", error);
-    
-    // Afficher une notification à l'utilisateur
     if (window.toast) {
       window.toast({
         title: "❌ Erreur",
@@ -499,7 +496,8 @@ export const generateTicketPDF = async (event, tickets, user) => {
         variant: "destructive",
       });
     }
-    
     return false;
   }
 };
+
+export default generateTicketPDF;

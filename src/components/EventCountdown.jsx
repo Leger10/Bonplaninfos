@@ -10,7 +10,6 @@ const EventCountdown = ({
   showMotivation = false,
   className = '',
   onCountdownEnd,
-  // Nouvelles props pour alignement avec VotingInterface
   showStatusLabel = true,
   showFullTimer = false,
   compactMode = false
@@ -39,7 +38,6 @@ const EventCountdown = ({
       endDate.setHours(23, 59, 59, 999);
     }
 
-    // LOGIQUE ALIGNÉE SUR LE COMPTE À REBOURS DE VotingInterface
     const nowTime = now.getTime();
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
@@ -127,35 +125,29 @@ const EventCountdown = ({
   const getMotivationalMessage = () => {
     if (timeLeft.status === 'finished') return "Événement terminé";
     if (timeLeft.status === 'ongoing') {
-      // Calculer le temps total restant en minutes
       const totalMinutesLeft = (timeLeft.days * 24 * 60) + (timeLeft.hours * 60) + timeLeft.minutes;
       
       if (totalMinutesLeft < 30) return "Derniers instants !";
-      if (totalMinutesLeft < 180) return "Ça se termine bientôt !"; // 3 heures = 180 minutes
+      if (totalMinutesLeft < 180) return "Ça se termine bientôt !";
       return "En cours !";
     }
 
-    // Messages pour upcoming
     const totalHoursUntilStart = (timeLeft.days * 24) + timeLeft.hours;
     const totalMinutesUntilStart = (totalHoursUntilStart * 60) + timeLeft.minutes;
     
     if (timeLeft.days > 7) return "À venir !";
     if (timeLeft.days >= 2) return "Préparez-vous !";
     if (timeLeft.days === 1) return "Demain seulement !";
-    
-    // Moins d'un jour restant
     if (totalHoursUntilStart > 1) return "C'est pour aujourd'hui !";
     if (totalHoursUntilStart === 1) return "Dans 1 heure !";
     if (totalMinutesUntilStart < 30) return "Imminent !";
     return "Dépêchez-vous !";
   };
 
-  // Styling logic - aligné avec VotingInterface
   const isUrgent = timeLeft.status === 'upcoming' && timeLeft.days === 0 && timeLeft.hours < 5;
   const isOngoing = timeLeft.status === 'ongoing';
   const isFinished = timeLeft.status === 'finished' || timeLeft.expired;
 
-  // Dynamic styles
   const containerBaseStyles = `
     inline-flex items-center gap-2 sm:gap-3 rounded-xl p-2 sm:p-3 font-bold transition-all duration-300 
     backdrop-blur-md shadow-lg border border-white/10
@@ -173,7 +165,6 @@ const EventCountdown = ({
     return normalStyles;
   };
 
-  // Formatage cohérent avec CountdownTimer dans VotingInterface
   const formatTimeLeft = () => {
     if (timeLeft.status === 'unknown') return '...';
     if (timeLeft.status === 'finished' || timeLeft.expired) {
@@ -181,7 +172,6 @@ const EventCountdown = ({
     }
     
     if (showFullTimer || compactMode) {
-      // Format similaire à CountdownTimer (avec J H M S)
       const parts = [];
       if (timeLeft.days > 0) parts.push(`${timeLeft.days}J`);
       if (timeLeft.hours > 0 || timeLeft.days === 0) parts.push(`${timeLeft.hours}H`);
@@ -191,7 +181,6 @@ const EventCountdown = ({
       return parts.length > 0 ? parts.join(' ') : '0S';
     }
     
-    // Format original pour backward compatibility
     const parts = [];
     if (timeLeft.days > 0) parts.push(`${timeLeft.days}j`);
     if (timeLeft.hours > 0 || (timeLeft.days === 0 && timeLeft.minutes > 0)) parts.push(`${timeLeft.hours}h`);
@@ -201,7 +190,6 @@ const EventCountdown = ({
     return parts.length > 0 ? parts.join(' ') : '0s';
   };
 
-  // Affichage du statut (aligné avec VotingInterface)
   const getStatusDisplay = () => {
     if (isFinished) return (
       <div className="text-center py-4 bg-gradient-to-r from-red-900/50 to-red-800/30 border border-red-700/50 rounded-xl">
@@ -257,14 +245,14 @@ const EventCountdown = ({
     );
   }
 
-  // Si l'événement est terminé avec affichage complet (comme dans VotingInterface)
+  // Si l'événement est terminé avec affichage complet
   if (isFinished && showFullTimer) {
     return getStatusDisplay();
   }
 
   if (timeLeft.status === 'unknown') return null;
 
-  // Affichage du timer complet (comme dans VotingInterface)
+  // Affichage du timer complet
   if (showFullTimer) {
     return (
       <div className={`${className}`}>
@@ -297,7 +285,6 @@ const EventCountdown = ({
           ))}
         </div>
 
-        {/* Afficher le statut si demandé */}
         {showMotivation && (
           <motion.div
             initial={{ opacity: 0, y: 5 }}
@@ -341,7 +328,6 @@ const EventCountdown = ({
         </div>
       </div>
 
-      {/* Motivational Message Component */}
       <AnimatePresence mode='wait'>
         {showMotivation && (
           <motion.div

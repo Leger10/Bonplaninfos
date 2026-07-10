@@ -812,7 +812,7 @@ const EventDetailPage = () => {
         .sliding-image-container img {
           width: 50%;
           height: 100%;
-          object-fit: contain;
+          object-fit: cover;
         }
       `}</style>
 
@@ -843,30 +843,66 @@ const EventDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="relative rounded-xl overflow-hidden shadow-2xl aspect-video md:aspect-[2/1]">
-              <div className="sliding-image-container">
-                <img src={optimizedImageUrl} alt={event.title} />
-                <img
-                  src={optimizedImageUrl}
-                  alt={`${event.title} (duplicate)`}
+            {/* ========== IMAGE DE COUVERTURE AGRANDIE ========== */}
+            <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black">
+              {/* Image agrandie avec hauteur fixe */}
+              <div className="w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[550px] xl:h-[600px] relative">
+                <img 
+                  src={optimizedImageUrl} 
+                  alt={event.title}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  onError={(e) => {
+                    e.target.src = 'https://images.unsplash.com/photo-1509930854872-0f61005b282e';
+                  }}
                 />
+                
+                {/* Gradient overlay pour améliorer la lisibilité */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                
+                {/* Badge en haut à gauche */}
+                <div className="absolute top-4 left-4 z-20">
+                  <Badge className="bg-black/60 backdrop-blur-sm text-white border-white/20 text-sm px-3 py-1.5">
+                    {event.category?.name || event.event_type}
+                  </Badge>
+                </div>
+                
+                {/* Titre superposé en bas */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg leading-tight">
+                    {event.title}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-4 mt-2 text-gray-300 text-sm">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(event.event_start_at).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {event.city}, {event.country}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="absolute inset-0 bg-black/30 pointer-events-none" />
-              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+              
+              {/* TikTok actions buttons repositionnées */}
               <TikTokActionButtons
                 event={event}
                 onRefresh={handleDataRefresh}
                 user={user}
               />
             </div>
+            {/* ========== FIN IMAGE AGRANDIE ========== */}
 
             <div className="flex flex-col gap-4 px-1">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="space-y-3 flex-1">
-                  <Badge className="bg-blue-900/40 text-blue-300 hover:bg-blue-800/40 border-blue-700/50 text-sm px-3 py-1 w-fit">
-                    {event.category?.name || event.event_type}
-                  </Badge>
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight">
+                  {/* Badge déjà affiché sur l'image, on le cache ici pour éviter doublon */}
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight hidden">
                     {event.title}
                   </h1>
                 </div>
