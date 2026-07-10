@@ -1,7 +1,6 @@
 // netlify/functions/moneyfusion-ticket-webhook.js
 const { createClient } = require('@supabase/supabase-js');
 
-// Initialisation de Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -12,7 +11,81 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ============================================================
-// 🔥 FONCTION PRINCIPALE - CRÉE TOUT AUTOMATIQUEMENT
+// 🔥 FONCTION POUR CRÉER DIRECTEMENT LES TICKETS DANS tickets
+// ============================================================
+const createTicketsDirectly = async (eventId, userId, attendeeName, orderId, cart, ticketTypes, originalAmount) => {
+    try {
+        const tickets = [];
+        const ticketCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+        
+        if (ticketCount === 0) {
+            return { success: false, error: 'Aucun ticket à créer' };
+        }
+
+        // Récupérer les types de tickets de l'événement
+        const { data: ticketTypesData, error: typesError } = await supabase
+            .from('ticket_types')
+            .select('id, name, price, color')
+            .eq('event_id', eventId);
+        
+        if (typesError) {
+            console.error('❌ Erreur récupération ticket_types:', typesError);
+            return { success: false, error: typesError };
+        }
+        
+        // Pour chaque type de ticket dans le panier
+        for (const [ticketTypeId, quantity] of Object.entries(cart)) {
+            const ticketType = ticketTypesData.find(t => t.id === ticketTypeId);
+            
+            for (let i = 0; i < quantity; i++) {
+                const ticketId = crypto.randomUUID ? crypto.randomUUID() : `ticket_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+                const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                const ticketCodeShort = `${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                
+                tickets.push({
+                    id: ticketId,
+                    event_id: eventId,
+                    user_id: userId,
+                    status: 'active',
+                    payment_method: 'moneyfusion_ticket',
+                    transaction_reference: orderId,
+                    attendee_name: attendeeName || 'Invité',
+                    purchased_at: new Date().toISOString(),
+                    qr_code: qrCode,
+                    ticket_code_short: ticketCodeShort,
+                    ticket_number: `TKT-${Date.now()}-${i+1}`,
+                    purchase_price_pi: Math.floor(originalAmount / 10 / ticketCount),
+                    ticket_type_id: ticketTypeId || null
+                });
+            }
+        }
+        
+        if (tickets.length === 0) {
+            return { success: false, error: 'Aucun ticket à créer' };
+        }
+        
+        // 🔥 INSERTION DIRECTE DANS LA TABLE tickets (PAS event_tickets)
+        const { error: insertError } = await supabase
+            .from('tickets')
+            .insert(tickets);
+        
+        if (insertError) {
+            console.error('❌ Erreur insertion tickets:', insertError);
+            return { success: false, error: insertError };
+        }
+        
+        console.log(`✅ ${tickets.length} tickets créés dans tickets`);
+        
+        return { success: true, tickets, ticket_count: tickets.length };
+        
+    } catch (error) {
+        console.error('❌ Erreur createTicketsDirectly:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// ============================================================
+// 🔥 FONCTION PRINCIPALE
 // ============================================================
 exports.handler = async (event) => {
     const headers = {
@@ -52,7 +125,6 @@ exports.handler = async (event) => {
             statut
         } = payload;
 
-        // Extraire les informations
         const userId = personal_Info?.[0]?.userId;
         const orderId = personal_Info?.[0]?.orderId;
         const eventId = personal_Info?.[0]?.eventId;
@@ -69,14 +141,12 @@ exports.handler = async (event) => {
         
         const originalAmount = personal_Info?.[0]?.amountFcfa || Montant || 0;
         const amountWithFees = personal_Info?.[0]?.amountWithFees || Montant || 0;
-        const feesAmount = amountWithFees - originalAmount;
+        const ticketTypes = personal_Info?.[0]?.ticketTypes || [];
 
         console.log(`📊 Événement: ${eventType}, Statut: ${statut}`);
         console.log(`💰 Montant: ${originalAmount} FCFA, Nom: ${attendeeName}`);
+        console.log(`👤 Invité: ${isGuest}, UserId: ${userId}`);
 
-        // ============================================================
-        // 🔥 SEULEMENT SI PAIEMENT RÉUSSI
-        // ============================================================
         if (eventType === 'payin.session.completed' || statut === 'paid') {
             console.log(`✅ Paiement réussi pour ${orderId}`);
 
@@ -86,7 +156,6 @@ exports.handler = async (event) => {
             if (isGuest || !userId || userId.startsWith('guest_')) {
                 console.log('👤 Création compte invité...');
                 
-                // Vérifier si l'utilisateur existe déjà
                 if (userEmail) {
                     const { data: existingUser } = await supabase
                         .from('profiles')
@@ -100,7 +169,6 @@ exports.handler = async (event) => {
                     }
                 }
                 
-                // Créer un nouvel utilisateur si nécessaire
                 if (!finalUserId || finalUserId.startsWith('guest_')) {
                     const newUserId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
                     
@@ -120,39 +188,27 @@ exports.handler = async (event) => {
                 }
             }
 
-            // --- 2. Calculer le nombre de tickets ---
-            let ticketCount = 0;
-            if (cart) {
-                ticketCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
-            }
-            console.log(`🎫 Tickets: ${ticketCount}`);
+            // --- 2. 🔥 CRÉER LES TICKETS DIRECTEMENT DANS tickets ---
+            const ticketResult = await createTicketsDirectly(
+                eventId,
+                finalUserId,
+                attendeeName,
+                orderId,
+                cart,
+                ticketTypes,
+                originalAmount
+            );
 
-            // --- 3. CRÉER LES TICKETS ---
-            const finalAmount = Math.floor(originalAmount / 10);
-            
-            const { data: ticketResult, error: ticketError } = await supabase.rpc('purchase_tickets_v2', {
-                p_user_id: finalUserId,
-                p_event_id: eventId,
-                p_cart: cart,
-                p_final_amount: finalAmount,
-                p_promo_code_id: promoCodeId || null,
-                p_commission_amount: commissionAmount || 0,
-                p_payment_method: 'moneyfusion_ticket',
-                p_transaction_reference: orderId,
-                p_attendee_name: attendeeName
-            });
-
-            if (ticketError || !ticketResult?.success) {
-                console.error('❌ Erreur tickets:', ticketError || ticketResult?.message);
-                // On continue quand même pour créer le paiement et les gains
+            if (!ticketResult.success) {
+                console.error('❌ Erreur création tickets:', ticketResult.error);
             } else {
-                console.log(`✅ ${ticketResult.tickets_count || 0} tickets créés`);
+                console.log(`✅ ${ticketResult.ticket_count} tickets créés`);
             }
 
-            // --- 4. CRÉER LE PAIEMENT DANS payments ---
+            // --- 3. CRÉER LE PAIEMENT ---
             const coinsAmount = Math.floor(originalAmount / 10);
             
-            const { error: paymentError } = await supabase
+            await supabase
                 .from('payments')
                 .insert({
                     user_id: finalUserId,
@@ -165,24 +221,12 @@ exports.handler = async (event) => {
                     credits_added: false,
                     created_at: new Date().toISOString(),
                     processed_at: new Date().toISOString(),
-                    metadata: {
-                        event_id: eventId,
-                        cart: cart,
-                        attendee_name: attendeeName,
-                        ticket_count: ticketCount,
-                        payment_method: 'moneyfusion_ticket',
-                        is_guest: isGuest
-                    }
+                    coupon_code: promoCodeId ? await getPromoCode(promoCodeId) : null,
+                    coupon_owner_id: promoCodeId ? await getPromoCodeOwner(promoCodeId) : null,
+                    coupon_commission: commissionAmount || 0
                 });
 
-            if (paymentError) {
-                console.error('❌ Erreur paiement:', paymentError);
-            } else {
-                console.log('✅ Paiement enregistré');
-            }
-
-            // --- 5. 🔥 CRÉER LES GAINS DE L'ORGANISATEUR (AUTOMATIQUE) ---
-            // Récupérer l'organisateur
+            // --- 4. CRÉER LES GAINS DE L'ORGANISATEUR ---
             const { data: eventData } = await supabase
                 .from('events')
                 .select('organizer_id, title')
@@ -191,76 +235,48 @@ exports.handler = async (event) => {
 
             if (eventData) {
                 const organizerId = eventData.organizer_id;
-                const eventTitle = eventData.title;
-
-                // Calculs
                 const amountCoins = Math.floor(originalAmount / 10);
                 const platformCommission = Math.floor(amountCoins * 0.05);
                 const netCoins = amountCoins - platformCommission;
                 const netFcfa = netCoins * 10;
 
-                // Vérifier si le gain existe déjà
-                const { data: existingEarning } = await supabase
+                await supabase
                     .from('organizer_earnings')
-                    .select('id')
-                    .eq('transaction_id', orderId)
-                    .maybeSingle();
+                    .insert({
+                        organizer_id: organizerId,
+                        event_id: eventId,
+                        transaction_id: orderId,
+                        transaction_type: 'ticket_sale',
+                        earnings_coins: netCoins,
+                        earnings_fcfa: netFcfa,
+                        status: 'pending',
+                        platform_commission: platformCommission,
+                        platform_fee: platformCommission * 10,
+                        net_amount: netFcfa,
+                        ticket_count: ticketResult?.ticket_count || 1,
+                        earning_type: 'ticket_sale',
+                        event_type: 'ticketing',
+                        description: `💰 Vente de ${ticketResult?.ticket_count || 1} tickets via MoneyFusion - ${attendeeName}`,
+                        created_at: new Date().toISOString()
+                    });
 
-                if (!existingEarning) {
-                    // Créer le gain
-                    const { error: earningsError } = await supabase
-                        .from('organizer_earnings')
-                        .insert({
-                            organizer_id: organizerId,
-                            event_id: eventId,
-                            transaction_id: orderId,
-                            transaction_type: 'ticket_sale',
-                            earnings_coins: netCoins,
-                            earnings_fcfa: netFcfa,
-                            status: 'pending',
-                            platform_commission: platformCommission,
-                            platform_fee: platformCommission * 10,
-                            net_amount: netFcfa,
-                            ticket_count: ticketCount || 1,
-                            earning_type: 'ticket_sale',
-                            event_type: 'ticketing',
-                            description: `Vente de ${ticketCount || 1} tickets via MoneyFusion - ${attendeeName}`,
-                            metadata: {
-                                event_title: eventTitle,
-                                attendee_name: attendeeName,
-                                payment_method: 'moneyfusion_ticket',
-                                original_amount_fcfa: originalAmount,
-                                ticket_count: ticketCount || 1
-                            },
-                            created_at: new Date().toISOString()
-                        });
+                // Mettre à jour le profil de l'organisateur
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('total_earnings, available_earnings')
+                    .eq('id', organizerId)
+                    .single();
 
-                    if (earningsError) {
-                        console.error('❌ Erreur gains:', earningsError);
-                    } else {
-                        console.log(`✅ Gains créés: ${netCoins} coins pour ${organizerId}`);
-
-                        // Mettre à jour le profil de l'organisateur
-                        const { data: profile } = await supabase
-                            .from('profiles')
-                            .select('total_earnings, available_earnings')
-                            .eq('id', organizerId)
-                            .single();
-
-                        if (profile) {
-                            await supabase
-                                .from('profiles')
-                                .update({
-                                    total_earnings: (profile.total_earnings || 0) + netCoins,
-                                    available_earnings: (profile.available_earnings || 0) + netCoins,
-                                    updated_at: new Date().toISOString()
-                                })
-                                .eq('id', organizerId);
-                            console.log('✅ Profil organisateur mis à jour');
-                        }
-                    }
-                } else {
-                    console.log(`⚠️ Gain déjà existant pour ${orderId}`);
+                if (profile) {
+                    await supabase
+                        .from('profiles')
+                        .update({
+                            total_earnings: (profile.total_earnings || 0) + netCoins,
+                            available_earnings: (profile.available_earnings || 0) + netCoins,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', organizerId);
+                    console.log(`✅ Profil organisateur mis à jour: +${netCoins} coins`);
                 }
             }
 
@@ -273,6 +289,7 @@ exports.handler = async (event) => {
                     received: true,
                     success: true,
                     tickets_created: ticketResult?.success || false,
+                    ticket_count: ticketResult?.ticket_count || 0,
                     user_id: finalUserId,
                     is_guest: isGuest,
                     attendee_name: attendeeName
@@ -280,7 +297,6 @@ exports.handler = async (event) => {
             };
         }
 
-        // Autres statuts
         console.log(`ℹ️ Événement non traité: ${eventType}`);
         return {
             statusCode: 200,
@@ -304,3 +320,22 @@ exports.handler = async (event) => {
         };
     }
 };
+
+// Fonctions helper
+async function getPromoCode(promoCodeId) {
+    const { data } = await supabase
+        .from('promo_codes')
+        .select('code')
+        .eq('id', promoCodeId)
+        .single();
+    return data?.code || null;
+}
+
+async function getPromoCodeOwner(promoCodeId) {
+    const { data } = await supabase
+        .from('promo_codes')
+        .select('influencer_id')
+        .eq('id', promoCodeId)
+        .single();
+    return data?.influencer_id || null;
+}

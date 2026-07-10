@@ -83,7 +83,11 @@ const VerificationStats = ({ eventId, organizerId }) => {
       try {
         const eventIdStr = String(eventId);
         
-        // 1. Total des tickets vendus
+        // ============================================================
+        // 🔥 GARDER LES STATS EXISTANTES AVEC 'tickets'
+        // ============================================================
+        
+        // 1. Total des tickets vendus (table tickets)
         const { count: totalTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
@@ -96,37 +100,85 @@ const VerificationStats = ({ eventId, organizerId }) => {
           .eq('event_id', eventIdStr)
           .eq('status', 'used');
         
-        // 🔥 3. Tickets sans compte (guest)
-        const { count: guestTickets } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventIdStr)
-          .like('user_id', 'guest_%');
-        
-        // 🔥 4. Tickets payés par MoneyFusion
-        const { count: moneyFusionTickets } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventIdStr)
-          .eq('payment_method', 'moneyfusion_ticket');
-        
-        // 5. Tickets avec status 'active' (non encore utilisés)
+        // 3. Tickets avec status 'active' (non encore utilisés)
         const { count: activeTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr)
           .eq('status', 'active');
         
-        const total = totalTickets || 0;
+        // 4. Tickets sans compte (guest) - table tickets
+        const { count: guestTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .like('user_id', 'guest_%');
+        
+        // ============================================================
+        // 🔥 AJOUTER : Tickets MoneyFusion sans compte (event_tickets)
+        // ============================================================
+        
+        // 5. Tickets MoneyFusion sans compte (guest + moneyfusion)
+        const { count: moneyFusionGuestTickets, error: mfGuestError } = await supabase
+          .from('event_tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('payment_method', 'moneyfusion_ticket')
+          .like('user_id', 'guest_%');
+        
+        if (mfGuestError) console.error('Erreur moneyFusionGuestTickets:', mfGuestError);
+        
+        // 6. Tickets MoneyFusion avec compte (event_tickets)
+        const { count: moneyFusionAccountTickets, error: mfAccountError } = await supabase
+          .from('event_tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('payment_method', 'moneyfusion_ticket')
+          .not('user_id', 'like', 'guest_%');
+        
+        if (mfAccountError) console.error('Erreur moneyFusionAccountTickets:', mfAccountError);
+        
+        // 7. Total MoneyFusion tickets
+        const totalMoneyFusion = (moneyFusionGuestTickets || 0) + (moneyFusionAccountTickets || 0);
+        
+        // 8. Tickets MoneyFusion déjà dans la table tickets (pour éviter les doublons)
+        const { count: moneyFusionInTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('payment_method', 'moneyfusion_ticket');
+        
+        // ============================================================
+        // 🔥 CALCUL FINAL : tickets normaux + moneyfusion sans compte
+        // ============================================================
+        
+        const total = (totalTickets || 0) + (moneyFusionGuestTickets || 0);
         const verified = verifiedTickets || 0;
         const verificationRate = total > 0 ? (verified / total) * 100 : 0;
         
+        console.log('📊 Stats récupérées:', {
+          tickets_table: totalTickets || 0,
+          moneyfusion_guest: moneyFusionGuestTickets || 0,
+          moneyfusion_account: moneyFusionAccountTickets || 0,
+          total_moneyfusion: totalMoneyFusion,
+          moneyfusion_in_tickets: moneyFusionInTickets || 0,
+          total_calculated: total,
+          verified,
+          active: activeTickets || 0,
+          guest: guestTickets || 0
+        });
+        
         setStats({
+          // Tickets normaux (table tickets)
           total_tickets: total,
           verified_tickets: verified,
           active_tickets: activeTickets || 0,
           guest_tickets: guestTickets || 0,
-          moneyfusion_tickets: moneyFusionTickets || 0,
+          // MoneyFusion
+          moneyfusion_guest_tickets: moneyFusionGuestTickets || 0,
+          moneyfusion_account_tickets: moneyFusionAccountTickets || 0,
+          moneyfusion_total: totalMoneyFusion,
+          // Autres
           duplicate_scans: 0,
           active_sessions: 0,
           verification_rate: Math.round(verificationRate * 100) / 100
@@ -163,6 +215,11 @@ const VerificationStats = ({ eventId, organizerId }) => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.total_tickets}</div>
             <p className="text-xs text-muted-foreground">vendus pour cet événement</p>
+            {stats.moneyfusion_guest_tickets > 0 && (
+              <p className="text-[10px] text-blue-400 mt-1">
+                dont {stats.moneyfusion_guest_tickets} via MoneyFusion sans compte
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -217,12 +274,17 @@ const VerificationStats = ({ eventId, organizerId }) => {
         <Card className="bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border-blue-500/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-400 flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> Paiement externe
+              <Wallet className="h-4 w-4" /> MoneyFusion
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{stats.moneyfusion_tickets}</div>
-            <p className="text-xs text-muted-foreground">via MoneyFusion</p>
+            <div className="text-2xl font-bold text-blue-400">{stats.moneyfusion_total}</div>
+            <p className="text-xs text-muted-foreground">paiements externes</p>
+            <div className="mt-1 flex items-center gap-2 text-[10px]">
+              <span className="text-yellow-300">Sans compte: {stats.moneyfusion_guest_tickets}</span>
+              <span className="text-gray-500">|</span>
+              <span className="text-green-300">Avec compte: {stats.moneyfusion_account_tickets}</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -237,6 +299,43 @@ const VerificationStats = ({ eventId, organizerId }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* 🔥 Résumé MoneyFusion */}
+      {stats.moneyfusion_total > 0 && (
+        <Card className="bg-gradient-to-r from-emerald-900/20 to-green-900/20 border-emerald-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-emerald-400 flex items-center gap-2">
+              <Wallet className="h-4 w-4" /> Détails MoneyFusion
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <span className="text-gray-400 text-xs">Total</span>
+                <div className="text-2xl font-bold text-emerald-400">{stats.moneyfusion_total}</div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Avec compte</span>
+                <div className="text-2xl font-bold text-blue-400">
+                  {stats.moneyfusion_account_tickets}
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Sans compte</span>
+                <div className="text-2xl font-bold text-yellow-400">
+                  {stats.moneyfusion_guest_tickets}
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">% du total</span>
+                <div className="text-2xl font-bold text-purple-400">
+                  {stats.total_tickets > 0 ? Math.round((stats.moneyfusion_total / stats.total_tickets) * 100) : 0}%
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Troisième ligne : Statistiques des codes promo influenceurs */}
       <PromoCodeStatsCard eventId={eventId} />
