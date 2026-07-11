@@ -28,8 +28,10 @@ import {
   CheckCircle2,
   CalendarDays,
   CalendarRange,
+  Wallet,
   Tag,
   Trophy,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +71,9 @@ import CommunityVerification from "@/components/event/CommunityVerification";
 import TicketScannerDialog from "@/components/event/TicketScannerDialog";
 import { PromoCodeGenerator } from "../components/influencer/PromoCodeGenerator.jsx";
 
-// Composant pour les statistiques de validation (organisateur)
+// ============================================================
+// 🔥 STATISTIQUES SIMPLIFIÉES
+// ============================================================
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   const { t } = useTranslation("security");
   const [stats, setStats] = useState(null);
@@ -82,54 +86,81 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
         setLoading(true);
         setError(null);
         try {
-          console.log("Fetching stats for event:", eventId);
           const eventIdStr = String(eventId);
 
-          const { count: totalTickets, error: ticketsError } = await supabase
+          // ============================================================
+          // 🔥 STATS SIMPLIFIÉES
+          // ============================================================
+
+          // 1. Total des tickets vendus
+          const { count: totalTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr);
 
-          if (ticketsError) {
-            console.error("Erreur tickets:", ticketsError);
-          }
-
-          const { count: usedTickets, error: usedError } = await supabase
+          // 2. Tickets avec pièces
+          const { count: coinsTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .eq("status", "used");
+            .eq("payment_method", "coins");
 
-          if (usedError) {
-            console.error("Erreur used tickets:", usedError);
-          }
-
-          const verifiedCount = usedTickets || 0;
-
-          let activeSessions = 0;
-          const { count: sessionsCount, error: sessionsError } = await supabase
-            .from("verification_sessions")
+          // 3. Tickets sans compte (guest)
+          const { count: guestTickets } = await supabase
+            .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .eq("is_active", true);
+            .is("user_id", null);
 
-          if (!sessionsError) {
-            activeSessions = sessionsCount || 0;
-          }
+          // 4. Tickets validés / entrés (used + exited)
+          const { count: verifiedTickets } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .in("status", ["used", "exited"]);
+
+          // 5. Tickets coins utilisés
+          const { count: coinsUsed } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("payment_method", "coins")
+            .in("status", ["used", "exited"]);
+
+          // 6. Tickets sortis (exited)
+          const { count: exitedTickets } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("status", "exited");
+
+          // 7. Tickets actifs (non encore utilisés)
+          const { count: activeTickets } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("status", "active");
+
+          // ============================================================
+          // 🔥 CALCUL FINAL
+          // ============================================================
 
           const total = totalTickets || 0;
-          const verified = verifiedCount;
+          const verified = verifiedTickets || 0;
           const verificationRate = total > 0 ? (verified / total) * 100 : 0;
 
           setStats({
             total_tickets: total,
+            coins_tickets: coinsTickets || 0,
+            guest_tickets: guestTickets || 0,
             verified_tickets: verified,
-            duplicate_scans: 0,
-            active_sessions: activeSessions,
+            coins_used: coinsUsed || 0,
+            exited_tickets: exitedTickets || 0,
+            active_tickets: activeTickets || 0,
             verification_rate: Math.round(verificationRate * 100) / 100,
           });
         } catch (err) {
-          console.error("Erreur stats:", err);
+          console.error("❌ Erreur stats:", err);
           setError(err.message);
         } finally {
           setLoading(false);
@@ -147,14 +178,13 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
       <DialogContent className="sm:max-w-md bg-black border-gray-800 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
-            <BarChart className="w-5 h-5 text-blue-400" />{" "}
-            {t("verificationStats.title") || "Statistiques de vérification"}
+            <BarChart className="w-5 h-5 text-blue-400" /> Statistiques de vérification
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            {t("verificationStats.description") ||
-              "Taux de validation des billets"}
+            État des entrées en temps réel
           </DialogDescription>
         </DialogHeader>
+
         {loading ? (
           <div className="flex justify-center p-8">
             <Loader2 className="animate-spin text-blue-400" />
@@ -163,71 +193,78 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
           <div className="text-center p-8">
             <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
             <p className="text-red-400 text-sm">{error}</p>
-            <p className="text-gray-500 text-xs mt-2">
-              Veuillez réessayer plus tard
-            </p>
           </div>
         ) : stats ? (
           <div className="space-y-4 py-4">
+            {/* Ligne 1 : Billets vendus */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-900 p-4 rounded-lg text-center border border-gray-800">
-                <p className="text-xs text-gray-400 uppercase font-bold">
-                  {t("verificationStats.ticketsSold") || "Billets vendus"}
-                </p>
-                <p className="text-2xl font-bold text-white">
-                  {stats.total_tickets || 0}
-                </p>
+                <p className="text-xs text-gray-400 uppercase font-bold">Billets vendus</p>
+                <p className="text-2xl font-bold text-white">{stats.total_tickets}</p>
+                <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
+                  <span className="text-green-400">🪙 {stats.coins_tickets}</span>
+                  {stats.guest_tickets > 0 && (
+                    <span className="text-yellow-400">👤 {stats.guest_tickets}</span>
+                  )}
+                </div>
               </div>
               <div className="bg-blue-900/20 p-4 rounded-lg text-center border border-blue-800/50">
-                <p className="text-xs text-blue-400 uppercase font-bold">
-                  {t("verificationStats.validated") || "Validés / Entrés"}
-                </p>
-                <p className="text-2xl font-bold text-blue-400">
-                  {stats.verified_tickets || 0}
-                </p>
+                <p className="text-xs text-blue-400 uppercase font-bold">Validés / Entrés</p>
+                <p className="text-2xl font-bold text-blue-400">{stats.verified_tickets}</p>
+                <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
+                  <span className="text-green-300">🪙 {stats.coins_used}</span>
+                </div>
+                {stats.exited_tickets > 0 && (
+                  <p className="text-[10px] text-blue-300 mt-1">🚪 {stats.exited_tickets} sortis</p>
+                )}
               </div>
             </div>
+
+            {/* Taux de présence */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-300">
-                  {t("verificationStats.attendanceRate") || "Taux de présence"}
-                </span>
-                <span className="font-bold text-white">
-                  {stats.verification_rate || 0}%
-                </span>
+                <span className="text-gray-300">Taux de présence</span>
+                <span className="font-bold text-white">{stats.verification_rate}%</span>
               </div>
               <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                  style={{ width: `${stats.verification_rate || 0}%` }}
+                  style={{ width: `${stats.verification_rate}%` }}
                 ></div>
               </div>
             </div>
-            {(stats.active_sessions || 0) > 0 && (
-              <div className="flex items-center gap-2 text-sm text-green-400 bg-green-900/20 p-3 rounded-lg border border-green-800/30">
-                <Scan className="w-4 h-4" />
-                <span>{stats.active_sessions} scanner(s) actif(s)</span>
+
+            {/* Tickets sans compte */}
+            {stats.guest_tickets > 0 && (
+              <div className="bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/30">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-medium text-yellow-400">🎟️ dont Tickets sans compte</span>
+                  <Badge className="ml-auto bg-yellow-600 text-white text-[10px]">
+                    {stats.guest_tickets}
+                  </Badge>
+                </div>
               </div>
             )}
-            {(stats.duplicate_scans || 0) > 0 && (
-              <div className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/30">
-                <AlertTriangle className="w-4 h-4" />
-                <span>
-                  {stats.duplicate_scans} tentative(s) de scan en double
-                </span>
+
+            {/* En attente d'entrée */}
+            <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-800/30">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-400" />
+                <span className="text-sm font-medium text-orange-400">En attente d'entrée</span>
+                <Badge className="ml-auto bg-orange-600 text-white text-[10px]">
+                  {stats.active_tickets}
+                </Badge>
               </div>
-            )}
+            </div>
           </div>
         ) : (
-          <p className="text-center text-gray-500">
-            {t("verificationStats.noData") || "Aucune donnée disponible"}
-          </p>
+          <p className="text-center text-gray-500">Aucune donnée disponible</p>
         )}
       </DialogContent>
     </Dialog>
   );
 };
-
 // Boutons d'action style TikTok
 const TikTokActionButtons = ({ event, onRefresh, user }) => {
   const { t } = useTranslation();
@@ -681,13 +718,12 @@ const EventDetailPage = () => {
       });
 
       // Redirection VERS LA LISTE avec flag de refresh
-      navigate("/events", { 
-        state: { 
-          refresh: true, 
-          timestamp: Date.now() 
-        } 
+      navigate("/events", {
+        state: {
+          refresh: true,
+          timestamp: Date.now(),
+        },
       });
-      
     } catch (error) {
       console.error("Delete error détaillé:", error);
       toast({
@@ -847,26 +883,27 @@ const EventDetailPage = () => {
             <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black">
               {/* Image agrandie avec hauteur fixe */}
               <div className="w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[550px] xl:h-[600px] relative">
-                <img 
-                  src={optimizedImageUrl} 
+                <img
+                  src={optimizedImageUrl}
                   alt={event.title}
                   className="w-full h-full object-cover"
                   loading="eager"
                   onError={(e) => {
-                    e.target.src = 'https://images.unsplash.com/photo-1509930854872-0f61005b282e';
+                    e.target.src =
+                      "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
                   }}
                 />
-                
+
                 {/* Gradient overlay pour améliorer la lisibilité */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-                
+
                 {/* Badge en haut à gauche */}
                 <div className="absolute top-4 left-4 z-20">
                   <Badge className="bg-black/60 backdrop-blur-sm text-white border-white/20 text-sm px-3 py-1.5">
                     {event.category?.name || event.event_type}
                   </Badge>
                 </div>
-                
+
                 {/* Titre superposé en bas */}
                 <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg leading-tight">
@@ -875,11 +912,14 @@ const EventDetailPage = () => {
                   <div className="flex flex-wrap items-center gap-4 mt-2 text-gray-300 text-sm">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {new Date(event.event_start_at).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
+                      {new Date(event.event_start_at).toLocaleDateString(
+                        "fr-FR",
+                        {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        },
+                      )}
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -888,7 +928,7 @@ const EventDetailPage = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* TikTok actions buttons repositionnées */}
               <TikTokActionButtons
                 event={event}

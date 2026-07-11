@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Users, CheckCircle, AlertTriangle, XCircle, User, Wallet } from 'lucide-react';
+import { BarChart, Users, CheckCircle, AlertTriangle, XCircle, User, Wallet, ArrowRightLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -84,103 +84,121 @@ const VerificationStats = ({ eventId, organizerId }) => {
         const eventIdStr = String(eventId);
         
         // ============================================================
-        // 🔥 GARDER LES STATS EXISTANTES AVEC 'tickets'
+        // 🔥 STATS DEPUIS LA TABLE tickets
         // ============================================================
         
-        // 1. Total des tickets vendus (table tickets)
+        // 1. Total des tickets vendus
         const { count: totalTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr);
         
-        // 2. Tickets qui ont fait leur première entrée (status = 'used')
-        const { count: verifiedTickets } = await supabase
+        // 2. Tickets entrés (status = 'used') - Actuellement à l'intérieur
+        const { count: currentlyInside } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr)
           .eq('status', 'used');
         
-        // 3. Tickets avec status 'active' (non encore utilisés)
+        // 3. Tickets sortis (status = 'exited')
+        const { count: exitedTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('status', 'exited');
+        
+        // 4. Tickets ayant déjà été utilisés (used + exited)
+        const { count: verifiedTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .in('status', ['used', 'exited']);
+        
+        // 5. Tickets actifs (non encore utilisés)
         const { count: activeTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr)
           .eq('status', 'active');
         
-        // 4. Tickets sans compte (guest) - table tickets
-        const { count: guestTickets } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventIdStr)
-          .like('user_id', 'guest_%');
+      onst { count: guestTickets } = await supabase
+  .from('tickets')
+  .select('*', { count: 'exact', head: true })
+  .eq('event_id', eventIdStr)
+  .is('user_id', null); // ← CORRECTION
         
-        // ============================================================
-        // 🔥 AJOUTER : Tickets MoneyFusion sans compte (event_tickets)
-        // ============================================================
-        
-        // 5. Tickets MoneyFusion sans compte (guest + moneyfusion)
-        const { count: moneyFusionGuestTickets, error: mfGuestError } = await supabase
-          .from('event_tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventIdStr)
-          .eq('payment_method', 'moneyfusion_ticket')
-          .like('user_id', 'guest_%');
-        
-        if (mfGuestError) console.error('Erreur moneyFusionGuestTickets:', mfGuestError);
-        
-        // 6. Tickets MoneyFusion avec compte (event_tickets)
-        const { count: moneyFusionAccountTickets, error: mfAccountError } = await supabase
-          .from('event_tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', eventIdStr)
-          .eq('payment_method', 'moneyfusion_ticket')
-          .not('user_id', 'like', 'guest_%');
-        
-        if (mfAccountError) console.error('Erreur moneyFusionAccountTickets:', mfAccountError);
-        
-        // 7. Total MoneyFusion tickets
-        const totalMoneyFusion = (moneyFusionGuestTickets || 0) + (moneyFusionAccountTickets || 0);
-        
-        // 8. Tickets MoneyFusion déjà dans la table tickets (pour éviter les doublons)
-        const { count: moneyFusionInTickets } = await supabase
+        // 7. Tickets MoneyFusion
+        const { count: moneyFusionTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr)
           .eq('payment_method', 'moneyfusion_ticket');
         
+        // 8. 🔥 Tickets MoneyFusion sans compte - UNIQUEMENT NULL
+        const { count: moneyFusionGuestTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .eq('payment_method', 'moneyfusion_ticket')
+          .is('user_id', null);
+        
+        // 9. Tickets MoneyFusion avec compte
+        const moneyFusionAccountTickets = moneyFusionTickets - moneyFusionGuestTickets;
+        
+        // 10. Total des entrées (entry_count > 0)
+        const { count: totalEntries } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .gt('entry_count', 0);
+        
+        // 11. Moyenne des entrées par ticket (pour les tickets utilisés)
+        const { data: entryCounts } = await supabase
+          .from('tickets')
+          .select('entry_count')
+          .eq('event_id', eventIdStr)
+          .not('entry_count', 'is', null);
+        
+        const totalEntryCounts = entryCounts?.reduce((sum, t) => sum + (t.entry_count || 0), 0) || 0;
+        const avgEntriesPerTicket = verifiedTickets > 0 ? (totalEntryCounts / verifiedTickets) : 0;
+        
         // ============================================================
-        // 🔥 CALCUL FINAL : tickets normaux + moneyfusion sans compte
+        // 🔥 CALCUL FINAL
         // ============================================================
         
-        const total = (totalTickets || 0) + (moneyFusionGuestTickets || 0);
+        const total = totalTickets || 0;
         const verified = verifiedTickets || 0;
         const verificationRate = total > 0 ? (verified / total) * 100 : 0;
+        const inside = currentlyInside || 0;
+        const exited = exitedTickets || 0;
         
         console.log('📊 Stats récupérées:', {
-          tickets_table: totalTickets || 0,
-          moneyfusion_guest: moneyFusionGuestTickets || 0,
-          moneyfusion_account: moneyFusionAccountTickets || 0,
-          total_moneyfusion: totalMoneyFusion,
-          moneyfusion_in_tickets: moneyFusionInTickets || 0,
-          total_calculated: total,
-          verified,
-          active: activeTickets || 0,
-          guest: guestTickets || 0
+          totalTickets: total,
+          currentlyInside: inside,
+          exitedTickets: exited,
+          verifiedTickets: verified,
+          activeTickets: activeTickets || 0,
+          guestTickets: guestTickets || 0,
+          moneyFusionTickets: moneyFusionTickets || 0,
+          moneyFusionGuestTickets: moneyFusionGuestTickets || 0,
+          moneyFusionAccountTickets: moneyFusionAccountTickets || 0,
+          totalEntries: totalEntries || 0,
+          avgEntriesPerTicket: avgEntriesPerTicket
         });
         
         setStats({
-          // Tickets normaux (table tickets)
           total_tickets: total,
+          currently_inside: inside,
+          exited_tickets: exited,
           verified_tickets: verified,
           active_tickets: activeTickets || 0,
           guest_tickets: guestTickets || 0,
-          // MoneyFusion
           moneyfusion_guest_tickets: moneyFusionGuestTickets || 0,
           moneyfusion_account_tickets: moneyFusionAccountTickets || 0,
-          moneyfusion_total: totalMoneyFusion,
-          // Autres
+          moneyfusion_total: moneyFusionTickets || 0,
+          total_entries: totalEntries || 0,
+          avg_entries_per_ticket: Math.round(avgEntriesPerTicket * 100) / 100,
           duplicate_scans: 0,
-          active_sessions: 0,
           verification_rate: Math.round(verificationRate * 100) / 100
         });
         
@@ -220,39 +238,57 @@ const VerificationStats = ({ eventId, organizerId }) => {
                 dont {stats.moneyfusion_guest_tickets} via MoneyFusion sans compte
               </p>
             )}
+            {stats.guest_tickets > 0 && (
+              <p className="text-[10px] text-yellow-400 mt-1">
+                dont {stats.guest_tickets} sans compte
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-500/30 bg-green-900/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Validés / Entrés</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-400">En salle</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.verified_tickets}</div>
-            <p className="text-xs text-muted-foreground">{stats.verification_rate}% de présence</p>
+            <div className="text-2xl font-bold text-green-500">{stats.currently_inside}</div>
+            <p className="text-xs text-muted-foreground">billets actuellement à l'intérieur</p>
+            {stats.total_entries > 0 && (
+              <p className="text-[10px] text-green-400 mt-1">
+                {stats.total_entries} entrées totales
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-blue-500/30 bg-blue-900/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">En attente</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-sm font-medium text-blue-400">Sortis</CardTitle>
+            <ArrowRightLeft className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.active_tickets}</div>
-            <p className="text-xs text-muted-foreground">billets non encore utilisés</p>
+            <div className="text-2xl font-bold text-blue-400">{stats.exited_tickets}</div>
+            <p className="text-xs text-muted-foreground">billets sortis</p>
+            {stats.avg_entries_per_ticket > 0 && (
+              <p className="text-[10px] text-blue-400 mt-1">
+                {stats.avg_entries_per_ticket} entrées/ticket en moyenne
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-yellow-500/30 bg-yellow-900/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taux de présence</CardTitle>
-            <BarChart className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium text-yellow-400">Taux de présence</CardTitle>
+            <BarChart className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.verification_rate}%</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats.verification_rate}%</div>
             <p className="text-xs text-muted-foreground">taux global</p>
+            <p className="text-[10px] text-gray-400 mt-1">
+              {stats.verified_tickets} utilisés / {stats.total_tickets} total
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -267,7 +303,12 @@ const VerificationStats = ({ eventId, organizerId }) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-400">{stats.guest_tickets}</div>
-            <p className="text-xs text-muted-foreground">billets invités</p>
+            <p className="text-xs text-muted-foreground">billets sans compte</p>
+            {stats.moneyfusion_guest_tickets > 0 && (
+              <p className="text-[10px] text-blue-300 mt-1">
+                dont {stats.moneyfusion_guest_tickets} via MoneyFusion
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -288,14 +329,20 @@ const VerificationStats = ({ eventId, organizerId }) => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-gradient-to-r from-purple-900/20 to-pink-900/20 border-purple-500/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sessions Actives</CardTitle>
-            <BarChart className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium text-purple-400 flex items-center gap-2">
+              <ArrowRightLeft className="h-4 w-4" /> Mouvements
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.active_sessions || 0}</div>
-            <p className="text-xs text-muted-foreground">scanners connectés</p>
+            <div className="text-2xl font-bold text-purple-400">{stats.total_entries}</div>
+            <p className="text-xs text-muted-foreground">entrées totales</p>
+            <div className="mt-1 flex items-center gap-2 text-[10px]">
+              <span className="text-green-300">En salle: {stats.currently_inside}</span>
+              <span className="text-gray-500">|</span>
+              <span className="text-blue-300">Sortis: {stats.exited_tickets}</span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -330,6 +377,47 @@ const VerificationStats = ({ eventId, organizerId }) => {
                 <span className="text-gray-400 text-xs">% du total</span>
                 <div className="text-2xl font-bold text-purple-400">
                   {stats.total_tickets > 0 ? Math.round((stats.moneyfusion_total / stats.total_tickets) * 100) : 0}%
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🔥 Statistiques avancées des entrées */}
+      {stats.total_entries > stats.verified_tickets && (
+        <Card className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border-indigo-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-indigo-400 flex items-center gap-2">
+              <BarChart className="h-4 w-4" /> Analyse des entrées
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <span className="text-gray-400 text-xs">Total billets</span>
+                <div className="text-xl font-bold text-white">{stats.total_tickets}</div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Entrées totales</span>
+                <div className="text-xl font-bold text-green-400">{stats.total_entries}</div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Ré-entrées</span>
+                <div className="text-xl font-bold text-purple-400">
+                  {stats.total_entries - stats.verified_tickets}
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">Entrées/ticket</span>
+                <div className="text-xl font-bold text-blue-400">{stats.avg_entries_per_ticket}</div>
+              </div>
+              <div>
+                <span className="text-gray-400 text-xs">% de ré-entrées</span>
+                <div className="text-xl font-bold text-orange-400">
+                  {stats.verified_tickets > 0 
+                    ? Math.round(((stats.total_entries - stats.verified_tickets) / stats.verified_tickets) * 100) 
+                    : 0}%
                 </div>
               </div>
             </div>

@@ -1,21 +1,20 @@
-// netlify/functions/moneyfusion-ticket-webhook.js
+// netlify/functions/moneyfusion-ticket-webhook.cjs
 const { createClient } = require('@supabase/supabase-js');
 
-// 🔥 VÉRIFICATION DES VARIABLES D'ENVIRONNEMENT
-console.log('🔍 Vérification des variables d\'environnement Supabase:');
+// 🔥 UTILISER LA CLÉ ANON (disponible dans votre .env)
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('❌ Variables d\'environnement Supabase manquantes');
     console.error('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Présent' : '❌ Manquant');
-    console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✅ Présent' : '❌ Manquant');
+    console.error('VITE_SUPABASE_ANON_KEY:', supabaseKey ? '✅ Présent' : '❌ Manquant');
     throw new Error('Variables d\'environnement Supabase manquantes');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE
+// 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE - CORRIGÉ
 const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
     if (userEmail) {
         const { data: existing } = await supabase
@@ -31,6 +30,7 @@ const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
     
     const newUserId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
     
+    // 🔥 CORRECTION : Utiliser 'user' au lieu de 'guest'
     await supabase
         .from('profiles')
         .insert({
@@ -38,11 +38,18 @@ const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
             email: userEmail || `guest_${Date.now()}@temp.com`,
             full_name: attendeeName || 'Invité',
             phone: phoneNumber || '',
-            user_type: 'guest',
+            user_type: 'user',  // 🔥 Changé de 'guest' à 'user'
             created_at: new Date().toISOString()
-        });
-    
+        })
+        .on('conflict', 'id')
+        .ignore();
+
     return newUserId;
+};
+
+// 🔥 FONCTION POUR CRÉER UN ID INVITÉ SANS PROFIL
+const generateGuestUserId = () => {
+    return crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
 };
 
 exports.handler = async (event) => {
@@ -99,9 +106,30 @@ exports.handler = async (event) => {
         let finalUserId = info.userId;
 
         if (isGuest || !finalUserId || finalUserId.startsWith('guest_')) {
-            console.log('👤 Création compte invité...');
-            finalUserId = await generateUserId(userEmail, attendeeName, phoneNumber);
-            console.log('✅ Compte invité créé:', finalUserId);
+            console.log('👤 Création ID invité...');
+            // 🔥 Utiliser generateGuestUserId pour les invités
+            finalUserId = generateGuestUserId();
+            console.log('✅ ID invité créé:', finalUserId);
+            
+            // 🔥 Optionnel : créer un profil avec user_type = 'user'
+            try {
+                await supabase
+                    .from('profiles')
+                    .insert({
+                        id: finalUserId,
+                        email: `guest_${Date.now()}@temp.com`,
+                        full_name: attendeeName || 'Invité',
+                        phone: phoneNumber || '',
+                        user_type: 'user',
+                        created_at: new Date().toISOString()
+                    })
+                    .on('conflict', 'id')
+                    .ignore();
+                console.log('✅ Profil invité créé:', finalUserId);
+            } catch (profileError) {
+                console.warn('⚠️ Impossible de créer le profil invité:', profileError.message);
+                // Continue sans profil
+            }
         }
 
         // --- 2. Créer les tickets ---
@@ -116,7 +144,7 @@ exports.handler = async (event) => {
             tickets.push({
                 id: ticketId,
                 event_id: eventId,
-                user_id: finalUserId,
+                user_id: finalUserId || null,
                 status: 'active',
                 payment_method: 'moneyfusion_ticket',
                 transaction_reference: orderId,
@@ -129,6 +157,7 @@ exports.handler = async (event) => {
             });
         }
 
+        // 🔥 INSERTION DANS LA TABLE tickets
         if (tickets.length > 0) {
             const { error } = await supabase
                 .from('tickets')
@@ -136,6 +165,7 @@ exports.handler = async (event) => {
 
             if (error) {
                 console.error('❌ Erreur insertion tickets:', error);
+                throw new Error('Erreur insertion tickets: ' + error.message);
             } else {
                 console.log(`✅ ${tickets.length} tickets créés dans tickets`);
             }
@@ -147,7 +177,7 @@ exports.handler = async (event) => {
             .update({
                 status: 'completed',
                 processed_at: new Date().toISOString(),
-                user_id: finalUserId,
+                user_id: finalUserId || null,
                 payment_method: 'moneyfusion_ticket'
             })
             .eq('transaction_id', orderId);
@@ -166,15 +196,18 @@ exports.handler = async (event) => {
             const netCoins = amountCoins - platformCommission;
             const netFcfa = netCoins * 10;
 
+            // 🔥 transaction_id doit être un UUID valide
+            const transactionUuid = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
+
             await supabase
                 .from('organizer_earnings')
                 .insert({
                     organizer_id: organizerId,
                     event_id: eventId,
-                    transaction_id: orderId,
+                    transaction_id: transactionUuid,
                     transaction_type: 'ticket_sale',
-                    earnings_coins: netCoins,
-                    earnings_fcfa: netFcfa,
+                    earnings_coins: amountCoins,
+                    earnings_fcfa: originalAmount,
                     status: 'pending',
                     platform_commission: platformCommission,
                     platform_fee: platformCommission * 10,
@@ -197,12 +230,12 @@ exports.handler = async (event) => {
                 await supabase
                     .from('profiles')
                     .update({
-                        total_earnings: (profile.total_earnings || 0) + netCoins,
-                        available_earnings: (profile.available_earnings || 0) + netCoins,
+                        total_earnings: (profile.total_earnings || 0) + amountCoins,
+                        available_earnings: (profile.available_earnings || 0) + amountCoins,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', organizerId);
-                console.log(`✅ Profil organisateur mis à jour: +${netCoins} coins`);
+                console.log(`✅ Profil organisateur mis à jour: +${amountCoins} coins`);
             }
         }
 
