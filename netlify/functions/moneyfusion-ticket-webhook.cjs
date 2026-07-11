@@ -1,20 +1,18 @@
-// netlify/functions/moneyfusion-ticket-webhook.cjs
+// netlify/functions/moneyfusion-ticket-webhook.cjs - CORRIGÉ
 const { createClient } = require('@supabase/supabase-js');
 
-// 🔥 UTILISER LA CLÉ ANON (disponible dans votre .env)
+// 🔥 UTILISER LA CLÉ SERVICE_ROLE (pas ANON)
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('❌ Variables d\'environnement Supabase manquantes');
-    console.error('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Présent' : '❌ Manquant');
-    console.error('VITE_SUPABASE_ANON_KEY:', supabaseKey ? '✅ Présent' : '❌ Manquant');
     throw new Error('Variables d\'environnement Supabase manquantes');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE - CORRIGÉ
+// 🔥 FONCTION POUR CRÉER UN ID UTILISATEUR VALIDE
 const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
     if (userEmail) {
         const { data: existing } = await supabase
@@ -30,19 +28,17 @@ const generateUserId = async (userEmail, attendeeName, phoneNumber) => {
     
     const newUserId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
     
-    // 🔥 CORRECTION : Utiliser 'user' au lieu de 'guest'
+    // 🔥 Utiliser upsert au lieu de insert + on
     await supabase
         .from('profiles')
-        .insert({
+        .upsert({
             id: newUserId,
             email: userEmail || `guest_${Date.now()}@temp.com`,
             full_name: attendeeName || 'Invité',
             phone: phoneNumber || '',
-            user_type: 'user',  // 🔥 Changé de 'guest' à 'user'
+            user_type: 'user',
             created_at: new Date().toISOString()
-        })
-        .on('conflict', 'id')
-        .ignore();
+        }, { onConflict: 'id' });
 
     return newUserId;
 };
@@ -107,24 +103,21 @@ exports.handler = async (event) => {
 
         if (isGuest || !finalUserId || finalUserId.startsWith('guest_')) {
             console.log('👤 Création ID invité...');
-            // 🔥 Utiliser generateGuestUserId pour les invités
             finalUserId = generateGuestUserId();
             console.log('✅ ID invité créé:', finalUserId);
             
-            // 🔥 Optionnel : créer un profil avec user_type = 'user'
+            // 🔥 Utiliser upsert
             try {
                 await supabase
                     .from('profiles')
-                    .insert({
+                    .upsert({
                         id: finalUserId,
                         email: `guest_${Date.now()}@temp.com`,
                         full_name: attendeeName || 'Invité',
                         phone: phoneNumber || '',
                         user_type: 'user',
                         created_at: new Date().toISOString()
-                    })
-                    .on('conflict', 'id')
-                    .ignore();
+                    }, { onConflict: 'id' });
                 console.log('✅ Profil invité créé:', finalUserId);
             } catch (profileError) {
                 console.warn('⚠️ Impossible de créer le profil invité:', profileError.message);
@@ -195,8 +188,6 @@ exports.handler = async (event) => {
             const platformCommission = Math.floor(amountCoins * 0.05);
             const netCoins = amountCoins - platformCommission;
             const netFcfa = netCoins * 10;
-
-            // 🔥 transaction_id doit être un UUID valide
             const transactionUuid = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
 
             await supabase
