@@ -353,3 +353,45 @@
 .animate-in {
   animation: slide-in-right 0.5s ease-out;
 }
+/* Dans index.css ou App.css */
+
+/* Défilement horizontal continu - SANS ZOOM */
+@keyframes slowPan {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-slow-pan {
+  animation: slowPan 40s linear infinite;
+}
+
+/* Version avec pause aux extrémités pour plus de douceur */
+@keyframes slowPanSmooth {
+  0% {
+    transform: translateX(0%);
+  }
+  35% {
+    transform: translateX(-45%);
+  }
+  65% {
+    transform: translateX(-45%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.animate-slow-pan-smooth {
+  animation: slowPanSmooth 45s ease-in-out infinite;
+}
+
+/* Version plus lente pour mobile */
+@media (max-width: 640px) {
+  .animate-slow-pan {
+    animation: slowPan 50s linear infinite;
+  }
+}

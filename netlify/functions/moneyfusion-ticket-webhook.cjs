@@ -1,47 +1,33 @@
 // netlify/functions/moneyfusion-ticket-webhook.cjs
 const { createClient } = require('@supabase/supabase-js');
 
-// 🔥 UTILISER LA CLÉ SERVICE_ROLE
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
     console.error('❌ Variables d\'environnement Supabase manquantes');
-    console.error('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Présent' : '❌ Manquant');
-    console.error('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? '✅ Présent' : '❌ Manquant');
     throw new Error('Variables d\'environnement Supabase manquantes');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 🔥 FONCTION POUR CRÉER UN EMAIL À PARTIR DU NOM
 const generateEmailFromName = (fullName) => {
-    // Nettoyer le nom : supprimer les accents, espaces, caractères spéciaux
     const cleanName = fullName
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Supprimer les accents
-        .replace(/\s+/g, '') // Supprimer les espaces
-        .replace(/[^a-z0-9]/g, ''); // Supprimer les caractères spéciaux
-    
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '');
     return `${cleanName}@gmail.com`;
 };
 
-// 🔥 FONCTION POUR CRÉER UN COMPTE UTILISATEUR
-const createUserAccount = async (fullName, phoneNumber) => {
+const createUserAccount = async (fullName, phoneNumber, userEmail) => {
     try {
-        // 1. Générer l'email à partir du nom
-        const email = generateEmailFromName(fullName);
+        const email = userEmail || generateEmailFromName(fullName);
         const password = '000000';
         
-        console.log('📧 Création compte utilisateur:', { 
-            email, 
-            fullName, 
-            phoneNumber,
-            password: '000000'
-        });
+        console.log('📧 Création compte utilisateur:', { email, fullName, phoneNumber });
 
-        // 2. Vérifier si l'utilisateur existe déjà
         const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers({
             page: 1,
             perPage: 100
@@ -51,8 +37,6 @@ const createUserAccount = async (fullName, phoneNumber) => {
             const existingUser = existingUsers.users.find(u => u.email === email);
             if (existingUser) {
                 console.log('✅ Utilisateur existant trouvé:', existingUser.id);
-                
-                // Mettre à jour le profil si nécessaire
                 await supabase
                     .from('profiles')
                     .upsert({
@@ -63,12 +47,10 @@ const createUserAccount = async (fullName, phoneNumber) => {
                         user_type: 'user',
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'id' });
-                
                 return existingUser.id;
             }
         }
 
-        // 3. Créer l'utilisateur dans auth.users
         const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
             email: email,
             password: password,
@@ -81,12 +63,7 @@ const createUserAccount = async (fullName, phoneNumber) => {
 
         if (authError) {
             console.error('❌ Erreur création auth:', authError);
-            
-            // Fallback: créer un ID invité
             const guestId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-            console.log('👤 ID invité (fallback):', guestId);
-            
-            // Créer un profil invité
             await supabase
                 .from('profiles')
                 .upsert({
@@ -97,7 +74,6 @@ const createUserAccount = async (fullName, phoneNumber) => {
                     user_type: 'user',
                     created_at: new Date().toISOString()
                 }, { onConflict: 'id' });
-            
             return guestId;
         }
 
@@ -108,8 +84,7 @@ const createUserAccount = async (fullName, phoneNumber) => {
         const userId = authUser.user.id;
         console.log('✅ Compte utilisateur créé:', { userId, email });
 
-        // 4. Créer le profil
-        const { error: profileError } = await supabase
+        await supabase
             .from('profiles')
             .upsert({
                 id: userId,
@@ -120,22 +95,11 @@ const createUserAccount = async (fullName, phoneNumber) => {
                 created_at: new Date().toISOString()
             }, { onConflict: 'id' });
 
-        if (profileError) {
-            console.warn('⚠️ Erreur création profil:', profileError.message);
-        } else {
-            console.log('✅ Profil utilisateur créé');
-        }
-
         return userId;
 
     } catch (error) {
         console.error('❌ Erreur création compte:', error);
-        
-        // Fallback: créer un ID invité
         const guestId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-        console.log('👤 ID invité (fallback):', guestId);
-        
-        // Créer un profil invité
         await supabase
             .from('profiles')
             .upsert({
@@ -146,7 +110,6 @@ const createUserAccount = async (fullName, phoneNumber) => {
                 user_type: 'user',
                 created_at: new Date().toISOString()
             }, { onConflict: 'id' });
-        
         return guestId;
     }
 };
@@ -197,6 +160,7 @@ exports.handler = async (event) => {
         const originalAmount = info.amountFcfa || 0;
         const isGuest = info.isGuest || false;
         const phoneNumber = info.phone || '';
+        const userEmail = info.userEmail || '';
 
         console.log('✅ Paiement réussi:', { 
             orderId, 
@@ -204,24 +168,40 @@ exports.handler = async (event) => {
             attendeeName, 
             originalAmount, 
             isGuest,
-            phoneNumber 
+            phoneNumber,
+            userEmail
         });
 
         // --- 1. Créer le compte utilisateur ---
         let finalUserId;
-        
         if (isGuest || !info.userId || info.userId.startsWith('guest_')) {
             console.log(`👤 Création compte pour: ${attendeeName} (${phoneNumber})`);
-            finalUserId = await createUserAccount(attendeeName, phoneNumber);
+            finalUserId = await createUserAccount(attendeeName, phoneNumber, userEmail);
             console.log('✅ ID utilisateur final:', finalUserId);
         } else {
             finalUserId = info.userId;
             console.log('👤 Utilisateur existant:', finalUserId);
         }
 
-        // --- 2. Créer les tickets ---
+        // --- 2. Créer les tickets AVEC LES PRIX ---
         let ticketCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
         if (ticketCount === 0) ticketCount = 1;
+
+        const finalEmail = userEmail || generateEmailFromName(attendeeName);
+        
+        // 🔥 Calcul des prix
+        const pricePerTicketCoins = Math.floor(originalAmount / 10 / ticketCount);
+        const pricePerTicketFcfa = Math.floor(originalAmount / ticketCount);
+        const totalAmountCoins = pricePerTicketCoins * ticketCount;
+        const totalAmountFcfa = pricePerTicketFcfa * ticketCount;
+
+        console.log('💰 Prix calculés:', {
+            ticketCount,
+            pricePerTicketCoins,
+            pricePerTicketFcfa,
+            totalAmountCoins,
+            totalAmountFcfa
+        });
 
         const tickets = [];
         for (let i = 0; i < ticketCount; i++) {
@@ -236,11 +216,19 @@ exports.handler = async (event) => {
                 payment_method: 'moneyfusion_ticket',
                 transaction_reference: orderId,
                 attendee_name: attendeeName,
+                customer_name: attendeeName,
+                phone: phoneNumber,
+                email: finalEmail,
+                is_guest: isGuest || false,
                 purchased_at: new Date().toISOString(),
                 qr_code: qrCode,
                 ticket_number: `MF-${Date.now()}-${String(i + 1).padStart(4, '0')}`,
-                purchase_price_pi: Math.floor(originalAmount / 10 / ticketCount),
-                ticket_type_id: null
+                ticket_type_id: null,
+                // 🔥 PRIX AJOUTÉS
+                purchase_price_pi: pricePerTicketCoins,
+                total_amount_pi: totalAmountCoins,
+                total_amount_fcfa: totalAmountFcfa,
+                quantity: 1
             });
         }
 
@@ -254,7 +242,7 @@ exports.handler = async (event) => {
                 console.error('❌ Erreur insertion tickets:', error);
                 throw new Error('Erreur insertion tickets: ' + error.message);
             } else {
-                console.log(`✅ ${tickets.length} tickets créés dans tickets`);
+                console.log(`✅ ${tickets.length} tickets créés avec prix: ${pricePerTicketCoins} pièces/ticket`);
             }
         }
 
@@ -265,7 +253,9 @@ exports.handler = async (event) => {
                 status: 'completed',
                 processed_at: new Date().toISOString(),
                 user_id: finalUserId,
-                payment_method: 'moneyfusion_ticket'
+                payment_method: 'moneyfusion_ticket',
+                amount_fcfa: totalAmountFcfa,
+                amount_pi: totalAmountCoins
             })
             .eq('transaction_id', orderId);
 
@@ -302,7 +292,6 @@ exports.handler = async (event) => {
                     created_at: new Date().toISOString()
                 });
 
-            // Mettre à jour le profil de l'organisateur
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('total_earnings, available_earnings')
@@ -333,7 +322,10 @@ exports.handler = async (event) => {
                 tickets_created: tickets.length > 0,
                 ticket_count: tickets.length,
                 user_id: finalUserId,
-                email: generateEmailFromName(attendeeName),
+                email: finalEmail,
+                phone: phoneNumber,
+                price_per_ticket_coins: pricePerTicketCoins,
+                total_amount_fcfa: totalAmountFcfa,
                 password: '000000'
             })
         };

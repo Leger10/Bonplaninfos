@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -79,47 +79,45 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (isOpen && eventId && organizerId) {
       const fetchStats = async () => {
+        if (!isMountedRef.current) return;
         setLoading(true);
         setError(null);
         try {
           const eventIdStr = String(eventId);
 
-          // ============================================================
-          // 🔥 STATS SIMPLIFIÉES
-          // ============================================================
-
-          // 1. Total des tickets vendus
           const { count: totalTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr);
 
-          // 2. Tickets avec pièces
           const { count: coinsTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
             .eq("payment_method", "coins");
 
-          // 3. Tickets sans compte (guest)
-          const { count: guestTickets } = await supabase
+          const { count: moneyTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .is("user_id", null);
+            .eq("payment_method", "moneyfusion_ticket");
 
-          // 4. Tickets validés / entrés (used + exited)
           const { count: verifiedTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
             .in("status", ["used", "exited"]);
 
-          // 5. Tickets coins utilisés
           const { count: coinsUsed } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
@@ -127,43 +125,51 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
             .eq("payment_method", "coins")
             .in("status", ["used", "exited"]);
 
-          // 6. Tickets sortis (exited)
+          const { count: moneyUsed } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("payment_method", "moneyfusion_ticket")
+            .in("status", ["used", "exited"]);
+
           const { count: exitedTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
             .eq("status", "exited");
 
-          // 7. Tickets actifs (non encore utilisés)
           const { count: activeTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
             .eq("status", "active");
 
-          // ============================================================
-          // 🔥 CALCUL FINAL
-          // ============================================================
-
           const total = totalTickets || 0;
           const verified = verifiedTickets || 0;
           const verificationRate = total > 0 ? (verified / total) * 100 : 0;
 
-          setStats({
-            total_tickets: total,
-            coins_tickets: coinsTickets || 0,
-            guest_tickets: guestTickets || 0,
-            verified_tickets: verified,
-            coins_used: coinsUsed || 0,
-            exited_tickets: exitedTickets || 0,
-            active_tickets: activeTickets || 0,
-            verification_rate: Math.round(verificationRate * 100) / 100,
-          });
+          if (isMountedRef.current) {
+            setStats({
+              total_tickets: total,
+              coins_tickets: coinsTickets || 0,
+              money_tickets: moneyTickets || 0,
+              verified_tickets: verified,
+              coins_used: coinsUsed || 0,
+              money_used: moneyUsed || 0,
+              exited_tickets: exitedTickets || 0,
+              active_tickets: activeTickets || 0,
+              verification_rate: Math.round(verificationRate * 100) / 100,
+            });
+          }
         } catch (err) {
           console.error("❌ Erreur stats:", err);
-          setError(err.message);
+          if (isMountedRef.current) {
+            setError(err.message);
+          }
         } finally {
-          setLoading(false);
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
         }
       };
 
@@ -196,15 +202,14 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
           </div>
         ) : stats ? (
           <div className="space-y-4 py-4">
-            {/* Ligne 1 : Billets vendus */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-900 p-4 rounded-lg text-center border border-gray-800">
                 <p className="text-xs text-gray-400 uppercase font-bold">Billets vendus</p>
                 <p className="text-2xl font-bold text-white">{stats.total_tickets}</p>
                 <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
                   <span className="text-green-400">🪙 {stats.coins_tickets}</span>
-                  {stats.guest_tickets > 0 && (
-                    <span className="text-yellow-400">👤 {stats.guest_tickets}</span>
+                  {stats.money_tickets > 0 && (
+                    <span className="text-blue-400">💳 {stats.money_tickets}</span>
                   )}
                 </div>
               </div>
@@ -213,6 +218,9 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                 <p className="text-2xl font-bold text-blue-400">{stats.verified_tickets}</p>
                 <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
                   <span className="text-green-300">🪙 {stats.coins_used}</span>
+                  {stats.money_used > 0 && (
+                    <span className="text-blue-300">💳 {stats.money_used}</span>
+                  )}
                 </div>
                 {stats.exited_tickets > 0 && (
                   <p className="text-[10px] text-blue-300 mt-1">🚪 {stats.exited_tickets} sortis</p>
@@ -220,7 +228,6 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             </div>
 
-            {/* Taux de présence */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-300">Taux de présence</span>
@@ -234,20 +241,21 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             </div>
 
-            {/* Tickets sans compte */}
-            {stats.guest_tickets > 0 && (
-              <div className="bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/30">
+            {stats.money_tickets > 0 && (
+              <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-800/30">
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm font-medium text-yellow-400">🎟️ dont Tickets sans compte</span>
-                  <Badge className="ml-auto bg-yellow-600 text-white text-[10px]">
-                    {stats.guest_tickets}
+                  <Wallet className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-medium text-blue-400">💳 Tickets payer sans compte</span>
+                  <Badge className="ml-auto bg-blue-600 text-white text-[10px]">
+                    {stats.money_tickets}
                   </Badge>
+                </div>
+                <div className="mt-1 text-[10px] text-gray-400">
+                  dont {stats.money_used || 0} entrés
                 </div>
               </div>
             )}
 
-            {/* En attente d'entrée */}
             <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-800/30">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-orange-400" />
@@ -265,12 +273,19 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
     </Dialog>
   );
 };
+
 // Boutons d'action style TikTok
 const TikTokActionButtons = ({ event, onRefresh, user }) => {
   const { t } = useTranslation();
   const [likes, setLikes] = useState(event?.likes_count || 0);
   const [comments, setComments] = useState(event?.comments_count || 0);
   const [isLiked, setIsLiked] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     if (event) {
@@ -291,8 +306,10 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
     try {
       const newLikedState = !isLiked;
       const likeChange = newLikedState ? 1 : -1;
-      setLikes((prev) => prev + likeChange);
-      setIsLiked(newLikedState);
+      if (isMountedRef.current) {
+        setLikes((prev) => prev + likeChange);
+        setIsLiked(newLikedState);
+      }
 
       await supabase.rpc("toggle_event_like", {
         p_event_id: event.id,
@@ -302,8 +319,10 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
       if (onRefresh) onRefresh();
     } catch (error) {
       console.error("Error toggling like:", error);
-      setLikes((prev) => prev - (isLiked ? 1 : -1));
-      setIsLiked(!isLiked);
+      if (isMountedRef.current) {
+        setLikes((prev) => prev - (isLiked ? 1 : -1));
+        setIsLiked(!isLiked);
+      }
     }
   };
 
@@ -490,6 +509,19 @@ const EventDetailPage = () => {
   const [promoConfigLoading, setPromoConfigLoading] = useState(false);
 
   const userId = user?.id;
+  const isMountedRef = useRef(true);
+  const fetchInProgressRef = useRef(false);
+  const refreshTimeoutRef = useRef(null); // 🔥 DÉCLARATION MANQUANTE AJOUTÉE
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchPromoConfig = useCallback(async () => {
     if (!event?.id) return;
@@ -503,21 +535,35 @@ const EventDetailPage = () => {
 
       if (error) {
         console.error("Error fetching promo config:", error);
-        setPromoConfig({ enabled: false });
+        if (isMountedRef.current) {
+          setPromoConfig({ enabled: false });
+        }
       } else {
-        setPromoConfig(data || { enabled: false });
+        if (isMountedRef.current) {
+          setPromoConfig(data || { enabled: false });
+        }
       }
     } catch (error) {
       console.error("Error fetching promo config:", error);
-      setPromoConfig({ enabled: false });
+      if (isMountedRef.current) {
+        setPromoConfig({ enabled: false });
+      }
     } finally {
-      setPromoConfigLoading(false);
+      if (isMountedRef.current) {
+        setPromoConfigLoading(false);
+      }
     }
   }, [event?.id]);
 
+  // 🔥 FETCH EVENT DATA
   const fetchEventData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
+    if (!id || fetchInProgressRef.current) return;
+
+    fetchInProgressRef.current = true;
+    if (isMountedRef.current) {
+      setLoading(true);
+    }
+
     console.log("Fetching event data for ID:", id);
     try {
       const { data: fetchedEvent, error: eventError } = await fetchWithRetry(
@@ -534,11 +580,15 @@ const EventDetailPage = () => {
       if (eventError) throw eventError;
       if (!fetchedEvent) {
         console.error("Event not found");
-        setEvent(null);
+        if (isMountedRef.current) {
+          setEvent(null);
+        }
         return;
       }
 
-      setEvent(fetchedEvent);
+      if (isMountedRef.current) {
+        setEvent(fetchedEvent);
+      }
 
       let specificEventData = null;
       if (fetchedEvent.event_type === "raffle") {
@@ -567,34 +617,63 @@ const EventDetailPage = () => {
           .select("*")
           .eq("event_id", id)
           .eq("is_active", true);
-        setTicketTypes(types || []);
+        if (isMountedRef.current) {
+          setTicketTypes(types || []);
+        }
       }
-      setEventData(specificEventData);
+      if (isMountedRef.current) {
+        setEventData(specificEventData);
+      }
     } catch (error) {
       console.error("Error fetching event:", error);
-      toast({
-        title: t("common.error"),
-        description: t("eventDetail.toast.loadError"),
-        variant: "destructive",
-      });
-      setEvent(null);
+      if (isMountedRef.current) {
+        toast({
+          title: t("common.error"),
+          description: t("eventDetail.toast.loadError"),
+          variant: "destructive",
+        });
+        setEvent(null);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      fetchInProgressRef.current = false;
     }
   }, [id, t]);
 
+  // 🔥 HANDLE DATA REFRESH - CORRIGÉ
+  const handleDataRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    refreshTimeoutRef.current = setTimeout(() => {
+      console.log('🔄 Refresh exécuté');
+      fetchEventData();
+      if (forceRefreshUserProfile) forceRefreshUserProfile();
+      refreshTimeoutRef.current = null;
+    }, 100);
+  }, [fetchEventData, forceRefreshUserProfile]);
+
+  // 🔥 UN SEUL CHARGEMENT
   useEffect(() => {
     fetchEventData();
   }, [fetchEventData]);
 
+  // 🔥 CHARGEMENT PROMO
   useEffect(() => {
     if (event) {
       fetchPromoConfig();
     }
   }, [event, fetchPromoConfig]);
 
+  // 🔥 TRACK VIEW
   useEffect(() => {
     if (!id || !event) return;
+
+    let trackTimeout = null;
+
     const trackView = async () => {
       try {
         const { data, error } = await supabase.rpc("track_event_view", {
@@ -605,7 +684,7 @@ const EventDetailPage = () => {
           console.error("Error tracking view:", error);
           return;
         }
-        if (data && data.new_views_count !== undefined) {
+        if (data && data.new_views_count !== undefined && isMountedRef.current) {
           setEvent((prev) =>
             prev ? { ...prev, views_count: data.new_views_count } : prev,
           );
@@ -614,8 +693,13 @@ const EventDetailPage = () => {
         console.error("Exception while tracking view:", error);
       }
     };
-    const timeoutId = setTimeout(trackView, 1000);
-    return () => clearTimeout(timeoutId);
+
+    trackTimeout = setTimeout(trackView, 1000);
+    return () => {
+      if (trackTimeout) {
+        clearTimeout(trackTimeout);
+      }
+    };
   }, [id, event, userId]);
 
   const isOwner = user && event?.organizer_id === user.id;
@@ -624,6 +708,7 @@ const EventDetailPage = () => {
   useEffect(() => {
     if (isOwner && event?.event_type === "stand_rental") {
       const fetchStandStats = async () => {
+        if (!isMountedRef.current) return;
         setStandStats((prev) => ({ ...prev, loading: true }));
         try {
           const { count } = await supabase
@@ -660,35 +745,32 @@ const EventDetailPage = () => {
               0,
             ) || 0;
 
-          setStandStats({
-            total_rented: count || 0,
-            gross_revenue: gross,
-            organizer_net: net,
-            platform_fee: fee,
-            loading: false,
-          });
+          if (isMountedRef.current) {
+            setStandStats({
+              total_rented: count || 0,
+              gross_revenue: gross,
+              organizer_net: net,
+              platform_fee: fee,
+              loading: false,
+            });
+          }
         } catch (err) {
           console.error("Failed to fetch stand stats", err);
-          setStandStats((prev) => ({ ...prev, loading: false }));
+          if (isMountedRef.current) {
+            setStandStats((prev) => ({ ...prev, loading: false }));
+          }
         }
       };
       fetchStandStats();
     }
   }, [isOwner, event]);
 
-  const handleDataRefresh = () => {
-    fetchEventData();
-    if (forceRefreshUserProfile) forceRefreshUserProfile();
-  };
-
-  // ========== FONCTION DE SUPPRESSION CORRIGÉE AVEC RECHARGEMENT FORCÉ ==========
   const handleDeleteEvent = async () => {
     if (!event) return;
     setIsDeleting(true);
     try {
       console.log("Tentative de suppression de l'événement:", event.id);
 
-      // Supprimer l'image de couverture si elle existe
       if (event.cover_image) {
         const storageInfo = extractStoragePath(event.cover_image);
         if (storageInfo) {
@@ -699,7 +781,6 @@ const EventDetailPage = () => {
         }
       }
 
-      // Appeler la fonction RPC
       const { data, error } = await supabase.rpc("delete_event_completely", {
         p_event_id: event.id,
       });
@@ -717,7 +798,6 @@ const EventDetailPage = () => {
         className: "bg-green-600 text-white",
       });
 
-      // Redirection VERS LA LISTE avec flag de refresh
       navigate("/events", {
         state: {
           refresh: true,
@@ -736,7 +816,6 @@ const EventDetailPage = () => {
       setDeleteDialogOpen(false);
     }
   };
-  // ========== FIN DE LA FONCTION CORRIGÉE ==========
 
   const handleToggleSales = async () => {
     if (!isOwner) return;
@@ -879,78 +958,53 @@ const EventDetailPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {/* ========== IMAGE DE COUVERTURE AGRANDIE ========== */}
+            {/* IMAGE DE COUVERTURE */}
             <div className="relative rounded-xl overflow-hidden shadow-2xl bg-black">
-              {/* Image agrandie avec hauteur fixe */}
-              <div className="w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[550px] xl:h-[600px] relative">
-                <img
-                  src={optimizedImageUrl}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                  loading="eager"
-                  onError={(e) => {
-                    e.target.src =
-                      "https://images.unsplash.com/photo-1509930854872-0f61005b282e";
+              <div className="w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[550px] xl:h-[600px] relative overflow-hidden">
+                <div
+                  className="absolute inset-0 h-full animate-slow-pan"
+                  style={{
+                    backgroundImage: `url(${optimizedImageUrl})`,
+                    backgroundSize: 'auto 100%',
+                    backgroundPosition: 'left center',
+                    backgroundRepeat: 'no-repeat',
+                    width: 'auto',
+                    minWidth: '100%',
+                    maxWidth: '200%'
                   }}
                 />
-
-                {/* Gradient overlay pour améliorer la lisibilité */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-
-                {/* Badge en haut à gauche */}
-                <div className="absolute top-4 left-4 z-20">
-                  <Badge className="bg-black/60 backdrop-blur-sm text-white border-white/20 text-sm px-3 py-1.5">
-                    {event.category?.name || event.event_type}
-                  </Badge>
-                </div>
-
-                {/* Titre superposé en bas */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white drop-shadow-lg leading-tight">
-                    {event.title}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-4 mt-2 text-gray-300 text-sm">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(event.event_start_at).toLocaleDateString(
-                        "fr-FR",
-                        {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        },
-                      )}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {event.city}, {event.country}
-                    </span>
-                  </div>
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none" />
               </div>
-
-              {/* TikTok actions buttons repositionnées */}
+              <div className="absolute top-4 left-4 z-20">
+                <Badge className="bg-black/60 backdrop-blur-sm text-white border-white/20 text-sm px-3 py-1.5">
+                  {event.category?.name || event.event_type}
+                </Badge>
+              </div>
               <TikTokActionButtons
                 event={event}
                 onRefresh={handleDataRefresh}
                 user={user}
               />
             </div>
-            {/* ========== FIN IMAGE AGRANDIE ========== */}
 
-            <div className="flex flex-col gap-4 px-1">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="space-y-3 flex-1">
-                  {/* Badge déjà affiché sur l'image, on le cache ici pour éviter doublon */}
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black leading-tight text-white tracking-tight hidden">
-                    {event.title}
-                  </h1>
-                </div>
-                <div className="flex items-center gap-3 md:pt-2">
-                  <div className="hidden md:block">
-                    <BookmarkButton eventId={event.id} />
-                  </div>
-                </div>
+            {/* NOM DE L'ÉVÉNEMENT */}
+            <div className="px-1">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight">
+                {event.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 mt-2 text-gray-400 text-sm">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(event.event_start_at).toLocaleDateString("fr-FR", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {event.city}, {event.country}
+                </span>
               </div>
             </div>
 
@@ -1044,9 +1098,7 @@ const EventDetailPage = () => {
                   </AlertTitle>
                   <AlertDescription className="text-green-400">
                     {t("eventDetail.presaleDescription", {
-                      date: new Date(eventStartDate).toLocaleDateString(
-                        "fr-FR",
-                      ),
+                      date: new Date(eventStartDate).toLocaleDateString("fr-FR"),
                     })}
                   </AlertDescription>
                 </Alert>
@@ -1069,7 +1121,7 @@ const EventDetailPage = () => {
                 eventDate={event.event_start_at}
               />
 
-              {/* SECTION VOTE */}
+              {/* 🔥 SECTION VOTE - CORRIGÉE */}
               {event.event_type === "voting" && (
                 <>
                   {isEventFinished && (
@@ -1090,6 +1142,7 @@ const EventDetailPage = () => {
                   )}
 
                   <VotingInterface
+                    key={`voting-${event.id}-${isEventFinished}`}
                     event={event}
                     isUnlocked={true}
                     onRefresh={handleDataRefresh}
@@ -1163,6 +1216,7 @@ const EventDetailPage = () => {
             </div>
           </div>
 
+          {/* Sidebar droite */}
           <div className="space-y-6">
             {isOwner && (
               <Card className="bg-gray-900/80 backdrop-blur-sm border-blue-800/50 shadow-xl overflow-hidden">

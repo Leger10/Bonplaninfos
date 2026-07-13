@@ -1439,56 +1439,58 @@ const RaffleDrawSystem = ({ raffleData, eventData, isOrganizer, onDrawComplete, 
                 </DialogContent>
             </Dialog>
             
-            <AlertDialog open={showFinalConfirmDialog} onOpenChange={setShowFinalConfirmDialog}>
-                <AlertDialogContent className="border-2 border-red-500/50">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-red-400">
-                            <AlertTriangle className="w-6 h-6" />
-                            DERNIÈRE CONFIRMATION REQUISE
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-gray-300">
-                            <div className="space-y-3">
-                                <p className="font-bold">
-                                    ⚠️ CETTE ACTION EST DÉFINITIVE ET SERA VISIBLE PAR TOUS !
-                                </p>
-                                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                                    <p className="text-sm">
-                                        Le tirage sera lancé immédiatement et <span className="font-bold text-yellow-400">TOUS LES PARTICIPANTS</span>{' '}
-                                        verront le déroulement en direct sur leur écran.
-                                    </p>
-                                </div>
-                                <p>
-                                    <span className="font-bold">Veuillez confirmer une dernière fois :</span>
-                                    Êtes-vous ABSOLUMENT certain de vouloir lancer le tirage maintenant ?
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700">
-                            Non, annuler
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleLaunchDraw}
-                            disabled={isLaunching}
-                            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
-                        >
-                            {isLaunching ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Lancement en cours...
-                                </>
-                            ) : (
-                                <>
-                                    <Shuffle className="w-4 h-4 mr-2" />
-                                    OUI, LANCER LE TIRAGE
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            
+       
+
+<AlertDialog open={showFinalConfirmDialog} onOpenChange={setShowFinalConfirmDialog}>
+    <AlertDialogContent className="border-2 border-red-500/50">
+        <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-400">
+                <AlertTriangle className="w-6 h-6" />
+                DERNIÈRE CONFIRMATION REQUISE
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+                <div className="space-y-3">
+                    {/* Utiliser des divs au lieu de p pour éviter l'imbrication */}
+                    <div className="font-bold text-red-300">
+                        ⚠️ CETTE ACTION EST DÉFINITIVE ET SERA VISIBLE PAR TOUS !
+                    </div>
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                        <div className="text-sm">
+                            Le tirage sera lancé immédiatement et <span className="font-bold text-yellow-400">TOUS LES PARTICIPANTS</span>{' '}
+                            verront le déroulement en direct sur leur écran.
+                        </div>
+                    </div>
+                    <div>
+                        <span className="font-bold">Veuillez confirmer une dernière fois :</span>
+                        {' '}Êtes-vous ABSOLUMENT certain de vouloir lancer le tirage maintenant ?
+                    </div>
+                </div>
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogCancel className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700">
+                Non, annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+                onClick={handleLaunchDraw}
+                disabled={isLaunching}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+            >
+                {isLaunching ? (
+                    <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Lancement en cours...
+                    </>
+                ) : (
+                    <>
+                        <Shuffle className="w-4 h-4 mr-2" />
+                        OUI, LANCER LE TIRAGE
+                    </>
+                )}
+            </AlertDialogAction>
+        </AlertDialogFooter>
+    </AlertDialogContent>
+</AlertDialog>
             {/* Modal des résultats (visible par tous) */}
             {showResultsView && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 overflow-y-auto">

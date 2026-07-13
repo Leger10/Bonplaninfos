@@ -1,3 +1,4 @@
+// main.jsx - Version sans Router
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "@/App.jsx";
@@ -6,7 +7,10 @@ import { HelmetProvider } from "react-helmet-async";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { initI18n } from "./i18n";
 import LanguageTutorial from "@/components/tutorial/LanguageTutorial";
-import { LanguageProvider } from "@/contexts/LanguageContext"; // ✅ AJOUT
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "@/contexts/ThemeContext"; 
+import { AuthProvider } from "@/contexts/SupabaseAuthContext";
+import { DataProvider } from "@/contexts/DataContext";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -26,10 +30,16 @@ if ("serviceWorker" in navigator) {
     <React.StrictMode>
       <HelmetProvider>
         <ErrorBoundary>
-          <LanguageProvider> {/* ✅ CONTEXTE GLOBAL */}
-            <LanguageTutorial />
-            <App />
-          </LanguageProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <DataProvider>
+                  <LanguageTutorial />
+                  <App /> {/* 🔥 App contient déjà BrowserRouter */}
+                </DataProvider>
+              </AuthProvider>
+            </LanguageProvider>
+          </ThemeProvider>
         </ErrorBoundary>
       </HelmetProvider>
     </React.StrictMode>

@@ -366,19 +366,68 @@ export class CouponService {
     }
   }
 
+  /**
+   * Récupère tous les usages de coupons avec les données associées
+   * Version sécurisée qui gère les erreurs de relations
+   */
   static async getAllCouponUsages() {
     try {
-      const { data, error } = await supabase
+      // Premièrement, récupérer tous les usages
+      const { data: usages, error: usageError } = await supabase
         .from('coupon_usages')
-        .select(`
-          *,
-          coupon:coupon_code(code),
-          user:user_id(full_name, email),
-          payment:payment_id(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return { data, error: null };
+      
+      if (usageError) throw usageError;
+      
+      // Si aucun usage, retourner un tableau vide
+      if (!usages || usages.length === 0) {
+        return { data: [], error: null };
+      }
+
+      // Extraire les IDs uniques pour les requêtes associées
+      const couponCodes = [...new Set(usages.map(u => u.coupon_code).filter(Boolean))];
+      const userIds = [...new Set(usages.map(u => u.user_id).filter(Boolean))];
+      const paymentIds = [...new Set(usages.map(u => u.payment_id).filter(Boolean))];
+
+      // Récupérer les données associées en parallèle
+      const [couponsResult, usersResult, paymentsResult] = await Promise.all([
+        couponCodes.length > 0 
+          ? supabase.from('coupons').select('code, *').in('code', couponCodes)
+          : { data: [], error: null },
+        userIds.length > 0
+          ? supabase.from('users').select('id, full_name, email').in('id', userIds)
+          : { data: [], error: null },
+        paymentIds.length > 0
+          ? supabase.from('payments').select('*').in('id', paymentIds)
+          : { data: [], error: null }
+      ]);
+
+      // Créer des maps pour un accès rapide
+      const couponsMap = {};
+      (couponsResult.data || []).forEach(c => {
+        couponsMap[c.code] = c;
+      });
+
+      const usersMap = {};
+      (usersResult.data || []).forEach(u => {
+        usersMap[u.id] = u;
+      });
+
+      const paymentsMap = {};
+      (paymentsResult.data || []).forEach(p => {
+        paymentsMap[p.id] = p;
+      });
+
+      // Enrichir les données
+      const enrichedData = usages.map(usage => ({
+        ...usage,
+        coupon: couponsMap[usage.coupon_code] || null,
+        user: usersMap[usage.user_id] || null,
+        payment: paymentsMap[usage.payment_id] || null
+      }));
+
+      return { data: enrichedData, error: null };
     } catch (error) {
       console.error('[CouponService] getAllCouponUsages error:', error);
       return { data: null, error };

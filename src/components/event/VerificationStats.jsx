@@ -121,11 +121,12 @@ const VerificationStats = ({ eventId, organizerId }) => {
           .eq('event_id', eventIdStr)
           .eq('status', 'active');
         
-      onst { count: guestTickets } = await supabase
-  .from('tickets')
-  .select('*', { count: 'exact', head: true })
-  .eq('event_id', eventIdStr)
-  .is('user_id', null); // ← CORRECTION
+        // 6. 🔥 Tickets sans compte - NULL + guest_%
+        const { count: guestTickets } = await supabase
+          .from('tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_id', eventIdStr)
+          .or('user_id.is.null,user_id.like.guest_%');
         
         // 7. Tickets MoneyFusion
         const { count: moneyFusionTickets } = await supabase
@@ -134,13 +135,13 @@ const VerificationStats = ({ eventId, organizerId }) => {
           .eq('event_id', eventIdStr)
           .eq('payment_method', 'moneyfusion_ticket');
         
-        // 8. 🔥 Tickets MoneyFusion sans compte - UNIQUEMENT NULL
+        // 8. 🔥 Tickets MoneyFusion sans compte - NULL + guest_%
         const { count: moneyFusionGuestTickets } = await supabase
           .from('tickets')
           .select('*', { count: 'exact', head: true })
           .eq('event_id', eventIdStr)
           .eq('payment_method', 'moneyfusion_ticket')
-          .is('user_id', null);
+          .or('user_id.is.null,user_id.like.guest_%');
         
         // 9. Tickets MoneyFusion avec compte
         const moneyFusionAccountTickets = moneyFusionTickets - moneyFusionGuestTickets;

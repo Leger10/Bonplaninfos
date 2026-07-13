@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
 import { toast } from "@/components/ui/use-toast";
@@ -61,7 +61,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import WalletInfoModal from "@/components/WalletInfoModal";
-import jsPDF from "jspdf";
 import Confetti from "react-confetti";
 
 const Separator = ({
@@ -312,8 +311,12 @@ const CountdownTimer = ({ endDate, onTimerEnd }) => {
     expired: false,
   });
   const [showUrgency, setShowUrgency] = useState(false);
+  const timerEndCalledRef = useRef(false);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
+    timerEndCalledRef.current = false;
+
     const calculateTimeLeft = () => {
       if (!endDate) return;
 
@@ -330,7 +333,10 @@ const CountdownTimer = ({ endDate, onTimerEnd }) => {
           expired: true,
         });
         setShowUrgency(false);
-        if (onTimerEnd) onTimerEnd();
+        if (!timerEndCalledRef.current && onTimerEnd) {
+          timerEndCalledRef.current = true;
+          onTimerEnd();
+        }
         return;
       }
 
@@ -342,13 +348,23 @@ const CountdownTimer = ({ endDate, onTimerEnd }) => {
       const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
       setTimeLeft({ days, hours, minutes, seconds, expired: false });
-
       setShowUrgency(days === 0 && hours <= 24);
     };
 
     calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 1000);
-    return () => clearInterval(timer);
+    
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    intervalRef.current = setInterval(calculateTimeLeft, 1000);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [endDate, onTimerEnd]);
 
   if (timeLeft.expired)
@@ -521,7 +537,7 @@ const CandidateCard = ({
 
       const platformFeePercent = 0;
       const platformFee = 0;
-      const netAmount = totalCostPi; // 100% à l'organisateur
+      const netAmount = totalCostPi;
 
       const newBalance = (userData.coin_balance || 0) - totalCostPi;
       const { error: debitError } = await supabase
@@ -715,7 +731,6 @@ const CandidateCard = ({
         className={`bg-gradient-to-br from-gray-900 to-gray-800 border ${isSelected ? "border-emerald-500 ring-2 ring-emerald-500/50" : "border-gray-700"} rounded-2xl p-4 relative overflow-hidden group hover:border-emerald-500/50 transition-all cursor-pointer`}
         onClick={() => setShowDetails(true)}
       >
-        {/* Badges de catégorie et rang - inchangés */}
         {candidate.category && candidate.category !== "Général" && (
           <div className="absolute top-0 right-0 z-10">
             <Badge
@@ -751,7 +766,6 @@ const CandidateCard = ({
           </div>
         )}
 
-        {/* En-tête avec photo et nom - inchangé */}
         <div className="flex items-start gap-3 mb-3 mt-2">
           <div className="relative">
             <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500/50 cursor-pointer shrink-0 shadow-lg group-hover:shadow-emerald-900/50 transition-all">
@@ -810,10 +824,8 @@ const CandidateCard = ({
           </div>
         </div>
 
-        {/* SECTION MODIFIÉE : Bloc de vote avec vérification de connexion */}
         {!isVotingLocked ? (
           !user ? (
-            // 📢 Message pour inviter à se connecter
             <div className="space-y-3 p-3 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-700/30 text-center">
               <UserCircle className="w-8 h-8 text-blue-400 mx-auto mb-2" />
               <p className="text-sm text-blue-300 font-medium">
@@ -832,7 +844,6 @@ const CandidateCard = ({
               </p>
             </div>
           ) : (
-            // Interface de vote pour les utilisateurs connectés
             <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between bg-gray-800 p-1.5 rounded-lg border border-gray-700/50">
                 <Button
@@ -941,7 +952,6 @@ const CandidateCard = ({
                 </Button>
               </div>
 
-              {/* Messages de motivation existants */}
               {!isVotingLocked && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -977,7 +987,6 @@ const CandidateCard = ({
                 </motion.div>
               )}
 
-              {/* Messages de rang existants */}
               {rank === 2 && gapToNext && (
                 <motion.p
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -1308,6 +1317,9 @@ const CandidateCard = ({
   );
 };
 
+// ============================================================
+// 🎯 VOTING INTERFACE - VERSION CORRIGÉE
+// ============================================================
 const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [candidates, setCandidates] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -1332,109 +1344,204 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [availableCategories, setAvailableCategories] = useState(["Tous"]);
   const [rankingFilter, setRankingFilter] = useState("Tous");
 
-  // Dans VotingInterface.jsx
+  // 🔥 REFS POUR ÉVITER LES RENDER INFINIS
+  const eventIdRef = useRef(event?.id);
+  const isClosedRef = useRef(isClosed);
+  const isMountedRef = useRef(true);
+  const isLoadingRef = useRef(false);
+  const timerIntervalRef = useRef(null);
+  const initialLoadDoneRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
 
-const fetchData = useCallback(async () => {
-    if (!event?.id) return;
+  // 🔥 METTRE À JOUR LES REFS
+  useEffect(() => {
+    eventIdRef.current = event?.id;
+    isClosedRef.current = isClosed;
+    onRefreshRef.current = onRefresh;
+  }, [event?.id, isClosed, onRefresh]);
+
+  // 🔥 CHARGEMENT DES CANDIDATS - AVEC VERROU
+  const loadCandidates = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('⏳ Chargement déjà en cours, ignoré');
+      return;
+    }
+
+    const currentEventId = eventIdRef.current;
+    if (!currentEventId) {
+      console.log('ℹ️ Pas d\'event ID');
+      return;
+    }
+    
+    isLoadingRef.current = true;
     setLoadingCandidates(true);
+    
     try {
-      // Charger les candidats (toujours, même si événement terminé)
+      console.log('🔍 Chargement des candidats pour event:', currentEventId);
+      
       const { data: cData, error: cError } = await supabase
         .from("candidates")
         .select("*")
-        .eq("event_id", event.id)
+        .eq("event_id", currentEventId)
         .order("vote_count", { ascending: false });
 
-      if (cError) throw cError;
+      if (cError) {
+        console.error("❌ Erreur chargement candidats:", cError);
+        if (isMountedRef.current) {
+          setCandidates([]);
+        }
+        return;
+      }
 
-      // Vérifier le statut de l'événement
+      if (isMountedRef.current) {
+        if (cData && cData.length > 0) {
+          console.log(`✅ ${cData.length} candidats chargés`);
+          setCandidates(cData);
+          const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
+          if (cats.length > 0) {
+            setAvailableCategories(["Tous", ...cats.sort()]);
+          }
+        } else {
+          console.log('ℹ️ Aucun candidat trouvé');
+          setCandidates([]);
+          setAvailableCategories(["Tous"]);
+        }
+      }
+
+    } catch (error) {
+      console.error("❌ Erreur chargement candidats:", error);
+      if (isMountedRef.current) {
+        setCandidates([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingCandidates(false);
+      }
+      isLoadingRef.current = false;
+    }
+  }, []);
+
+  // 🔥 CHARGEMENT DU STATUT - AVEC VÉRIFICATION
+  const loadEventStatus = useCallback(async () => {
+    const currentEventId = eventIdRef.current;
+    if (!currentEventId) return;
+    
+    try {
       const { data: sData, error: sError } = await supabase
         .from("events")
-        .select("event_end_at, is_sales_closed")
-        .eq("id", event.id)
+        .select("event_end_at, is_sales_closed, price_pi, start_date")
+        .eq("id", currentEventId)
         .maybeSingle();
 
       if (sError) {
-        console.error("Error loading settings:", sError);
+        console.error("❌ Erreur chargement événement:", sError);
+        return;
       }
 
-      // Récupérer le solde de l'utilisateur si connecté
-      if (user) {
-        const { data: uData, error: uError } = await supabase
-          .from("profiles")
-          .select("coin_balance")
-          .eq("id", user.id)
-          .single();
-
-        if (!uError) {
-          setUserPaidBalance(uData?.coin_balance || 0);
-        }
+      if (!sData) {
+        console.log('ℹ️ Événement non trouvé');
+        return;
       }
 
-      // Déterminer si l'événement est terminé (basé sur la date)
       const now = new Date();
-      const endDate = sData?.event_end_at ? new Date(sData.event_end_at) : null;
+      const endDate = sData.event_end_at ? new Date(sData.event_end_at) : null;
       const isExpired = endDate ? now > endDate : false;
+      const finalIsFinished = isExpired || isClosedRef.current;
 
-      // Si l'événement est terminé via la date, ou si isClosed est true
-      const finalIsFinished = isExpired || isClosed;
-
-      setIsVoteFinished(finalIsFinished);
-
-      if (cData) {
-        setCandidates(cData);
-        const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
-        if (cats.length > 0) {
-          setAvailableCategories(["Tous", ...cats.sort()]);
+      if (isMountedRef.current && isVoteFinished !== finalIsFinished) {
+        setIsVoteFinished(finalIsFinished);
+        if (finalIsFinished && timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
         }
       }
 
-      // Configuration du prix (même si événement terminé)
-      let votePrice = 1;
-      if (sData) {
-        const possiblePriceColumns = [
-          "price_pi",
-          "vote_price",
-          "price",
-          "vote_cost",
-          "vote_price_fcfa",
-        ];
+      const votePrice = Number(sData.price_pi) || 1;
 
-        for (const col of possiblePriceColumns) {
-          if (sData[col] !== undefined && sData[col] !== null) {
-            votePrice = Number(sData[col]);
-            break;
-          }
-        }
-      }
-
-      const settingsData = {
+      const newSettings = {
         price_pi: votePrice,
-        event_end_at:
-          sData?.event_end_at || new Date(Date.now() + 86400000).toISOString(),
-        start_date: sData?.start_date || new Date().toISOString(),
+        event_end_at: sData.event_end_at || new Date(Date.now() + 86400000).toISOString(),
+        start_date: sData.start_date || new Date().toISOString(),
       };
 
-      setSettings(settingsData);
+      if (isMountedRef.current && JSON.stringify(settings) !== JSON.stringify(newSettings)) {
+        setSettings(newSettings);
+      }
+
     } catch (error) {
-      console.error("Error fetching voting data:", error);
-      toast({
-        title: "Erreur de chargement",
-        description: "Impossible de charger les données des candidats.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingCandidates(false);
+      console.error("❌ Erreur chargement statut événement:", error);
     }
-  }, [event?.id, user, isClosed]);
+  }, [isVoteFinished, settings]);
 
-  // MODIFICATION ICI : Enlever isClosed des dépendances
-  useEffect(() => {
-    fetchData();
-  }, [fetchData, event?.id]); // isClosed retiré !
+  // 🔥 CHARGEMENT DU SOLDE
+  const loadUserBalance = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { data: uData, error: uError } = await supabase
+        .from("profiles")
+        .select("coin_balance")
+        .eq("id", user.id)
+        .single();
 
+      if (!uError && uData && isMountedRef.current) {
+        setUserPaidBalance(uData.coin_balance || 0);
+      }
+    } catch (err) {
+      console.warn("⚠️ Erreur récupération solde:", err);
+    }
+  }, [user]);
+
+  // 🔥 USEEFFECT PRINCIPAL - UN SEUL CHARGEMENT
   useEffect(() => {
-    if (!settings?.event_end_at) return;
+    isMountedRef.current = true;
+    
+    const loadAll = async () => {
+      await loadCandidates();
+      await loadEventStatus();
+      if (user) {
+        await loadUserBalance();
+      }
+      initialLoadDoneRef.current = true;
+    };
+    
+    loadAll();
+
+    return () => {
+      isMountedRef.current = false;
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // 🔥 RECHARGER QUAND L'EVENT CHANGE
+  useEffect(() => {
+    if (event?.id && event.id !== eventIdRef.current) {
+      eventIdRef.current = event.id;
+      setIsVoteFinished(false);
+      loadCandidates();
+      loadEventStatus();
+    }
+  }, [event?.id, loadCandidates, loadEventStatus]);
+
+  // 🔥 RECHARGER QUAND isClosed CHANGE
+  useEffect(() => {
+    isClosedRef.current = isClosed;
+    loadEventStatus();
+  }, [isClosed, loadEventStatus]);
+
+  // ⏱️ TIMER - CORRIGÉ : NE S'ACTIVE QUE SI LE VOTE N'EST PAS TERMINÉ
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    if (!settings?.event_end_at || isVoteFinished) {
+      return;
+    }
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -1444,36 +1551,63 @@ const fetchData = useCallback(async () => {
       if (distance > 0) {
         setTimeLeft({
           days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor(
-            (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-          ),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
           minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
           seconds: Math.floor((distance % (1000 * 60)) / 1000),
         });
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        if (!isVoteFinished) {
+          setIsVoteFinished(true);
+        }
       }
     };
 
     calculateTimeLeft();
-    const interval = setInterval(() => {
+    
+    timerIntervalRef.current = setInterval(() => {
       const now = new Date();
       const endDate = new Date(settings.event_end_at);
       const isExpired = now.getTime() > endDate.getTime();
 
-      if (isExpired !== isVoteFinished) {
-        setIsVoteFinished(isExpired);
-        if (onRefresh) onRefresh();
+      if (isExpired && !isVoteFinished) {
+        setIsVoteFinished(true);
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        if (onRefreshRef.current) {
+          onRefreshRef.current();
+        }
       }
 
-      calculateTimeLeft();
+      if (!isVoteFinished) {
+        calculateTimeLeft();
+      }
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [settings?.event_end_at, isVoteFinished, onRefresh]);
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [settings?.event_end_at, isVoteFinished]);
+
+  // 🔥 FONCTION DE RAFRAÎCHISSEMENT MANUEL
+  const refreshData = useCallback(() => {
+    if (isLoadingRef.current) {
+      console.log('⏳ Rafraîchissement déjà en cours, ignoré');
+      return;
+    }
+    loadCandidates();
+    loadEventStatus();
+    if (user) {
+      loadUserBalance();
+    }
+  }, [loadCandidates, loadEventStatus, loadUserBalance, user]);
 
   const handleCheckout = async () => {
-    // 🔐 VÉRIFICATION PRIORITAIRE : Utilisateur connecté ?
     if (!user) {
       navigate("/auth");
       toast({
@@ -1573,7 +1707,7 @@ const fetchData = useCallback(async () => {
           const platformFee = Math.ceil(
             itemTotalCost * (platformFeePercent / 100),
           );
-          const netAmount = itemTotalCost; // 100% à l'organisateur
+          const netAmount = itemTotalCost;
 
           await TransactionService.createVoteTransaction(
             user.id,
@@ -1688,8 +1822,8 @@ const fetchData = useCallback(async () => {
       });
 
       setCartItems([]);
-      fetchData();
-      if (onRefresh) onRefresh();
+      refreshData();
+      if (onRefreshRef.current) onRefreshRef.current();
     } catch (e) {
       console.error("Checkout error:", e);
       toast({
@@ -1701,6 +1835,7 @@ const fetchData = useCallback(async () => {
       setIsProcessingCheckout(false);
     }
   };
+  
   const totalVotes = candidates.reduce(
     (sum, c) => sum + (c.vote_count || 0),
     0,
@@ -1738,428 +1873,83 @@ const fetchData = useCallback(async () => {
     return result.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
   }, [candidates, rankingFilter]);
 
-  const generateRankingPDF = (type) => {
-    const doc = new jsPDF();
-    let listToExport = [];
-    let pdfTitle = "";
-    let filename = "";
-
-    // Fonction pour nettoyer les caractères spéciaux
-    const cleanText = (text) => {
-      if (!text) return "-";
-      // Remplacer les caractères accentués par leurs équivalents simples
-      return text
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[œŒ]/g, "oe")
-        .replace(/[æÆ]/g, "ae")
-        .replace(/[^a-zA-Z0-9\s\-_]/g, "");
-    };
-
-    // Nettoyer le titre de l'événement
-    const cleanEventTitle = cleanText(event.title).toUpperCase();
-
-    // Déterminer le type de classement à exporter
-    if (type === "general") {
-      listToExport = [...candidates].sort(
-        (a, b) => (b.vote_count || 0) - (a.vote_count || 0),
-      );
-      pdfTitle = "CLASSEMENT GENERAL";
-      filename = "classement_general";
-    } else if (type === "category_best") {
-      const categories = [
-        ...new Set(candidates.map((c) => c.category).filter(Boolean)),
-      ].sort();
-      listToExport = categories
-        .map((cat) => {
-          const catCandidates = candidates.filter((c) => c.category === cat);
-          return catCandidates.sort(
-            (a, b) => (b.vote_count || 0) - (a.vote_count || 0),
-          )[0];
-        })
-        .filter(Boolean);
-      listToExport.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-
-      pdfTitle = "MEILLEURS PAR CATEGORIE";
-      filename = "meilleurs_par_categorie";
-    } else if (type === "category_full") {
-      const categories = [
-        ...new Set(candidates.map((c) => c.category).filter(Boolean)),
-      ].sort();
-
-      pdfTitle = "CLASSEMENT COMPLET PAR CATEGORIE";
-      filename = "classement_complet_par_categorie";
-
-      // Appeler la fonction pour le classement complet par catégorie
-      generateCategoryFullPDF(
-        doc,
-        categories,
-        candidates,
-        totalVotes,
-        event,
-        pdfTitle,
-        filename,
-        cleanText,
-        cleanEventTitle,
-      );
-      return;
-    } else {
-      listToExport = rankedCandidatesFiltered;
-      pdfTitle =
-        "CLASSEMENT " +
-        (rankingFilter === "Tous"
-          ? "GENERAL"
-          : cleanText(rankingFilter).toUpperCase());
-      filename = "classement_" + cleanText(rankingFilter);
-    }
-
-    // Style du PDF
-    const primaryColor = [16, 185, 129];
-    const secondaryColor = [75, 85, 99];
-    const accentColor = [234, 179, 8];
-
-    // En-tête
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 40, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text(pdfTitle, 105, 20, { align: "center" });
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(cleanEventTitle, 105, 30, { align: "center" });
-
-    // Informations
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(10);
-    const dateStr = new Date().toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    doc.text(`Genere le : ${dateStr}`, 14, 50);
-    if (type !== "general" && type !== "category_best") {
-      doc.text(`Categorie : ${cleanText(rankingFilter)}`, 14, 55);
-    }
-    doc.text(`Total des votes : ${totalVotes}`, 14, 60);
-
-    let y = 70;
-    const colX = { rank: 15, name: 40, cat: 110, votes: 160, share: 190 };
-
-    // En-tête du tableau
-    doc.setFillColor(240, 240, 240);
-    doc.rect(14, y - 6, 182, 9, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...secondaryColor);
-    doc.setFontSize(9);
-    doc.text("RANG", colX.rank, y);
-    doc.text("CANDIDAT", colX.name, y);
-    doc.text("CATEGORIE", colX.cat, y);
-    doc.text("VOTES", colX.votes, y, { align: "right" });
-    doc.text("SCORE", colX.share, y, { align: "right" });
-
-    y += 10;
-
-    // Remplissage du tableau
-    listToExport.forEach((c, index) => {
-      if (y > 275) {
-        doc.addPage();
-        y = 20;
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`${pdfTitle} - ${cleanEventTitle} (Suite)`, 14, 10);
-
-        // Réafficher l'en-tête du tableau sur la nouvelle page
-        doc.setFillColor(240, 240, 240);
-        doc.rect(14, y - 6, 182, 9, "F");
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(...secondaryColor);
-        doc.setFontSize(9);
-        doc.text("RANG", colX.rank, y);
-        doc.text("CANDIDAT", colX.name, y);
-        doc.text("CATEGORIE", colX.cat, y);
-        doc.text("VOTES", colX.votes, y, { align: "right" });
-        doc.text("SCORE", colX.share, y, { align: "right" });
-        y += 10;
-      }
-
-      const rank = index + 1;
-      const share =
-        totalVotes > 0
-          ? (((c.vote_count || 0) / totalVotes) * 100).toFixed(1)
-          : "0.0";
-
-      // Mise en évidence du top 3
-      if (rank <= 3) {
-        doc.setFillColor(
-          rank === 1 ? 255 : 250,
-          rank === 1 ? 248 : 250,
-          rank === 1 ? 220 : 250,
-        );
-        doc.setDrawColor(
-          rank === 1 ? accentColor[0] : 220,
-          rank === 1 ? accentColor[1] : 220,
-          rank === 1 ? 0 : 220,
-        );
-        doc.rect(14, y - 6, 182, 10, "FD");
-      }
-
-      doc.setFontSize(10);
-      if (rank === 1) doc.setTextColor(...accentColor);
-      else if (rank === 2) doc.setTextColor(150, 150, 150);
-      else if (rank === 3) doc.setTextColor(165, 80, 30);
-      else doc.setTextColor(0, 0, 0);
-
-      doc.setFont("helvetica", "bold");
-      doc.text(`#${rank}`, colX.rank, y);
-
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
-      doc.text(cleanText(c.name), colX.name, y);
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      doc.text(cleanText(c.category) || "-", colX.cat, y);
-
-      doc.setTextColor(0, 0, 0);
-      doc.text((c.vote_count || 0).toString(), colX.votes, y, {
-        align: "right",
-      });
-
-      doc.setTextColor(...primaryColor);
-      doc.setFont("helvetica", "bold");
-      doc.text(share + "%", colX.share, y, { align: "right" });
-
-      doc.setDrawColor(230, 230, 230);
-      doc.line(14, y + 4, 196, y + 4);
-
-      y += 12;
-    });
-
-    // Pied de page
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `BonPlanInfos - Systeme de Vote Securise ${new Date().getFullYear()}`,
-        105,
-        290,
-        { align: "center" },
-      );
-      doc.text(`Page ${i}/${pageCount}`, 196, 290, { align: "right" });
-    }
-
-    const safeName = cleanText(event.title)
-      .substring(0, 15)
-      .replace(/[^a-z0-9]/gi, "_");
-    doc.save(`${filename}_${safeName}.pdf`);
-    toast({
-      title: "PDF genere",
-      description: "Le classement a ete telecharge avec succes.",
-    });
-  };
-
-  // Fonction pour générer le classement complet par catégorie
-  const generateCategoryFullPDF = (
-    doc,
-    categories,
-    candidates,
-    totalVotes,
-    event,
-    pdfTitle,
-    filename,
-    cleanText,
-    cleanEventTitle,
-  ) => {
-    const primaryColor = [16, 185, 129];
-    const secondaryColor = [75, 85, 99];
-
-    let y = 70;
-
-    // En-tête principal
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 40, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text(pdfTitle, 105, 20, { align: "center" });
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(cleanEventTitle, 105, 30, { align: "center" });
-
-    // Informations
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(10);
-    const dateStr = new Date().toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    doc.text(`Genere le : ${dateStr}`, 14, 50);
-    doc.text(`Total des votes : ${totalVotes}`, 14, 55);
-
-    // Pour chaque catégorie
-    categories.forEach((category) => {
-      const categoryCandidates = candidates
-        .filter((c) => c.category === category)
-        .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
-
-      if (categoryCandidates.length === 0) return;
-
-      // Vérifier si on a besoin d'une nouvelle page
-      if (y > 250) {
-        doc.addPage();
-        y = 20;
-
-        // Ajouter un en-tête de page
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`${pdfTitle} - ${cleanEventTitle} (Suite)`, 14, 10);
-      }
-
-      // Titre de la catégorie
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2], 0.1);
-      doc.setDrawColor(...primaryColor);
-      doc.rect(14, y - 6, 182, 9, "FD");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(...primaryColor);
-      doc.text(`>> ${cleanText(category)}`, 18, y);
-      y += 10;
-
-      // En-tête du tableau pour cette catégorie
-      doc.setFillColor(240, 240, 240);
-      doc.rect(14, y - 6, 182, 9, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...secondaryColor);
-      doc.setFontSize(9);
-      doc.text("RANG", 18, y);
-      doc.text("CANDIDAT", 45, y);
-      doc.text("VOTES", 150, y, { align: "right" });
-      doc.text("SCORE", 190, y, { align: "right" });
-
-      y += 10;
-
-      // Liste des candidats de la catégorie
-      categoryCandidates.forEach((c, index) => {
-        if (y > 275) {
-          doc.addPage();
-          y = 20;
-
-          // Rappel du contexte
-          doc.setFontSize(8);
-          doc.setTextColor(150, 150, 150);
-          doc.text(`${pdfTitle} - ${cleanEventTitle} (Suite)`, 14, 10);
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(12);
-          doc.setTextColor(...primaryColor);
-          doc.text(`>> ${cleanText(category)} (suite)`, 18, y);
-          y += 10;
-
-          // Réafficher l'en-tête
-          doc.setFillColor(240, 240, 240);
-          doc.rect(14, y - 6, 182, 9, "F");
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(...secondaryColor);
-          doc.setFontSize(9);
-          doc.text("RANG", 18, y);
-          doc.text("CANDIDAT", 45, y);
-          doc.text("VOTES", 150, y, { align: "right" });
-          doc.text("SCORE", 190, y, { align: "right" });
-          y += 10;
-        }
-
-        const rank = index + 1;
-        const score =
-          totalVotes > 0
-            ? (((c.vote_count || 0) / totalVotes) * 100).toFixed(1)
-            : "0.0";
-
-        doc.setFontSize(9);
-        doc.setTextColor(0, 0, 0);
-
-        // Rang
-        if (rank === 1) {
-          doc.setTextColor(...primaryColor);
-          doc.setFont("helvetica", "bold");
-          doc.text("#1", 18, y);
-        } else if (rank === 2) {
-          doc.setTextColor(150, 150, 150);
-          doc.setFont("helvetica", "bold");
-          doc.text("#2", 18, y);
-        } else if (rank === 3) {
-          doc.setTextColor(165, 80, 30);
-          doc.setFont("helvetica", "bold");
-          doc.text("#3", 18, y);
-        } else {
-          doc.setTextColor(100, 100, 100);
-          doc.setFont("helvetica", "normal");
-          doc.text(`#${rank}`, 18, y);
-        }
-
-        // Nom du candidat
-        doc.setTextColor(0, 0, 0);
-        doc.setFont("helvetica", "bold");
-        doc.text(cleanText(c.name), 45, y);
-
-        // Votes
-        doc.setTextColor(0, 0, 0);
-        doc.text((c.vote_count || 0).toString(), 150, y, { align: "right" });
-
-        // Score
-        doc.setTextColor(...primaryColor);
-        doc.setFont("helvetica", "bold");
-        doc.text(score + "%", 190, y, { align: "right" });
-
-        doc.setDrawColor(230, 230, 230);
-        doc.line(14, y + 3, 196, y + 3);
-
-        y += 8;
-      });
-
-      y += 5; // Espace entre les catégories
-    });
-
-    // Pied de page
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `BonPlanInfos - Systeme de Vote Securise ${new Date().getFullYear()}`,
-        105,
-        290,
-        { align: "center" },
-      );
-      doc.text(`Page ${i}/${pageCount}`, 196, 290, { align: "right" });
-    }
-
-    const safeName = cleanText(event.title)
-      .substring(0, 15)
-      .replace(/[^a-z0-9]/gi, "_");
-    doc.save(`${filename}_${safeName}.pdf`);
-    toast({
-      title: "PDF genere",
-      description:
-        "Le classement complet par categorie a ete telecharge avec succes.",
-    });
-  };
   if (!isUnlocked) return null;
 
+  // 🔥 Si le vote est terminé, afficher le classement final avec les candidats cliquables
+  if (isVoteFinished) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-amber-950/30 to-orange-950/30 border border-amber-800/50 rounded-2xl p-8 text-center">
+          <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-white mb-2">🏁 Vote terminé !</h3>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Ce concours est maintenant clos. Voici le classement final.
+          </p>
+        </div>
+
+        {candidates.length > 0 && (
+          <Card className="bg-gray-800 border-gray-700 shadow-xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-b from-gray-800 to-gray-900 border-b border-gray-700 pb-6">
+              <CardTitle className="text-white flex items-center gap-2 text-xl">
+                <Trophy className="text-yellow-500 w-6 h-6" />
+                Classement Final
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-gray-700/50">
+                {[...candidates]
+                  .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
+                  .map((c, i) => {
+                    const rank = i + 1;
+                    const total = candidates.reduce((sum, cand) => sum + (cand.vote_count || 0), 0);
+                    const percentage = total > 0 ? ((c.vote_count || 0) / total * 100).toFixed(1) : 0;
+                    
+                    let rankBadge;
+                    if (rank === 1)
+                      rankBadge = (
+                        <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 text-black w-8 h-8 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                          <Crown className="w-5 h-5" />
+                        </div>
+                      );
+                    else if (rank === 2)
+                      rankBadge = (
+                        <div className="bg-gray-300 text-gray-800 w-8 h-8 rounded-full flex items-center justify-center font-bold border border-gray-400">
+                          2
+                        </div>
+                      );
+                    else if (rank === 3)
+                      rankBadge = (
+                        <div className="bg-orange-700 text-orange-100 w-8 h-8 rounded-full flex items-center justify-center font-bold border border-orange-600">
+                          3
+                        </div>
+                      );
+                    else
+                      rankBadge = (
+                        <span className="text-gray-500 font-mono font-bold text-lg w-8 text-center">
+                          #{rank}
+                        </span>
+                      );
+
+                    return (
+                      <FinalRankingItem
+                        key={c.id}
+                        candidate={c}
+                        rank={rank}
+                        rankBadge={rankBadge}
+                        percentage={percentage}
+                        totalVotes={total}
+                      />
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // 🔥 RENDU NORMAL QUAND LE VOTE EST EN COURS
   return (
     <div className="mt-8 space-y-6 relative">
       {showConfetti && <Confetti recycle={false} numberOfPieces={200} />}
@@ -2217,6 +2007,18 @@ const fetchData = useCallback(async () => {
           <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mx-auto mb-4" />
           <p className="text-gray-400">Chargement des candidats...</p>
         </div>
+      ) : candidates.length === 0 ? (
+        <div className="text-center py-16 bg-gray-800/30 rounded-xl border border-gray-700 border-dashed">
+          <div className="bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Search className="w-8 h-8 text-gray-500" />
+          </div>
+          <h3 className="text-lg font-medium text-white mb-1">
+            Aucun candidat
+          </h3>
+          <p className="text-gray-400">
+            Aucun candidat n&apos;a encore été ajouté à ce vote.
+          </p>
+        </div>
       ) : (
         <>
           {settings && (
@@ -2225,7 +2027,8 @@ const fetchData = useCallback(async () => {
                 endDate={settings.event_end_at}
                 onTimerEnd={() => {
                   setIsVoteFinished(true);
-                  if (onRefresh) onRefresh();
+                  refreshData();
+                  if (onRefreshRef.current) onRefreshRef.current();
                 }}
               />
 
@@ -2367,15 +2170,15 @@ const fetchData = useCallback(async () => {
 
                   {filteredCandidates.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredCandidates.map((c, idx) => (
+                      {filteredCandidates.map((c) => (
                         <CandidateCard
                           key={c.id}
                           candidate={c}
                           totalVotes={totalVotes}
                           votePrice={settings?.price_pi || 1}
                           onVote={() => {
-                            fetchData();
-                            if (onRefresh) onRefresh();
+                            refreshData();
+                            if (onRefreshRef.current) onRefreshRef.current();
                           }}
                           isFinished={isVoteFinished}
                           isSelected={cartItems.some(
@@ -2448,23 +2251,25 @@ const fetchData = useCallback(async () => {
                           <DropdownMenuContent className="bg-gray-800 border-gray-700 text-gray-200">
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
-                              onClick={() => generateRankingPDF("general")}
+                              onClick={() => {
+                                toast({ title: "PDF Général", description: "Fonctionnalité à implémenter" });
+                              }}
                             >
                               📊 Classement Général
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
-                              onClick={() =>
-                                generateRankingPDF("category_best")
-                              }
+                              onClick={() => {
+                                toast({ title: "PDF Catégorie", description: "Fonctionnalité à implémenter" });
+                              }}
                             >
                               🏆 Meilleurs par Catégorie
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
-                              onClick={() =>
-                                generateRankingPDF("category_full")
-                              }
+                              onClick={() => {
+                                toast({ title: "PDF Complet", description: "Fonctionnalité à implémenter" });
+                              }}
                             >
                               📋 Classement Complet par Catégorie
                             </DropdownMenuItem>
@@ -2498,13 +2303,8 @@ const fetchData = useCallback(async () => {
                         {rankedCandidatesFiltered.length > 0 ? (
                           rankedCandidatesFiltered.map((c, i) => {
                             const rank = i + 1;
-                            const percentage =
-                              totalVotes > 0
-                                ? (
-                                    ((c.vote_count || 0) / totalVotes) *
-                                    100
-                                  ).toFixed(1)
-                                : 0;
+                            const total = candidates.reduce((sum, cand) => sum + (cand.vote_count || 0), 0);
+                            const percentage = total > 0 ? ((c.vote_count || 0) / total * 100).toFixed(1) : 0;
                             const gapToNext =
                               i > 0
                                 ? sortedCandidates[i - 1]?.vote_count -
@@ -2624,8 +2424,7 @@ const fetchData = useCallback(async () => {
               <Card className="bg-gray-800 border-gray-700 sticky top-4">
                 <CardHeader>
                   <CardTitle className="text-white text-lg flex items-center">
-                    <ShoppingCart className="mr-2" /> Panier ({cartItems.length}
-                    )
+                    <ShoppingCart className="mr-2" /> Panier ({cartItems.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -2755,6 +2554,293 @@ const fetchData = useCallback(async () => {
         </>
       )}
     </div>
+  );
+};
+
+// ============================================================
+// 🔥 COMPOSANT FINAL RANKING ITEM - SÉPARÉ POUR ÉVITER LES HOOKS DANS LA BOUCLE
+// ============================================================
+const FinalRankingItem = ({ candidate, rank, rankBadge, percentage, totalVotes }) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const [showFullPhoto, setShowFullPhoto] = useState(false);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: (rank - 1) * 0.05 }}
+        className={`flex items-center p-4 transition-colors cursor-pointer hover:bg-gray-700/50 ${
+          rank <= 3 ? "bg-gray-800/80" : "hover:bg-gray-700/30"
+        }`}
+        onClick={() => setShowDetails(true)}
+      >
+        <div className="flex-shrink-0 mr-4 w-10 flex justify-center">
+          {rankBadge}
+        </div>
+        <div className="flex-shrink-0 mr-4">
+          <img
+            src={candidate.photo_url || "/api/placeholder/40/40"}
+            className={`w-10 h-10 rounded-full object-cover border ${
+              rank === 1 ? "border-yellow-500" : "border-gray-600"
+            }`}
+            alt={candidate.name}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`text-sm font-medium truncate ${
+              rank === 1 ? "text-yellow-400" : "text-white"
+            }`}>
+              {candidate.name}
+            </p>
+            {rank === 1 && <Award className="w-3 h-3 text-yellow-500" />}
+            {candidate.category && candidate.category !== "Général" && (
+              <Badge variant="outline" className="text-[10px] border-gray-600 text-gray-500 h-4 px-1">
+                {candidate.category}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center mt-1 gap-2">
+            <div className="flex-1 bg-gray-700 rounded-full h-1.5 max-w-[100px] overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${percentage}%` }}
+                transition={{ duration: 0.5 }}
+                className={`h-1.5 rounded-full ${
+                  rank === 1 ? "bg-yellow-500" : "bg-emerald-500"
+                }`}
+              />
+            </div>
+            <span className="text-xs text-gray-400">{percentage}%</span>
+          </div>
+        </div>
+        <div className="text-right ml-2">
+          <div className={`text-sm font-bold ${
+            rank <= 3 ? "text-white" : "text-gray-300"
+          }`}>
+            {candidate.vote_count || 0}
+          </div>
+          <div className="text-[10px] text-gray-500 uppercase">voix</div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(true);
+            }}
+          >
+            <Eye className="w-3 h-3 mr-1" /> Détails
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* 🔥 MODAL DES DÉTAILS DU CANDIDAT */}
+      <AlertDialog open={showDetails} onOpenChange={setShowDetails}>
+        <AlertDialogContent className="bg-gradient-to-b from-gray-900 to-gray-950 border-gray-700 max-w-md">
+          <AlertDialogHeader>
+            <div
+              className="relative mx-auto mb-4 cursor-pointer group"
+              onClick={() => setShowFullPhoto(true)}
+            >
+              <div className="w-40 h-40 rounded-full p-1 bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-emerald-500/20 overflow-hidden">
+                <img
+                  src={candidate.photo_url || "/api/placeholder/160/160"}
+                  className="w-full h-full rounded-full object-cover border-4 border-gray-900 transition-transform group-hover:scale-110 duration-500"
+                  alt={candidate.name}
+                />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full">
+                <Search className="w-8 h-8 text-white" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-gray-900 rounded-full p-1 border border-gray-700">
+                <div
+                  className={`${
+                    rank === 1 ? "bg-yellow-600" : 
+                    rank === 2 ? "bg-gray-500" : 
+                    rank === 3 ? "bg-orange-600" : 
+                    "bg-emerald-600"
+                  } text-white text-xs font-bold px-3 py-1 rounded-full flex items-center`}
+                >
+                  <Trophy className="w-3 h-3 mr-1" /> #{rank}
+                </div>
+              </div>
+            </div>
+
+            <AlertDialogTitle className="text-2xl font-bold text-white text-center mb-1">
+              {candidate.name}
+            </AlertDialogTitle>
+
+            {candidate.category && (
+              <div className="flex justify-center mb-2">
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500 text-emerald-400 bg-emerald-950/30"
+                >
+                  {candidate.category}
+                </Badge>
+              </div>
+            )}
+
+            <AlertDialogDescription className="text-center space-y-4">
+              <div className="text-gray-400 text-sm max-h-32 overflow-y-auto px-2">
+                {candidate.description || "Aucune description disponible pour ce candidat."}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 my-4">
+                <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+                  <div className="text-emerald-400 font-bold text-xl">
+                    {candidate.vote_count || 0}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                    Votes
+                  </div>
+                </div>
+                <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+                  <div
+                    className={`font-bold text-xl ${
+                      rank === 1 ? "text-yellow-400" : 
+                      rank === 2 ? "text-gray-300" : 
+                      rank === 3 ? "text-orange-400" : 
+                      "text-blue-400"
+                    }`}
+                  >
+                    #{rank}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                    Rang
+                  </div>
+                </div>
+                <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+                  <div className="text-purple-400 font-bold text-xl">
+                    {percentage}%
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                    Score
+                  </div>
+                </div>
+              </div>
+
+              {/* Message personnalisé selon le rang */}
+              {rank === 1 && (
+                <div className="p-4 bg-gradient-to-r from-yellow-900/20 to-amber-900/20 border border-yellow-800/30 rounded-xl">
+                  <p className="text-yellow-200 font-medium flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+                    <span className="italic">
+                      "🏆 Vainqueur ! Félicitations pour cette victoire méritée ! 👑"
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {rank === 2 && (
+                <div className="p-4 bg-gradient-to-r from-gray-800 to-slate-800 border border-gray-700 rounded-xl">
+                  <p className="text-gray-200 font-medium flex items-center gap-2">
+                    <Target className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                    <span className="italic">
+                      "🥈 Excellent parcours ! Vous étiez si proche de la première place ! 🎯"
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {rank === 3 && (
+                <div className="p-4 bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-800/30 rounded-xl">
+                  <p className="text-orange-200 font-medium flex items-center gap-2">
+                    <Medal className="w-5 h-5 text-orange-400 flex-shrink-0" />
+                    <span className="italic">
+                      "🥉 Bravo pour ce podium ! Un grand bravo pour cette performance ! 🎉"
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {rank > 3 && rank <= 5 && (
+                <div className="p-4 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-800/30 rounded-xl">
+                  <p className="text-blue-200 font-medium flex items-center gap-2">
+                    <Rocket className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                    <span className="italic">
+                      "Top 5 ! Une très belle performance ! Continuez comme ça ! 🚀"
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {rank > 5 && (
+                <div className="p-4 bg-gradient-to-r from-emerald-900/20 to-teal-900/20 border border-emerald-800/30 rounded-xl">
+                  <p className="text-emerald-200 font-medium flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                    <span className="italic">
+                      "Merci pour votre participation ! Chaque voix compte pour l'aventure ! 💫"
+                    </span>
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              onClick={() => setShowFullPhoto(true)}
+              variant="outline"
+              className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+            >
+              <Eye className="w-4 h-4 mr-2" /> Voir la photo
+            </Button>
+            <Button
+              onClick={() => setShowDetails(false)}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+            >
+              Fermer
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 🔥 MODAL PHOTO PLEINE */}
+      <AlertDialog open={showFullPhoto} onOpenChange={setShowFullPhoto}>
+        <AlertDialogContent className="bg-black/95 border-gray-800 max-w-4xl p-0 overflow-hidden">
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+              onClick={() => setShowFullPhoto(false)}
+            >
+              <span className="sr-only">Fermer</span>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </Button>
+
+            <div className="max-h-[80vh] max-w-full overflow-auto">
+              <img
+                src={candidate.photo_url || "/api/placeholder/800/800"}
+                alt={candidate.name}
+                className="w-auto h-auto max-w-full max-h-[80vh] object-contain rounded-lg"
+              />
+            </div>
+
+            <div className="absolute bottom-4 left-4 right-4 text-center">
+              <p className="text-white text-lg font-bold bg-black/50 py-2 px-4 rounded-full inline-block">
+                {candidate.name} - #{rank}
+              </p>
+            </div>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
