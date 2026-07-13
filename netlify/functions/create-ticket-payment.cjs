@@ -44,6 +44,7 @@ exports.handler = async (event) => {
             webhook_url
         } = JSON.parse(event.body);
 
+        // 🔥 Nettoyer le numéro de téléphone
         const cleanPhone = numeroSend.replace(/\s/g, '');
         
         if (!cleanPhone || cleanPhone.length < 8) {
@@ -58,10 +59,15 @@ exports.handler = async (event) => {
             throw new Error('Informations personnelles requises');
         }
 
-        // 🔥 URL DE L'API MONEYFUSION
+        // 🔥 S'assurer que le téléphone est bien dans personal_Info
+        if (personal_Info && personal_Info.length > 0) {
+            personal_Info[0].phone = cleanPhone;
+            personal_Info[0].phoneNumber = cleanPhone;
+            personal_Info[0].telephone = cleanPhone;
+        }
+
         const apiUrl = process.env.MONEYFUSION_API_URL || 'https://pay.moneyfusion.net/api/payment';
 
-        // 🔥 CONSTRUIRE L'URL DU WEBHOOK
         let webhookUrl = webhook_url;
         if (!webhookUrl) {
             const siteUrl = process.env.URL || process.env.DEPLOY_URL || 'https://bonplaninfos.netlify.app';
@@ -75,7 +81,8 @@ exports.handler = async (event) => {
             eventId: personal_Info[0]?.eventId,
             amountOriginal: personal_Info[0]?.amountFcfa,
             isGuest: personal_Info[0]?.isGuest || false,
-            webhookUrl
+            webhookUrl,
+            phoneInPersonalInfo: personal_Info[0]?.phone
         });
 
         const paymentData = {
@@ -93,7 +100,8 @@ exports.handler = async (event) => {
             totalPrice: paymentData.totalPrice,
             numeroSend: paymentData.numeroSend,
             return_url: paymentData.return_url,
-            webhook_url: paymentData.webhook_url
+            webhook_url: paymentData.webhook_url,
+            personal_Info_phone: paymentData.personal_Info[0]?.phone
         });
 
         const agent = new https.Agent({
@@ -151,7 +159,11 @@ exports.handler = async (event) => {
                 amount_original: originalAmount,
                 amount_with_fees: totalPrice,
                 phone_used: cleanPhone,
-                webhook_url: webhookUrl
+                webhook_url: webhookUrl,
+                debug: {
+                    phone_sent: cleanPhone,
+                    phone_in_personal_info: personal_Info[0]?.phone
+                }
             })
         };
 

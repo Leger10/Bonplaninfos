@@ -1343,9 +1343,9 @@ const TicketingInterface = ({
                     <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4" />
                   )}
                   Sans compte
-                  <span className="ml-1 text-[8px] opacity-80">
-                    +3%
-                  </span>
+                  {/* <span className="ml-1 text-[8px] opacity-80">
+                    +4%
+                  </span> */}
                 </Button>
                 <Button 
                   size="sm" 

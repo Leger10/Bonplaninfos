@@ -34,6 +34,7 @@ export default function TicketScannerDialog({
   const [flashColor, setFlashColor] = useState(null);
   const [manualCode, setManualCode] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const lockedRef = useRef(false);
 
@@ -76,6 +77,7 @@ export default function TicketScannerDialog({
     if (isOpen) {
       setScanResult(null);
       setManualCode('');
+      setDebugInfo(null);
       lockedRef.current = false;
     }
   }, [isOpen]);
@@ -86,6 +88,7 @@ export default function TicketScannerDialog({
     setScanHistory([]);
     setScanResult(null);
     setManualCode('');
+    setDebugInfo(null);
     toast({
       title: "🔄 Synchronisation forcée",
       description: "Cache vidé, données synchronisées avec la base.",
@@ -105,7 +108,7 @@ export default function TicketScannerDialog({
     localStorage.removeItem('offline_scans');
   };
 
-  // 🔥 NORMALISER LA RÉPONSE RPC - VERSION SIMPLIFIÉE ET CORRECTE
+  // 🔥 NORMALISER LA RÉPONSE RPC
   const normalizeRPCResponse = (data) => {
     // Si data est un tableau, prendre le premier élément
     const raw = Array.isArray(data) ? data[0] : data;
@@ -175,7 +178,7 @@ export default function TicketScannerDialog({
     }
   };
 
-  // 🔥 VÉRIFIER L'ÉTAT DU TICKET
+  // 🔥 VÉRIFIER L'ÉTAT DU TICKET (AMÉLIORÉ POUR MONEYFUSION)
   const checkTicketStatus = async () => {
     if (!manualCode) {
       toast({
@@ -187,25 +190,55 @@ export default function TicketScannerDialog({
     }
 
     try {
+      const code = manualCode.trim().toUpperCase();
+      
+      // 🔥 RECHERCHE ÉTENDUE POUR MONEYFUSION
       const { data, error } = await supabase
         .from('tickets')
-        .select('qr_code, status, entry_count, check_in_time, check_out_time, attendee_name, phone')
-        .eq('qr_code', manualCode.toUpperCase())
-        .single();
+        .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+        .or(`qr_code.ilike.%${code}%,transaction_reference.ilike.%${code}%,ticket_number.ilike.%${code}%`)
+        .eq('payment_method', 'moneyfusion_ticket')
+        .maybeSingle();
 
-      if (error) throw error;
+      // Si pas trouvé avec la recherche étendue, essayer en exact
+      let ticketData = data;
+      if (!ticketData) {
+        const { data: exactData, error: exactError } = await supabase
+          .from('tickets')
+          .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+          .eq('qr_code', code)
+          .maybeSingle();
+        
+        if (!exactError && exactData) {
+          ticketData = exactData;
+        }
+      }
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (!ticketData) {
+        toast({
+          title: "❌ Ticket non trouvé",
+          description: `Aucun ticket trouvé pour "${code}"`,
+          variant: "destructive"
+        });
+        return;
+      }
 
       const statusEmoji = { 'active': '🔴', 'used': '🟢', 'exited': '🟠', 'cancelled': '🚫' };
       const statusText = { 'active': 'Pas entré', 'used': 'En salle', 'exited': 'Sorti', 'cancelled': 'Annulé' };
+      const isMoneyFusion = ticketData.payment_method === 'moneyfusion_ticket';
 
       toast({
-        title: `📊 ${data.attendee_name || 'Ticket'}`,
+        title: `📊 ${ticketData.attendee_name || 'Ticket'}`,
         description: (
           <div className="space-y-1">
-            <div>Code: <span className="font-mono">{data.qr_code}</span></div>
-            <div>{statusEmoji[data.status] || '❓'} Statut: {statusText[data.status] || data.status}</div>
-            <div>Entrées totales: <span className="font-bold">{data.entry_count}</span></div>
-            {data.phone && <div>📱 {data.phone}</div>}
+            <div>Code: <span className="font-mono">{ticketData.qr_code || ticketData.transaction_reference}</span></div>
+            {isMoneyFusion && <div className="text-blue-400">💰 Ticket MoneyFusion</div>}
+            <div>{statusEmoji[ticketData.status] || '❓'} Statut: {statusText[ticketData.status] || ticketData.status}</div>
+            <div>Entrées totales: <span className="font-bold">{ticketData.entry_count || 0}</span></div>
+            {ticketData.phone && <div>📱 {ticketData.phone}</div>}
+            {ticketData.transaction_reference && <div className="text-xs text-gray-400">Réf: {ticketData.transaction_reference}</div>}
           </div>
         ),
         variant: "default",
@@ -307,16 +340,20 @@ export default function TicketScannerDialog({
     );
   };
 
-  // 🔥 PROCESSUS DE VÉRIFICATION
+  // 🔥 PROCESSUS DE VÉRIFICATION (AMÉLIORÉ)
   const processVerification = useCallback(async (code, isManual = false) => {
     if (!code || lockedRef.current || scanResult) return;
 
     lockedRef.current = true;
     setIsProcessing(true);
+    setDebugInfo(null);
 
     try {
       const codeTrimmed = code.trim().toUpperCase();
       
+      console.log('🔍 Vérification du code:', codeTrimmed);
+      
+      // 🔥 APPEL RPC PRINCIPAL
       const { data, error } = await supabase.rpc('verify_ticket_direct', {
         p_ticket_identifier: codeTrimmed,
         p_verification_method: isManual ? 'manual_entry' : 'qr_scanner_web',
@@ -370,6 +407,15 @@ export default function TicketScannerDialog({
         playFeedback('error');
       }
 
+      // 🔥 AFFICHER DES INFOS DE DEBUG EN CAS D'ERREUR
+      if (!result.success && result.status_code === 'not_found') {
+        setDebugInfo({
+          searched_code: codeTrimmed,
+          message: 'Ticket non trouvé en base. Vérifiez le code scanné.',
+          suggestion: 'Essayez de saisir manuellement le code ou vérifiez que le ticket existe bien.'
+        });
+      }
+
     } catch (error) {
       console.error('❌ Erreur scan:', error);
       const errorResult = {
@@ -412,6 +458,7 @@ export default function TicketScannerDialog({
 
   const handleNextScan = () => {
     setScanResult(null);
+    setDebugInfo(null);
     lockedRef.current = false;
   };
 
@@ -537,6 +584,14 @@ export default function TicketScannerDialog({
               <span className="hidden sm:inline">Réinitialiser</span>
             </Button>
           </div>
+          {debugInfo && (
+            <div className="mt-2 p-2 bg-yellow-900/30 border border-yellow-600 rounded text-xs text-yellow-400">
+              <p className="font-bold">🔍 Debug:</p>
+              <p>Code recherché: {debugInfo.searched_code}</p>
+              <p>{debugInfo.message}</p>
+              {debugInfo.suggestion && <p className="text-yellow-300">💡 {debugInfo.suggestion}</p>}
+            </div>
+          )}
         </div>
 
         <div className="relative min-h-[260px] sm:min-h-[320px]">

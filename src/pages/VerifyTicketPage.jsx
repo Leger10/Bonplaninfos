@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import {
     Loader2, ShieldCheck,
     Keyboard, Camera, LogOut, ArrowRightLeft,
-    DoorClosed, ShieldAlert, User, Wallet, Scan, Trash2, RefreshCw, RotateCcw
+    DoorClosed, ShieldAlert, User, Wallet, Scan, Trash2, RefreshCw, RotateCcw, Search
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +109,7 @@ const VerifyTicketPage = () => {
         }
     };
 
-    // 🔥 Vérifier l'état du ticket en base
+    // 🔥 VÉRIFIER L'ÉTAT DU TICKET (AMÉLIORÉ POUR MONEYFUSION)
     const checkTicketStatus = async () => {
         if (!ticketInput) {
             toast({
@@ -121,13 +121,40 @@ const VerifyTicketPage = () => {
         }
 
         try {
+            const code = ticketInput.trim().toUpperCase();
+            
+            // 🔥 RECHERCHE ÉTENDUE POUR MONEYFUSION
             const { data, error } = await supabase
                 .from('tickets')
-                .select('qr_code, status, entry_count, check_in_time, check_out_time, attendee_name, phone')
-                .eq('qr_code', ticketInput.toUpperCase())
-                .single();
+                .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+                .or(`qr_code.ilike.%${code}%,transaction_reference.ilike.%${code}%,ticket_number.ilike.%${code}%`)
+                .eq('payment_method', 'moneyfusion_ticket')
+                .maybeSingle();
 
-            if (error) throw error;
+            // Si pas trouvé avec la recherche étendue, essayer en exact
+            let ticketData = data;
+            if (!ticketData) {
+                const { data: exactData, error: exactError } = await supabase
+                    .from('tickets')
+                    .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+                    .eq('qr_code', code)
+                    .maybeSingle();
+                
+                if (!exactError && exactData) {
+                    ticketData = exactData;
+                }
+            }
+
+            if (error && error.code !== 'PGRST116') throw error;
+
+            if (!ticketData) {
+                toast({
+                    title: "❌ Ticket non trouvé",
+                    description: `Aucun ticket trouvé pour "${code}"`,
+                    variant: "destructive"
+                });
+                return;
+            }
 
             const statusEmoji = {
                 'active': '🔴',
@@ -143,14 +170,18 @@ const VerifyTicketPage = () => {
                 'cancelled': 'Annulé'
             };
 
+            const isMoneyFusion = ticketData.payment_method === 'moneyfusion_ticket';
+
             toast({
-                title: `📊 ${data.attendee_name || 'Ticket'}`,
+                title: `📊 ${ticketData.attendee_name || 'Ticket'}`,
                 description: (
                     <div className="space-y-1">
-                        <div>Code: <span className="font-mono">{data.qr_code}</span></div>
-                        <div>{statusEmoji[data.status] || '❓'} Statut: {statusText[data.status] || data.status}</div>
-                        <div>Entrées totales: <span className="font-bold">{data.entry_count}</span></div>
-                        {data.phone && <div>📱 {data.phone}</div>}
+                        <div>Code: <span className="font-mono">{ticketData.qr_code || ticketData.transaction_reference}</span></div>
+                        {isMoneyFusion && <div className="text-blue-400">💰 Ticket MoneyFusion</div>}
+                        <div>{statusEmoji[ticketData.status] || '❓'} Statut: {statusText[ticketData.status] || ticketData.status}</div>
+                        <div>Entrées totales: <span className="font-bold">{ticketData.entry_count || 0}</span></div>
+                        {ticketData.phone && <div>📱 {ticketData.phone}</div>}
+                        {ticketData.transaction_reference && <div className="text-xs text-gray-400">Réf: {ticketData.transaction_reference}</div>}
                     </div>
                 ),
                 variant: "default",
@@ -266,20 +297,23 @@ const VerifyTicketPage = () => {
         }
     }, []);
 
-    // 🔥 NORMALISER LA RÉPONSE RPC - CORRIGÉ
+    // 🔥 NORMALISER LA RÉPONSE RPC - CORRIGÉ AVEC GESTION MONEYFUSION
     const normalizeRPCResponse = (data) => {
         console.log('🔍 normalizeRPCResponse - Input:', JSON.stringify(data, null, 2));
         
+        // Si data est un tableau, prendre le premier élément
         const rawData = Array.isArray(data) ? data[0] : data;
         if (!rawData) {
             console.log('❌ Pas de données');
             return null;
         }
         
+        // La réponse est dans verify_ticket_direct ou directement dans rawData
         const response = rawData.verify_ticket_direct || rawData;
         console.log('📦 Response extraite:', JSON.stringify(response, null, 2));
         
-        if (response.qr_code && !response.success) {
+        // Si c'est une requête SELECT (contient qr_code mais pas success), ignorer
+        if (response.qr_code && !response.success && !response.message) {
             console.log('⚠️ Requête SELECT détectée, ignorée');
             return null;
         }
@@ -303,7 +337,7 @@ const VerifyTicketPage = () => {
         return result;
     };
 
-    // 🔥 AFFICHER LE STATUT LISIBLE - CORRIGÉ
+    // 🔥 AFFICHER LE STATUT LISIBLE
     const getStatusDisplay = (statusCode, status) => {
         console.log('🔍 getStatusDisplay - statusCode:', statusCode, 'status:', status);
         switch (statusCode) {
@@ -324,7 +358,7 @@ const VerifyTicketPage = () => {
         }
     };
 
-    // 🔥 AFFICHER LES INFOS DU TICKET
+    // 🔥 AFFICHER LES INFOS DU TICKET (AMÉLIORÉ)
     const getTicketInfoDisplay = (result) => {
         if (!result) return null;
         
@@ -332,71 +366,51 @@ const VerifyTicketPage = () => {
         const paymentMethod = result.payment_method || 'coins';
         const isMoneyFusion = paymentMethod === 'moneyfusion_ticket';
         
-        if (isGuest) {
-            return (
-                <div className="mt-3 p-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+        // Afficher toujours les infos du ticket
+        return (
+            <div className={`mt-3 p-2 rounded-lg border ${
+                isGuest 
+                    ? 'bg-yellow-500/20 border-yellow-500/30' 
+                    : isMoneyFusion 
+                    ? 'bg-blue-500/20 border-blue-500/30' 
+                    : 'bg-gray-800/50 border-gray-700'
+            }`}>
+                {isGuest && (
                     <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-yellow-400" />
                         <p className="text-xs text-yellow-400 font-medium">
                             {isMoneyFusion ? '💰 Billet externe (MoneyFusion)' : '🎟️ Billet sans compte'}
                         </p>
                     </div>
-                    {result.attendee_name && (
-                        <p className="text-sm font-medium text-white mt-1">
-                            {result.attendee_name}
-                        </p>
-                    )}
-                    {result.phone && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            📱 {result.phone}
-                        </p>
-                    )}
-                    {result.transaction_reference && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Réf: {result.transaction_reference.substring(0, 12)}...
-                        </p>
-                    )}
-                    {result.entry_count !== undefined && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Entrées totales: {result.entry_count}
-                        </p>
-                    )}
-                </div>
-            );
-        }
-        
-        if (isMoneyFusion) {
-            return (
-                <div className="mt-3 p-2 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                )}
+                {isMoneyFusion && !isGuest && (
                     <div className="flex items-center gap-2">
                         <Wallet className="w-4 h-4 text-blue-400" />
                         <p className="text-xs text-blue-400 font-medium">💰 Paiement externe (MoneyFusion)</p>
                     </div>
-                    {result.attendee_name && (
-                        <p className="text-sm font-medium text-white mt-1">
-                            {result.attendee_name}
-                        </p>
-                    )}
-                    {result.phone && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            📱 {result.phone}
-                        </p>
-                    )}
-                    {result.transaction_reference && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Réf: {result.transaction_reference.substring(0, 12)}...
-                        </p>
-                    )}
-                    {result.entry_count !== undefined && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                            Entrées totales: {result.entry_count}
-                        </p>
-                    )}
-                </div>
-            );
-        }
-        
-        return null;
+                )}
+                {result.attendee_name && result.attendee_name !== 'Inconnu' && (
+                    <p className="text-sm font-medium text-white mt-1">
+                        {result.attendee_name}
+                    </p>
+                )}
+                {result.phone && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        📱 {result.phone}
+                    </p>
+                )}
+                {result.transaction_reference && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        Réf: {result.transaction_reference.substring(0, 12)}...
+                    </p>
+                )}
+                {result.entry_count !== undefined && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        Entrées totales: {result.entry_count}
+                    </p>
+                )}
+            </div>
+        );
     };
 
     // 📋 GET STATUS TITLE
@@ -417,13 +431,14 @@ const VerifyTicketPage = () => {
         }
     };
 
-    // 🧠 Vérification billet
+    // 🧠 Vérification billet (CORRIGÉE)
     const handleVerification = async (codeToVerify, method = 'manual') => {
         const cleanCode = codeToVerify?.trim().toUpperCase();
         if (!cleanCode) return;
 
         const now = Date.now();
 
+        // Anti-double scan
         if (cleanCode === lastScanRef.current.code) {
             const delta = now - lastScanRef.current.time;
             if (delta < 2000) return;
@@ -439,9 +454,12 @@ const VerifyTicketPage = () => {
         dismiss();
 
         try {
+            console.log('🔍 Vérification du code:', cleanCode);
+            console.log('📋 Mode:', exitMode ? 'SORTIE' : 'ENTRÉE');
+            
             const { data, error } = await supabase.rpc('verify_ticket_direct', {
                 p_ticket_identifier: cleanCode,
-                p_verification_method: method,
+                p_verification_method: method === 'qr_code' ? 'qr_scanner_web' : method,
                 p_exit_mode: exitMode
             });
 
@@ -490,6 +508,7 @@ const VerifyTicketPage = () => {
                 setTicketInput('');
             }
 
+            // Auto-fermeture après 3.5s
             resultTimeoutRef.current = setTimeout(() => {
                 setVerificationResult(null);
             }, 3500);
@@ -630,9 +649,9 @@ const VerifyTicketPage = () => {
                                     <Input
                                         value={ticketInput}
                                         onChange={(e) => setTicketInput(e.target.value.toUpperCase())}
-                                        placeholder="EX: FDC61C"
-                                        className="flex-1 text-center text-4xl font-mono h-20 bg-gray-800 border-gray-700"
-                                        maxLength={12}
+                                        placeholder="EX: QR-1783939719696-U2QD74"
+                                        className="flex-1 text-center text-2xl font-mono h-20 bg-gray-800 border-gray-700"
+                                        maxLength={50}
                                     />
                                     <Button
                                         onClick={checkTicketStatus}
@@ -706,7 +725,7 @@ const VerifyTicketPage = () => {
                                         </p>
                                     </div>
 
-                                    {verificationResult.attendee_name && (
+                                    {verificationResult.attendee_name && verificationResult.attendee_name !== 'Inconnu' && (
                                         <div className="bg-gray-800/50 rounded-lg p-3">
                                             <p className="text-sm font-medium text-white">
                                                 {verificationResult.attendee_name}
@@ -730,7 +749,7 @@ const VerifyTicketPage = () => {
                                         <div>
                                             Statut: {getStatusDisplay(verificationResult.status_code, verificationResult.status)}
                                             {verificationResult.code && (
-                                                <span className="ml-2 font-mono">#{verificationResult.code}</span>
+                                                <span className="ml-2 font-mono">#{verificationResult.code.substring(0, 12)}</span>
                                             )}
                                         </div>
                                         {verificationResult.entry_count !== undefined && (
@@ -825,7 +844,7 @@ const VerifyTicketPage = () => {
                                                 </span>
                                             )}
                                             <span className="text-[8px] text-gray-500 font-mono">
-                                                {s.code}
+                                                {s.code && s.code.substring(0, 8)}
                                             </span>
                                             <span className="text-[8px] text-gray-600">
                                                 {s.status_code === 'checkin' ? '1ère' : 

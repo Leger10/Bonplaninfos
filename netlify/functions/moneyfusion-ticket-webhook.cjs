@@ -37,16 +37,19 @@ const createUserAccount = async (fullName, phoneNumber, userEmail) => {
             const existingUser = existingUsers.users.find(u => u.email === email);
             if (existingUser) {
                 console.log('✅ Utilisateur existant trouvé:', existingUser.id);
-                await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: existingUser.id,
-                        email: email,
-                        full_name: fullName,
-                        phone: phoneNumber,
-                        user_type: 'user',
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'id' });
+                
+                // 🔥 Mettre à jour le téléphone même pour les utilisateurs existants
+                if (phoneNumber) {
+                    await supabase
+                        .from('profiles')
+                        .update({
+                            phone: phoneNumber,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', existingUser.id);
+                    console.log('✅ Téléphone mis à jour pour l\'utilisateur existant:', phoneNumber);
+                }
+                
                 return existingUser.id;
             }
         }
@@ -57,7 +60,7 @@ const createUserAccount = async (fullName, phoneNumber, userEmail) => {
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,
-                phone: phoneNumber
+                phone: phoneNumber || ''
             }
         });
 
@@ -66,14 +69,14 @@ const createUserAccount = async (fullName, phoneNumber, userEmail) => {
             const guestId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
             await supabase
                 .from('profiles')
-                .upsert({
+                .insert({
                     id: guestId,
                     email: email,
                     full_name: fullName,
-                    phone: phoneNumber,
-                    user_type: 'user',
+                    phone: phoneNumber || '',
+                    user_type: 'guest',
                     created_at: new Date().toISOString()
-                }, { onConflict: 'id' });
+                });
             return guestId;
         }
 
@@ -86,14 +89,14 @@ const createUserAccount = async (fullName, phoneNumber, userEmail) => {
 
         await supabase
             .from('profiles')
-            .upsert({
+            .insert({
                 id: userId,
                 email: email,
                 full_name: fullName,
-                phone: phoneNumber,
+                phone: phoneNumber || '',
                 user_type: 'user',
                 created_at: new Date().toISOString()
-            }, { onConflict: 'id' });
+            });
 
         return userId;
 
@@ -102,14 +105,14 @@ const createUserAccount = async (fullName, phoneNumber, userEmail) => {
         const guestId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
         await supabase
             .from('profiles')
-            .upsert({
+            .insert({
                 id: guestId,
                 email: `guest_${Date.now()}@temp.com`,
                 full_name: fullName || 'Invité',
                 phone: phoneNumber || '',
-                user_type: 'user',
+                user_type: 'guest',
                 created_at: new Date().toISOString()
-            }, { onConflict: 'id' });
+            });
         return guestId;
     }
 };
@@ -159,8 +162,16 @@ exports.handler = async (event) => {
         const attendeeName = info.attendeeName || 'Invité';
         const originalAmount = info.amountFcfa || 0;
         const isGuest = info.isGuest || false;
-        const phoneNumber = info.phone || '';
-        const userEmail = info.userEmail || '';
+        
+        // 🔥 IMPORTANT: Récupérer le téléphone de plusieurs sources
+        let phoneNumber = info.phone || info.phoneNumber || info.phone_number || info.telephone || info.mobile || '';
+        const userEmail = info.userEmail || info.email || '';
+
+        // 🔥 Nettoyer le numéro de téléphone
+        if (phoneNumber) {
+            phoneNumber = phoneNumber.replace(/[\s\-\.\(\)]/g, '').replace(/[^0-9]/g, '');
+            console.log('📱 Téléphone nettoyé:', phoneNumber);
+        }
 
         console.log('✅ Paiement réussi:', { 
             orderId, 
@@ -168,28 +179,37 @@ exports.handler = async (event) => {
             attendeeName, 
             originalAmount, 
             isGuest,
-            phoneNumber,
-            userEmail
+            phoneNumber: phoneNumber || '⚠️ AUCUN TÉLÉPHONE',
+            userEmail,
+            infoKeys: Object.keys(info)
         });
 
         // --- 1. Créer le compte utilisateur ---
         let finalUserId;
         if (isGuest || !info.userId || info.userId.startsWith('guest_')) {
-            console.log(`👤 Création compte pour: ${attendeeName} (${phoneNumber})`);
+            console.log(`👤 Création compte pour: ${attendeeName} (${phoneNumber || 'pas de téléphone'})`);
             finalUserId = await createUserAccount(attendeeName, phoneNumber, userEmail);
             console.log('✅ ID utilisateur final:', finalUserId);
         } else {
             finalUserId = info.userId;
             console.log('👤 Utilisateur existant:', finalUserId);
+            
+            // 🔥 Mettre à jour le téléphone de l'utilisateur existant
+            if (phoneNumber) {
+                await supabase
+                    .from('profiles')
+                    .update({ phone: phoneNumber, updated_at: new Date().toISOString() })
+                    .eq('id', finalUserId);
+                console.log('✅ Téléphone mis à jour pour l\'utilisateur:', phoneNumber);
+            }
         }
 
-        // --- 2. Créer les tickets AVEC LES PRIX ---
+        // --- 2. Créer les tickets AVEC LE TÉLÉPHONE ---
         let ticketCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
         if (ticketCount === 0) ticketCount = 1;
 
         const finalEmail = userEmail || generateEmailFromName(attendeeName);
         
-        // 🔥 Calcul des prix
         const pricePerTicketCoins = Math.floor(originalAmount / 10 / ticketCount);
         const pricePerTicketFcfa = Math.floor(originalAmount / ticketCount);
         const totalAmountCoins = pricePerTicketCoins * ticketCount;
@@ -200,13 +220,18 @@ exports.handler = async (event) => {
             pricePerTicketCoins,
             pricePerTicketFcfa,
             totalAmountCoins,
-            totalAmountFcfa
+            totalAmountFcfa,
+            phoneNumber: phoneNumber || '⚠️ AUCUN'
         });
 
         const tickets = [];
+        const now = new Date().toISOString();
+        const baseTimestamp = Date.now();
+
         for (let i = 0; i < ticketCount; i++) {
             const ticketId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-            const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const qrCode = `QR-${baseTimestamp}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const shortCode = Math.random().toString(36).substring(2, 8).toUpperCase();
             
             tickets.push({
                 id: ticketId,
@@ -217,23 +242,33 @@ exports.handler = async (event) => {
                 transaction_reference: orderId,
                 attendee_name: attendeeName,
                 customer_name: attendeeName,
-                phone: phoneNumber,
+                phone: phoneNumber || '', // 🔥 LE TÉLÉPHONE EST OBLIGATOIREMENT ENREGISTRÉ
                 email: finalEmail,
                 is_guest: isGuest || false,
-                purchased_at: new Date().toISOString(),
+                purchased_at: now,
                 qr_code: qrCode,
-                ticket_number: `MF-${Date.now()}-${String(i + 1).padStart(4, '0')}`,
+                ticket_code_short: shortCode, // 🔥 Ajout du code court
+                ticket_number: `MF-${baseTimestamp}-${String(i + 1).padStart(4, '0')}`,
                 ticket_type_id: null,
-                // 🔥 PRIX AJOUTÉS
                 purchase_price_pi: pricePerTicketCoins,
                 total_amount_pi: totalAmountCoins,
                 total_amount_fcfa: totalAmountFcfa,
-                quantity: 1
+                quantity: 1,
+                entry_count: 0,
+                created_at: now,
+                updated_at: now
             });
         }
 
         // --- 3. Insérer les tickets ---
         if (tickets.length > 0) {
+            console.log('📝 Tickets à insérer:', JSON.stringify(tickets.map(t => ({
+                attendee_name: t.attendee_name,
+                phone: t.phone || '⚠️ VIDE',
+                email: t.email,
+                qr_code: t.qr_code
+            })), null, 2));
+            
             const { error } = await supabase
                 .from('tickets')
                 .insert(tickets);
@@ -242,7 +277,7 @@ exports.handler = async (event) => {
                 console.error('❌ Erreur insertion tickets:', error);
                 throw new Error('Erreur insertion tickets: ' + error.message);
             } else {
-                console.log(`✅ ${tickets.length} tickets créés avec prix: ${pricePerTicketCoins} pièces/ticket`);
+                console.log(`✅ ${tickets.length} tickets créés avec téléphone: "${phoneNumber || '⚠️ AUCUN'}"`);
             }
         }
 
@@ -251,7 +286,7 @@ exports.handler = async (event) => {
             .from('payments')
             .update({
                 status: 'completed',
-                processed_at: new Date().toISOString(),
+                processed_at: now,
                 user_id: finalUserId,
                 payment_method: 'moneyfusion_ticket',
                 amount_fcfa: totalAmountFcfa,
@@ -288,8 +323,8 @@ exports.handler = async (event) => {
                     ticket_count: ticketCount || 1,
                     earning_type: 'ticket_sale',
                     event_type: 'ticketing',
-                    description: `💰 Vente de ${ticketCount} tickets via MoneyFusion - ${attendeeName}`,
-                    created_at: new Date().toISOString()
+                    description: `💰 Vente de ${ticketCount} tickets via MoneyFusion - ${attendeeName} (${phoneNumber || 'pas de téléphone'})`,
+                    created_at: now
                 });
 
             const { data: profile } = await supabase
@@ -304,7 +339,7 @@ exports.handler = async (event) => {
                     .update({
                         total_earnings: (profile.total_earnings || 0) + amountCoins,
                         available_earnings: (profile.available_earnings || 0) + amountCoins,
-                        updated_at: new Date().toISOString()
+                        updated_at: now
                     })
                     .eq('id', organizerId);
                 console.log(`✅ Profil organisateur mis à jour: +${amountCoins} coins`);
@@ -323,7 +358,7 @@ exports.handler = async (event) => {
                 ticket_count: tickets.length,
                 user_id: finalUserId,
                 email: finalEmail,
-                phone: phoneNumber,
+                phone: phoneNumber || '',
                 price_per_ticket_coins: pricePerTicketCoins,
                 total_amount_fcfa: totalAmountFcfa,
                 password: '000000'
