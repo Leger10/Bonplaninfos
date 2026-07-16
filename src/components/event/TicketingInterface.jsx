@@ -899,8 +899,19 @@ const TicketingInterface = ({
   };
 
  // ✅ IMPLÉMENTATION: handlePurchase (paiement avec compte)
+// ✅ IMPLÉMENTATION: handlePurchase (paiement avec compte) - VERSION CORRIGÉE
 const handlePurchase = async () => {
   if (isPurchasingRef.current) return;
+
+  // ✅ Vérification de l'événement
+  if (!event || !event.id) {
+    toast({
+      title: "Erreur",
+      description: "Événement non trouvé. Veuillez rafraîchir la page.",
+      variant: "destructive",
+    });
+    return;
+  }
 
   if (isClosed) {
     toast({
@@ -951,9 +962,13 @@ const handlePurchase = async () => {
   setLoading(true);
 
   try {
+    console.log("🛒 Achat avec compte - Event ID:", event.id);
+    console.log("🛒 Cart:", cart);
+    console.log("🛒 Total:", cartTotal);
+
     const { data, error } = await supabase.rpc("purchase_tickets_v2", {
       p_user_id: user.id,
-      p_event_id: event.id,
+      p_event_id: event.id,  // ✅ event.id doit être un UUID valide
       p_cart: cart,
       p_final_amount: cartTotal,
       p_promo_code_id: appliedPromoCodeId || null,
