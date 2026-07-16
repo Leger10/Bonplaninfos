@@ -40,25 +40,36 @@ import {
   FileText,
   ChevronRight,
   Tag,
+  Calendar,
+  CalendarDays,
+  Minus,
+  CalendarRange,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import ImageUpload from "@/components/ImageUpload";
 import { Checkbox } from "@/components/ui/checkbox";
-import { checkAuthentication } from "@/lib/authUtils";
 import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
 import { PromoCodeConfig } from "@/components/organizer/PromoCodeConfig";
 
 const TICKET_COLORS = [
-  { name: "Bleu (Standard)", value: "blue", hex: "bg-blue-500" },
-  { name: "Bronze", value: "bronze", hex: "bg-amber-600" },
-  { name: "Argent", value: "silver", hex: "bg-slate-400" },
-  { name: "Or", value: "gold", hex: "bg-yellow-500" },
-  { name: "Violet (VIP)", value: "purple", hex: "bg-purple-600" },
-  { name: "Rouge", value: "red", hex: "bg-red-500" },
-  { name: "Vert", value: "green", hex: "bg-green-500" },
-  { name: "Noir", value: "black", hex: "bg-slate-900" },
+  { name: "Bleu Standard", value: "blue", hex: "bg-blue-500", border: "border-blue-500", text: "text-blue-400", bgLight: "bg-blue-500/20" },
+  { name: "Bronze", value: "bronze", hex: "bg-amber-600", border: "border-amber-600", text: "text-amber-400", bgLight: "bg-amber-500/20" },
+  { name: "Argent", value: "silver", hex: "bg-slate-400", border: "border-slate-400", text: "text-slate-300", bgLight: "bg-slate-400/20" },
+  { name: "Or", value: "gold", hex: "bg-yellow-500", border: "border-yellow-500", text: "text-yellow-400", bgLight: "bg-yellow-500/20" },
+  { name: "Violet VIP", value: "purple", hex: "bg-purple-600", border: "border-purple-600", text: "text-purple-400", bgLight: "bg-purple-600/20" },
+  { name: "Rouge", value: "red", hex: "bg-red-500", border: "border-red-500", text: "text-red-400", bgLight: "bg-red-500/20" },
+  { name: "Vert", value: "green", hex: "bg-green-500", border: "border-green-500", text: "text-green-400", bgLight: "bg-green-500/20" },
+  { name: "Rose", value: "pink", hex: "bg-pink-500", border: "border-pink-500", text: "text-pink-400", bgLight: "bg-pink-500/20" },
+  { name: "Cyan", value: "cyan", hex: "bg-cyan-500", border: "border-cyan-500", text: "text-cyan-400", bgLight: "bg-cyan-500/20" },
+  { name: "Orange", value: "orange", hex: "bg-orange-500", border: "border-orange-500", text: "text-orange-400", bgLight: "bg-orange-500/20" },
+  { name: "Indigo", value: "indigo", hex: "bg-indigo-500", border: "border-indigo-500", text: "text-indigo-400", bgLight: "bg-indigo-500/20" },
+  { name: "Noir", value: "black", hex: "bg-slate-900", border: "border-slate-700", text: "text-slate-300", bgLight: "bg-slate-900/30" },
+  { name: "Blanc", value: "white", hex: "bg-white", border: "border-white", text: "text-gray-800", bgLight: "bg-white/20" },
 ];
 
+// ============================================================
+// COMPOSANT PRINCIPAL
+// ============================================================
 const CreateTicketingEventPage = () => {
   const { user } = useAuth();
   const { adminConfig } = useData();
@@ -70,6 +81,7 @@ const CreateTicketingEventPage = () => {
   // Contract Modal State
   const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [contractAcceptanceId, setContractAcceptanceId] = useState(null);
 
   // Promo Code Configuration State
   const [promoConfig, setPromoConfig] = useState(null);
@@ -92,61 +104,128 @@ const CreateTicketingEventPage = () => {
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [coverImage, setCoverImage] = useState("");
 
-  // Ticketing Details
-  const [ticketTypes, setTicketTypes] = useState([
-    {
+  // ============================================================
+  // GESTION DES BILLETS
+  // ============================================================
+  const [ticketType, setTicketType] = useState("multi_day");
+  const [eventDays, setEventDays] = useState([]);
+  const [dailyTicketConfig, setDailyTicketConfig] = useState({});
+  
+  const [multiDayTickets, setMultiDayTickets] = useState([
+    { 
       id: uuidv4(),
       name: "Standard",
-      price: 5000,
-      presale_price: 3000,
-      quantity_available: 100,
-      sales_start_date: "",
-      sales_event_end_at: "",
-      description: "Accès standard à l'événement",
+      price: 1000,
+      presale_price: 800,
+      quantity: 100,
       color: "blue",
+      description: "Billet standard - Valable pour toute la durée de l'événement"
     },
+    { 
+      id: uuidv4(),
+      name: "VIP",
+      price: 2000,
+      presale_price: 1600,
+      quantity: 50,
+      color: "gold",
+      description: "Billet VIP - Accès privilégié pour toute la durée"
+    }
   ]);
 
-  // Chargement des catégories - VERSION CORRIGÉE
+  // ============================================================
+  // CHARGEMENT DES CATÉGORIES
+  // ============================================================
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        console.log("🔍 Fetching categories from event_categories...");
-        
         const { data, error } = await supabase
           .from("event_categories")
           .select("id, name, color_hex, display_order")
           .eq("is_active", true)
           .order("display_order", { ascending: true, nullsFirst: false });
         
-        if (error) {
-          console.error("❌ Error fetching categories:", error);
-          setCategories([]);
-          return;
-        }
-        
-        console.log("✅ Categories loaded successfully:", data?.length || 0, "categories");
-        console.log("🎨 First category color:", data?.[0]?.color_hex);
-        
+        if (error) throw error;
         setCategories(data || []);
-        
       } catch (err) {
-        console.error("❌ Exception fetching categories:", err);
+        console.error("❌ Error fetching categories:", err);
         setCategories([]);
       }
     };
-    
     fetchCategories();
   }, []);
 
-  // Restaurer les données du brouillon si disponible
+  // ============================================================
+  // GÉNÉRATION DES JOURS DE L'ÉVÉNEMENT
+  // ============================================================
+  useEffect(() => {
+    if (eventDate && endDate) {
+      const start = new Date(eventDate);
+      const end = new Date(endDate);
+      const days = [];
+      const current = new Date(start);
+      
+      while (current <= end) {
+        days.push({
+          date: new Date(current),
+          label: current.toLocaleDateString('fr-FR', { 
+            weekday: 'long', 
+            day: 'numeric', 
+            month: 'long' 
+          }),
+          dateStr: current.toISOString().split('T')[0],
+        });
+        current.setDate(current.getDate() + 1);
+      }
+      setEventDays(days);
+    }
+  }, [eventDate, endDate]);
+
+  // ============================================================
+  // CONFIGURATION DES BILLETS PAR JOUR
+  // ============================================================
+  useEffect(() => {
+    if (eventDays.length > 0 && ticketType === "daily") {
+      const config = {};
+      
+      eventDays.forEach((day) => {
+        config[day.dateStr] = {
+          enabled: true,
+          tickets: [
+            { 
+              id: uuidv4(),
+              name: "Standard",
+              price: 500,
+              presale_price: 400,
+              quantity: 0,
+              color: "blue",
+              description: `Billet Standard - ${day.label}`
+            },
+            { 
+              id: uuidv4(),
+              name: "VIP",
+              price: 1000,
+              presale_price: 800,
+              quantity: 0,
+              color: "gold",
+              description: `Billet VIP - ${day.label}`
+            }
+          ]
+        };
+      });
+      
+      setDailyTicketConfig(config);
+    }
+  }, [eventDays, ticketType]);
+
+  // ============================================================
+  // RESTAURATION DU BROUILLON
+  // ============================================================
   useEffect(() => {
     const restoreDraft = () => {
       const draft = localStorage.getItem("draftEvent");
       if (draft) {
         try {
           const draftData = JSON.parse(draft);
-
           setTitle(draftData.title || "");
           setDescription(draftData.description || "");
           setEventDate(draftData.eventDate || "");
@@ -156,22 +235,17 @@ const CreateTicketingEventPage = () => {
           setAddress(draftData.address || "");
           setCategoryId(draftData.categoryId || "");
           setMaxAttendees(draftData.maxAttendees || 1000);
-          setIsPublic(
-            draftData.isPublic !== undefined ? draftData.isPublic : true,
-          );
+          setIsPublic(draftData.isPublic !== undefined ? draftData.isPublic : true);
           setRequiresApproval(draftData.requiresApproval || false);
           setCoverImage(draftData.coverImage || "");
+          setTicketType(draftData.ticketType || "multi_day");
 
-          if (draftData.ticketTypes && draftData.ticketTypes.length > 0) {
-            setTicketTypes(
-              draftData.ticketTypes.map((tt) => ({
-                ...tt,
-                id: tt.id || uuidv4(),
-              })),
-            );
+          if (draftData.multiDayTickets) {
+            setMultiDayTickets(draftData.multiDayTickets);
           }
-
-          // Restaurer la configuration des codes promo
+          if (draftData.dailyTicketConfig) {
+            setDailyTicketConfig(draftData.dailyTicketConfig);
+          }
           if (draftData.promoConfig) {
             setPromoConfig(draftData.promoConfig);
             setPromoConfigSaved(true);
@@ -179,8 +253,7 @@ const CreateTicketingEventPage = () => {
 
           toast({
             title: "Brouillon restauré",
-            description:
-              "Votre brouillon précédent a été restauré. Vous pouvez continuer votre création.",
+            description: "Votre brouillon précédent a été restauré.",
             duration: 4000,
           });
         } catch (error) {
@@ -194,52 +267,173 @@ const CreateTicketingEventPage = () => {
     }
   }, [user]);
 
-  const handleTicketTypeChange = (id, field, value) => {
-    setTicketTypes(
-      ticketTypes.map((tt) => (tt.id === id ? { ...tt, [field]: value } : tt)),
+  // ============================================================
+  // GESTION DES BILLETS MULTI-JOURS
+  // ============================================================
+  const updateMultiDayTicket = (ticketId, field, value) => {
+    setMultiDayTickets((prev) =>
+      prev.map((t) =>
+        t.id === ticketId ? { ...t, [field]: value } : t
+      )
     );
   };
 
-  const addTicketType = () => {
-    setTicketTypes([
-      ...ticketTypes,
-      {
-        id: uuidv4(),
-        name: "Nouveau Billet",
-        price: 0,
-        presale_price: 0,
-        quantity_available: 50,
-        sales_start_date: "",
-        sales_event_end_at: "",
-        description: "",
-        color: "blue",
-      },
-    ]);
+  const addMultiDayTicket = () => {
+    const newTicket = {
+      id: uuidv4(),
+      name: "Nouveau billet",
+      price: 1000,
+      presale_price: 800,
+      quantity: 0,
+      color: "blue",
+      description: "Billet - Valable pour toute la durée de l'événement"
+    };
+    setMultiDayTickets([...multiDayTickets, newTicket]);
   };
 
-  const removeTicketType = (id) => {
-    if (ticketTypes.length <= 1) {
+  const removeMultiDayTicket = (ticketId) => {
+    setMultiDayTickets(multiDayTickets.filter((t) => t.id !== ticketId));
+  };
+
+  const getTotalMultiDayTickets = () => {
+    return multiDayTickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0);
+  };
+
+  // ============================================================
+  // GESTION DES BILLETS PAR JOUR
+  // ============================================================
+  const updateTicketField = (dateStr, ticketId, field, value) => {
+    setDailyTicketConfig((prev) => ({
+      ...prev,
+      [dateStr]: {
+        ...prev[dateStr],
+        tickets: prev[dateStr].tickets.map((t) =>
+          t.id === ticketId ? { ...t, [field]: value } : t
+        )
+      }
+    }));
+  };
+
+  const addTicketToDay = (dateStr) => {
+    const day = eventDays.find(d => d.dateStr === dateStr);
+    const newTicket = {
+      id: uuidv4(),
+      name: "Nouveau billet",
+      price: 500,
+      presale_price: 400,
+      quantity: 0,
+      color: "blue",
+      description: `Billet pour le ${day?.label || dateStr}`
+    };
+    
+    setDailyTicketConfig((prev) => ({
+      ...prev,
+      [dateStr]: {
+        ...prev[dateStr],
+        tickets: [...prev[dateStr].tickets, newTicket]
+      }
+    }));
+  };
+
+  const removeTicketFromDay = (dateStr, ticketId) => {
+    setDailyTicketConfig((prev) => ({
+      ...prev,
+      [dateStr]: {
+        ...prev[dateStr],
+        tickets: prev[dateStr].tickets.filter((t) => t.id !== ticketId)
+      }
+    }));
+  };
+
+  const getTotalTicketsByDay = (dateStr) => {
+    const config = dailyTicketConfig[dateStr];
+    if (!config) return 0;
+    return config.tickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0);
+  };
+
+  const getTotalDailyTickets = () => {
+    let total = 0;
+    Object.values(dailyTicketConfig).forEach((dayConfig) => {
+      dayConfig.tickets.forEach((t) => {
+        total += parseInt(t.quantity) || 0;
+      });
+    });
+    return total;
+  };
+
+  const getTotalAllTickets = () => {
+    if (ticketType === "multi_day") {
+      return getTotalMultiDayTickets();
+    } else {
+      return getTotalDailyTickets();
+    }
+  };
+
+  // ============================================================
+  // CONTRAT - NOUVELLE VERSION AVEC ENREGISTREMENT DIRECT
+  // ============================================================
+  const handleContractAccept = async () => {
+    if (!user) {
       toast({
-        title: "Impossible",
-        description: "Il faut au moins un type de billet.",
+        title: "Erreur",
+        description: "Vous devez être connecté pour accepter le contrat.",
         variant: "destructive",
       });
       return;
     }
-    setTicketTypes(ticketTypes.filter((tt) => tt.id !== id));
-  };
 
-  const convertToCoins = (fcfa) =>
-    Math.ceil(parseInt(fcfa || 0, 10) / COIN_RATE);
+    try {
+      // Enregistrer l'acceptation du contrat dans la base de données
+      const { data, error } = await supabase
+        .from("user_contract_acceptances")
+        .insert({
+          user_id: user.id,
+          event_id: null, // Pas encore d'événement créé
+          contract_type: "organizer",
+          accepted_at: new Date().toISOString(),
+          contract_version: "v1.0",
+        })
+        .select()
+        .single();
 
-  const handleContractAccept = () => {
-    setTermsAccepted(true);
-    setShowContractModal(false);
-    toast({
-      title: "Contrat accepté",
-      description: "Vous pouvez maintenant publier votre événement",
-      className: "bg-green-600 text-white",
-    });
+      if (error) {
+        // Si la table n'existe pas, on continue quand même
+        console.warn("⚠️ Table user_contract_acceptances non trouvée:", error);
+        setTermsAccepted(true);
+        setShowContractModal(false);
+        toast({
+          title: "Contrat accepté",
+          description: "Vous pouvez maintenant publier votre événement.",
+          className: "bg-green-600 text-white",
+        });
+        return;
+      }
+
+      // Sauvegarder l'ID de l'acceptation pour le lier à l'événement plus tard
+      if (data) {
+        setContractAcceptanceId(data.id);
+      }
+
+      setTermsAccepted(true);
+      setShowContractModal(false);
+      
+      toast({
+        title: "✅ Contrat accepté",
+        description: "Votre acceptation a été enregistrée. Vous pouvez maintenant publier votre événement.",
+        className: "bg-green-600 text-white",
+      });
+
+    } catch (err) {
+      console.error("❌ Erreur lors de l'acceptation du contrat:", err);
+      // En cas d'erreur, on accepte quand même le contrat côté UI
+      setTermsAccepted(true);
+      setShowContractModal(false);
+      toast({
+        title: "Contrat accepté",
+        description: "Vous pouvez maintenant publier votre événement.",
+        className: "bg-green-600 text-white",
+      });
+    }
   };
 
   const handleOpenContract = () => {
@@ -251,19 +445,20 @@ const CreateTicketingEventPage = () => {
     setPromoConfigSaved(true);
   };
 
+  // ============================================================
+  // SOUMISSION
+  // ============================================================
   const performSubmission = async () => {
-    // Vérification 1 : Contrat accepté (OBLIGATOIRE)
     if (!termsAccepted) {
       toast({
         title: "Contrat requis",
-        description: "Veuillez lire et accepter le contrat organisateur avant de publier.",
+        description: "Veuillez lire et accepter le contrat organisateur.",
         variant: "destructive",
       });
       setShowContractModal(true);
       return;
     }
 
-    // Vérification 2 : Utilisateur connecté
     if (!user) {
       toast({
         title: "Erreur",
@@ -280,9 +475,6 @@ const CreateTicketingEventPage = () => {
       const eventEndAt = endDate
         ? new Date(endDate)
         : new Date(eventStartAt.getTime() + 24 * 60 * 60 * 1000);
-
-      console.log("📝 Création de l'événement...");
-      console.log("💰 Taux de conversion:", COIN_RATE, "FCFA = 1 pièce");
 
       // 1. Création de l'événement
       const { data: eventData, error: eventError } = await supabase
@@ -312,136 +504,241 @@ const CreateTicketingEventPage = () => {
       if (eventError) throw eventError;
 
       const newEventId = eventData.id;
-      console.log("✅ Événement créé avec ID:", newEventId);
 
-      // 2. Enregistrer l'acceptation du contrat (avec gestion d'erreur)
-      try {
-        const { error: contractError } = await supabase.from("user_contract_acceptances").insert({
-          user_id: user.id,
-          event_id: newEventId,
-          contract_type: "organizer",
-          accepted_at: new Date().toISOString(),
-          contract_version: "v1.0",
-        });
-        
-        if (contractError) {
-          console.warn("⚠️ Erreur contrat (non bloquante):", contractError);
+      // 2. Mettre à jour l'acceptation du contrat avec l'event_id si on a un ID
+      if (contractAcceptanceId) {
+        try {
+          await supabase
+            .from("user_contract_acceptances")
+            .update({ event_id: newEventId })
+            .eq("id", contractAcceptanceId);
+        } catch (err) {
+          console.warn("⚠️ Erreur mise à jour contrat avec event_id:", err);
         }
-      } catch (err) {
-        console.warn("⚠️ Exception contrat (non bloquante):", err);
+      } else {
+        // Si pas d'ID d'acceptation, on essaie d'en créer une nouvelle
+        try {
+          await supabase.from("user_contract_acceptances").insert({
+            user_id: user.id,
+            event_id: newEventId,
+            contract_type: "organizer",
+            accepted_at: new Date().toISOString(),
+            contract_version: "v1.0",
+          });
+        } catch (err) {
+          console.warn("⚠️ Erreur insertion contrat:", err);
+        }
       }
 
-      // 3. Sauvegarder la configuration des codes promo si activée
+      // 3. Sauvegarder les codes promo
       if (promoConfig && promoConfig.enabled) {
-        let discountValueToSave = promoConfig.discount_value;
-        
-        if (promoConfig.discount_type === 'fixed') {
-          discountValueToSave = promoConfig.discount_value;
-          console.log("💰 Réduction fixe:", discountValueToSave, "FCFA =", discountValueToSave / COIN_RATE, "pièces");
-        } else {
-          console.log("💰 Réduction pourcentage:", promoConfig.discount_value, "%");
-        }
-        
         try {
-          const { error: promoError } = await supabase.from("event_promo_config").insert({
+          await supabase.from("event_promo_config").insert({
             event_id: newEventId,
             enabled: promoConfig.enabled,
             discount_type: promoConfig.discount_type,
-            discount_value: discountValueToSave,
+            discount_value: promoConfig.discount_value,
             commission_rate: promoConfig.commission_rate,
             usage_limit: promoConfig.usage_limit || null,
           });
-          
-          if (promoError) {
-            console.warn("⚠️ Erreur promo config (non bloquante):", promoError);
-          }
         } catch (err) {
-          console.warn("⚠️ Exception promo config (non bloquante):", err);
+          console.warn("⚠️ Erreur promo config (non bloquante):", err);
         }
       }
 
-      // 4. Créer l'entrée ticketing_events
-      const totalTickets = ticketTypes.reduce(
-        (acc, tt) => acc + (parseInt(tt.quantity_available, 10) || 0),
-        0,
-      );
+      // 4. Créer ticketing_events
+      const totalTickets = getTotalAllTickets();
 
-      const { error: ticketingError } = await supabase.from("ticketing_events").insert({
+      await supabase.from("ticketing_events").insert({
         event_id: newEventId,
         total_tickets: totalTickets,
         tickets_sold: 0,
       });
 
-      if (ticketingError) {
-        console.warn("⚠️ Erreur ticketing_events (non bloquante):", ticketingError);
+      // ============================================================
+      // 5. CRÉATION DES TICKETS
+      // ============================================================
+      const ticketTypesToInsert = [];
+      const ticketsToInsert = [];
+
+      // Récupérer toutes les dates de l'événement pour valid_dates
+      const allEventDates = eventDays.map(day => day.dateStr);
+
+      if (ticketType === "multi_day") {
+        // === BILLETS MULTI-JOURS ===
+        for (const ticket of multiDayTickets) {
+          const quantity = parseInt(ticket.quantity) || 0;
+          if (quantity <= 0) continue;
+
+          const priceFcfa = parseInt(ticket.price) || 0;
+          const presalePriceFcfa = parseInt(ticket.presale_price) || 0;
+          const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
+          const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+
+          const ticketTypeData = {
+            event_id: newEventId,
+            name: ticket.name,
+            description: ticket.description || `Billet ${ticket.name}`,
+            price: priceFcfa.toString(),
+            price_pi: priceCoins,
+            price_coins: priceCoins,
+            quantity_available: quantity,
+            quantity_sold: 0,
+            presale_price_pi: presalePriceCoins,
+            presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
+            sales_start: new Date().toISOString(),
+            sales_end: eventEndAt.toISOString(),
+            is_active: true,
+            color: ticket.color || "blue",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          ticketTypesToInsert.push(ticketTypeData);
+        }
+      } else {
+        // === BILLETS PAR JOUR ===
+        for (const [dateStr, dayConfig] of Object.entries(dailyTicketConfig)) {
+          if (!dayConfig.enabled) continue;
+
+          for (const ticket of dayConfig.tickets) {
+            const quantity = parseInt(ticket.quantity) || 0;
+            if (quantity <= 0) continue;
+
+            const priceFcfa = parseInt(ticket.price) || 0;
+            const presalePriceFcfa = parseInt(ticket.presale_price) || 0;
+            const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
+            const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+
+            const ticketTypeData = {
+              event_id: newEventId,
+              name: `${ticket.name} - ${dateStr}`,
+              description: ticket.description || `Billet ${ticket.name} pour le ${dateStr}`,
+              price: priceFcfa.toString(),
+              price_pi: priceCoins,
+              price_coins: priceCoins,
+              quantity_available: quantity,
+              quantity_sold: 0,
+              presale_price_pi: presalePriceCoins,
+              presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
+              sales_start: new Date().toISOString(),
+              sales_end: eventEndAt.toISOString(),
+              is_active: true,
+              color: ticket.color || "blue",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            ticketTypesToInsert.push(ticketTypeData);
+          }
+        }
       }
 
-      // 5. Insérer les types de billets avec conversion correcte (1 pièce = 10 FCFA)
-      const ticketTypesToInsert = ticketTypes.map((tt) => {
-        const priceFcfa = parseInt(tt.price, 10) || 0;
-        const presalePriceFcfa = parseInt(tt.presale_price, 10) || 0;
-        const quantityAvailable = parseInt(tt.quantity_available, 10) || 0;
-        
-        // Conversion: 1 pièce = 10 FCFA (arrondi à l'entier supérieur)
-        const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
-        const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+      // Insérer les ticket_types
+      if (ticketTypesToInsert.length > 0) {
+        const { error: ticketTypesError } = await supabase
+          .from("ticket_types")
+          .insert(ticketTypesToInsert);
 
-        console.log(`🎫 Billet "${tt.name}":`, {
-          priceFcfa: `${priceFcfa.toLocaleString()} FCFA`,
-          priceCoins: `${priceCoins} pièces`,
-          quantity: quantityAvailable
-        });
+        if (ticketTypesError) throw ticketTypesError;
+      }
 
-        return {
-          event_id: newEventId,
-          name: tt.name || "Standard",
-          description: tt.description || "",
-          price: priceFcfa.toString(),
-          price_pi: priceCoins,
-          price_coins: priceCoins,
-          quantity_available: quantityAvailable,
-          quantity_sold: 0,
-          presale_price_pi: presalePriceCoins,
-          presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
-          sales_start: tt.sales_start_date
-            ? new Date(tt.sales_start_date).toISOString()
-            : new Date().toISOString(),
-          sales_end: tt.sales_event_end_at
-            ? new Date(tt.sales_event_end_at).toISOString()
-            : eventEndAt.toISOString(),
-          is_active: true,
-          color: tt.color || "blue",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-      });
-
-      const { error: ticketTypesError } = await supabase
+      // Récupérer les ticket_types créés
+      const { data: createdTicketTypes, error: fetchError } = await supabase
         .from("ticket_types")
-        .insert(ticketTypesToInsert);
+        .select("id, name, price_pi, quantity_available, color")
+        .eq("event_id", newEventId);
 
-      if (ticketTypesError) throw ticketTypesError;
+      if (fetchError) throw fetchError;
 
-      console.log("✅", ticketTypesToInsert.length, "types de billets créés");
+      // ============================================================
+      // 🔥 CRÉATION DES TICKETS INDIVIDUELS - CORRECTION ICI
+      // ============================================================
+      for (const ttType of createdTicketTypes) {
+        const quantity = parseInt(ttType.quantity_available, 10) || 0;
+        
+        // Déterminer si c'est un billet multi-jours ou par jour
+        const dateMatch = ttType.name.match(/\d{4}-\d{2}-\d{2}/);
+        const isMultiDay = !dateMatch;
+        const ticketDate = dateMatch ? dateMatch[0] : null;
 
-      // 6. Nettoyer les brouillons
+        for (let i = 0; i < quantity; i++) {
+          const ticketNumber = `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, '0')}`;
+          
+          const ticketData = {
+            event_id: newEventId,
+            ticket_type_id: ttType.id,
+            qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, '0')}`,
+            ticket_number: ticketNumber,
+            attendee_name: `Visiteur ${i + 1}`,
+            phone: null,
+            email: null,
+            // 🔥 IMPORTANT: 0 = non vendu (sera mis à jour lors de l'achat)
+            purchase_price_pi: 0,
+            status: 'active',
+            ticket_date: ticketDate,
+            is_multi_day: isMultiDay,
+            valid_dates: isMultiDay ? allEventDates : null,
+            purchased_at: new Date().toISOString(),
+          };
+          
+          ticketsToInsert.push(ticketData);
+        }
+      }
+
+      // Insérer les tickets
+      if (ticketsToInsert.length > 0) {
+        const { error: ticketsError } = await supabase
+          .from("tickets")
+          .insert(ticketsToInsert);
+
+        if (ticketsError) {
+          console.error("❌ Erreur création tickets:", ticketsError);
+          throw ticketsError;
+        }
+      }
+
+      // ============================================================
+      // 🔥 RÉINITIALISER quantity_sold à 0 (sécurité)
+      // ============================================================
+      const { error: resetSoldError } = await supabase
+        .from("ticket_types")
+        .update({ quantity_sold: 0 })
+        .eq("event_id", newEventId);
+
+      if (resetSoldError) {
+        console.warn("⚠️ Erreur réinitialisation quantity_sold:", resetSoldError);
+      }
+
+      // Nettoyer les brouillons
       localStorage.removeItem("draftEvent");
       localStorage.removeItem("event_promo_config_draft");
 
-      // 7. Notification de succès
+      // Notification de succès
+      const ticketTypeLabel = ticketType === "multi_day" ? "multi-jours" : "journaliers";
       toast({
         title: "🎉 Succès !",
         description: (
           <div className="space-y-1">
             <p>Votre événement billetterie a été créé avec succès !</p>
             <p className="text-xs opacity-90">
-              {totalTickets} billets • Potentiel: {ticketTypesToInsert.reduce((acc, t) => acc + (t.price_coins * t.quantity_available), 0).toLocaleString()} pièces
+              {ticketsToInsert.length} billets {ticketTypeLabel} • 
+              {ticketType === "multi_day" ? "Valables toute la durée" : `${eventDays.length} jours disponibles`}
             </p>
+            {ticketType === "multi_day" ? (
+              <p className="text-xs opacity-90">
+                {multiDayTickets.map(t => `${t.name}: ${t.quantity || 0}`).join(' | ')}
+              </p>
+            ) : (
+              <p className="text-xs opacity-90">
+                {Object.entries(dailyTicketConfig).map(([date, config]) => 
+                  `${date}: ${config.tickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0)} billets`
+                ).join(' | ')}
+              </p>
+            )}
             {promoConfig?.enabled && (
               <p className="text-xs opacity-90 mt-1">
-                🏷️ Code promo activé: {promoConfig.discount_type === 'fixed' 
-                  ? `${promoConfig.discount_value.toLocaleString()} FCFA de réduction (${promoConfig.discount_value / COIN_RATE} pièces)` 
-                  : `${promoConfig.discount_value}% de réduction`}
+                🏷️ Code promo activé
               </p>
             )}
           </div>
@@ -450,11 +747,10 @@ const CreateTicketingEventPage = () => {
         className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
       });
 
-      // 8. Redirection vers l'événement
       setTimeout(() => {
         navigate(`/event/${newEventId}`);
       }, 2000);
-      
+
     } catch (error) {
       console.error("❌ Erreur création événement:", error);
       toast({
@@ -467,8 +763,39 @@ const CreateTicketingEventPage = () => {
     }
   };
 
+  // Sauvegarde automatique du brouillon
+  useEffect(() => {
+    const saveDraft = () => {
+      const draftData = {
+        title,
+        description,
+        eventDate,
+        endDate,
+        city,
+        country,
+        address,
+        categoryId,
+        maxAttendees,
+        isPublic,
+        requiresApproval,
+        coverImage,
+        ticketType,
+        multiDayTickets,
+        dailyTicketConfig,
+        promoConfig,
+      };
+      localStorage.setItem("draftEvent", JSON.stringify(draftData));
+    };
+
+    const debounce = setTimeout(saveDraft, 2000);
+    return () => clearTimeout(debounce);
+  }, [title, description, eventDate, endDate, city, country, address, categoryId, maxAttendees, isPublic, requiresApproval, coverImage, ticketType, multiDayTickets, dailyTicketConfig, promoConfig]);
+
+  // ============================================================
+  // RENDU
+  // ============================================================
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 md:p-8 pb-20">
+    <div className="min-h-screen bg-[#0a0a0f] text-white p-4 md:p-8 pb-20">
       <Helmet>
         <title>Créer Billetterie - BonPlanInfos</title>
         <meta
@@ -485,17 +812,17 @@ const CreateTicketingEventPage = () => {
         eventId="new-event"
       />
 
-      <Card className="max-w-4xl mx-auto glass-effect shadow-xl border-none">
-        <CardHeader className="border-b border-border/50 pb-6">
+      <Card className="max-w-4xl mx-auto bg-[#111118] border border-white/10 shadow-2xl shadow-primary/5">
+        <CardHeader className="border-b border-white/10 pb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
+            <div className="p-3 rounded-full bg-primary/20">
               <Ticket className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-2xl font-bold">
+              <CardTitle className="text-2xl font-bold text-white">
                 Créer une Billetterie
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-white/60">
                 Configurez votre événement, vos billets et vos tarifs.
               </CardDescription>
             </div>
@@ -507,7 +834,7 @@ const CreateTicketingEventPage = () => {
             onValueChange={(v) => setStep(parseInt(v))}
           >
             <div className="relative mb-8">
-              <div className="absolute bottom-0 left-0 w-full h-1 bg-muted rounded-full"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-white/10 rounded-full"></div>
               <div
                 className="absolute bottom-0 left-0 h-1 bg-primary rounded-full transition-all duration-300 ease-in-out"
                 style={{
@@ -517,25 +844,26 @@ const CreateTicketingEventPage = () => {
               <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
                 <TabsTrigger
                   value="1"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2"
+                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2 text-white/60"
                 >
                   1. Informations
                 </TabsTrigger>
                 <TabsTrigger
                   value="2"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2"
+                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2 text-white/60"
                 >
                   2. Billets
                 </TabsTrigger>
                 <TabsTrigger
                   value="3"
-                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2"
+                  className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary text-base md:text-lg font-medium border-b-2 border-transparent rounded-none pb-2 text-white/60"
                 >
                   3. Confirmation
                 </TabsTrigger>
               </TabsList>
             </div>
 
+            {/* ÉTAPE 1 - INFORMATIONS */}
             <TabsContent
               value="1"
               className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300"
@@ -543,7 +871,7 @@ const CreateTicketingEventPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-base">Image de couverture</Label>
+                    <Label className="text-base text-white">Image de couverture</Label>
                     <ImageUpload
                       onImageUploaded={setCoverImage}
                       existingImage={coverImage}
@@ -556,62 +884,62 @@ const CreateTicketingEventPage = () => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Titre de l'événement *</Label>
+                    <Label className="text-white">Titre de l'événement *</Label>
                     <Input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ex: Concert Géant..."
-                      className="bg-background/50"
+                      placeholder="Ex: Festival 3 Jours..."
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Pays</Label>
+                      <Label className="text-white">Pays</Label>
                       <Input
                         value={country}
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="France"
-                        className="bg-background/50"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Ville *</Label>
+                      <Label className="text-white">Ville *</Label>
                       <Input
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
                         placeholder="Paris"
-                        className="bg-background/50"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                         required
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Adresse précise</Label>
+                    <Label className="text-white">Adresse précise</Label>
                     <Input
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Lieu, Salle, Rue..."
-                      className="bg-background/50"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Catégorie *</Label>
+                    <Label className="text-white">Catégorie *</Label>
                     <Select onValueChange={setCategoryId} value={categoryId}>
-                      <SelectTrigger className="bg-background/50">
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
                         <SelectValue placeholder="Sélectionner une catégorie" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[#1a1a2e] border-white/10">
                         {categories.length === 0 ? (
-                          <div className="px-2 py-4 text-center text-muted-foreground">
+                          <div className="px-2 py-4 text-center text-white/60">
                             Chargement des catégories...
                           </div>
                         ) : (
                           categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
+                            <SelectItem key={c.id} value={c.id} className="text-white hover:bg-white/10">
                               <div className="flex items-center gap-2">
                                 {c.color_hex && (
                                   <div 
@@ -631,283 +959,458 @@ const CreateTicketingEventPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label className="text-white">Description</Label>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Détaillez votre événement : programme, artistes, activités, etc."
-                  className="min-h-[150px] bg-background/50"
+                  className="min-h-[150px] bg-white/5 border-white/10 text-white placeholder:text-white/40"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Début *</Label>
+                  <Label className="text-white">Début *</Label>
                   <Input
                     type="datetime-local"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    className="bg-background/50"
+                    className="bg-white/5 border-white/10 text-white"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Fin</Label>
+                  <Label className="text-white">Fin *</Label>
                   <Input
                     type="datetime-local"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="bg-background/50"
+                    className="bg-white/5 border-white/10 text-white"
+                    required
                   />
                 </div>
               </div>
 
               <div className="flex justify-end mt-8">
-                <Button onClick={() => setStep(2)} className="px-8">
+                <Button onClick={() => setStep(2)} className="px-8 bg-primary hover:bg-primary/80">
                   Suivant <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
             </TabsContent>
 
+            {/* ÉTAPE 2 - BILLETS */}
             <TabsContent
               value="2"
               className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300"
             >
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 text-sm flex gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-full h-fit">
-                  <Coins className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                <Label className="text-white mb-3 block">Type de billetterie</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      ticketType === "multi_day"
+                        ? "border-primary bg-primary/10"
+                        : "border-white/10 hover:border-white/30"
+                    }`}
+                    onClick={() => setTicketType("multi_day")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CalendarRange className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-white">Multi-jours</p>
+                        <p className="text-xs text-white/60">
+                          Un seul billet valable pour toute la durée de l'événement
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      ticketType === "daily"
+                        ? "border-primary bg-primary/10"
+                        : "border-white/10 hover:border-white/30"
+                    }`}
+                    onClick={() => setTicketType("daily")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-white">Par jour</p>
+                        <p className="text-xs text-white/60">
+                          Un billet spécifique pour chaque jour de l'événement
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {eventDays.length > 0 && (
+                <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                  <p className="text-sm font-medium text-white mb-2">
+                    📅 Jours de l'événement
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {eventDays.map((day, index) => (
+                      <Badge key={index} variant="outline" className="text-white border-white/20">
+                        {day.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/30 text-sm flex gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-full h-fit">
+                  <Coins className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <p className="font-bold text-base text-blue-800 dark:text-blue-300">
-                    Conversion Automatique
+                  <p className="font-bold text-base text-blue-400">
+                    {ticketType === "multi_day" ? "Billets Multi-jours" : "Billets Journaliers"}
                   </p>
-                  <p className="text-muted-foreground">
-                    Le système calcule automatiquement le prix en Pièces (10
-                    FCFA = 1 pièces). Les revenus sont partagés à 90% pour vous.
+                  <p className="text-white/60">
+                    10 FCFA = 1 pièce • 
+                    {ticketType === "multi_day" 
+                      ? " Chaque billet est valable pour toute la durée de l'événement"
+                      : " Chaque billet est valable un jour spécifique"}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {ticketTypes.map((tt, index) => (
-                  <motion.div
-                    key={tt.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card
-                      className="border-l-4 overflow-hidden hover:shadow-md transition-all"
-                      style={{
-                        borderLeftColor:
-                          TICKET_COLORS.find(
-                            (c) => c.value === tt.color,
-                          )?.hex.replace("bg-", "") || "gray",
-                      }}
+              {ticketType === "multi_day" ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-white flex items-center gap-2">
+                      <Ticket className="w-4 h-4 text-primary" />
+                      Types de billets multi-jours
+                      <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                        Total: {getTotalMultiDayTickets()} billets
+                      </Badge>
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addMultiDayTicket}
+                      className="border-white/20 text-white hover:bg-white/10"
                     >
-                      <CardContent className="p-6 space-y-6">
-                        <div className="flex justify-between items-center border-b pb-4">
-                          <div className="flex items-center gap-3">
-                            <Badge
-                              variant="outline"
-                              className="text-sm px-3 py-1"
-                            >
-                              Billet #{index + 1}
-                            </Badge>
+                      <Plus className="w-4 h-4 mr-1" /> Ajouter un billet
+                    </Button>
+                  </div>
+
+                  {multiDayTickets.map((ticket) => {
+                    const colorInfo = TICKET_COLORS.find(c => c.value === ticket.color) || TICKET_COLORS[0];
+                    const quantity = parseInt(ticket.quantity) || 0;
+
+                    return (
+                      <div key={ticket.id} className="bg-black/30 rounded-lg p-4 border border-white/5">
+                        <div className="flex flex-wrap gap-3 items-start">
+                          <div className="flex-1 min-w-[150px]">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-full ${colorInfo.hex}`} />
+                              <Input
+                                value={ticket.name}
+                                onChange={(e) => updateMultiDayTicket(ticket.id, 'name', e.target.value)}
+                                className="font-bold text-sm border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[100px] bg-transparent text-white"
+                                placeholder="Nom du billet"
+                              />
+                            </div>
                             <Input
-                              value={tt.name}
-                              onChange={(e) =>
-                                handleTicketTypeChange(
-                                  tt.id,
-                                  "name",
-                                  e.target.value,
-                                )
-                              }
-                              className="font-bold text-lg border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[200px]"
-                              placeholder="Nom du billet (ex: VIP)"
+                              value={ticket.description}
+                              onChange={(e) => updateMultiDayTicket(ticket.id, 'description', e.target.value)}
+                              className="text-xs border-none shadow-none focus-visible:ring-0 px-0 w-full bg-transparent text-white/60 mt-1"
+                              placeholder="Description"
                             />
                           </div>
-                          {ticketTypes.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeTicketType(tt.id)}
-                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash className="w-5 h-5" />
-                            </Button>
-                          )}
-                        </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                          <div className="space-y-4 lg:col-span-2">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Quantité disponible</Label>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Label className="text-xs text-white/60">Qté</Label>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                  onClick={() => {
+                                    const current = parseInt(ticket.quantity) || 0;
+                                    updateMultiDayTicket(ticket.id, 'quantity', Math.max(0, current - 1));
+                                  }}
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </Button>
                                 <Input
                                   type="number"
-                                  min="1"
-                                  value={tt.quantity_available}
-                                  onChange={(e) =>
-                                    handleTicketTypeChange(
-                                      tt.id,
-                                      "quantity_available",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="bg-background/50"
+                                  min="0"
+                                  value={quantity}
+                                  onChange={(e) => updateMultiDayTicket(ticket.id, 'quantity', e.target.value)}
+                                  className="w-14 h-6 text-center text-sm bg-white/5 border-white/10 text-white"
                                 />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Couleur du billet</Label>
-                                <Select
-                                  value={tt.color}
-                                  onValueChange={(val) =>
-                                    handleTicketTypeChange(tt.id, "color", val)
-                                  }
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                  onClick={() => {
+                                    const current = parseInt(ticket.quantity) || 0;
+                                    updateMultiDayTicket(ticket.id, 'quantity', current + 1);
+                                  }}
                                 >
-                                  <SelectTrigger className="bg-background/50">
-                                    <SelectValue placeholder="Choisir une couleur">
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className={`w-4 h-4 rounded-full ${TICKET_COLORS.find((c) => c.value === tt.color)?.hex}`}
-                                        ></div>
-                                        <span>
-                                          {
-                                            TICKET_COLORS.find(
-                                              (c) => c.value === tt.color,
-                                            )?.name
-                                          }
-                                        </span>
-                                      </div>
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {TICKET_COLORS.map((c) => (
-                                      <SelectItem key={c.value} value={c.value}>
-                                        <div className="flex items-center gap-2">
-                                          <div
-                                            className={`w-4 h-4 rounded-full ${c.hex}`}
-                                          ></div>
-                                          <span>{c.name}</span>
-                                        </div>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                  <Plus className="w-3 h-3" />
+                                </Button>
                               </div>
                             </div>
-                            <div className="space-y-2">
-                              <Label>Description courte</Label>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="w-20">
+                              <Label className="text-xs text-white/60">Prix FCFA</Label>
                               <Input
-                                value={tt.description}
-                                onChange={(e) =>
-                                  handleTicketTypeChange(
-                                    tt.id,
-                                    "description",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="Avantages inclus, accès VIP, boissons offertes, etc."
-                                className="bg-background/50"
+                                type="number"
+                                min="0"
+                                value={ticket.price}
+                                onChange={(e) => updateMultiDayTicket(ticket.id, 'price', e.target.value)}
+                                className="h-7 text-xs bg-white/5 border-white/10 text-white"
+                              />
+                            </div>
+                            <div className="w-20">
+                              <Label className="text-xs text-white/60">Prévente</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={ticket.presale_price}
+                                onChange={(e) => updateMultiDayTicket(ticket.id, 'presale_price', e.target.value)}
+                                className="h-7 text-xs bg-white/5 border-white/10 text-white"
                               />
                             </div>
                           </div>
 
-                          <div className="bg-muted/30 p-4 rounded-xl space-y-4 border border-border/50">
-                            <div className="space-y-3">
-                              <Label className="text-orange-600 font-bold flex items-center gap-2">
-                                <span>Prix Prévente (J-1)</span>
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] h-5"
-                                >
-                                  Promo
-                                </Badge>
-                              </Label>
-                              <div className="flex items-center gap-3">
-                                <div className="relative flex-grow">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    value={tt.presale_price}
-                                    onChange={(e) =>
-                                      handleTicketTypeChange(
-                                        tt.id,
-                                        "presale_price",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="pr-12 bg-background"
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                                    FCFA
-                                  </span>
-                                </div>
-                                <Badge
-                                  variant="outline"
-                                  className="h-10 px-3 text-base font-medium min-w-[80px] justify-center"
-                                >
-                                  {convertToCoins(tt.presale_price)} pièces
-                                </Badge>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3 pt-2 border-t border-dashed border-border">
-                              <Label className="text-green-600 font-bold">
-                                Prix Jour J (J-0)
-                              </Label>
-                              <div className="flex items-center gap-3">
-                                <div className="relative flex-grow">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    value={tt.price}
-                                    onChange={(e) =>
-                                      handleTicketTypeChange(
-                                        tt.id,
-                                        "price",
-                                        e.target.value,
-                                      )
-                                    }
-                                    className="pr-12 bg-background"
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                                    FCFA
-                                  </span>
-                                </div>
-                                <Badge
-                                  variant="outline"
-                                  className="h-10 px-3 text-base font-medium min-w-[80px] justify-center"
-                                >
-                                  {convertToCoins(tt.price)} pièces
-                                </Badge>
-                              </div>
-                            </div>
+                          <div>
+                            <Label className="text-xs text-white/60">Couleur</Label>
+                            <Select
+                              value={ticket.color}
+                              onValueChange={(val) => updateMultiDayTicket(ticket.id, 'color', val)}
+                            >
+                              <SelectTrigger className="w-24 h-7 text-xs bg-white/5 border-white/10 text-white">
+                                <SelectValue>
+                                  <div className="flex items-center gap-1">
+                                    <div className={`w-3 h-3 rounded-full ${TICKET_COLORS.find(c => c.value === ticket.color)?.hex || 'bg-primary'}`} />
+                                    <span className="text-xs">{TICKET_COLORS.find(c => c.value === ticket.color)?.name || 'Standard'}</span>
+                                  </div>
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent className="bg-[#1a1a2e] border-white/10">
+                                {TICKET_COLORS.map((c) => (
+                                  <SelectItem key={c.value} value={c.value} className="text-white hover:bg-white/10">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-3 h-3 rounded-full ${c.hex}`} />
+                                      <span>{c.name}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeMultiDayTicket(ticket.id)}
+                            className="text-white/40 hover:text-red-400 hover:bg-red-500/10 mt-4 sm:mt-0"
+                            disabled={multiDayTickets.length <= 1}
+                          >
+                            <Trash className="w-4 h-4" />
+                          </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-
-              <Button
-                variant="outline"
-                onClick={addTicketType}
-                className="w-full py-8 border-dashed border-2 hover:border-primary hover:text-primary transition-all group"
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  <span>Ajouter un autre type de billet</span>
+                        <div className="mt-2 text-xs text-white/30">
+                          💡 Valable pour toute la durée de l'événement ({eventDays.length} jours)
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </Button>
+              ) : (
+                <div className="space-y-6">
+                  <p className="text-sm font-medium text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    Configuration des billets par jour
+                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                      Total: {getTotalDailyTickets()} billets
+                    </Badge>
+                  </p>
+                  
+                  {eventDays.map((day) => {
+                    const dayConfig = dailyTicketConfig[day.dateStr];
+                    if (!dayConfig) return null;
+                    
+                    const dayTotal = getTotalTicketsByDay(day.dateStr);
+                    
+                    return (
+                      <Card key={day.dateStr} className="bg-white/5 border border-white/10 overflow-hidden">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <Badge className="bg-primary/20 text-primary border-primary/30">
+                                {day.label}
+                              </Badge>
+                              <span className="text-sm text-white/60">
+                                {dayTotal} billet{dayTotal > 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addTicketToDay(day.dateStr)}
+                              className="border-white/20 text-white hover:bg-white/10"
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Ajouter un billet
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {dayConfig.tickets.map((ticket) => {
+                              const colorInfo = TICKET_COLORS.find(c => c.value === ticket.color) || TICKET_COLORS[0];
+                              const quantity = parseInt(ticket.quantity) || 0;
+                              
+                              return (
+                                <div key={ticket.id} className="bg-black/30 rounded-lg p-3 border border-white/5">
+                                  <div className="flex flex-wrap gap-3 items-start">
+                                    <div className="flex-1 min-w-[120px]">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full ${colorInfo.hex}`} />
+                                        <Input
+                                          value={ticket.name}
+                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'name', e.target.value)}
+                                          className="font-bold text-sm border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[80px] bg-transparent text-white"
+                                          placeholder="Nom"
+                                        />
+                                      </div>
+                                      <Input
+                                        value={ticket.description}
+                                        onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'description', e.target.value)}
+                                        className="text-xs border-none shadow-none focus-visible:ring-0 px-0 w-full bg-transparent text-white/60 mt-1"
+                                        placeholder="Description"
+                                      />
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1">
+                                        <Label className="text-xs text-white/60">Qté</Label>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="icon"
+                                            variant="outline"
+                                            className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                            onClick={() => {
+                                              const current = parseInt(ticket.quantity) || 0;
+                                              updateTicketField(day.dateStr, ticket.id, 'quantity', Math.max(0, current - 1));
+                                            }}
+                                          >
+                                            <Minus className="w-3 h-3" />
+                                          </Button>
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            value={quantity}
+                                            onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'quantity', e.target.value)}
+                                            className="w-12 h-6 text-center text-sm bg-white/5 border-white/10 text-white"
+                                          />
+                                          <Button
+                                            size="icon"
+                                            variant="outline"
+                                            className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                            onClick={() => {
+                                              const current = parseInt(ticket.quantity) || 0;
+                                              updateTicketField(day.dateStr, ticket.id, 'quantity', current + 1);
+                                            }}
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-20">
+                                        <Label className="text-xs text-white/60">Prix FCFA</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={ticket.price}
+                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'price', e.target.value)}
+                                          className="h-7 text-xs bg-white/5 border-white/10 text-white"
+                                        />
+                                      </div>
+                                      <div className="w-20">
+                                        <Label className="text-xs text-white/60">Prévente</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          value={ticket.presale_price}
+                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'presale_price', e.target.value)}
+                                          className="h-7 text-xs bg-white/5 border-white/10 text-white"
+                                        />
+                                      </div>
+                                    </div>
+                                    
+                                    <div>
+                                      <Label className="text-xs text-white/60">Couleur</Label>
+                                      <Select
+                                        value={ticket.color}
+                                        onValueChange={(val) => updateTicketField(day.dateStr, ticket.id, 'color', val)}
+                                      >
+                                        <SelectTrigger className="w-24 h-7 text-xs bg-white/5 border-white/10 text-white">
+                                          <SelectValue>
+                                            <div className="flex items-center gap-1">
+                                              <div className={`w-3 h-3 rounded-full ${TICKET_COLORS.find(c => c.value === ticket.color)?.hex || 'bg-primary'}`} />
+                                              <span className="text-xs">{TICKET_COLORS.find(c => c.value === ticket.color)?.name || 'Standard'}</span>
+                                            </div>
+                                          </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-[#1a1a2e] border-white/10">
+                                          {TICKET_COLORS.map((c) => (
+                                            <SelectItem key={c.value} value={c.value} className="text-white hover:bg-white/10">
+                                              <div className="flex items-center gap-2">
+                                                <div className={`w-3 h-3 rounded-full ${c.hex}`} />
+                                                <span>{c.name}</span>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeTicketFromDay(day.dateStr, ticket.id)}
+                                      className="text-white/40 hover:text-red-400 hover:bg-red-500/10 mt-4 sm:mt-0"
+                                    >
+                                      <Trash className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            
+                            {dayConfig.tickets.length === 0 && (
+                              <div className="text-center py-4 text-white/40 text-sm">
+                                Aucun billet pour ce jour. Cliquez sur "Ajouter un billet".
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-3 text-xs text-white/30">
+                            💡 Chaque billet est valable uniquement le {day.label}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
 
-              {/* Configuration des codes promo */}
-              <div className="mt-8 pt-4 border-t border-border">
+              <div className="mt-8 pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Codes de réduction</h3>
+                  <h3 className="text-lg font-semibold text-white">Codes de réduction</h3>
                 </div>
                 <PromoCodeConfig
                   eventId={null}
@@ -917,75 +1420,105 @@ const CreateTicketingEventPage = () => {
                 />
               </div>
 
-              <div className="flex justify-between pt-8 border-t border-border">
+              <div className="flex justify-between pt-8 border-t border-white/10">
                 <Button
                   variant="outline"
                   onClick={() => setStep(1)}
-                  className="px-6"
+                  className="px-6 border-white/10 text-white hover:bg-white/10"
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" /> Retour
                 </Button>
-                <Button onClick={() => setStep(3)} className="px-8">
+                <Button onClick={() => setStep(3)} className="px-8 bg-primary hover:bg-primary/80">
                   Suivant <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
             </TabsContent>
 
+            {/* ÉTAPE 3 - CONFIRMATION */}
             <TabsContent
               value="3"
               className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300"
             >
-              <Card className="border-dashed border-2">
+              <Card className="border-dashed border-2 border-white/20 bg-white/5">
                 <CardContent className="p-8 text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-8 h-8 text-green-400" />
                   </div>
-                  <h3 className="text-2xl font-bold">Prêt à publier ?</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">
-                    Votre événement <strong>{title}</strong> est prêt.
+                  <h3 className="text-2xl font-bold text-white">Prêt à publier ?</h3>
+                  <p className="text-white/60 max-w-md mx-auto">
+                    Votre événement <strong className="text-white">{title}</strong> est prêt.
                     <br />
-                    <span className="flex items-center justify-center gap-2 font-medium text-green-600 mt-2">
+                    <span className="flex items-center justify-center gap-2 font-medium text-green-400 mt-2">
                       <MessageSquare className="w-4 h-4" />
                       Livraison automatique dans votre profil
                     </span>
                   </p>
 
-                  <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto text-left bg-muted/30 p-4 rounded-lg">
-                    <div>
-                      <span className="text-xs text-muted-foreground block">
-                        Date
-                      </span>
-                      <span className="font-medium">
-                        {eventDate
-                          ? new Date(eventDate).toLocaleDateString("fr-FR")
-                          : "Non définie"}
-                      </span>
+                  <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto text-left bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-xs text-white/40 block">Date</span>
+                        <span className="font-medium text-white">
+                          {eventDate
+                            ? new Date(eventDate).toLocaleDateString("fr-FR")
+                            : "Non définie"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-white/40 block">Lieu</span>
+                        <span className="font-medium text-white">
+                          {city || "Non défini"}
+                        </span>
+                      </div>
                     </div>
                     <div>
-                      <span className="text-xs text-muted-foreground block">
-                        Lieu
+                      <span className="text-xs text-white/40 block">
+                        {ticketType === "multi_day" ? "Billets multi-jours" : "Billets par jour"}
                       </span>
-                      <span className="font-medium">
-                        {city || "Non défini"}
-                      </span>
+                      <div className="space-y-1 mt-1">
+                        {ticketType === "multi_day" ? (
+                          multiDayTickets.map((t) => (
+                            <div key={t.id} className="flex items-center justify-between text-sm">
+                              <span className="text-white/60">{t.name}</span>
+                              <span className="text-white font-medium">
+                                {t.quantity || 0} billet{t.quantity > 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          eventDays.map((day) => {
+                            const total = getTotalTicketsByDay(day.dateStr);
+                            const config = dailyTicketConfig[day.dateStr];
+                            return (
+                              <div key={day.dateStr} className="flex items-center justify-between text-sm">
+                                <span className="text-white/60">{day.label}</span>
+                                <span className="text-white font-medium">
+                                  {total} billet{total > 1 ? 's' : ''}
+                                  {config && config.tickets.length > 0 && (
+                                    <span className="text-xs text-white/40 ml-2">
+                                      ({config.tickets.map(t => `${t.name}: ${t.quantity || 0}`).join(', ')})
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <span className="text-xs text-muted-foreground block">
-                        Billets
-                      </span>
-                      <span className="font-medium">
-                        {ticketTypes.reduce(
-                          (acc, t) => acc + parseInt(t.quantity_available || 0),
-                          0,
-                        )}{" "}
-                        total
-                      </span>
+                    <div className="pt-2 border-t border-white/10">
+                      <span className="text-xs text-white/40 block">Total</span>
+                      <span className="text-white font-medium">{getTotalAllTickets()} billets</span>
                     </div>
+                    {ticketType === "multi_day" && (
+                      <div className="text-xs text-white/30">
+                        📅 Valable pour toute la durée de l'événement ({eventDays.length} jours)
+                      </div>
+                    )}
                   </div>
 
-                  {/* Aperçu de la configuration des codes promo */}
                   {promoConfig && promoConfig.enabled && (
-                    <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
                       <div className="flex items-center justify-center gap-2 text-sm">
                         <Tag className="w-4 h-4 text-primary" />
                         <span className="font-medium text-primary">
@@ -993,12 +1526,12 @@ const CreateTicketingEventPage = () => {
                         </span>
                       </div>
                       <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs">
-                        <Badge variant="outline" className="bg-primary/10">
+                        <Badge variant="outline" className="border-primary/30 text-primary">
                           {promoConfig.discount_type === "fixed"
                             ? `-${promoConfig.discount_value.toLocaleString()} FCFA`
                             : `-${promoConfig.discount_value}%`}
                         </Badge>
-                        <Badge variant="outline" className="bg-green-500/10">
+                        <Badge variant="outline" className="border-green-500/30 text-green-400">
                           Commission: {promoConfig.commission_rate}%
                         </Badge>
                       </div>
@@ -1007,8 +1540,7 @@ const CreateTicketingEventPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Contract Acceptance Section */}
-              <div className="bg-muted/20 border border-border p-4 rounded-lg">
+              <div className="bg-white/5 border border-white/10 p-4 rounded-lg">
                 <div className="flex items-start space-x-3">
                   <Checkbox
                     id="terms"
@@ -1027,7 +1559,7 @@ const CreateTicketingEventPage = () => {
                     <div className="flex items-center justify-between">
                       <label
                         htmlFor="terms"
-                        className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        className="text-sm font-medium leading-none text-white peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         J'accepte le contrat Organisateur *
                       </label>
@@ -1042,14 +1574,14 @@ const CreateTicketingEventPage = () => {
                         <ChevronRight className="w-3 h-3 ml-1" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-white/40">
                       En publiant cet événement, vous acceptez de respecter le
                       règlement de la billetterie et les conditions générales
                       d'utilisation.
                     </p>
 
                     {termsAccepted && (
-                      <div className="flex items-center gap-2 mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2 mt-2 text-xs text-green-400 bg-green-500/10 p-2 rounded border border-green-500/30">
                         <CheckCircle className="w-4 h-4 flex-shrink-0" />
                         <span>
                           <strong>Contrat accepté</strong> - Vous avez accepté
@@ -1065,7 +1597,7 @@ const CreateTicketingEventPage = () => {
                 <Button
                   variant="outline"
                   onClick={() => setStep(2)}
-                  className="px-6"
+                  className="px-6 border-white/10 text-white hover:bg-white/10"
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" /> Retour
                 </Button>

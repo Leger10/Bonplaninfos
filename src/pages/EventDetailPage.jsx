@@ -32,6 +32,7 @@ import {
   Tag,
   Trophy,
   User,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,7 @@ import TicketScannerDialog from "@/components/event/TicketScannerDialog";
 import { PromoCodeGenerator } from "../components/influencer/PromoCodeGenerator.jsx";
 
 // ============================================================
-// 🔥 STATISTIQUES SIMPLIFIÉES
+// 🔥 STATISTIQUES AVEC GESTION DES BILLETS JOURNALIERS ET MULTI-JOURS - CORRIGÉE
 // ============================================================
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   const { t } = useTranslation("security");
@@ -95,16 +96,41 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
         try {
           const eventIdStr = String(eventId);
 
-          const { count: totalTickets } = await supabase
+          // ============================================================
+          // 🔥 1. TOUS LES BILLETS CRÉÉS (indépendamment de la vente)
+          // ============================================================
+          const { count: totalTicketsCreated } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr);
 
+          // ============================================================
+          // 🔥 2. BILLETS VENDUS (purchase_price_pi > 0)
+          // ============================================================
+          const { count: ticketsSold } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .gt("purchase_price_pi", 0);
+
+          // ============================================================
+          // 🔥 3. BILLETS NON VENDUS (purchase_price_pi = 0 OU NULL)
+          // ============================================================
+          const { count: ticketsNotSold } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .or('purchase_price_pi.eq.0,purchase_price_pi.is.null');
+
+          // ============================================================
+          // 🔥 4. BILLETS AVEC PURCHASE_PRICE_PI > 0 PAR MÉTHODE
+          // ============================================================
           const { count: coinsTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .eq("payment_method", "coins");
+            .eq("payment_method", "coins")
+            .gt("purchase_price_pi", 0);
 
           const { count: moneyTickets } = await supabase
             .from("tickets")
@@ -112,18 +138,23 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
             .eq("event_id", eventIdStr)
             .eq("payment_method", "moneyfusion_ticket");
 
+          // ============================================================
+          // 🔥 5. STATUTS (uniquement sur les vendus)
+          // ============================================================
           const { count: verifiedTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .in("status", ["used", "exited"]);
+            .in("status", ["used", "exited"])
+            .gt("purchase_price_pi", 0);
 
           const { count: coinsUsed } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
             .eq("payment_method", "coins")
-            .in("status", ["used", "exited"]);
+            .in("status", ["used", "exited"])
+            .gt("purchase_price_pi", 0);
 
           const { count: moneyUsed } = await supabase
             .from("tickets")
@@ -136,21 +167,98 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .eq("status", "exited");
+            .eq("status", "exited")
+            .gt("purchase_price_pi", 0);
 
           const { count: activeTickets } = await supabase
             .from("tickets")
             .select("*", { count: "exact", head: true })
             .eq("event_id", eventIdStr)
-            .eq("status", "active");
+            .eq("status", "active")
+            .gt("purchase_price_pi", 0);
 
-          const total = totalTickets || 0;
+          // ============================================================
+          // 🔥 6. TYPES DE BILLETS (uniquement les vendus)
+          // ============================================================
+          const { count: multiDayTickets } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("is_multi_day", true)
+            .gt("purchase_price_pi", 0);
+
+          const { count: dailyTickets } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .eq("is_multi_day", false)
+            .not("ticket_date", "is", null)
+            .gt("purchase_price_pi", 0);
+
+          const { count: ticketsWithoutDate } = await supabase
+            .from("tickets")
+            .select("*", { count: "exact", head: true })
+            .eq("event_id", eventIdStr)
+            .is("ticket_date", null)
+            .eq("is_multi_day", false)
+            .gt("purchase_price_pi", 0);
+
+          // ============================================================
+          // 🔥 7. RÉPARTITION PAR JOUR (uniquement les vendus)
+          // ============================================================
+          const { data: ticketsByDateData } = await supabase
+            .from("tickets")
+            .select("ticket_date, status")
+            .eq("event_id", eventIdStr)
+            .not("ticket_date", "is", null)
+            .gt("purchase_price_pi", 0);
+
+          const ticketsByDate = {};
+          if (ticketsByDateData) {
+            ticketsByDateData.forEach(t => {
+              if (t.ticket_date) {
+                const dateKey = new Date(t.ticket_date).toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long'
+                });
+                if (!ticketsByDate[dateKey]) {
+                  ticketsByDate[dateKey] = { total: 0, active: 0, used: 0, exited: 0 };
+                }
+                ticketsByDate[dateKey].total++;
+                if (t.status === 'active') ticketsByDate[dateKey].active++;
+                else if (t.status === 'used') ticketsByDate[dateKey].used++;
+                else if (t.status === 'exited') ticketsByDate[dateKey].exited++;
+              }
+            });
+          }
+
+          // ============================================================
+          // 🔥 8. TOTAL VENDU = coins vendus + moneyfusion
+          // ============================================================
+          const totalSold = (coinsTickets || 0) + (moneyTickets || 0);
           const verified = verifiedTickets || 0;
-          const verificationRate = total > 0 ? (verified / total) * 100 : 0;
+          const verificationRate = totalSold > 0 ? (verified / totalSold) * 100 : 0;
+
+          console.log('📊 STATS DÉTAILLÉES:', {
+            totalTicketsCreated: totalTicketsCreated || 0,
+            totalSold: totalSold,
+            ticketsNotSold: ticketsNotSold || 0,
+            coinsTickets: coinsTickets || 0,
+            moneyTickets: moneyTickets || 0,
+            verifiedTickets: verified,
+            activeTickets: activeTickets || 0,
+            multiDayTickets: multiDayTickets || 0,
+            dailyTickets: dailyTickets || 0,
+            ticketsWithoutDate: ticketsWithoutDate || 0,
+            ticketsByDate: ticketsByDate
+          });
 
           if (isMountedRef.current) {
             setStats({
-              total_tickets: total,
+              total_tickets_created: totalTicketsCreated || 0,
+              total_sold: totalSold,
+              tickets_not_sold: ticketsNotSold || 0,
               coins_tickets: coinsTickets || 0,
               money_tickets: moneyTickets || 0,
               verified_tickets: verified,
@@ -159,6 +267,10 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               exited_tickets: exitedTickets || 0,
               active_tickets: activeTickets || 0,
               verification_rate: Math.round(verificationRate * 100) / 100,
+              multi_day_tickets: multiDayTickets || 0,
+              daily_tickets: dailyTickets || 0,
+              tickets_without_date: ticketsWithoutDate || 0,
+              tickets_by_date: ticketsByDate || {}
             });
           }
         } catch (err) {
@@ -179,9 +291,11 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
     }
   }, [isOpen, eventId, organizerId]);
 
+  const daysWithTickets = Object.keys(stats?.tickets_by_date || {}).length;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-black border-gray-800 text-white">
+      <DialogContent className="sm:max-w-md bg-black border-gray-800 text-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <BarChart className="w-5 h-5 text-blue-400" /> Statistiques de vérification
@@ -202,16 +316,37 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
           </div>
         ) : stats ? (
           <div className="space-y-4 py-4">
+            {/* 🔥 Ligne 1 : Stats principales */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-900 p-4 rounded-lg text-center border border-gray-800">
                 <p className="text-xs text-gray-400 uppercase font-bold">Billets vendus</p>
-                <p className="text-2xl font-bold text-white">{stats.total_tickets}</p>
+                <p className="text-2xl font-bold text-white">{stats.total_sold}</p>
                 <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
                   <span className="text-green-400">🪙 {stats.coins_tickets}</span>
                   {stats.money_tickets > 0 && (
                     <span className="text-blue-400">💳 {stats.money_tickets}</span>
                   )}
                 </div>
+                {stats.multi_day_tickets > 0 && (
+                  <div className="text-[8px] text-purple-400 mt-1">
+                    📅 {stats.multi_day_tickets} multi-jours
+                  </div>
+                )}
+                {stats.daily_tickets > 0 && (
+                  <div className="text-[8px] text-blue-400">
+                    📅 {stats.daily_tickets} journaliers
+                  </div>
+                )}
+                {stats.total_tickets_created > stats.total_sold && (
+                  <div className="text-[8px] text-gray-500 mt-1">
+                    ({stats.total_tickets_created} billets créés au total)
+                  </div>
+                )}
+                {stats.tickets_not_sold > 0 && (
+                  <div className="text-[8px] text-orange-400 mt-0.5">
+                    ⚠️ {stats.tickets_not_sold} non vendus
+                  </div>
+                )}
               </div>
               <div className="bg-blue-900/20 p-4 rounded-lg text-center border border-blue-800/50">
                 <p className="text-xs text-blue-400 uppercase font-bold">Validés / Entrés</p>
@@ -228,6 +363,7 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             </div>
 
+            {/* 🔥 Ligne 2 : Taux de présence */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-300">Taux de présence</span>
@@ -241,11 +377,12 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             </div>
 
+            {/* 🔥 Ligne 3 : Détails MoneyFusion */}
             {stats.money_tickets > 0 && (
               <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-800/30">
                 <div className="flex items-center gap-2">
                   <Wallet className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm font-medium text-blue-400">💳 Tickets payer sans compte</span>
+                  <span className="text-sm font-medium text-blue-400">💳 Tickets MoneyFusion</span>
                   <Badge className="ml-auto bg-blue-600 text-white text-[10px]">
                     {stats.money_tickets}
                   </Badge>
@@ -256,6 +393,7 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             )}
 
+            {/* 🔥 Ligne 4 : En attente d'entrée */}
             <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-800/30">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-orange-400" />
@@ -264,7 +402,82 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                   {stats.active_tickets}
                 </Badge>
               </div>
+              {stats.total_sold > 0 && (
+                <div className="text-[8px] text-gray-500 mt-1">
+                  {Math.round((stats.active_tickets / stats.total_sold) * 100)}% des vendus
+                </div>
+              )}
             </div>
+
+            {/* 🔥 Ligne 5 : Types de billets */}
+            {(stats.multi_day_tickets > 0 || stats.daily_tickets > 0 || stats.tickets_without_date > 0) && (
+              <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <CalendarIcon className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-medium text-purple-400">Types de billets vendus</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                  {stats.multi_day_tickets > 0 && (
+                    <div className="bg-purple-900/30 p-2 rounded">
+                      <span className="text-purple-300">📅 Multi-jours</span>
+                      <span className="block text-white font-bold">{stats.multi_day_tickets}</span>
+                    </div>
+                  )}
+                  {stats.daily_tickets > 0 && (
+                    <div className="bg-blue-900/30 p-2 rounded">
+                      <span className="text-blue-300">📅 Journaliers</span>
+                      <span className="block text-white font-bold">{stats.daily_tickets}</span>
+                    </div>
+                  )}
+                  {stats.tickets_without_date > 0 && (
+                    <div className="bg-gray-800/30 p-2 rounded">
+                      <span className="text-gray-400">Sans date</span>
+                      <span className="block text-white font-bold">{stats.tickets_without_date}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 🔥 Ligne 6 : Répartition par jour */}
+            {daysWithTickets > 0 && (
+              <div className="bg-green-900/20 p-3 rounded-lg border border-green-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <CalendarIcon className="w-4 h-4 text-green-400" />
+                  <span className="text-sm font-medium text-green-400">Répartition par jour</span>
+                  <Badge className="ml-auto bg-green-600 text-white text-[10px]">
+                    {daysWithTickets} jours
+                  </Badge>
+                </div>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {Object.entries(stats.tickets_by_date || {}).map(([date, data]) => {
+                    const total = data.total || 0;
+                    const used = (data.used || 0) + (data.exited || 0);
+                    const rate = total > 0 ? Math.round((used / total) * 100) : 0;
+                    
+                    return (
+                      <div key={date} className="flex flex-col gap-0.5">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-gray-300 truncate">{date}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400">{total} vendus</span>
+                            <span className={`font-medium ${rate >= 80 ? 'text-green-400' : rate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {rate}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all ${rate >= 80 ? 'bg-green-500' : rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${rate}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-center text-gray-500">Aucune donnée disponible</p>
@@ -274,7 +487,9 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   );
 };
 
-// Boutons d'action style TikTok
+// ============================================================
+// BOUTONS D'ACTION STYLE TIKTOK
+// ============================================================
 const TikTokActionButtons = ({ event, onRefresh, user }) => {
   const { t } = useTranslation();
   const [likes, setLikes] = useState(event?.likes_count || 0);
@@ -406,7 +621,9 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
   );
 };
 
-// Description extensible
+// ============================================================
+// DESCRIPTION EXTENSIBLE
+// ============================================================
 const ExpandableDescription = ({ description }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -445,7 +662,9 @@ const ExpandableDescription = ({ description }) => {
   );
 };
 
-// Affichage des dates
+// ============================================================
+// AFFICHAGE DES DATES
+// ============================================================
 const DateDisplay = ({ event }) => {
   const { t } = useTranslation();
   const formatDate = (dateString) => {
@@ -481,6 +700,9 @@ const DateDisplay = ({ event }) => {
   );
 };
 
+// ============================================================
+// COMPOSANT PRINCIPAL EventDetailPage
+// ============================================================
 const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -511,7 +733,7 @@ const EventDetailPage = () => {
   const userId = user?.id;
   const isMountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
-  const refreshTimeoutRef = useRef(null); // 🔥 DÉCLARATION MANQUANTE AJOUTÉE
+  const refreshTimeoutRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -642,7 +864,7 @@ const EventDetailPage = () => {
     }
   }, [id, t]);
 
-  // 🔥 HANDLE DATA REFRESH - CORRIGÉ
+  // 🔥 HANDLE DATA REFRESH
   const handleDataRefresh = useCallback(() => {
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
@@ -1121,7 +1343,6 @@ const EventDetailPage = () => {
                 eventDate={event.event_start_at}
               />
 
-              {/* 🔥 SECTION VOTE - CORRIGÉE */}
               {event.event_type === "voting" && (
                 <>
                   {isEventFinished && (

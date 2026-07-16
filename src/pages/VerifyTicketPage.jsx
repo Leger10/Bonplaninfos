@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import {
     Loader2, ShieldCheck,
     Keyboard, Camera, LogOut, ArrowRightLeft,
-    DoorClosed, ShieldAlert, User, Wallet, Scan, Trash2, RefreshCw, RotateCcw, Search
+    DoorClosed, ShieldAlert, User, Wallet, Scan, Trash2, RefreshCw, RotateCcw, Search, Calendar, CalendarDays
 } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +109,7 @@ const VerifyTicketPage = () => {
         }
     };
 
-    // 🔥 VÉRIFIER L'ÉTAT DU TICKET (AMÉLIORÉ POUR MONEYFUSION)
+    // 🔥 VÉRIFIER L'ÉTAT DU TICKET (AMÉLIORÉ AVEC DATES)
     const checkTicketStatus = async () => {
         if (!ticketInput) {
             toast({
@@ -123,20 +123,17 @@ const VerifyTicketPage = () => {
         try {
             const code = ticketInput.trim().toUpperCase();
             
-            // 🔥 RECHERCHE ÉTENDUE POUR MONEYFUSION
             const { data, error } = await supabase
                 .from('tickets')
-                .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+                .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method, ticket_date, is_multi_day, valid_dates')
                 .or(`qr_code.ilike.%${code}%,transaction_reference.ilike.%${code}%,ticket_number.ilike.%${code}%`)
-                .eq('payment_method', 'moneyfusion_ticket')
                 .maybeSingle();
 
-            // Si pas trouvé avec la recherche étendue, essayer en exact
             let ticketData = data;
             if (!ticketData) {
                 const { data: exactData, error: exactError } = await supabase
                     .from('tickets')
-                    .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+                    .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method, ticket_date, is_multi_day, valid_dates')
                     .eq('qr_code', code)
                     .maybeSingle();
                 
@@ -171,6 +168,26 @@ const VerifyTicketPage = () => {
             };
 
             const isMoneyFusion = ticketData.payment_method === 'moneyfusion_ticket';
+            const isMultiDay = ticketData.is_multi_day || false;
+            const ticketDate = ticketData.ticket_date ? new Date(ticketData.ticket_date).toLocaleDateString('fr-FR') : 'N/A';
+            
+            // Vérifier si le billet est valable aujourd'hui
+            let isValidToday = true;
+            let validityMessage = '';
+            
+            if (isMultiDay && ticketData.valid_dates) {
+                const today = new Date().toISOString().split('T')[0];
+                if (!ticketData.valid_dates.includes(today)) {
+                    isValidToday = false;
+                    validityMessage = 'Ce pass multi-jours n\'est pas valable aujourd\'hui';
+                }
+            } else if (ticketData.ticket_date) {
+                const today = new Date().toISOString().split('T')[0];
+                if (ticketData.ticket_date !== today) {
+                    isValidToday = false;
+                    validityMessage = `Ce billet est valable uniquement pour le ${ticketDate}`;
+                }
+            }
 
             toast({
                 title: `📊 ${ticketData.attendee_name || 'Ticket'}`,
@@ -178,8 +195,11 @@ const VerifyTicketPage = () => {
                     <div className="space-y-1">
                         <div>Code: <span className="font-mono">{ticketData.qr_code || ticketData.transaction_reference}</span></div>
                         {isMoneyFusion && <div className="text-blue-400">💰 Ticket MoneyFusion</div>}
+                        {isMultiDay && <div className="text-purple-400">📅 Pass Multi-Jours</div>}
+                        {ticketData.ticket_date && !isMultiDay && <div className="text-blue-400">📅 Valable le {ticketDate}</div>}
                         <div>{statusEmoji[ticketData.status] || '❓'} Statut: {statusText[ticketData.status] || ticketData.status}</div>
                         <div>Entrées totales: <span className="font-bold">{ticketData.entry_count || 0}</span></div>
+                        {!isValidToday && <div className="text-red-400">⚠️ {validityMessage}</div>}
                         {ticketData.phone && <div>📱 {ticketData.phone}</div>}
                         {ticketData.transaction_reference && <div className="text-xs text-gray-400">Réf: {ticketData.transaction_reference}</div>}
                     </div>
@@ -267,6 +287,8 @@ const VerifyTicketPage = () => {
             not_entered: 'warning',
             event_finished: 'warning',
             cancelled: 'warning',
+            not_valid_today: 'warning',
+            expired_date: 'warning',
             error: 'error'
         };
 
@@ -297,22 +319,19 @@ const VerifyTicketPage = () => {
         }
     }, []);
 
-    // 🔥 NORMALISER LA RÉPONSE RPC - CORRIGÉ AVEC GESTION MONEYFUSION
+    // 🔥 NORMALISER LA RÉPONSE RPC - CORRIGÉ AVEC GESTION MONEYFUSION ET DATES
     const normalizeRPCResponse = (data) => {
         console.log('🔍 normalizeRPCResponse - Input:', JSON.stringify(data, null, 2));
         
-        // Si data est un tableau, prendre le premier élément
         const rawData = Array.isArray(data) ? data[0] : data;
         if (!rawData) {
             console.log('❌ Pas de données');
             return null;
         }
         
-        // La réponse est dans verify_ticket_direct ou directement dans rawData
         const response = rawData.verify_ticket_direct || rawData;
         console.log('📦 Response extraite:', JSON.stringify(response, null, 2));
         
-        // Si c'est une requête SELECT (contient qr_code mais pas success), ignorer
         if (response.qr_code && !response.success && !response.message) {
             console.log('⚠️ Requête SELECT détectée, ignorée');
             return null;
@@ -330,7 +349,10 @@ const VerifyTicketPage = () => {
             payment_method: response.payment_method || 'coins',
             transaction_reference: response.transaction_reference || null,
             ticket_type: response.ticket_type || null,
-            entry_count: response.entry_count || 0
+            entry_count: response.entry_count || 0,
+            ticket_date: response.ticket_date || null,
+            is_multi_day: response.is_multi_day || false,
+            valid_dates: response.valid_dates || null
         };
         
         console.log('✅ Résultat normalisé:', result);
@@ -350,6 +372,8 @@ const VerifyTicketPage = () => {
             case 'event_finished': return '📅 Événement terminé';
             case 'cancelled': return '🚫 Billet annulé';
             case 'not_found': return '❌ Billet inconnu';
+            case 'not_valid_today': return '📅 Pas valable aujourd\'hui';
+            case 'expired_date': return '📅 Date expirée';
             default:
                 if (status === 'active') return '🔴 Pas entré';
                 if (status === 'used') return '🟢 En salle';
@@ -358,21 +382,24 @@ const VerifyTicketPage = () => {
         }
     };
 
-    // 🔥 AFFICHER LES INFOS DU TICKET (AMÉLIORÉ)
+    // 🔥 AFFICHER LES INFOS DU TICKET (AMÉLIORÉ AVEC DATES)
     const getTicketInfoDisplay = (result) => {
         if (!result) return null;
         
         const isGuest = result.is_guest || result.isGuest || false;
         const paymentMethod = result.payment_method || 'coins';
         const isMoneyFusion = paymentMethod === 'moneyfusion_ticket';
+        const isMultiDay = result.is_multi_day || false;
+        const ticketDate = result.ticket_date ? new Date(result.ticket_date).toLocaleDateString('fr-FR') : null;
         
-        // Afficher toujours les infos du ticket
         return (
             <div className={`mt-3 p-2 rounded-lg border ${
                 isGuest 
                     ? 'bg-yellow-500/20 border-yellow-500/30' 
                     : isMoneyFusion 
                     ? 'bg-blue-500/20 border-blue-500/30' 
+                    : isMultiDay
+                    ? 'bg-purple-500/20 border-purple-500/30'
                     : 'bg-gray-800/50 border-gray-700'
             }`}>
                 {isGuest && (
@@ -387,6 +414,23 @@ const VerifyTicketPage = () => {
                     <div className="flex items-center gap-2">
                         <Wallet className="w-4 h-4 text-blue-400" />
                         <p className="text-xs text-blue-400 font-medium">💰 Paiement externe (MoneyFusion)</p>
+                    </div>
+                )}
+                {isMultiDay && (
+                    <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-purple-400" />
+                        <p className="text-xs text-purple-400 font-medium">📅 Pass Multi-Jours</p>
+                        {result.valid_dates && (
+                            <span className="text-xs text-purple-300">
+                                Valable du {new Date(result.valid_dates[0]).toLocaleDateString('fr-FR')} au {new Date(result.valid_dates[result.valid_dates.length - 1]).toLocaleDateString('fr-FR')}
+                            </span>
+                        )}
+                    </div>
+                )}
+                {ticketDate && !isMultiDay && (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-blue-400" />
+                        <p className="text-xs text-blue-400 font-medium">📅 Valable le {ticketDate}</p>
                     </div>
                 )}
                 {result.attendee_name && result.attendee_name !== 'Inconnu' && (
@@ -427,6 +471,8 @@ const VerifyTicketPage = () => {
             case 'not_found': return '❌ BILLET INCONNU';
             case 'unknown_status': return '❓ STATUT INCONNU';
             case 'error': return '❌ ERREUR TECHNIQUE';
+            case 'not_valid_today': return '📅 PAS VALABLE AUJOURD\'HUI';
+            case 'expired_date': return '📅 DATE EXPIRÉE';
             default: return '❓ INCONNU';
         }
     };
@@ -438,7 +484,6 @@ const VerifyTicketPage = () => {
 
         const now = Date.now();
 
-        // Anti-double scan
         if (cleanCode === lastScanRef.current.code) {
             const delta = now - lastScanRef.current.time;
             if (delta < 2000) return;
@@ -491,6 +536,9 @@ const VerifyTicketPage = () => {
                 transaction_reference: normalizedData.transaction_reference || null,
                 ticket_type: normalizedData.ticket_type || null,
                 entry_count: normalizedData.entry_count || 0,
+                ticket_date: normalizedData.ticket_date || null,
+                is_multi_day: normalizedData.is_multi_day || false,
+                valid_dates: normalizedData.valid_dates || null,
                 code: cleanCode,
                 method: method,
                 timestamp: Date.now()
@@ -508,7 +556,6 @@ const VerifyTicketPage = () => {
                 setTicketInput('');
             }
 
-            // Auto-fermeture après 3.5s
             resultTimeoutRef.current = setTimeout(() => {
                 setVerificationResult(null);
             }, 3500);
@@ -563,6 +610,8 @@ const VerifyTicketPage = () => {
                 data.status_code === 'already_exited' || 
                 data.status_code === 'not_entered') {
                 className = 'bg-yellow-500 text-black border-none';
+            } else if (data.status_code === 'not_valid_today' || data.status_code === 'expired_date') {
+                className = 'bg-orange-500 text-white border-none';
             } else if (data.status_code === 'event_finished') {
                 className = 'bg-red-600 text-white border-none';
             }
@@ -703,8 +752,13 @@ const VerifyTicketPage = () => {
                                                 : verificationResult.status_code === 're_entry'
                                                 ? 'bg-purple-500/20 border border-purple-500/30'
                                                 : 'bg-green-500/20 border border-green-500/30'
-                                            : verificationResult.status_code === 'already_used' || verificationResult.status_code === 'already_exited' || verificationResult.status_code === 'not_entered'
+                                            : verificationResult.status_code === 'already_used' || 
+                                              verificationResult.status_code === 'already_exited' || 
+                                              verificationResult.status_code === 'not_entered'
                                             ? 'bg-yellow-500/20 border border-yellow-500/30'
+                                            : verificationResult.status_code === 'not_valid_today' || 
+                                              verificationResult.status_code === 'expired_date'
+                                            ? 'bg-orange-500/20 border border-orange-500/30'
                                             : 'bg-red-500/20 border border-red-500/30'
                                     }`}>
                                         <h2 className={`text-2xl font-black ${
@@ -714,11 +768,16 @@ const VerifyTicketPage = () => {
                                                     : verificationResult.status_code === 're_entry'
                                                     ? 'text-purple-400'
                                                     : 'text-green-400'
-                                                : verificationResult.status_code === 'already_used' || verificationResult.status_code === 'already_exited' || verificationResult.status_code === 'not_entered'
+                                                : verificationResult.status_code === 'already_used' || 
+                                                  verificationResult.status_code === 'already_exited' || 
+                                                  verificationResult.status_code === 'not_entered'
                                                 ? 'text-yellow-400'
+                                                : verificationResult.status_code === 'not_valid_today' || 
+                                                  verificationResult.status_code === 'expired_date'
+                                                ? 'text-orange-400'
                                                 : 'text-red-400'
                                         }`}>
-                                            {verificationResult.success ? '✅ VALIDÉ' : '❌ REFUSÉ'}
+                                            {getStatusTitle(verificationResult.status_code)}
                                         </h2>
                                         <p className="text-sm text-white mt-1">
                                             {verificationResult.message}
@@ -755,6 +814,16 @@ const VerifyTicketPage = () => {
                                         {verificationResult.entry_count !== undefined && (
                                             <div className="text-[10px] text-gray-500">
                                                 Entrées totales: {verificationResult.entry_count}
+                                            </div>
+                                        )}
+                                        {verificationResult.ticket_date && !verificationResult.is_multi_day && (
+                                            <div className="text-[10px] text-blue-400">
+                                                📅 {new Date(verificationResult.ticket_date).toLocaleDateString('fr-FR')}
+                                            </div>
+                                        )}
+                                        {verificationResult.is_multi_day && (
+                                            <div className="text-[10px] text-purple-400">
+                                                📅 Pass Multi-Jours
                                             </div>
                                         )}
                                     </div>
@@ -803,6 +872,7 @@ const VerifyTicketPage = () => {
                             {scanHistory.slice(0, 5).map((s, i) => {
                                 const isGuest = s.is_guest || false;
                                 const isMoneyFusion = s.payment_method === 'moneyfusion_ticket';
+                                const isMultiDay = s.is_multi_day || false;
                                 
                                 let badgeClass = '';
                                 
@@ -819,6 +889,9 @@ const VerifyTicketPage = () => {
                                         s.status_code === 'already_exited' || 
                                         s.status_code === 'not_entered') {
                                         badgeClass = 'bg-yellow-500 text-black';
+                                    } else if (s.status_code === 'not_valid_today' || 
+                                               s.status_code === 'expired_date') {
+                                        badgeClass = 'bg-orange-500 text-black';
                                     } else {
                                         badgeClass = 'bg-red-500';
                                     }
@@ -838,6 +911,16 @@ const VerifyTicketPage = () => {
                                                     {isGuest ? '🎟️' : '💰'}
                                                 </span>
                                             )}
+                                            {isMultiDay && (
+                                                <span className="text-[8px] text-purple-400">
+                                                    📅 Multi
+                                                </span>
+                                            )}
+                                            {s.ticket_date && !isMultiDay && (
+                                                <span className="text-[8px] text-blue-400">
+                                                    📅 {new Date(s.ticket_date).toLocaleDateString('fr-FR')}
+                                                </span>
+                                            )}
                                             {s.entry_count !== undefined && s.entry_count > 0 && (
                                                 <span className="text-[8px] text-purple-400">
                                                     #{s.entry_count}
@@ -849,7 +932,8 @@ const VerifyTicketPage = () => {
                                             <span className="text-[8px] text-gray-600">
                                                 {s.status_code === 'checkin' ? '1ère' : 
                                                  s.status_code === 're_entry' ? 'Ré-entrée' : 
-                                                 s.status_code === 'exit_registered' ? 'Sortie' : ''}
+                                                 s.status_code === 'exit_registered' ? 'Sortie' : 
+                                                 s.status_code === 'not_valid_today' ? '📅' : ''}
                                             </span>
                                         </span>
                                         <Badge 

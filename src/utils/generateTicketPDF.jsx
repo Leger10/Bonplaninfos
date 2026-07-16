@@ -158,6 +158,42 @@ const formatPurchaseDate = (dateString) => {
   }
 };
 
+// ✅ Fonction ULTRA ROBUSTE pour formater le prix
+const formatPrice = (amount) => {
+  // Si amount est undefined, null
+  if (amount === undefined || amount === null) return "0";
+  
+  let numAmount;
+  
+  // Si c'est déjà un nombre
+  if (typeof amount === 'number' && !isNaN(amount)) {
+    numAmount = amount;
+  } 
+  // Si c'est une chaîne
+  else if (typeof amount === 'string') {
+    // 🔥 CORRECTION: Enlever les slashs, espaces et autres caractères
+    // Garder seulement les chiffres, virgules et points
+    const clean = amount.replace(/[^0-9,.]/g, '');
+    // Remplacer la virgule par un point
+    const normalized = clean.replace(',', '.');
+    numAmount = parseFloat(normalized);
+  } 
+  // Autre cas
+  else {
+    try {
+      numAmount = Number(amount);
+    } catch {
+      numAmount = 0;
+    }
+  }
+  
+  // Vérifier si c'est un nombre valide
+  if (isNaN(numAmount) || numAmount <= 0) return "0";
+  
+  // Formater avec l'espace comme séparateur de milliers
+  return numAmount.toLocaleString('fr-FR');
+};
+
 export const generateTicketPDF = async (event, tickets, user) => {
   try {
     if (!event || !tickets || tickets.length === 0) {
@@ -193,29 +229,33 @@ export const generateTicketPDF = async (event, tickets, user) => {
     const logoUrl = "/pwa-192x192.png";
     let logoImg = null;
 
-    // 🔥 PRÉPARER LES DONNÉES POUR CHAQUE TICKET - PRIORITÉ AUX DONNÉES DU TICKET
+    // PRÉPARER LES DONNÉES POUR CHAQUE TICKET
     const ticketsData = tickets.map((ticket, index) => {
-      // 🔥 PRIX - Priorité aux données du ticket
-      const pricePi = Number(ticket.price) || 
-                      Number(ticket.purchase_amount_pi) || 
-                      Number(ticket.purchase_price_pi) || 0;
-      const priceFcfa = Number(ticket.price_fcfa) || 
-                        Number(ticket.purchase_amount_fcfa) || 
-                        pricePi * 10 || 0;
+      // 🔥 Nettoyer le prix avant tout
+      let rawPriceFcfa = ticket.price_fcfa || ticket.purchase_amount_fcfa || 0;
+      let rawPricePi = ticket.price || ticket.purchase_amount_pi || ticket.purchase_price_pi || 0;
       
-      // 🔥 NUMÉRO DE TICKET
+      // 🔥 CORRECTION: Nettoyer la chaîne des slashs et espaces
+      if (typeof rawPriceFcfa === 'string') {
+        // Enlever tout ce qui n'est pas un chiffre, virgule ou point
+        rawPriceFcfa = rawPriceFcfa.replace(/[^0-9,.]/g, '').replace(',', '.');
+      }
+      
+      const pricePi = Number(rawPricePi) || 0;
+      const priceFcfa = parseFloat(rawPriceFcfa) || (pricePi * 10) || 0;
+      
+      console.log(`💰 Ticket ${index + 1}: rawPriceFcfa=${ticket.price_fcfa}, priceFcfa=${priceFcfa}`);
+      
       const ticketNum = ticket.ticket_number || 
                         ticket.ticket_code || 
                         ticket.qr_code ||
                         `TKT${Date.now()}${index}`;
       
-      // 🔥 CODE COURT
       const ticketCode = ticket.ticket_code_short || 
                          ticket.ticket_code || 
                          ticket.qr_code ||
                          (ticketNum ? String(ticketNum).slice(-6).toUpperCase() : "XXXXXX");
       
-      // 🔥 NOM DU TITULAIRE - Priorité aux données du ticket
       const holderName = safeText(
         ticket.attendee_name || 
         ticket.holderName || 
@@ -225,7 +265,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
         "Invité"
       );
       
-      // 🔥 TITRE DE L'ÉVÉNEMENT - Priorité aux données du ticket
       const eventTitle = safeText(
         ticket.event_title || 
         ticket.events?.title || 
@@ -233,7 +272,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
         "Événement BonPlanInfos"
       );
       
-      // 🔥 DATE - Priorité aux données du ticket
       const eventDate = formatDate(
         ticket.event_end_at || 
         ticket.events?.event_end_at || 
@@ -243,7 +281,6 @@ export const generateTicketPDF = async (event, tickets, user) => {
         event?.event_start_at
       );
       
-      // 🔥 LIEU - Priorité aux données du ticket (comme pour les tickets avec compte)
       const location = safeText(
         ticket.full_address || 
         ticket.location || 
@@ -258,21 +295,18 @@ export const generateTicketPDF = async (event, tickets, user) => {
         "Lieu à confirmer"
       );
       
-      // 🔥 TYPE DE BILLET
       const ticketType = safeText(
         ticket.type_name || 
         ticket.ticket_types?.name || 
         "Standard"
       );
       
-      // 🔥 DATE D'ACHAT
       const purchaseDateDisplay = formatPurchaseDate(
         ticket.purchase_date || 
         ticket.purchased_at || 
         ticket.purchasedAt
       );
       
-      // 🔥 COULEUR
       const ticketColor = getTicketColor(
         ticketType, 
         ticket.color || ticket.ticket_types?.color
@@ -337,11 +371,14 @@ export const generateTicketPDF = async (event, tickets, user) => {
 
       cursorY = 24;
 
-      // --- 2. PRIX ---
+      // --- 2. PRIX --- ✅ FORMATAGE ULTRA ROBUSTE
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...ticketColor);
-      const priceText = `Valeur: ${priceFcfa.toLocaleString()} F CFA`;
+      
+      // ✅ Utilisation de formatPrice pour un affichage propre
+      const formattedPrice = formatPrice(priceFcfa);
+      const priceText = `Valeur : ${formattedPrice} FCFA`;
       doc.text(priceText, pageWidth / 2, cursorY, { align: "center" });
       cursorY += 8;
 
@@ -361,20 +398,24 @@ export const generateTicketPDF = async (event, tickets, user) => {
 
       // Lieu
       doc.setFont("helvetica", "bold");
-      doc.text("LIEU:", margin, cursorY);
+      doc.text("LIEU :", margin, cursorY);
       doc.setFont("helvetica", "normal");
       const locationLines = doc.splitTextToSize(location, contentWidth - 15);
       const locationHeight = Math.min(locationLines.length * 4, 12);
-      doc.text(locationLines, margin + 12, cursorY);
+      doc.text(locationLines, margin + 14, cursorY);
       cursorY += locationHeight + 4;
 
       // Date
       if (eventDate && eventDate !== "Date non définie") {
         doc.setFont("helvetica", "bold");
-        doc.text("DATE:", margin, cursorY);
+        const labelText = "DATE FIN : ";
+        doc.text(labelText, margin, cursorY);
         doc.setFont("helvetica", "normal");
         const dateLines = doc.splitTextToSize(eventDate, contentWidth - 15);
-        doc.text(dateLines, margin + 12, cursorY);
+        // Calcul du x pour que la valeur commence après le label
+        const labelWidth = doc.getStringUnitWidth(labelText) * 8 / doc.internal.scaleFactor;
+        const valueX = margin + labelWidth + 0.5;
+        doc.text(dateLines, valueX, cursorY);
         cursorY += dateLines.length * 2 + 3;
       }
 

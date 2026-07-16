@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  QrCode, LogIn, LogOut, History, Scan, FileSpreadsheet, Trash2, User, Wallet, RotateCcw, Search, Loader2, RefreshCw
+  QrCode, LogIn, LogOut, History, Scan, FileSpreadsheet, Trash2, User, Wallet, RotateCcw, Search, Loader2, RefreshCw, Calendar, CalendarDays
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import QrScanner from '@/components/event/QrScanner';
@@ -82,7 +82,7 @@ export default function TicketScannerDialog({
     }
   }, [isOpen]);
 
-  // 🔥 FORCER LA SYNCHRONISATION
+  // FORCER LA SYNCHRONISATION
   const forceSync = () => {
     localStorage.removeItem('offline_scans');
     setScanHistory([]);
@@ -108,33 +108,33 @@ export default function TicketScannerDialog({
     localStorage.removeItem('offline_scans');
   };
 
-  // 🔥 NORMALISER LA RÉPONSE RPC
-  const normalizeRPCResponse = (data) => {
-    // Si data est un tableau, prendre le premier élément
-    const raw = Array.isArray(data) ? data[0] : data;
-    if (!raw) return null;
-    
-    // La réponse est dans verify_ticket_direct
-    const response = raw.verify_ticket_direct || raw;
-    
-    // Retourner directement la réponse de la base
-    return {
-      success: response.success || false,
-      message: response.message || 'Action effectuée',
-      status_code: response.status_code || 'unknown',
-      status: response.status || 'unknown',
-      attendee_name: response.attendee_name || 'Inconnu',
-      phone: response.phone || null,
-      is_guest: response.is_guest || response.isGuest || false,
-      isGuest: response.is_guest || response.isGuest || false,
-      payment_method: response.payment_method || 'coins',
-      transaction_reference: response.transaction_reference || null,
-      ticket_type: response.ticket_type || null,
-      entry_count: response.entry_count || 0
-    };
+  // NORMALISER LA RÉPONSE RPC
+ const normalizeRPCResponse = (data) => {
+  const raw = Array.isArray(data) ? data[0] : data;
+  if (!raw) return null;
+  
+  const response = raw.verify_ticket_direct || raw;
+  
+  return {
+    success: response.success || false,
+    message: response.message || 'Action effectuée',
+    status_code: response.status_code || 'unknown',
+    status: response.status || 'unknown',
+    attendee_name: response.attendee_name || 'Inconnu',
+    phone: response.phone || null,
+    is_guest: response.is_guest || response.isGuest || false,
+    isGuest: response.is_guest || response.isGuest || false,
+    payment_method: response.payment_method || 'coins',
+    transaction_reference: response.transaction_reference || null,
+    ticket_type: response.ticket_type || null,
+    entry_count: response.entry_count || 0,
+    ticket_date: response.ticket_date || null,
+    is_multi_day: response.is_multi_day || false,
+    valid_dates: response.valid_dates || null  // ✅ AJOUTER CETTE LIGNE
   };
+};
 
-  // 🔥 RÉINITIALISER LE TICKET
+  // RÉINITIALISER LE TICKET
   const resetTicketInDatabase = async () => {
     if (!manualCode) {
       toast({
@@ -178,7 +178,7 @@ export default function TicketScannerDialog({
     }
   };
 
-  // 🔥 VÉRIFIER L'ÉTAT DU TICKET (AMÉLIORÉ POUR MONEYFUSION)
+  // VÉRIFIER L'ÉTAT DU TICKET
   const checkTicketStatus = async () => {
     if (!manualCode) {
       toast({
@@ -192,20 +192,17 @@ export default function TicketScannerDialog({
     try {
       const code = manualCode.trim().toUpperCase();
       
-      // 🔥 RECHERCHE ÉTENDUE POUR MONEYFUSION
       const { data, error } = await supabase
         .from('tickets')
-        .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+        .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method, ticket_date, is_multi_day, valid_dates')
         .or(`qr_code.ilike.%${code}%,transaction_reference.ilike.%${code}%,ticket_number.ilike.%${code}%`)
-        .eq('payment_method', 'moneyfusion_ticket')
         .maybeSingle();
 
-      // Si pas trouvé avec la recherche étendue, essayer en exact
       let ticketData = data;
       if (!ticketData) {
         const { data: exactData, error: exactError } = await supabase
           .from('tickets')
-          .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method')
+          .select('qr_code, transaction_reference, ticket_number, status, entry_count, check_in_time, check_out_time, attendee_name, phone, payment_method, ticket_date, is_multi_day, valid_dates')
           .eq('qr_code', code)
           .maybeSingle();
         
@@ -228,6 +225,26 @@ export default function TicketScannerDialog({
       const statusEmoji = { 'active': '🔴', 'used': '🟢', 'exited': '🟠', 'cancelled': '🚫' };
       const statusText = { 'active': 'Pas entré', 'used': 'En salle', 'exited': 'Sorti', 'cancelled': 'Annulé' };
       const isMoneyFusion = ticketData.payment_method === 'moneyfusion_ticket';
+      const isMultiDay = ticketData.is_multi_day || false;
+      const ticketDate = ticketData.ticket_date ? new Date(ticketData.ticket_date).toLocaleDateString('fr-FR') : 'N/A';
+      
+      // Vérifier si le billet est valable aujourd'hui
+      let isValidToday = true;
+      let validityMessage = '';
+      
+      if (isMultiDay && ticketData.valid_dates) {
+        const today = new Date().toISOString().split('T')[0];
+        if (!ticketData.valid_dates.includes(today)) {
+          isValidToday = false;
+          validityMessage = 'Ce pass multi-jours n\'est pas valable aujourd\'hui';
+        }
+      } else if (ticketData.ticket_date) {
+        const today = new Date().toISOString().split('T')[0];
+        if (ticketData.ticket_date !== today) {
+          isValidToday = false;
+          validityMessage = `Ce billet est valable uniquement pour le ${ticketDate}`;
+        }
+      }
 
       toast({
         title: `📊 ${ticketData.attendee_name || 'Ticket'}`,
@@ -235,8 +252,11 @@ export default function TicketScannerDialog({
           <div className="space-y-1">
             <div>Code: <span className="font-mono">{ticketData.qr_code || ticketData.transaction_reference}</span></div>
             {isMoneyFusion && <div className="text-blue-400">💰 Ticket MoneyFusion</div>}
+            {isMultiDay && <div className="text-purple-400">📅 Pass Multi-Jours</div>}
+            {ticketData.ticket_date && !isMultiDay && <div className="text-blue-400">📅 Valable le {ticketDate}</div>}
             <div>{statusEmoji[ticketData.status] || '❓'} Statut: {statusText[ticketData.status] || ticketData.status}</div>
             <div>Entrées totales: <span className="font-bold">{ticketData.entry_count || 0}</span></div>
+            {!isValidToday && <div className="text-red-400">⚠️ {validityMessage}</div>}
             {ticketData.phone && <div>📱 {ticketData.phone}</div>}
             {ticketData.transaction_reference && <div className="text-xs text-gray-400">Réf: {ticketData.transaction_reference}</div>}
           </div>
@@ -262,7 +282,6 @@ export default function TicketScannerDialog({
     return result.message || 'Erreur lors du scan';
   };
 
-  // 📋 GET STATUS TITLE
   const getStatusTitle = (code) => {
     const titles = {
       'checkin': '✅ ENTRÉE VALIDÉE',
@@ -275,12 +294,13 @@ export default function TicketScannerDialog({
       'cancelled': '🚫 BILLET ANNULÉ',
       'not_found': '❌ BILLET INCONNU',
       'unknown_status': '❓ STATUT INCONNU',
-      'error': '❌ ERREUR TECHNIQUE'
+      'error': '❌ ERREUR TECHNIQUE',
+      'not_valid_today': '📅 PAS VALABLE AUJOURD\'HUI',
+      'expired_date': '📅 DATE EXPIRÉE'
     };
     return titles[code] || '❓ INCONNU';
   };
 
-  // 🔥 AFFICHER LE STATUT LISIBLE
   const getStatusDisplay = (statusCode, status) => {
     const displays = {
       'checkin': '✅ 1ère entrée',
@@ -291,7 +311,9 @@ export default function TicketScannerDialog({
       'not_entered': '❌ Pas encore entré',
       'event_finished': '📅 Événement terminé',
       'cancelled': '🚫 Billet annulé',
-      'not_found': '❌ Billet inconnu'
+      'not_found': '❌ Billet inconnu',
+      'not_valid_today': '📅 Pas valable aujourd\'hui',
+      'expired_date': '📅 Date expirée'
     };
     if (displays[statusCode]) return displays[statusCode];
     if (status === 'active') return '🔴 Pas entré';
@@ -300,16 +322,17 @@ export default function TicketScannerDialog({
     return '❓ Inconnu';
   };
 
-  // 🔥 AFFICHER LES INFOS DU TICKET
   const getTicketInfoDisplay = (result) => {
     if (!result) return null;
     
     const isGuest = result.is_guest || result.isGuest || false;
     const paymentMethod = result.payment_method || 'coins';
     const isMoneyFusion = paymentMethod === 'moneyfusion_ticket';
+    const isMultiDay = result.is_multi_day || false;
+    const ticketDate = result.ticket_date ? new Date(result.ticket_date).toLocaleDateString('fr-FR') : null;
     
     return (
-      <div className={`mt-2 p-2 rounded-lg border ${isGuest ? 'bg-yellow-500/20 border-yellow-500/30' : isMoneyFusion ? 'bg-blue-500/20 border-blue-500/30' : ''}`}>
+      <div className={`mt-2 p-2 rounded-lg border ${isGuest ? 'bg-yellow-500/20 border-yellow-500/30' : isMoneyFusion ? 'bg-blue-500/20 border-blue-500/30' : isMultiDay ? 'bg-purple-500/20 border-purple-500/30' : ''}`}>
         {isGuest && (
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-yellow-400" />
@@ -322,6 +345,24 @@ export default function TicketScannerDialog({
           <div className="flex items-center gap-2">
             <Wallet className="w-4 h-4 text-blue-400" />
             <p className="text-xs text-blue-400 font-medium">💰 Paiement externe (MoneyFusion)</p>
+          </div>
+        )}
+      {isMultiDay && (
+  <div className="flex items-center gap-2">
+    <CalendarDays className="w-4 h-4 text-purple-400" />
+    <p className="text-xs text-purple-400 font-medium">📅 Pass Multi-Jours</p>
+    {result.valid_dates && Array.isArray(result.valid_dates) && (
+      <span className="text-xs text-purple-300">
+        Valable du {new Date(result.valid_dates[0]).toLocaleDateString('fr-FR')} 
+        au {new Date(result.valid_dates[result.valid_dates.length - 1]).toLocaleDateString('fr-FR')}
+      </span>
+    )}
+  </div>
+)}
+        {ticketDate && !isMultiDay && (
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-400" />
+            <p className="text-xs text-blue-400 font-medium">📅 Valable le {ticketDate}</p>
           </div>
         )}
         {result.attendee_name && (
@@ -340,7 +381,7 @@ export default function TicketScannerDialog({
     );
   };
 
-  // 🔥 PROCESSUS DE VÉRIFICATION (AMÉLIORÉ)
+  // PROCESSUS DE VÉRIFICATION
   const processVerification = useCallback(async (code, isManual = false) => {
     if (!code || lockedRef.current || scanResult) return;
 
@@ -353,7 +394,6 @@ export default function TicketScannerDialog({
       
       console.log('🔍 Vérification du code:', codeTrimmed);
       
-      // 🔥 APPEL RPC PRINCIPAL
       const { data, error } = await supabase.rpc('verify_ticket_direct', {
         p_ticket_identifier: codeTrimmed,
         p_verification_method: isManual ? 'manual_entry' : 'qr_scanner_web',
@@ -392,7 +432,10 @@ export default function TicketScannerDialog({
         transaction_reference: normalizedData.transaction_reference,
         status_code: normalizedData.status_code,
         status: normalizedData.status,
-        entry_count: normalizedData.entry_count
+        entry_count: normalizedData.entry_count,
+        ticket_date: normalizedData.ticket_date,
+        is_multi_day: normalizedData.is_multi_day,
+        valid_dates: normalizedData.valid_dates
       };
 
       console.log('✅ Résultat final:', result);
@@ -407,7 +450,6 @@ export default function TicketScannerDialog({
         playFeedback('error');
       }
 
-      // 🔥 AFFICHER DES INFOS DE DEBUG EN CAS D'ERREUR
       if (!result.success && result.status_code === 'not_found') {
         setDebugInfo({
           searched_code: codeTrimmed,
@@ -479,7 +521,9 @@ export default function TicketScannerDialog({
       "Type Billet": s.ticketType || "-",
       "Paiement": s.payment_method === 'moneyfusion_ticket' ? 'Externe' : (s.is_guest ? 'Sans compte' : 'Compte'),
       "Réf. Transaction": s.transaction_reference || "-",
-      "Entrées totales": s.entry_count || 0
+      "Entrées totales": s.entry_count || 0,
+      "Date billet": s.ticket_date || "-",
+      "Multi-jours": s.is_multi_day ? "Oui" : "Non"
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -487,29 +531,55 @@ export default function TicketScannerDialog({
     XLSX.writeFile(wb, `scans_event_${eventId}_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  const exportScansToPDF = () => {
-    if (scanHistory.length === 0) return;
-    const doc = new jsPDF();
-    autoTable(doc, {
-      head: [["#", "Participant", "Téléphone", "Code Billet", "Statut", "Sens", "Méthode", "Message", "Paiement", "Réf. Transaction", "Entrées"]],
-      body: scanHistory.map((s, i) => [
-        i + 1,
-        s.attendee || "—",
-        s.phone || "—",
-        s.code,
-        s.success ? "VALIDÉ" : "REFUSÉ",
-        s.mode === "entry" ? "ENTRÉE" : "SORTIE",
-        s.isManual ? "Manuel" : "QR Code",
-        s.message,
-        s.payment_method === 'moneyfusion_ticket' ? 'Externe' : (s.is_guest ? 'Sans compte' : 'Compte'),
-        s.transaction_reference ? s.transaction_reference.substring(0, 12) + '...' : "-",
-        s.entry_count || 0
-      ]),
-      startY: 15,
-      styles: { fontSize: 8 }
-    });
-    doc.save(`scans_event_${eventId}_${new Date().toISOString().slice(0,10)}.pdf`);
-  };
+  // ============================================
+// EXPORT PDF - Formatage en FCFA
+// ============================================
+
+const exportScansToPDF = () => {
+  if (scanHistory.length === 0) return;
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  
+  // En-tête
+  doc.setFontSize(14);
+  doc.text('Historique des scans - Billets', 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 14, 28);
+  
+  autoTable(doc, {
+    head: [[
+      "#", 
+      "Participant", 
+      "Téléphone", 
+      "Code Billet", 
+      "Statut", 
+      "Sens", 
+      "Date Billet", 
+      "Multi-jours", 
+      "Entrées",
+      "Type Billet",
+      "Paiement"
+    ]],
+    body: scanHistory.map((s, i) => [
+      i + 1,
+      s.attendee || "—",
+      s.phone || "—",
+      s.code,
+      s.success ? "VALIDÉ" : "REFUSÉ",
+      s.mode === "entry" ? "ENTRÉE" : "SORTIE",
+      s.ticket_date ? new Date(s.ticket_date).toLocaleDateString('fr-FR') : "-",
+      s.is_multi_day ? "Oui" : "Non",
+      s.entry_count || 0,
+      s.ticketType || "-",
+      s.payment_method === 'moneyfusion_ticket' ? 'Externe' : (s.is_guest ? 'Sans compte' : 'Compte')
+    ]),
+    startY: 35,
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [240, 240, 240] }
+  });
+  
+  doc.save(`scans_event_${eventId}_${new Date().toISOString().slice(0,10)}.pdf`);
+};
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -609,6 +679,8 @@ export default function TicketScannerDialog({
                     : "border-green-500 bg-green-900/40"
                   : scanResult.status_code === 'already_used' || scanResult.status_code === 'already_exited' || scanResult.status_code === 'not_entered'
                   ? "border-yellow-500 bg-yellow-900/40"
+                  : scanResult.status_code === 'not_valid_today' || scanResult.status_code === 'expired_date'
+                  ? "border-orange-500 bg-orange-900/40"
                   : "border-red-500 bg-red-900/40"
               )}>
                 <h3 className={cn(
@@ -621,9 +693,11 @@ export default function TicketScannerDialog({
                       : "text-green-400"
                     : scanResult.status_code === 'already_used' || scanResult.status_code === 'already_exited' || scanResult.status_code === 'not_entered'
                     ? "text-yellow-400"
+                    : scanResult.status_code === 'not_valid_today' || scanResult.status_code === 'expired_date'
+                    ? "text-orange-400"
                     : "text-red-400"
                 )}>
-                  {scanResult.success ? '✅ VALIDÉ' : '❌ REFUSÉ'}
+                  {getStatusTitle(scanResult.status_code)}
                 </h3>
                 <p className="text-sm text-center mt-1">{getDisplayMessage(scanResult)}</p>
                 {scanResult.attendee && <p className="mt-2 font-semibold text-center">{scanResult.attendee}</p>}
@@ -632,6 +706,8 @@ export default function TicketScannerDialog({
                   Statut: {getStatusDisplay(scanResult.status_code, scanResult.status)}
                   {scanResult.entry_count > 0 && <span className="ml-2 text-purple-400">(#{scanResult.entry_count})</span>}
                   {scanResult.phone && <span className="ml-2 text-blue-400">📱 {scanResult.phone}</span>}
+                  {scanResult.is_multi_day && <span className="ml-2 text-purple-400">📅 Multi-jours</span>}
+                  {scanResult.ticket_date && !scanResult.is_multi_day && <span className="ml-2 text-blue-400">📅 {new Date(scanResult.ticket_date).toLocaleDateString('fr-FR')}</span>}
                 </div>
                 <Button onClick={handleNextScan} className="w-full mt-3" variant="outline">
                   <Scan className="w-4 h-4 mr-2" /> Continuer
@@ -668,6 +744,7 @@ export default function TicketScannerDialog({
             ) : scanHistory.map((s, i) => {
               const isGuest = s.is_guest || false;
               const isMoneyFusion = s.payment_method === 'moneyfusion_ticket';
+              const isMultiDay = s.is_multi_day || false;
               let badgeClass = '';
               if (s.success) {
                 if (s.status_code === 'exit_registered') badgeClass = 'text-blue-400 border-blue-400';
@@ -676,6 +753,8 @@ export default function TicketScannerDialog({
               } else {
                 if (s.status_code === 'already_used' || s.status_code === 'already_exited' || s.status_code === 'not_entered') {
                   badgeClass = 'text-yellow-400 border-yellow-400';
+                } else if (s.status_code === 'not_valid_today' || s.status_code === 'expired_date') {
+                  badgeClass = 'text-orange-400 border-orange-400';
                 } else {
                   badgeClass = 'text-red-400 border-red-400';
                 }
@@ -684,14 +763,17 @@ export default function TicketScannerDialog({
                 <div key={i} className="flex justify-between items-center text-xs p-1 border-b border-gray-800/50">
                   <div className="flex-1 min-w-0">
                     <span className="truncate block">{s.attendee || s.code}</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {s.phone && <span className="text-[8px] text-blue-400">📱{s.phone}</span>}
                       {(isGuest || isMoneyFusion) && <span className="text-[8px] text-yellow-500/70">{isGuest ? '🎟️' : '💰'}</span>}
+                      {isMultiDay && <span className="text-[8px] text-purple-400">📅 Multi</span>}
+                      {s.ticket_date && !isMultiDay && <span className="text-[8px] text-blue-400">📅 {new Date(s.ticket_date).toLocaleDateString('fr-FR')}</span>}
                       {s.entry_count > 0 && <span className="text-[8px] text-purple-400">#{s.entry_count}</span>}
                       <span className="text-[8px] text-gray-600">
                         {s.status_code === 'checkin' ? '1ère' : 
                          s.status_code === 're_entry' ? 'Ré-entrée' : 
-                         s.status_code === 'exit_registered' ? 'Sortie' : ''}
+                         s.status_code === 'exit_registered' ? 'Sortie' : 
+                         s.status_code === 'not_valid_today' ? '📅' : ''}
                       </span>
                     </div>
                   </div>

@@ -37,10 +37,47 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   FileText,
+  Bed,
+  Tent,
+  Hotel,
+  Home,
+  Compass,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import ImageUpload from "@/components/ImageUpload";
 import OrganizerContractModal from "@/components/organizer/OrganizerContractModal";
+
+// Types de location
+const RENTAL_TYPES = [
+  { 
+    id: "stand", 
+    label: "Stand d'exposition", 
+    icon: Store, 
+    color: "blue",
+    description: "Espace pour exposer vos produits ou services"
+  },
+  { 
+    id: "accommodation", 
+    label: "Hébergement / Case", 
+    icon: Bed, 
+    color: "green",
+    description: "Nuitée sur le site de l'événement"
+  },
+  { 
+    id: "camping", 
+    label: "Emplacement Camping", 
+    icon: Tent, 
+    color: "orange",
+    description: "Espace pour tente ou camping-car"
+  },
+  { 
+    id: "glamping", 
+    label: "Glamping / Tente Luxe", 
+    icon: Hotel, 
+    color: "purple",
+    description: "Tente tout équipée avec confort premium"
+  },
+];
 
 // Couleurs pour les stands
 const STAND_COLORS = [
@@ -128,6 +165,9 @@ const formatCurrency = (amount, currency) => {
 // Memoized Stand Type Row
 const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
   const colors = STAND_COLORS[index % STAND_COLORS.length];
+  const rentalTypeInfo = RENTAL_TYPES.find(t => t.id === st.rental_type) || RENTAL_TYPES[0];
+  const Icon = rentalTypeInfo.icon;
+  const color = rentalTypeInfo.color;
 
   return (
     <Card
@@ -136,7 +176,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
       <CardContent className="p-6">
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <Badge className={`${colors.badge} font-medium border-0`}>
-            Type #{index + 1}
+            #{index + 1}
           </Badge>
           {canRemove && (
             <Button
@@ -153,7 +193,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Nom du stand *
+              Nom *
             </Label>
             <Input
               value={st.name}
@@ -162,32 +202,69 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
               className="font-semibold h-11 bg-gray-800 border-gray-700 text-white"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className={`font-bold text-base ${colors.text}`}>
-                Dimensions
-              </Label>
-              <Input
-                value={st.size}
-                onChange={(e) => onChange(st.id, "size", e.target.value)}
-                placeholder="Ex: 9m²"
-                className="h-11 bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className={`font-bold text-base ${colors.text}`}>
-                Quantité *
-              </Label>
-              <Input
-                type="number"
-                min="1"
-                value={st.quantity_available}
-                onChange={(e) =>
-                  onChange(st.id, "quantity_available", e.target.value)
-                }
-                className="h-11 bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label className={`font-bold text-base ${colors.text}`}>
+              Type de location *
+            </Label>
+            <Select
+              value={st.rental_type || "stand"}
+              onValueChange={(val) => onChange(st.id, "rental_type", val)}
+            >
+              <SelectTrigger className="h-11 bg-gray-800 border-gray-700 text-white">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                {RENTAL_TYPES.map((type) => (
+                  <SelectItem key={type.id} value={type.id}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className={`w-4 h-4 text-${type.color}-400`} />
+                      <span>{type.label}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+          <div className="space-y-2">
+            <Label className={`font-bold text-base ${colors.text}`}>
+              Dimensions
+            </Label>
+            <Input
+              value={st.size}
+              onChange={(e) => onChange(st.id, "size", e.target.value)}
+              placeholder="Ex: 9m²"
+              className="h-11 bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className={`font-bold text-base ${colors.text}`}>
+              Quantité *
+            </Label>
+            <Input
+              type="number"
+              min="1"
+              value={st.quantity_available}
+              onChange={(e) =>
+                onChange(st.id, "quantity_available", e.target.value)
+              }
+              className="h-11 bg-gray-800 border-gray-700 text-white"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className={`font-bold text-base ${colors.text}`}>
+              Capacité (personnes)
+            </Label>
+            <Input
+              type="number"
+              min="1"
+              value={st.capacity || ""}
+              onChange={(e) => onChange(st.id, "capacity", e.target.value)}
+              placeholder="Ex: 2"
+              className="h-11 bg-gray-800 border-gray-700 text-white"
+            />
           </div>
         </div>
 
@@ -229,7 +306,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
             <div className="h-11 flex items-center px-3 rounded-md bg-primary-900/30 text-primary-300 font-bold border border-primary-800">
               <Coins className="w-4 h-4 mr-2" />
               <span className="text-lg">
-                {convertToCoins(st.base_price, st.base_currency)} pièces
+                {convertToCoins(st.base_price, st.base_currency)} π
               </span>
             </div>
           </div>
@@ -246,6 +323,13 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
             rows={2}
             className="bg-gray-800 border-gray-700 text-white"
           />
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <Icon className={`w-4 h-4 text-${color}-400`} />
+          <span className={`text-xs text-${color}-300`}>
+            {rentalTypeInfo.label} - {rentalTypeInfo.description}
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -379,12 +463,35 @@ const Step2Stands = ({
     <div className="bg-blue-900/30 p-4 rounded-xl border border-blue-800 mb-6 flex gap-3">
       <Store className="w-6 h-6 text-blue-400 mt-1 shrink-0" />
       <div>
-        <h4 className="font-bold text-blue-300">Gagnez 90% des revenus</h4>
+        <h4 className="font-bold text-blue-300">Configurez vos offres</h4>
         <p className="text-sm text-blue-200">
-          Configurez vos types de stands. La plateforme prélève 10%.
+          Choisissez le type de location et définissez vos tarifs.
         </p>
       </div>
     </div>
+
+    {/* Types de location disponibles */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      {RENTAL_TYPES.map((type) => {
+        const Icon = type.icon;
+        const hasType = standTypes.some(st => st.rental_type === type.id);
+        return (
+          <div
+            key={type.id}
+            className={`p-3 rounded-lg border text-center transition-all ${
+              hasType 
+                ? `border-${type.color}-500 bg-${type.color}-900/20 text-${type.color}-300` 
+                : 'border-gray-700 bg-gray-800/30 text-gray-500'
+            }`}
+          >
+            <Icon className={`w-5 h-5 mx-auto mb-1 ${hasType ? `text-${type.color}-400` : 'text-gray-600'}`} />
+            <p className="text-xs font-medium">{type.label}</p>
+            {hasType && <Badge className="mt-1 text-[8px] bg-green-900 text-green-300">Activé</Badge>}
+          </div>
+        );
+      })}
+    </div>
+
     <div className="space-y-4">
       {standTypes.map((st, index) => (
         <StandTypeItem
@@ -402,7 +509,7 @@ const Step2Stands = ({
       variant="outline"
       className="w-full py-8 border-dashed border-gray-700 text-gray-300"
     >
-      <Plus className="w-5 h-5 mr-2" /> Ajouter un type de stand
+      <Plus className="w-5 h-5 mr-2" /> Ajouter une offre
     </Button>
   </div>
 );
@@ -425,6 +532,17 @@ const Step3Confirmation = ({
         (parseInt(st.quantity_available) || 0),
     0,
   );
+
+  // Regrouper les types pour l'affichage
+  const typesSummary = standTypes.reduce((acc, st) => {
+    const type = RENTAL_TYPES.find(t => t.id === st.rental_type) || RENTAL_TYPES[0];
+    if (!acc[type.id]) {
+      acc[type.id] = { ...type, count: 0, items: [] };
+    }
+    acc[type.id].count += parseInt(st.quantity_available) || 0;
+    acc[type.id].items.push(st);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -455,17 +573,46 @@ const Step3Confirmation = ({
         </div>
       </div>
 
+      {/* Résumé des types */}
+      <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+        <h4 className="font-bold text-white mb-3">Offres proposées</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.values(typesSummary).map((type) => {
+            const Icon = type.icon;
+            return (
+              <div key={type.id} className={`bg-${type.color}-900/20 border border-${type.color}-800 rounded-lg p-3`}>
+                <div className="flex items-center gap-2">
+                  <Icon className={`w-4 h-4 text-${type.color}-400`} />
+                  <span className={`font-medium text-${type.color}-300`}>{type.label}</span>
+                  <Badge className={`ml-auto bg-${type.color}-900 text-${type.color}-200`}>
+                    {type.count} places
+                  </Badge>
+                </div>
+                <div className="mt-2 text-xs text-gray-400">
+                  {type.items.map((item, i) => (
+                    <span key={i} className="mr-2">
+                      {item.name} ({item.quantity_available} x {convertToCoins(item.base_price, item.base_currency)}π)
+                      {i < type.items.length - 1 && " • "}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="mt-6 p-6 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-800 rounded-xl flex justify-between items-center">
         <div>
           <p className="font-bold text-green-300 text-lg">
             Revenu Potentiel Max
           </p>
           <p className="text-sm text-green-200">
-            Si tous les stands sont loués
+            Si toutes les places sont réservées
           </p>
         </div>
         <p className="text-3xl font-extrabold text-green-300">
-          {totalPotentialRevenuePi} pièces
+          {totalPotentialRevenuePi} π
         </p>
       </div>
 
@@ -526,6 +673,7 @@ const CreateStandEventPage = () => {
   // Modal State
   const [showContractModal, setShowContractModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [contractAcceptanceId, setContractAcceptanceId] = useState(null);
 
   // Form State
   const [title, setTitle] = useState("");
@@ -541,10 +689,12 @@ const CreateStandEventPage = () => {
     {
       id: uuidv4(),
       name: "Stand Standard",
+      rental_type: "stand",
       base_price: 50000,
       base_currency: "XOF",
       quantity_available: 10,
-      description: "Espace 3x3m",
+      capacity: 2,
+      description: "Espace 3x3m pour exposer vos produits",
       size: "3x3m",
     },
   ]);
@@ -564,23 +714,104 @@ const CreateStandEventPage = () => {
     setStandTypes((prev) =>
       prev.map((st) => (st.id === id ? { ...st, [field]: value } : st)),
     );
-  const addStandType = () =>
+  const addStandType = () => {
+    // Déterminer le type le moins utilisé
+    const typeCount = {};
+    standTypes.forEach(st => {
+      typeCount[st.rental_type || "stand"] = (typeCount[st.rental_type || "stand"] || 0) + 1;
+    });
+    let defaultType = "stand";
+    let minCount = Infinity;
+    RENTAL_TYPES.forEach(t => {
+      if ((typeCount[t.id] || 0) < minCount) {
+        minCount = typeCount[t.id] || 0;
+        defaultType = t.id;
+      }
+    });
+    
     setStandTypes((prev) => [
       ...prev,
       {
         id: uuidv4(),
-        name: "",
+        name: `Offre ${prev.length + 1}`,
+        rental_type: defaultType,
         base_price: 0,
         base_currency: "XOF",
         quantity_available: 5,
+        capacity: 2,
         description: "",
         size: "3x3m",
       },
     ]);
+  };
   const removeStandType = (id) =>
     setStandTypes((prev) =>
       prev.length > 1 ? prev.filter((st) => st.id !== id) : prev,
     );
+
+  // ============================================================
+  // GESTION DU CONTRAT
+  // ============================================================
+  const handleContractAccept = async () => {
+    if (!user) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Enregistrer l'acceptation du contrat
+      const { data, error } = await supabase
+        .from("user_contract_acceptances")
+        .insert({
+          user_id: user.id,
+          event_id: null,
+          contract_type: "organizer",
+          accepted_at: new Date().toISOString(),
+          contract_version: "v2.0",
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn("⚠️ Table user_contract_acceptances non trouvée:", error);
+        setTermsAccepted(true);
+        setShowContractModal(false);
+        toast({
+          title: "Contrat accepté",
+          description: "Vous pouvez maintenant publier votre événement.",
+          className: "bg-green-600 text-white",
+        });
+        return;
+      }
+
+      if (data) {
+        setContractAcceptanceId(data.id);
+      }
+
+      setTermsAccepted(true);
+      setShowContractModal(false);
+      
+      toast({
+        title: "✅ Contrat accepté",
+        description: "Votre acceptation a été enregistrée.",
+        className: "bg-green-600 text-white",
+      });
+
+    } catch (err) {
+      console.error("❌ Erreur lors de l'acceptation du contrat:", err);
+      setTermsAccepted(true);
+      setShowContractModal(false);
+      toast({
+        title: "Contrat accepté",
+        description: "Vous pouvez maintenant publier votre événement.",
+        className: "bg-green-600 text-white",
+      });
+    }
+  };
 
   const performSubmission = async () => {
     if (!user) return navigate("/auth");
@@ -597,6 +828,7 @@ const CreateStandEventPage = () => {
 
     setLoading(true);
     try {
+      // 1. Créer l'événement
       const { data: eventData, error: eventError } = await supabase
         .from("events")
         .insert({
@@ -620,11 +852,37 @@ const CreateStandEventPage = () => {
         .single();
 
       if (eventError) throw eventError;
+      const newEventId = eventData.id;
 
+      // 2. Mettre à jour l'acceptation du contrat
+      if (contractAcceptanceId) {
+        try {
+          await supabase
+            .from("user_contract_acceptances")
+            .update({ event_id: newEventId })
+            .eq("id", contractAcceptanceId);
+        } catch (err) {
+          console.warn("⚠️ Erreur mise à jour contrat:", err);
+        }
+      } else {
+        try {
+          await supabase.from("user_contract_acceptances").insert({
+            user_id: user.id,
+            event_id: newEventId,
+            contract_type: "organizer",
+            accepted_at: new Date().toISOString(),
+            contract_version: "v2.0",
+          });
+        } catch (err) {
+          console.warn("⚠️ Erreur insertion contrat:", err);
+        }
+      }
+
+      // 3. Créer stand_events
       const { data: standEventData, error: standEventError } = await supabase
         .from("stand_events")
         .insert({
-          event_id: eventData.id,
+          event_id: newEventId,
           base_currency: standTypes[0].base_currency,
         })
         .select()
@@ -632,12 +890,15 @@ const CreateStandEventPage = () => {
 
       if (standEventError) throw standEventError;
 
+      // 4. Créer les stand_types
       const standTypesToInsert = standTypes.map((st) => ({
         stand_event_id: standEventData.id,
-        event_id: eventData.id,
+        event_id: newEventId,
         name: st.name,
         description: st.description,
         size: st.size,
+        rental_type: st.rental_type || "stand",
+        capacity: parseInt(st.capacity) || 2,
         base_price: parseFloat(st.base_price),
         base_currency: st.base_currency,
         calculated_price_pi: convertToCoins(st.base_price, st.base_currency),
@@ -651,8 +912,9 @@ const CreateStandEventPage = () => {
         .insert(standTypesToInsert);
       if (typesError) throw typesError;
 
+      // 5. Créer event_settings
       await supabase.from("event_settings").insert({
-        event_id: eventData.id,
+        event_id: newEventId,
         stands_enabled: true,
         total_stands: standTypes.reduce(
           (acc, st) => acc + parseInt(st.quantity_available),
@@ -662,11 +924,11 @@ const CreateStandEventPage = () => {
       });
 
       toast({
-        title: "Succès",
-        description: "Espace stands publié !",
+        title: "🎉 Succès !",
+        description: `Espace ${standTypes.length > 1 ? 'stands et hébergements' : 'stands'} publié !`,
         className: "bg-green-700 text-white",
       });
-      navigate(`/event/${eventData.id}`);
+      navigate(`/event/${newEventId}`);
     } catch (error) {
       console.error(error);
       toast({
@@ -688,7 +950,9 @@ const CreateStandEventPage = () => {
       <OrganizerContractModal
         open={showContractModal}
         onOpenChange={setShowContractModal}
-        onAccept={() => setTermsAccepted(true)}
+        onAccept={handleContractAccept}
+        eventTitle={title || "votre événement"}
+        eventId="new-event"
       />
 
       <main className="container mx-auto max-w-4xl px-4 py-8">
@@ -698,7 +962,7 @@ const CreateStandEventPage = () => {
               Créer un Espace Stands
             </CardTitle>
             <CardDescription className="text-gray-400">
-              Louez vos stands professionnels
+              Louez vos stands et hébergements
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-8 px-6">

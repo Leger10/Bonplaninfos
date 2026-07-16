@@ -68,10 +68,17 @@ import {
   ShoppingCart,
   PlusCircle,
   Trash2,
-   Users,
+  Users,
   Bookmark,
   Eye,
   MoreVertical,
+  Bed,
+  Tent,
+  Hotel,
+  Home,
+  Compass,
+  User,
+  Calendar,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -82,6 +89,90 @@ import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+
+// ============================================
+// UTILITAIRE DE FORMATAGE DES PRIX - VERSION ULTRA ROBUSTE
+// ============================================
+const formatPrice = (amount) => {
+  // Si amount est undefined, null
+  if (amount === undefined || amount === null) return "0";
+  
+  let numAmount;
+  
+  // Si c'est déjà un nombre
+  if (typeof amount === 'number' && !isNaN(amount)) {
+    numAmount = amount;
+  } 
+  // Si c'est une chaîne
+  else if (typeof amount === 'string') {
+    // 🔥 CORRECTION: Enlever TOUS les caractères non numériques
+    // Garder seulement les chiffres, les virgules et les points
+    let clean = amount.replace(/[^0-9,.]/g, '');
+    // Si la chaîne est vide après nettoyage
+    if (clean === '') return "0";
+    // Remplacer la virgule par un point
+    clean = clean.replace(',', '.');
+    numAmount = parseFloat(clean);
+  } 
+  // Autre cas
+  else {
+    try {
+      numAmount = Number(amount);
+    } catch {
+      numAmount = 0;
+    }
+  }
+  
+  // Vérifier si c'est un nombre valide
+  if (isNaN(numAmount) || numAmount <= 0) return "0";
+  
+  // 🔥 CORRECTION: Formater avec l'espace comme séparateur de milliers
+  // Utiliser toLocaleString('fr-FR') qui ajoute des espaces
+  return numAmount.toLocaleString('fr-FR');
+};
+// Types de location avec icônes uniquement
+const RENTAL_TYPES = {
+  STAND: {
+    id: "stand",
+    label: "Stand d'exposition",
+    icon: Store,
+    color: "blue",
+    fields: ["companyName", "contactPerson", "email", "phone", "description"],
+    requiredFields: ["companyName", "contactPerson", "phone"],
+    description: "Espace pour exposer vos produits ou services",
+    placeholder: "Nom de votre entreprise",
+  },
+  ACCOMMODATION: {
+    id: "accommodation",
+    label: "Hébergement / Case à dormir",
+    icon: Bed,
+    color: "green",
+    fields: ["guestName", "email", "phone", "checkIn", "checkOut", "specialRequests"],
+    requiredFields: ["guestName", "phone"],
+    description: "Nuitée sur le site de l'événement",
+    placeholder: "Votre nom complet",
+  },
+  CAMPING: {
+    id: "camping",
+    label: "Emplacement Camping",
+    icon: Tent,
+    color: "orange",
+    fields: ["guestName", "email", "phone", "checkIn", "checkOut", "tentSize", "specialRequests"],
+    requiredFields: ["guestName", "phone"],
+    description: "Espace pour tente ou camping-car",
+    placeholder: "Votre nom complet",
+  },
+  GLAMPING: {
+    id: "glamping",
+    label: "Glamping / Tente Luxe",
+    icon: Hotel,
+    color: "purple",
+    fields: ["guestName", "email", "phone", "checkIn", "checkOut", "specialRequests"],
+    requiredFields: ["guestName", "phone"],
+    description: "Tente tout équipée avec confort premium",
+    placeholder: "Votre nom complet",
+  },
+};
 
 const STAND_COLORS = [
   {
@@ -164,6 +255,23 @@ const STAND_COLORS = [
   },
 ];
 
+// Composant pour afficher le type de location avec icône
+const RentalTypeIcon = ({ type, size = "w-16 h-16", className = "" }) => {
+  const typeInfo = getRentalTypeInfo(type);
+  const Icon = typeInfo.icon;
+  const color = typeInfo.color;
+  const label = typeInfo.label;
+  
+  return (
+    <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
+      <div className={`${size} rounded-2xl bg-${color}-900/30 border-2 border-${color}-500/50 flex items-center justify-center transition-all hover:scale-110 hover:shadow-lg hover:shadow-${color}-500/20`}>
+        <Icon className={`w-8 h-8 text-${color}-400`} />
+      </div>
+      <span className={`text-xs font-medium text-${color}-300 text-center`}>{label}</span>
+    </div>
+  );
+};
+
 const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -180,10 +288,11 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedRentalForDetails, setSelectedRentalForDetails] =
-    useState(null);
+  const [selectedRentalForDetails, setSelectedRentalForDetails] = useState(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState(null);
+  const [selectedRentalType, setSelectedRentalType] = useState("stand");
+  
   const [statistics, setStatistics] = useState({
     totalStands: 0,
     totalRentals: 0,
@@ -197,15 +306,23 @@ const StandRentalInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   });
 
   const COIN_RATE = 10;
-const COMMISSION_RATE = 0; // plus de commission
+  const COMMISSION_RATE = 0;
   const isOrganizer = user?.id === event?.organizer_id;
 
+  // Formulaire adapté au type de location
   const [formData, setFormData] = useState({
+    // Stand
     companyName: "",
     contactPerson: "",
     email: user?.email || "",
     phone: "",
     description: "",
+    // Hébergement
+    guestName: "",
+    checkIn: "",
+    checkOut: "",
+    tentSize: "",
+    specialRequests: "",
   });
 
   // ==================== UTILITAIRES ====================
@@ -225,6 +342,7 @@ const COMMISSION_RATE = 0; // plus de commission
       });
     }
   };
+
   const generateUniqueBookingCode = async (retries = 3) => {
     const generate = () => {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -244,7 +362,6 @@ const COMMISSION_RATE = 0; // plus de commission
         .maybeSingle();
       if (error || !data) return code;
     }
-    // Fallback : code basé sur timestamp (plus long mais unique)
     return "R" + Date.now().toString(36).slice(-3).toUpperCase();
   };
 
@@ -258,88 +375,201 @@ const COMMISSION_RATE = 0; // plus de commission
   };
 
   // ==================== EXPORTS ====================
-  const exportToExcel = () => {
-    if (!filteredRentals.length) return;
-    const data = filteredRentals.map((r) => ({
+const exportToExcel = () => {
+  if (!filteredRentals.length) return;
+  const data = filteredRentals.map((r) => {
+    // 🔥 Nettoyer le montant avant de le formater
+    let amountPi = r.rental_amount_pi;
+    if (typeof amountPi === 'string') {
+      amountPi = parseFloat(amountPi.replace(/[^0-9,.]/g, '').replace(',', '.'));
+    }
+    const amount = (parseFloat(amountPi) || 0) * COIN_RATE;
+    
+    return {
       "N° Stand": r.stand_number,
-      Entreprise: r.company_name,
-      Description: r.business_description || "",
-      "Personne à Contact": r.contact_person,
-      Email: r.contact_email,
-      Téléphone: r.contact_phone,
+      "Nom/Locataire": r.company_name || r.guest_name || "",
+      "Type": r.rental_type || "stand",
+      "Contact": r.contact_person || r.guest_name || "",
+      "Email": r.contact_email || "",
+      "Téléphone": r.contact_phone || "",
       "Code Réservation": r.booking_code || "",
       "Type Stand": r.stand_types?.name || "",
-      "Montant (π)": r.rental_amount_pi,
-      "Montant (F CFA)": r.rental_amount_pi * COIN_RATE,
-    }));
+      "Montant (π)": parseFloat(amountPi) || 0,
+      "Montant (F CFA)": formatPrice(amount),
+    };
+  });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Réservations");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(
       new Blob([excelBuffer], { type: "application/octet-stream" }),
-      "reservations_stands.xlsx",
+      "reservations_stands.xlsx"
     );
   };
 
   const exportToPDF = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(20);
-      doc.text(
-        `Réservations de stands - ${event?.title || "Événement"}`,
-        14,
-        20,
-      );
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      
+      // En-tête
+      doc.setFontSize(18);
+      doc.setTextColor(41, 128, 185);
+      doc.text(`Réservations - ${event?.title || "Événement"}`, 14, 20);
+      
       doc.setFontSize(10);
-      doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, 14, 28);
+      doc.setTextColor(100);
+      doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")} à ${new Date().toLocaleTimeString("fr-FR")}`, 14, 28);
+      
+      // Résumé avec format correct
       doc.setFontSize(12);
-      doc.text("Résumé des locations", 14, 40);
-      doc.text(`Total réservations: ${filteredRentals.length}`, 14, 48);
-      doc.text(
-        `Revenu total: ${filteredRentals.reduce((s, r) => s + r.rental_amount_pi, 0)} π`,
-        14,
-        55,
-      );
+      doc.setTextColor(0);
+      const totalRevenue = filteredRentals.reduce((s, r) => s + (r.rental_amount_pi || 0), 0);
+      doc.text(`Total réservations: ${filteredRentals.length}`, 14, 40);
+      doc.text(`Revenu total: ${formatPrice(totalRevenue)} π (${formatPrice(totalRevenue * COIN_RATE)} FCFA)`, 14, 48);
+      
       const tableColumn = [
-        "Stand",
-        "Entreprise",
+        "N° Stand",
+        "Nom/Locataire",
+        "Type",
         "Contact",
         "Email",
         "Téléphone",
-        "Type",
-        "Code",
-        "Prix (π)",
+        "Code Réservation",
+        "Type Stand",
+        "Arrivée",
+        "Départ",
+        "Montant (π)",
+        "Montant (F CFA)"
       ];
-      const tableRows = filteredRentals.map((r) => [
-        r.stand_number,
-        r.company_name || "N/A",
-        r.contact_person || "N/A",
-        r.contact_email || "N/A",
-        r.contact_phone || r.profiles?.phone || "N/A",
-        r.stand_types?.name || "N/A",
-        r.booking_code || "N/A",
-        r.rental_amount_pi.toString(),
-      ]);
+      
+      const tableRows = filteredRentals.map((r) => {
+        const rentalType = r.rental_type || "stand";
+        const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+        
+        const locataire = r.company_name || r.guest_name || "N/A";
+        const contact = r.contact_person || r.guest_name || "N/A";
+        const email = r.contact_email || "N/A";
+        const phone = r.contact_phone || "N/A";
+        const bookingCode = r.booking_code || "N/A";
+        
+        let standType = r.stand_types?.name || "N/A";
+        if (r.stand_types?.size) {
+          standType += ` (${r.stand_types.size})`;
+        }
+        
+        const checkIn = r.check_in_date ? new Date(r.check_in_date).toLocaleDateString("fr-FR") : "N/A";
+        const checkOut = r.check_out_date ? new Date(r.check_out_date).toLocaleDateString("fr-FR") : "N/A";
+        
+        const amountPi = r.rental_amount_pi || 0;
+        const amountFcfa = formatPrice(amountPi * COIN_RATE);
+        
+        return [
+          r.stand_number || "N/A",
+          locataire,
+          rentalTypeInfo.label || rentalType,
+          contact,
+          email,
+          phone,
+          bookingCode,
+          standType,
+          checkIn,
+          checkOut,
+          formatPrice(amountPi),
+          amountFcfa
+        ];
+      });
+      
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 65,
+        startY: 55,
         theme: "striped",
-        headStyles: { fillColor: [41, 128, 185] },
-        styles: { fontSize: 8 },
+        headStyles: { 
+          fillColor: [41, 128, 185],
+          textColor: [255, 255, 255],
+          fontSize: 7,
+          cellPadding: 2,
+          halign: 'center',
+        },
+        styles: { 
+          fontSize: 6,
+          cellPadding: 1.5,
+          overflow: 'linebreak',
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 28 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 18 },
+          7: { cellWidth: 25 },
+          8: { cellWidth: 18 },
+          9: { cellWidth: 18 },
+          10: { cellWidth: 18 },
+          11: { cellWidth: 22 },
+        },
+        alternateRowStyles: {
+          fillColor: [240, 240, 240],
+        },
+        didDrawPage: function(data) {
+          doc.setFontSize(7);
+          doc.setTextColor(150);
+          const pageCount = doc.internal.getNumberOfPages();
+          const currentPage = doc.internal.getCurrentPageInfo().pageNumber;
+          doc.text(
+            `Page ${currentPage}/${pageCount} - ${event?.title || "Réservations"}`,
+            pageWidth - 45,
+            pageHeight - 10
+          );
+        }
       });
-      doc.save(
-        `reservations-stands-${event?.title?.replace(/\s+/g, "-").toLowerCase() || "evenement"}.pdf`,
+      
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      doc.text(`Résumé: ${filteredRentals.length} réservation(s)`, 14, finalY);
+      doc.text(`Total: ${formatPrice(totalRevenue)} π (${formatPrice(totalRevenue * COIN_RATE)} FCFA)`, 14, finalY + 8);
+      
+      const byType = {};
+      filteredRentals.forEach(r => {
+        const type = r.rental_type || "stand";
+        byType[type] = (byType[type] || 0) + 1;
+      });
+      
+      let typeSummary = "Répartition: ";
+      Object.entries(byType).forEach(([type, count], index) => {
+        const typeInfo = RENTAL_TYPES[type.toUpperCase()] || RENTAL_TYPES.STAND;
+        typeSummary += `${typeInfo.label}: ${count}`;
+        if (index < Object.entries(byType).length - 1) typeSummary += ", ";
+      });
+      
+      doc.text(typeSummary, 14, finalY + 16);
+      
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Généré automatiquement le ${new Date().toLocaleString("fr-FR")}`,
+        14,
+        pageHeight - 10
       );
+      
+      doc.save(`reservations-${event?.title?.replace(/\s+/g, "-").toLowerCase() || "evenement"}.pdf`);
+      
       toast({
         title: "✅ Export réussi",
-        description: "PDF téléchargé.",
+        description: `PDF téléchargé avec ${filteredRentals.length} réservation(s).`,
         className: "bg-green-600 text-white",
       });
+      
     } catch (error) {
-      console.error(error);
+      console.error("❌ Erreur export PDF:", error);
       toast({
         title: "Erreur",
         description: "Export PDF impossible.",
@@ -350,24 +580,34 @@ const COMMISSION_RATE = 0; // plus de commission
     }
   };
 
-  const exportCompanyListExcel = () => {
-    if (!statistics.byCompany.length) return;
-    const data = statistics.byCompany.map((c) => ({
-      Entreprise: c.companyName,
-      "Personne à contacter": c.contactPerson,
-      Email: c.contactEmail,
-      Téléphone: c.contactPhone,
-      "Nombre de stands": c.rentals.length,
-      "Montant total (π)": c.totalAmount,
-      "Montant total (F CFA)": c.totalAmount * COIN_RATE,
-    }));
+ const exportCompanyListExcel = () => {
+  if (!statistics.byCompany.length) return;
+  const data = statistics.byCompany.map((c) => {
+    // 🔥 Nettoyer le montant avant de le formater
+    let totalAmount = c.totalAmount;
+    if (typeof totalAmount === 'string') {
+      totalAmount = parseFloat(totalAmount.replace(/[^0-9,.]/g, '').replace(',', '.'));
+    }
+    const amount = (parseFloat(totalAmount) || 0) * COIN_RATE;
+    
+    return {
+      "Nom": c.companyName || c.guestName,
+      "Contact": c.contactPerson || c.guestName,
+      "Email": c.contactEmail,
+      "Téléphone": c.contactPhone,
+      "Type": c.rentalType || "stand",
+      "Nombre": c.rentals.length,
+      "Montant total (π)": formatPrice(parseFloat(totalAmount) || 0),
+      "Montant total (F CFA)": formatPrice(amount)
+    };
+  });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Entreprises");
+    XLSX.utils.book_append_sheet(wb, ws, "Participants");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(
       new Blob([excelBuffer], { type: "application/octet-stream" }),
-      "liste_entreprises_stands.xlsx",
+      "liste_participants_stands.xlsx"
     );
   };
 
@@ -400,7 +640,7 @@ const COMMISSION_RATE = 0; // plus de commission
         const { data: rentals, error: rentalError } = await supabase
           .from("stand_rentals")
           .select(
-            "*, stand_types(name, size, amenities, base_price, base_currency, calculated_price_pi, description), profiles(full_name, phone)",
+            "*, stand_types(name, size, amenities, base_price, base_currency, calculated_price_pi, description, rental_type), profiles(full_name, phone)",
           )
           .eq("user_id", user.id)
           .eq("stand_event_id", standEvent.id)
@@ -412,7 +652,7 @@ const COMMISSION_RATE = 0; // plus de commission
             await supabase
               .from("stand_rentals")
               .select(
-                "*, stand_types(name, size, base_price, base_currency, calculated_price_pi, description), profiles(full_name, phone)",
+                "*, stand_types(name, size, base_price, base_currency, calculated_price_pi, description, rental_type), profiles(full_name, phone)",
               )
               .eq("stand_event_id", standEvent.id)
               .order("created_at", { ascending: false });
@@ -434,83 +674,85 @@ const COMMISSION_RATE = 0; // plus de commission
     }
   };
 
-const calculateStatistics = () => {
-  const totalStands = standTypes.reduce(
-    (sum, t) => sum + (t.quantity_available || 0),
-    0,
-  );
-  const totalRentals = allRentals.length;
-  const totalRevenue = allRentals.reduce(
-    (sum, r) => sum + (r.rental_amount_pi || 0),
-    0,
-  );
-  const totalRevenueFcfa = totalRevenue * COIN_RATE;
-  const totalCommission = 0; // plus de commission
-  const totalNetGain = totalRevenueFcfa; // 100% pour l'organisateur
-  const occupancyRate =
-    totalStands > 0 ? (totalRentals / totalStands) * 100 : 0;
-
-  const byType = standTypes.map((type) => {
-    const typeRentals = allRentals.filter((r) => r.stand_type_id === type.id);
-    const rented = typeRentals.length;
-    const available = type.quantity_available || 0;
-    const revenue = typeRentals.reduce(
-      (s, r) => s + (r.rental_amount_pi || 0),
+  const calculateStatistics = () => {
+    const totalStands = standTypes.reduce(
+      (sum, t) => sum + (t.quantity_available || 0),
       0,
     );
-    const revenueFcfa = revenue * COIN_RATE;
-    const commission = 0; // suppression commission
-    const netGain = revenueFcfa; // net = brut
-    const rate = available > 0 ? (rented / available) * 100 : 0;
-    return {
-      ...type,
-      rented,
-      available,
-      revenue,
-      revenueFcfa,
-      commission,
-      netGain,
-      rate,
-      remaining: available - rented,
-    };
-  });
+    const totalRentals = allRentals.length;
+    const totalRevenue = allRentals.reduce(
+      (sum, r) => sum + (r.rental_amount_pi || 0),
+      0,
+    );
+    const totalRevenueFcfa = totalRevenue * COIN_RATE;
+    const totalCommission = 0;
+    const totalNetGain = totalRevenueFcfa;
+    const occupancyRate =
+      totalStands > 0 ? (totalRentals / totalStands) * 100 : 0;
 
-  const companyMap = new Map();
-  allRentals.forEach((rental) => {
-    if (!rental.company_name) return;
-    if (!companyMap.has(rental.company_name)) {
-      companyMap.set(rental.company_name, {
-        companyName: rental.company_name,
-        contactPerson: rental.contact_person,
-        contactEmail: rental.contact_email,
-        contactPhone: rental.contact_phone,
-        rentals: [],
-        totalAmount: 0,
-        bookingCodes: new Set(),
-      });
-    }
-    const company = companyMap.get(rental.company_name);
-    company.rentals.push(rental);
-    company.totalAmount += rental.rental_amount_pi;
-    if (rental.booking_code) company.bookingCodes.add(rental.booking_code);
-  });
-  const byCompany = Array.from(companyMap.values()).map((c) => ({
-    ...c,
-    bookingCodes: Array.from(c.bookingCodes),
-  }));
+    const byType = standTypes.map((type) => {
+      const typeRentals = allRentals.filter((r) => r.stand_type_id === type.id);
+      const rented = typeRentals.length;
+      const available = type.quantity_available || 0;
+      const revenue = typeRentals.reduce(
+        (s, r) => s + (r.rental_amount_pi || 0),
+        0,
+      );
+      const revenueFcfa = revenue * COIN_RATE;
+      const commission = 0;
+      const netGain = revenueFcfa;
+      const rate = available > 0 ? (rented / available) * 100 : 0;
+      return {
+        ...type,
+        rented,
+        available,
+        revenue,
+        revenueFcfa,
+        commission,
+        netGain,
+        rate,
+        remaining: available - rented,
+      };
+    });
 
-  setStatistics({
-    totalStands,
-    totalRentals,
-    totalRevenue,
-    totalRevenueFcfa,
-    totalCommission,
-    totalNetGain,
-    occupancyRate,
-    byType,
-    byCompany,
-  });
-};
+    const companyMap = new Map();
+    allRentals.forEach((rental) => {
+      const name = rental.company_name || rental.guest_name || "Anonyme";
+      if (!companyMap.has(name)) {
+        companyMap.set(name, {
+          companyName: rental.company_name || "",
+          guestName: rental.guest_name || "",
+          contactPerson: rental.contact_person || rental.guest_name || "",
+          contactEmail: rental.contact_email || "",
+          contactPhone: rental.contact_phone || "",
+          rentalType: rental.rental_type || "stand",
+          rentals: [],
+          totalAmount: 0,
+          bookingCodes: new Set(),
+        });
+      }
+      const company = companyMap.get(name);
+      company.rentals.push(rental);
+      company.totalAmount += rental.rental_amount_pi;
+      if (rental.booking_code) company.bookingCodes.add(rental.booking_code);
+    });
+    const byCompany = Array.from(companyMap.values()).map((c) => ({
+      ...c,
+      bookingCodes: Array.from(c.bookingCodes),
+    }));
+
+    setStatistics({
+      totalStands,
+      totalRentals,
+      totalRevenue,
+      totalRevenueFcfa,
+      totalCommission,
+      totalNetGain,
+      occupancyRate,
+      byType,
+      byCompany,
+    });
+  };
 
   useEffect(() => {
     if (event?.id) fetchStandData();
@@ -527,6 +769,7 @@ const calculateStatistics = () => {
       filtered = filtered.filter((r) =>
         [
           r.company_name,
+          r.guest_name,
           r.contact_person,
           r.contact_email,
           r.stand_number,
@@ -553,6 +796,9 @@ const calculateStatistics = () => {
       return;
     }
     setCartStands([...cartStands, type]);
+    if (type.rental_type) {
+      setSelectedRentalType(type.rental_type);
+    }
     toast({
       title: "✅ Ajouté",
       description: `1x ${type.name} ajouté.`,
@@ -590,131 +836,458 @@ const calculateStatistics = () => {
     cartStands.filter((t) => t.id === typeId).length;
   const clearCart = () => setCartStands([]);
 
-const handleRentMultipleStands = async () => {
-  if (isClosed || !user) {
-    if (!user) toast({ title: "Connexion requise", description: "Veuillez vous connecter.", variant: "destructive" });
-    return;
-  }
-  if (cartStands.length === 0) return;
+  const getRentalTypeInfo = (type) => {
+    const rentalType = type?.toUpperCase() || "STAND";
+    return RENTAL_TYPES[rentalType] || RENTAL_TYPES.STAND;
+  };
 
-  setIsRenting(true);
-  const successList = [];
-  const failureList = [];
-  const generatedBookingCodes = [];
+  const handleRentMultipleStands = async () => {
+    if (isClosed || !user) {
+      if (!user) {
+        toast({ 
+          title: "Connexion requise", 
+          description: "Veuillez vous connecter pour réserver.", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      return;
+    }
+    
+    if (cartStands.length === 0) {
+      toast({ 
+        title: "Panier vide", 
+        description: "Ajoutez des stands à votre panier.", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
-  try {
-    const totalPi = getCartTotal();
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("coin_balance")
-      .eq("id", user.id)
-      .single();
-    if (profileError) throw profileError;
-    if (profile.coin_balance < totalPi) {
+    setIsRenting(true);
+    const successList = [];
+    const failureList = [];
+    const generatedBookingCodes = [];
+
+    try {
+      const totalPi = getCartTotal();
+      
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("coin_balance")
+        .eq("id", user.id)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      if (profile.coin_balance < totalPi) {
+        toast({
+          title: "Solde insuffisant",
+          description: (
+            <div className="space-y-2">
+              <p>Total: {totalPi} π - Votre solde: {profile.coin_balance} π</p>
+              <Button onClick={() => navigate("/packs")} className="w-full">
+                Acheter des pièces
+              </Button>
+            </div>
+          ),
+          variant: "destructive",
+        });
+        setIsRenting(false);
+        return;
+      }
+
+      const rentalType = cartStands[0]?.rental_type || "stand";
+      const isAccommodation = rentalType !== "stand";
+
+      if (rentalType === "stand" && !formData.companyName) {
+        toast({ 
+          title: "Champ requis", 
+          description: "Veuillez saisir le nom de votre entreprise.", 
+          variant: "destructive" 
+        });
+        setIsRenting(false);
+        return;
+      }
+      
+      if (isAccommodation && !formData.guestName) {
+        toast({ 
+          title: "Champ requis", 
+          description: "Veuillez saisir votre nom complet.", 
+          variant: "destructive" 
+        });
+        setIsRenting(false);
+        return;
+      }
+
+      if (!formData.phone) {
+        toast({ 
+          title: "Champ requis", 
+          description: "Veuillez saisir votre numéro de téléphone.", 
+          variant: "destructive" 
+        });
+        setIsRenting(false);
+        return;
+      }
+
+      for (const stand of cartStands) {
+        const bookingCode = await generateUniqueBookingCode();
+        
+        const rentalData = {
+          p_event_id: event.id,
+          p_user_id: user.id,
+          p_stand_type_id: stand.id,
+          p_booking_code: bookingCode,
+          p_rental_type: rentalType,
+          p_contact_email: formData.email || user?.email || '',
+          p_contact_phone: formData.phone || '',
+          p_company_name: rentalType === "stand" ? formData.companyName : null,
+          p_contact_person: rentalType === "stand" ? formData.contactPerson : formData.guestName,
+          p_business_description: rentalType === "stand" ? formData.description : null,
+          p_guest_name: isAccommodation ? formData.guestName : null,
+          p_check_in_date: isAccommodation ? formData.checkIn || null : null,
+          p_check_out_date: isAccommodation ? formData.checkOut || null : null,
+          p_tent_size: rentalType === "camping" ? formData.tentSize || null : null,
+          p_special_requests: isAccommodation ? formData.specialRequests || null : null,
+        };
+
+        console.log("📤 Appel de rent_stand avec:", JSON.stringify(rentalData, null, 2));
+
+        const { data, error } = await supabase.rpc("rent_stand", rentalData);
+
+        if (error) {
+          console.error("❌ Erreur rent_stand:", error);
+          failureList.push({ 
+            name: stand.name, 
+            error: error.message || "Erreur inconnue" 
+          });
+        } else if (!data?.success) {
+          console.error("❌ Échec réservation:", data?.message);
+          failureList.push({ 
+            name: stand.name, 
+            error: data?.message || "Erreur inconnue" 
+          });
+        } else {
+          console.log("✅ Réservation réussie:", data);
+          successList.push(stand);
+          generatedBookingCodes.push(data.booking_code || bookingCode);
+        }
+      }
+
+      if (failureList.length > 0) {
+        const errorSummary = failureList.map((f) => `${f.name} : ${f.error}`).join("\n");
+        toast({
+          title: successList.length === 0 ? "❌ Réservations échouées" : "⚠️ Réservations partiellement réussies",
+          description: (
+            <div className="text-sm max-h-[300px] overflow-y-auto">
+              {successList.length > 0 && (
+                <p className="font-semibold text-green-400">
+                  ✅ Réussies : {successList.map((s) => s.name).join(", ")}
+                </p>
+              )}
+              <p className="font-semibold text-red-400 mt-2">❌ Échecs :</p>
+              <pre className="text-xs bg-black/30 p-2 rounded whitespace-pre-wrap max-h-[150px] overflow-y-auto">
+                {errorSummary}
+              </pre>
+            </div>
+          ),
+          variant: "destructive",
+          duration: 8000,
+        });
+
+        const failedStandNames = failureList.map((f) => f.name);
+        const remainingStands = cartStands.filter((s) => 
+          failedStandNames.includes(s.name)
+        );
+        setCartStands(remainingStands);
+        await fetchStandData();
+        if (onRefresh) onRefresh();
+        setIsRenting(false);
+        return;
+      }
+
+      const baseUrl = window.location.origin;
+      const orderId = Date.now().toString(36).toUpperCase();
+      const qrCodes = generatedBookingCodes.join(",");
+      
       toast({
-        title: "Solde insuffisant",
+        title: "✅ Réservations confirmées !",
         description: (
           <div className="space-y-2">
-            <p>Total: {totalPi} π - Votre solde: {profile.coin_balance} π</p>
-            <Button onClick={() => navigate("/packs")} className="w-full">Acheter des pièces</Button>
+            <p className="font-bold">{cartStands.length} réservation(s) confirmée(s).</p>
+            <p className="text-xs text-gray-300">
+              Codes: {generatedBookingCodes.join(", ")}
+            </p>
+            <div className="mt-2 p-2 bg-black/30 rounded-lg">
+              <p className="text-xs text-gray-400">
+                📱 QR Code disponible dans vos réservations
+              </p>
+            </div>
           </div>
         ),
-        variant: "destructive",
-      });
-      setIsRenting(false);
-      return;
-    }
-
-    // Exécution séquentielle avec code unique par stand
-    for (const stand of cartStands) {
-      const bookingCode = await generateUniqueBookingCode();
-      const { data, error } = await supabase.rpc("rent_stand", {
-        p_event_id: event.id,
-        p_user_id: user.id,
-        p_stand_type_id: stand.id,
-        company_name: formData.companyName,
-        contact_person: formData.contactPerson,
-        contact_email: formData.email,
-        contact_phone: formData.phone,
-        business_description: formData.description,
-        p_booking_code: bookingCode,
+        className: "bg-green-600 text-white",
+        duration: 5000,
       });
 
-      if (error || !data?.success) {
-        failureList.push({ name: stand.name, error: data?.message || error?.message || "Erreur inconnue" });
-      } else {
-        successList.push(stand);
-        generatedBookingCodes.push(bookingCode);
-      }
-    }
-
-    const baseUrl = window.location.origin;
-    const orderId = Date.now().toString(36).toUpperCase();
-
-    if (failureList.length > 0) {
-      const errorSummary = failureList.map((f) => `${f.name} : ${f.error}`).join("\n");
-      toast({
-        title: successList.length === 0 ? "❌ Réservations échouées" : "⚠️ Réservations partiellement réussies",
-        description: (
-          <div className="text-sm">
-            {successList.length > 0 && <p className="font-semibold text-green-400">✅ Réussies : {successList.map((s) => s.name).join(", ")}</p>}
-            <p className="font-semibold text-red-400 mt-2">❌ Échecs :</p>
-            <pre className="text-xs bg-black/30 p-2 rounded whitespace-pre-wrap">{errorSummary}</pre>
-          </div>
-        ),
-        variant: "destructive",
-        duration: 8000,
+      setCartStands([]);
+      setIsCartOpen(false);
+      setFormData({ 
+        companyName: "", 
+        contactPerson: "", 
+        email: user?.email || "", 
+        phone: "", 
+        description: "",
+        guestName: "",
+        checkIn: "",
+        checkOut: "",
+        tentSize: "",
+        specialRequests: "",
       });
-
-      // Mettre à jour le panier : ne garder que les échecs
-      const failedStandNames = failureList.map((f) => f.name);
-      const remainingStands = cartStands.filter((s) => failedStandNames.includes(s.name));
-      setCartStands(remainingStands);
+      
       await fetchStandData();
       if (onRefresh) onRefresh();
-
-      if (successList.length > 0) {
-        const qrUrl = `${baseUrl}/stand-booking?orderId=${orderId}&codes=${generatedBookingCodes.join(",")}`;
-        const qr = await generateQRCode(qrUrl);
-        if (qr) setQrCodeUrl(qr);
-      }
+      
+    } catch (error) {
+      console.error("❌ Erreur système:", error);
+      toast({ 
+        title: "Erreur système", 
+        description: error.message || "Impossible de traiter la demande.", 
+        variant: "destructive" 
+      });
+    } finally {
       setIsRenting(false);
-      return;
     }
+  };
 
-    // Tout a réussi
-    const qrUrl = `${baseUrl}/stand-booking?orderId=${orderId}&codes=${generatedBookingCodes.join(",")}`;
+  const viewRentalDetails = async (rental) => {
+    setSelectedRentalForDetails(rental);
+    const baseUrl = window.location.origin;
+    const qrUrl = `${baseUrl}/stand-booking?code=${rental.booking_code}`;
     const qr = await generateQRCode(qrUrl);
-    if (qr) setQrCodeUrl(qr);
+    setQrCodeUrl(qr);
+    setIsDetailsDialogOpen(true);
+  };
 
-    toast({
-      title: "✅ Réservations confirmées !",
-      description: `${cartStands.length} stand(s) réservé(s). Codes: ${generatedBookingCodes.join(", ")}`,
-      className: "bg-green-600 text-white",
-    });
-
-    setCartStands([]);
-    setIsCartOpen(false);
-    setFormData({ companyName: "", contactPerson: "", email: user?.email || "", phone: "", description: "" });
-    await fetchStandData();
-    if (onRefresh) onRefresh();
-  } catch (error) {
-    console.error(error);
-    toast({ title: "Erreur système", description: error.message || "Impossible de traiter la demande.", variant: "destructive" });
-  } finally {
-    setIsRenting(false);
-  }
-};
-const viewRentalDetails = async (rental) => {
-  setSelectedRentalForDetails(rental);
-  const baseUrl = window.location.origin;
-  const qrUrl = `${baseUrl}/stand-booking?code=${rental.booking_code}`;
-  const qr = await generateQRCode(qrUrl);
-  setQrCodeUrl(qr);
-  setIsDetailsDialogOpen(true);
-};
-    
   const handleBuyCoins = () => navigate("/packs");
+
+  // ==================== RENDU DU FORMULAIRE ADAPTÉ ====================
+  const renderFormFields = () => {
+    const rentalType = cartStands[0]?.rental_type || "stand";
+    const typeInfo = getRentalTypeInfo(rentalType);
+    const Icon = typeInfo.icon;
+    const color = typeInfo.color;
+    
+    if (rentalType === "stand") {
+      return (
+        <div className="space-y-4">
+          <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 flex items-center gap-3">
+            <Store className="w-5 h-5 text-blue-400" />
+            <div>
+              <p className="text-sm font-medium text-white">Stand d'exposition</p>
+              <p className="text-xs text-gray-400">Remplissez les informations de votre entreprise</p>
+            </div>
+          </div>
+          
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <Building className="w-4 h-4 text-blue-400" />
+              Entreprise / Marque <span className="text-red-400">*</span>
+            </Label>
+            <Input
+              value={formData.companyName}
+              onChange={(e) =>
+                setFormData({ ...formData, companyName: e.target.value })
+              }
+              placeholder="Nom de votre entreprise"
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-gray-300 flex items-center gap-2">
+                <UserCircle className="w-4 h-4 text-blue-400" />
+                Personne à contacter <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                value={formData.contactPerson}
+                onChange={(e) =>
+                  setFormData({ ...formData, contactPerson: e.target.value })
+                }
+                placeholder="Nom complet"
+                className="bg-gray-800 border-gray-700 text-white mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-gray-300 flex items-center gap-2">
+                <PhoneSvg className="w-4 h-4 text-green-400" />
+                Téléphone <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder="+225 XX XX XX XX"
+                className="bg-gray-800 border-gray-700 text-white mt-1"
+              />
+            </div>
+          </div>
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <MailSvg className="w-4 h-4 text-blue-400" />
+              Email de confirmation
+            </Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder="contact@entreprise.com"
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-blue-400" />
+              Description activité
+            </Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              rows={2}
+              placeholder="Décrivez votre activité ou ce que vous allez exposer"
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    const isCamping = rentalType === "camping";
+    const typeLabel = typeInfo.label;
+    const typeColor = color;
+    
+    return (
+      <div className="space-y-4">
+        <div className={`bg-${typeColor}-500/10 p-3 rounded-lg border border-${typeColor}-500/20 flex items-center gap-3`}>
+          <Icon className={`w-5 h-5 text-${typeColor}-400`} />
+          <div>
+            <p className="text-sm font-medium text-white">{typeLabel}</p>
+            <p className="text-xs text-gray-400">Remplissez vos informations personnelles</p>
+          </div>
+        </div>
+        
+        <div>
+          <Label className="text-gray-300 flex items-center gap-2">
+            <User className="w-4 h-4 text-green-400" />
+            Nom complet <span className="text-red-400">*</span>
+          </Label>
+          <Input
+            value={formData.guestName}
+            onChange={(e) =>
+              setFormData({ ...formData, guestName: e.target.value })
+            }
+            placeholder="Votre nom complet"
+            className="bg-gray-800 border-gray-700 text-white mt-1"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <PhoneSvg className="w-4 h-4 text-green-400" />
+              Téléphone <span className="text-red-400">*</span>
+            </Label>
+            <Input
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              placeholder="+225 XX XX XX XX"
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <MailSvg className="w-4 h-4 text-blue-400" />
+              Email
+            </Label>
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              placeholder="votre@email.com"
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-400" />
+              Date d'arrivée
+            </Label>
+            <Input
+              type="date"
+              value={formData.checkIn}
+              onChange={(e) =>
+                setFormData({ ...formData, checkIn: e.target.value })
+              }
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-400" />
+              Date de départ
+            </Label>
+            <Input
+              type="date"
+              value={formData.checkOut}
+              onChange={(e) =>
+                setFormData({ ...formData, checkOut: e.target.value })
+              }
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+        </div>
+        {isCamping && (
+          <div>
+            <Label className="text-gray-300 flex items-center gap-2">
+              <Layout className="w-4 h-4 text-orange-400" />
+              Taille de la tente / équipement
+            </Label>
+            <Input
+              value={formData.tentSize}
+              onChange={(e) =>
+                setFormData({ ...formData, tentSize: e.target.value })
+              }
+              placeholder="Ex: 2 personnes, 3x3m, etc."
+              className="bg-gray-800 border-gray-700 text-white mt-1"
+            />
+          </div>
+        )}
+        <div>
+          <Label className="text-gray-300 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-purple-400" />
+            Demandes spéciales
+          </Label>
+          <Textarea
+            value={formData.specialRequests}
+            onChange={(e) =>
+              setFormData({ ...formData, specialRequests: e.target.value })
+            }
+            rows={2}
+            placeholder="Préférences, allergies, besoins particuliers..."
+            className="bg-gray-800 border-gray-700 text-white mt-1"
+          />
+        </div>
+      </div>
+    );
+  };
 
   if (loading)
     return (
@@ -728,16 +1301,43 @@ const viewRentalDetails = async (rental) => {
       <div>
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <Store className="w-6 h-6 text-primary" />
-          {isOrganizer ? "Tableau de bord des Locations" : "Louer un stand"}
+          {isOrganizer ? "Tableau de bord des Locations" : "Réserver un espace"}
         </h2>
         <p className="text-gray-400 mt-1">
           {isOrganizer
             ? "Gérez les locations et suivez vos revenus."
-            : "Choisissez un emplacement pour exposer."}
+            : "Choisissez un emplacement pour votre activité ou hébergement."}
         </p>
       </div>
 
-      {/* PANIER (exposant) */}
+      {/* Types de location disponibles - BANNIÈRE ICÔNES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-gray-800/30 rounded-xl border border-gray-700">
+        {Object.values(RENTAL_TYPES).map((type) => {
+          const Icon = type.icon;
+          const color = type.color;
+          const hasType = standTypes.some(st => st.rental_type === type.id);
+          return (
+            <div
+              key={type.id}
+              className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                hasType 
+                  ? `border-${color}-500 bg-${color}-900/20 shadow-lg shadow-${color}-500/10` 
+                  : 'border-gray-700 bg-gray-800/30 opacity-50'
+              }`}
+            >
+              <div className={`w-14 h-14 rounded-2xl bg-${color}-900/30 border-2 border-${color}-500/50 flex items-center justify-center mb-2`}>
+                <Icon className={`w-7 h-7 text-${color}-400`} />
+              </div>
+              <span className={`text-xs font-bold text-${color}-300 text-center`}>{type.label}</span>
+              {hasType && (
+                <Badge className="mt-1 text-[8px] bg-green-900 text-green-300">Disponible</Badge>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* PANIER */}
       {!isOrganizer && cartStands.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -769,27 +1369,28 @@ const viewRentalDetails = async (rental) => {
                   const count = cartStands.filter(
                     (s) => s.id === typeId,
                   ).length;
-                  const colors =
-                    STAND_COLORS[
-                      standTypes.findIndex((t) => t.id === typeId) %
-                        STAND_COLORS.length
-                    ];
+                  const rentalType = type?.rental_type || "stand";
+                  const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+                  const Icon = rentalTypeInfo.icon;
+                  const color = rentalTypeInfo.color;
+                  
                   return (
                     <div
                       key={typeId}
                       className="flex justify-between items-center bg-gray-800/40 p-3 rounded-lg border border-gray-700/50"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-8 h-8 rounded-full ${colors.iconBg} flex items-center justify-center text-xs font-bold ${colors.text}`}
-                        >
-                          {count}
+                        <div className={`w-10 h-10 rounded-xl bg-${color}-900/30 border border-${color}-500/50 flex items-center justify-center flex-shrink-0`}>
+                          <Icon className={`w-5 h-5 text-${color}-400`} />
                         </div>
                         <div>
                           <p className="text-white font-medium">{type.name}</p>
                           <p className="text-xs text-gray-400">
                             {type.calculated_price_pi} π / unité
                           </p>
+                          <Badge className={`bg-${color}-900/50 text-${color}-300 text-[8px]`}>
+                            {rentalTypeInfo.label}
+                          </Badge>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -845,7 +1446,7 @@ const viewRentalDetails = async (rental) => {
                       Finaliser votre commande
                     </SheetTitle>
                     <SheetDescription className="text-gray-400">
-                      {cartStands.length} stand(s) dans le panier
+                      {cartStands.length} réservation(s) dans le panier
                     </SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6">
@@ -859,16 +1460,25 @@ const viewRentalDetails = async (rental) => {
                           const count = cartStands.filter(
                             (s) => s.id === typeId,
                           ).length;
+                          const rentalType = type?.rental_type || "stand";
+                          const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+                          const Icon = rentalTypeInfo.icon;
+                          const color = rentalTypeInfo.color;
+                          
                           return (
                             <div
                               key={typeId}
-                              className="flex justify-between text-sm"
+                              className="flex justify-between items-center text-sm p-2 hover:bg-gray-700/20 rounded-lg transition-colors"
                             >
-                              <span className="text-gray-400">
-                                {type.name} x{count}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <Icon className={`w-4 h-4 text-${color}-400`} />
+                                <span className="text-gray-300">{type.name}</span>
+                                <Badge className={`bg-${color}-900/50 text-${color}-300 text-[8px]`}>
+                                  {rentalTypeInfo.label}
+                                </Badge>
+                              </div>
                               <span className="text-white">
-                                {type.calculated_price_pi * count} π
+                                x{count} = {type.calculated_price_pi * count} π
                               </span>
                             </div>
                           );
@@ -886,94 +1496,17 @@ const viewRentalDetails = async (rental) => {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-gray-300">
-                          Entreprise / Marque{" "}
-                          <span className="text-red-400">*</span>
-                        </Label>
-                        <Input
-                          value={formData.companyName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              companyName: e.target.value,
-                            })
-                          }
-                          className="bg-gray-800 border-gray-700 text-white mt-1"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-gray-300">
-                            Personne à contacter{" "}
-                            <span className="text-red-400">*</span>
-                          </Label>
-                          <Input
-                            value={formData.contactPerson}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                contactPerson: e.target.value,
-                              })
-                            }
-                            className="bg-gray-800 border-gray-700 text-white mt-1"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-gray-300">
-                            Téléphone <span className="text-red-400">*</span>
-                          </Label>
-                          <Input
-                            value={formData.phone}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                phone: e.target.value,
-                              })
-                            }
-                            className="bg-gray-800 border-gray-700 text-white mt-1"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-gray-300">
-                          Email de confirmation
-                        </Label>
-                        <Input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) =>
-                            setFormData({ ...formData, email: e.target.value })
-                          }
-                          className="bg-gray-800 border-gray-700 text-white mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-gray-300">
-                          Description activité
-                        </Label>
-                        <Textarea
-                          value={formData.description}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              description: e.target.value,
-                            })
-                          }
-                          rows={2}
-                          className="bg-gray-800 border-gray-700 text-white mt-1"
-                        />
-                      </div>
-                    </div>
+                    
+                    {renderFormFields()}
+                    
                     <Button
                       onClick={handleRentMultipleStands}
                       disabled={
                         isRenting ||
-                        !formData.companyName ||
-                        !formData.contactPerson ||
-                        !formData.phone ||
-                        cartStands.length === 0
+                        cartStands.length === 0 ||
+                        (cartStands[0]?.rental_type === "stand" 
+                          ? !formData.companyName || !formData.contactPerson || !formData.phone
+                          : !formData.guestName || !formData.phone)
                       }
                       className="w-full bg-primary h-12"
                     >
@@ -1020,7 +1553,7 @@ const viewRentalDetails = async (rental) => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
               <div className="bg-gray-800/40 p-6 rounded-xl">
                 <p className="text-sm text-gray-400 flex items-center gap-2 mb-3">
-                  <Package className="w-4 h-4" /> Stands loués
+                  <Package className="w-4 h-4" /> Réservations
                 </p>
                 <p className="text-3xl font-bold text-white">
                   {statistics.totalRentals}
@@ -1034,11 +1567,20 @@ const viewRentalDetails = async (rental) => {
                   <Coins className="w-4 h-4 text-blue-400" /> Revenus bruts
                 </p>
                 <p className="text-3xl font-bold text-white">
-                  {statistics.totalRevenue}{" "}
-                  <span className="text-xl text-blue-400">π</span>
+                  {statistics.totalRevenueFcfa.toLocaleString()}{" "}
+                  <span className="text-xl text-blue-400">F CFA</span>
                 </p>
                 <p className="text-xs text-gray-500">
-                  ≈ {statistics.totalRevenueFcfa.toLocaleString()} FCFA
+                  ≈ {statistics.totalRevenue} π
+                </p>
+              </div>
+              <div className="bg-gray-800/40 p-6 rounded-xl">
+                <p className="text-sm text-gray-400 flex items-center gap-2 mb-3">
+                  <Coins className="w-4 h-4 text-green-400" /> Revenu net (100%)
+                </p>
+                <p className="text-3xl font-bold text-green-400">
+                  {statistics.totalNetGain.toLocaleString()}{" "}
+                  <span className="text-xl text-green-300">F CFA</span>
                 </p>
               </div>
               <div className="bg-gray-800/40 p-6 rounded-xl">
@@ -1057,7 +1599,7 @@ const viewRentalDetails = async (rental) => {
 
             <div className="mt-10">
               <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                Détail par type de stand
+                Détail par type
               </h4>
               <div className="overflow-x-auto rounded-xl border border-gray-800">
                 <Table>
@@ -1065,31 +1607,43 @@ const viewRentalDetails = async (rental) => {
                     <TableRow>
                       <TableHead>Type</TableHead>
                       <TableHead className="text-center">Dimensions</TableHead>
-                      <TableHead className="text-center">
-                        Prix unitaire
-                      </TableHead>
+                      <TableHead className="text-center">Prix unitaire</TableHead>
                       <TableHead className="text-center">Disponibles</TableHead>
                       <TableHead className="text-center">Réservés</TableHead>
-                      <TableHead className="text-center w-40">
-                        Occupation
-                      </TableHead>
-                      <TableHead className="text-right">
-                        Revenus bruts
-                      </TableHead>
+                      <TableHead className="text-center w-40">Occupation</TableHead>
+                      <TableHead className="text-right">Revenus bruts</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {statistics.byType.map((type, idx) => {
+                      const rentalType = type.rental_type || "stand";
+                      const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+                      const Icon = rentalTypeInfo.icon;
+                      const color = rentalTypeInfo.color;
                       const colors = STAND_COLORS[idx % STAND_COLORS.length];
+                      
                       return (
                         <TableRow
                           key={type.id}
                           className="border-gray-800 hover:bg-gray-800/40"
                         >
                           <TableCell className="py-4">
-                            <span className={`font-semibold ${colors.text}`}>
-                              {type.name}
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl bg-${color}-900/30 border border-${color}-500/50 flex items-center justify-center flex-shrink-0`}>
+                                <Icon className={`w-5 h-5 text-${color}-400`} />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-semibold text-${color}-400`}>
+                                    {type.name}
+                                  </span>
+                                  <Badge className={`bg-${color}-900/50 text-${color}-300 text-xs border-${color}-800`}>
+                                    {rentalTypeInfo.label}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-400">{type.size || "N/A"}</p>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-center text-gray-300">
                             {type.size || "N/A"}
@@ -1119,8 +1673,13 @@ const viewRentalDetails = async (rental) => {
                               />
                             </div>
                           </TableCell>
-                          <TableCell className="text-right text-white">
-                            {type.revenue} π
+                          <TableCell className="text-right">
+                            <div className="text-white font-medium">
+                              {type.revenueFcfa.toLocaleString()} F CFA
+                            </div>
+                            <div className="text-gray-500 text-xs">
+                              {type.revenue} π
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -1133,36 +1692,38 @@ const viewRentalDetails = async (rental) => {
             {statistics.byCompany.length > 0 && (
               <div className="mt-10">
                 <h4 className="text-white font-semibold mb-4 flex items-center gap-2">
-                  Entreprises participantes
+                  Participants
                 </h4>
                 <div className="overflow-x-auto rounded-xl border border-gray-800">
                   <Table>
                     <TableHeader className="bg-gray-800/80">
                       <TableRow>
-                        <TableHead>Entreprise</TableHead>
+                        <TableHead>Nom / Entreprise</TableHead>
                         <TableHead>Contact</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Téléphone</TableHead>
-                        <TableHead className="text-center">Stands</TableHead>
-                        <TableHead>Code(s)</TableHead>
+                        <TableHead className="text-center">Type</TableHead>
+                        <TableHead className="text-center">Réservations</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {statistics.byCompany.slice(0, 5).map((company, idx) => {
                         const colors = STAND_COLORS[idx % STAND_COLORS.length];
+                        const rentalTypeInfo = RENTAL_TYPES[company.rentalType?.toUpperCase()] || RENTAL_TYPES.STAND;
+                        const Icon = rentalTypeInfo.icon;
+                        const color = rentalTypeInfo.color;
+                        
                         return (
                           <TableRow
-                            key={company.companyName}
+                            key={company.companyName || company.guestName}
                             className="border-gray-800 hover:bg-gray-800/40"
                           >
                             <TableCell className="py-4">
                               <div className="flex items-center gap-2">
-                                <Building
-                                  className={`w-4 h-4 ${colors.text}`}
-                                />
+                                <Icon className={`w-4 h-4 text-${color}-400`} />
                                 <span className="text-white">
-                                  {company.companyName}
+                                  {company.companyName || company.guestName || "Anonyme"}
                                 </span>
                               </div>
                             </TableCell>
@@ -1176,26 +1737,22 @@ const viewRentalDetails = async (rental) => {
                               {company.contactPhone}
                             </TableCell>
                             <TableCell className="text-center">
+                              <Badge className={`bg-${color}-900/50 text-${color}-300`}>
+                                {rentalTypeInfo.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
                               <Badge className="bg-green-900 text-green-200">
                                 {company.rentals.length}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {company.bookingCodes
-                                  .slice(0, 2)
-                                  .map((code, i) => (
-                                    <code
-                                      key={i}
-                                      className="text-xs bg-gray-800 px-1 py-0.5 rounded"
-                                    >
-                                      {code}
-                                    </code>
-                                  ))}
+                            <TableCell className="text-right">
+                              <div className="text-white font-medium">
+                                {(company.totalAmount * COIN_RATE).toLocaleString()} F CFA
                               </div>
-                            </TableCell>
-                            <TableCell className="text-right text-white">
-                              {company.totalAmount} π
+                              <div className="text-gray-500 text-xs">
+                                {company.totalAmount} π
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -1210,8 +1767,7 @@ const viewRentalDetails = async (rental) => {
                       className="text-primary"
                       onClick={exportCompanyListExcel}
                     >
-                      Voir toutes les entreprises ({statistics.byCompany.length}
-                      )
+                      Voir tous les participants ({statistics.byCompany.length})
                     </Button>
                   </div>
                 )}
@@ -1221,7 +1777,7 @@ const viewRentalDetails = async (rental) => {
         </Card>
       )}
 
-      {/* MES RÉSERVATIONS (exposant) */}
+      {/* MES RÉSERVATIONS */}
       {!isOrganizer && myRentals.length > 0 && (
         <div>
           <h3 className="text-2xl font-bold text-white border-b border-gray-800 pb-4 mb-6 flex items-center gap-2">
@@ -1233,11 +1789,15 @@ const viewRentalDetails = async (rental) => {
               const typeIndex = standTypes.findIndex(
                 (t) => t.id === rental.stand_type_id,
               );
-              const colors =
-                STAND_COLORS[
-                  typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0
-                ];
+              const rentalType = rental.rental_type || "stand";
+              const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+              const Icon = rentalTypeInfo.icon;
+              const color = rentalTypeInfo.color;
+              const colors = STAND_COLORS[
+                typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0
+              ];
               const activeTab = activeTabs[rental.id] || "details";
+              
               return (
                 <motion.div
                   key={rental.id}
@@ -1247,15 +1807,19 @@ const viewRentalDetails = async (rental) => {
                   className="h-full"
                 >
                   <Card
-                    className={`bg-gray-900 border-l-4 ${colors.border} border-gray-800 h-full`}
+                    className={`bg-gray-900 border-l-4 border-${color}-600 border-gray-800 h-full`}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle className="text-white flex items-center gap-2">
-                            Stand {rental.stand_number}{" "}
-                            <Badge className={colors.badge}>
+                            {rental.stand_number || "Réservation"}{" "}
+                            <Badge className={`bg-${color}-900 text-${color}-200`}>
                               {rental.stand_types?.name}
+                            </Badge>
+                            <Badge className={`bg-${color}-900/50 text-${color}-300 text-xs`}>
+                              <Icon className="w-3 h-3 mr-1 inline" />
+                              {rentalTypeInfo.label}
                             </Badge>
                           </CardTitle>
                           <CardDescription className="flex items-center gap-2 mt-1">
@@ -1263,7 +1827,7 @@ const viewRentalDetails = async (rental) => {
                             {rental.booking_code || "N/A"}
                           </CardDescription>
                         </div>
-                        <BadgeCheck className={`w-6 h-6 ${colors.text}`} />
+                        <BadgeCheck className={`w-6 h-6 text-${color}-400`} />
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -1275,20 +1839,20 @@ const viewRentalDetails = async (rental) => {
                               [rental.id]: "details",
                             }))
                           }
-                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "details" ? `bg-gray-800 ${colors.text}` : "text-gray-400 hover:text-white"}`}
+                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "details" ? `bg-gray-800 text-${color}-400` : "text-gray-400 hover:text-white"}`}
                         >
-                          Stand
+                          Détails
                         </button>
                         <button
                           onClick={() =>
                             setActiveTabs((prev) => ({
                               ...prev,
-                              [rental.id]: "entreprise",
+                              [rental.id]: "contact",
                             }))
                           }
-                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "entreprise" ? `bg-gray-800 ${colors.text}` : "text-gray-400 hover:text-white"}`}
+                          className={`px-3 py-1.5 text-xs rounded-md ${activeTab === "contact" ? `bg-gray-800 text-${color}-400` : "text-gray-400 hover:text-white"}`}
                         >
-                          Entreprise
+                          Contact
                         </button>
                       </div>
                       {activeTab === "details" && (
@@ -1324,17 +1888,31 @@ const viewRentalDetails = async (rental) => {
                               )}
                             </p>
                           </div>
+                          {rental.check_in_date && (
+                            <div className="grid grid-cols-2 gap-2 bg-black/30 rounded-lg p-3">
+                              <div>
+                                <p className="text-[10px] text-gray-500">Arrivée</p>
+                                <p className="text-xs text-white">
+                                  {new Date(rental.check_in_date).toLocaleDateString("fr-FR")}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500">Départ</p>
+                                <p className="text-xs text-white">
+                                  {rental.check_out_date ? new Date(rental.check_out_date).toLocaleDateString("fr-FR") : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {activeTab === "entreprise" && (
+                      {activeTab === "contact" && (
                         <div className="space-y-2">
                           <div className="bg-black/30 rounded-lg p-3 flex justify-between">
                             <div>
-                              <p className="text-[10px] text-gray-500">
-                                Entreprise
-                              </p>
+                              <p className="text-[10px] text-gray-500">Nom</p>
                               <p className="text-sm text-white">
-                                {rental.company_name}
+                                {rental.company_name || rental.guest_name || "N/A"}
                               </p>
                             </div>
                             <Button
@@ -1342,8 +1920,8 @@ const viewRentalDetails = async (rental) => {
                               size="icon"
                               onClick={() =>
                                 copyToClipboard(
-                                  rental.company_name,
-                                  "Entreprise",
+                                  rental.company_name || rental.guest_name || "",
+                                  "Nom",
                                 )
                               }
                             >
@@ -1352,22 +1930,24 @@ const viewRentalDetails = async (rental) => {
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500">
-                                Contact
-                              </p>
+                              <p className="text-[10px] text-gray-500">Contact</p>
                               <p className="text-xs text-white">
-                                {rental.contact_person}
+                                {rental.contact_person || rental.guest_name || "N/A"}
                               </p>
                             </div>
                             <div className="bg-black/30 rounded-lg p-3">
-                              <p className="text-[10px] text-gray-500">
-                                Téléphone
-                              </p>
+                              <p className="text-[10px] text-gray-500">Téléphone</p>
                               <p className="text-xs text-white">
                                 {rental.contact_phone || "N/A"}
                               </p>
                             </div>
                           </div>
+                          {rental.special_requests && (
+                            <div className="bg-black/30 rounded-lg p-3">
+                              <p className="text-[10px] text-gray-500">Demandes spéciales</p>
+                              <p className="text-xs text-white">{rental.special_requests}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -1389,7 +1969,7 @@ const viewRentalDetails = async (rental) => {
         </div>
       )}
 
-      {/* STANDS DISPONIBLES (exposant) */}
+      {/* STANDS DISPONIBLES */}
       {!isOrganizer && (
         <>
           {!isUnlocked ? (
@@ -1400,7 +1980,7 @@ const viewRentalDetails = async (rental) => {
                   Contenu Verrouillé
                 </h3>
                 <p className="text-gray-400">
-                  Débloquez l'accès pour réserver des stands.
+                  Débloquez l'accès pour réserver.
                 </p>
               </CardContent>
             </Card>
@@ -1409,25 +1989,30 @@ const viewRentalDetails = async (rental) => {
               <CardContent className="p-10 text-center">
                 <Store className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-white">
-                  Aucun stand disponible
+                  Aucune offre disponible
                 </h3>
                 <p className="text-gray-400">
-                  L'organisateur n'a pas encore configuré de stands.
+                  L'organisateur n'a pas encore configuré d'offres.
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div>
               <h3 className="text-xl font-bold text-white mb-6">
-                Stands disponibles
+                Offres disponibles
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {standTypes.map((type, idx) => {
                   const available =
                     type.quantity_available - (type.quantity_rented || 0);
                   const isSoldOut = available <= 0;
+                  const rentalType = type.rental_type || "stand";
+                  const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+                  const Icon = rentalTypeInfo.icon;
+                  const color = rentalTypeInfo.color;
                   const colors = STAND_COLORS[idx % STAND_COLORS.length];
                   const inCartCount = getCartCountByType(type.id);
+                  
                   return (
                     <motion.div
                       key={type.id}
@@ -1437,51 +2022,51 @@ const viewRentalDetails = async (rental) => {
                       className="h-full"
                     >
                       <Card
-                        className={`bg-gray-900 border-t-4 ${colors.border} border-x-gray-800 border-b-gray-800 h-full hover:shadow-xl transition-all`}
+                        className={`bg-gray-900 border-t-4 border-${color}-600 border-x-gray-800 border-b-gray-800 h-full hover:shadow-xl transition-all overflow-hidden`}
                       >
-                        <CardHeader className="border-b border-gray-800/50 pb-4">
-                          <div className="flex justify-between items-start gap-4">
-                            <div>
-                              <CardTitle
-                                className={`text-xl font-bold ${colors.text}`}
-                              >
-                                {type.name}
-                              </CardTitle>
-                              <CardDescription className="flex items-center gap-1.5 mt-2 text-gray-400">
-                                <Layout className="w-3.5 h-3.5" />{" "}
-                                {type.size || "Dimensions non spécifiées"}
-                              </CardDescription>
+                        <div className="relative h-32 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center border-b border-gray-800">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`w-16 h-16 rounded-2xl bg-${color}-900/30 border-2 border-${color}-500/50 flex items-center justify-center`}>
+                              <Icon className={`w-8 h-8 text-${color}-400`} />
                             </div>
-                            <Badge
-                              variant={
-                                isClosed
-                                  ? "outline"
-                                  : isSoldOut
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                              className={
-                                isClosed
-                                  ? "border-gray-600 text-gray-400"
-                                  : isSoldOut
-                                    ? "bg-red-950 text-red-400"
-                                    : `${colors.bg} ${colors.text} border ${colors.borderLight}`
-                              }
-                            >
-                              {isClosed
-                                ? "Terminé"
-                                : isSoldOut
-                                  ? "Complet"
-                                  : `${available - inCartCount} dispo.`}
+                            <Badge className={`bg-${color}-900/80 text-${color}-200 text-[10px]`}>
+                              {rentalTypeInfo.label}
                             </Badge>
                           </div>
-                        </CardHeader>
-                        <CardContent className="flex-1 pt-5">
-                          <p className="text-sm text-gray-300 mb-5 line-clamp-3">
-                            {type.description || "Aucune description."}
+                          <Badge
+                            variant={
+                              isClosed
+                                ? "outline"
+                                : isSoldOut
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                            className={`absolute top-2 right-2 ${
+                              isClosed
+                                ? "border-gray-600 text-gray-400 bg-black/50"
+                                : isSoldOut
+                                  ? "bg-red-900/80 text-red-300"
+                                  : `bg-${color}-900/80 text-${color}-200`
+                            }`}
+                          >
+                            {isClosed
+                              ? "Terminé"
+                              : isSoldOut
+                                ? "Complet"
+                                : `${available - inCartCount} dispo.`}
+                          </Badge>
+                        </div>
+                        <CardContent className="flex-1 pt-4">
+                          <h4 className="text-white font-bold text-lg">{type.name}</h4>
+                          <p className="text-sm text-gray-300 line-clamp-2 mt-1">
+                            {type.description || rentalTypeInfo.description}
                           </p>
+                          <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                            <Layout className="w-3 h-3" />
+                            {type.size || "Non spécifié"}
+                          </div>
                         </CardContent>
-                        <CardFooter className="border-t border-gray-800/50 pt-5 bg-gray-900/50">
+                        <CardFooter className="border-t border-gray-800/50 pt-4 bg-gray-900/50">
                           <div className="flex justify-between w-full">
                             <div>
                               <p className="text-xs text-gray-500">Tarif</p>
@@ -1490,7 +2075,7 @@ const viewRentalDetails = async (rental) => {
                                   {type.calculated_price_pi}
                                 </span>
                                 <span
-                                  className={`text-sm font-medium ${colors.text}`}
+                                  className={`text-sm font-medium text-${color}-400`}
                                 >
                                   π
                                 </span>
@@ -1515,8 +2100,8 @@ const viewRentalDetails = async (rental) => {
                                 }
                                 className={
                                   inCartCount > 0
-                                    ? `border-${colors.text} ${colors.text}`
-                                    : `${colors.bgSolid} hover:bg-blue-700 text-white`
+                                    ? `border-${color}-500 text-${color}-400`
+                                    : `bg-${color}-600 hover:bg-${color}-700 text-white`
                                 }
                               >
                                 {inCartCount > 0
@@ -1548,7 +2133,7 @@ const viewRentalDetails = async (rental) => {
                 </CardTitle>
                 <CardDescription className="text-gray-400">
                   {allRentals.length} réservation(s) ·{" "}
-                  {statistics.byCompany.length} entreprise(s)
+                  {statistics.byCompany.length} participant(s)
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -1557,7 +2142,7 @@ const viewRentalDetails = async (rental) => {
                   size="sm"
                   onClick={exportCompanyListExcel}
                 >
-                  <FileDown className="w-4 h-4 mr-2" /> Excel Entreprises
+                  <FileDown className="w-4 h-4 mr-2" /> Excel Participants
                 </Button>
                 <Button variant="outline" size="sm" onClick={exportToExcel}>
                   <FileDown className="w-4 h-4 mr-2" /> Excel
@@ -1611,35 +2196,32 @@ const viewRentalDetails = async (rental) => {
                 <Table>
                   <TableHeader className="bg-gray-800/30">
                     <TableRow>
-                      <TableHead>N° Stand</TableHead>
-                      <TableHead>Entreprise</TableHead>
+                      <TableHead>N°</TableHead>
+                      <TableHead>Nom / Entreprise</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Code</TableHead>
                       <TableHead>Type</TableHead>
+                      <TableHead>Code</TableHead>
                       <TableHead className="text-right">Prix</TableHead>
                       <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredRentals.map((rental) => {
-                      const typeIndex = standTypes.findIndex(
-                        (t) => t.id === rental.stand_type_id,
-                      );
-                      const colors =
-                        STAND_COLORS[
-                          typeIndex >= 0 ? typeIndex % STAND_COLORS.length : 0
-                        ];
+                      const rentalType = rental.rental_type || "stand";
+                      const rentalTypeInfo = RENTAL_TYPES[rentalType.toUpperCase()] || RENTAL_TYPES.STAND;
+                      const color = rentalTypeInfo.color;
+                      
                       return (
                         <TableRow
                           key={rental.id}
                           className="border-gray-800 hover:bg-gray-800/40"
                         >
-                          <TableCell className={`font-bold ${colors.text}`}>
-                            {rental.stand_number}
+                          <TableCell className={`font-bold text-${color}-400`}>
+                            {rental.stand_number || "N/A"}
                           </TableCell>
                           <TableCell>
                             <div className="text-white">
-                              {rental.company_name}
+                              {rental.company_name || rental.guest_name || "N/A"}
                             </div>
                             {rental.business_description && (
                               <div className="text-xs text-gray-500 truncate max-w-[200px]">
@@ -1650,18 +2232,19 @@ const viewRentalDetails = async (rental) => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <UserCircle className="w-4 h-4 text-gray-500" />
-                              {rental.contact_person}
+                              {rental.contact_person || rental.guest_name || "N/A"}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`bg-${color}-900 text-${color}-200`}>
+                              <rentalTypeInfo.icon className="w-3 h-3 mr-1 inline" />
+                              {rentalTypeInfo.label}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <code className="text-xs bg-gray-800 px-2 py-1 rounded">
                               {rental.booking_code || "N/A"}
                             </code>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={colors.badge}>
-                              {rental.stand_types?.name}
-                            </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="text-white">
@@ -1690,7 +2273,7 @@ const viewRentalDetails = async (rental) => {
                                 <DropdownMenuItem
                                   onClick={() =>
                                     copyToClipboard(
-                                      `Stand: ${rental.stand_number}\nCode: ${rental.booking_code}\nEntreprise: ${rental.company_name}\nContact: ${rental.contact_person}\nEmail: ${rental.contact_email}\nTél: ${rental.contact_phone}`,
+                                      `Réservation: ${rental.stand_number || "N/A"}\nCode: ${rental.booking_code}\nNom: ${rental.company_name || rental.guest_name}\nContact: ${rental.contact_person || rental.guest_name}\nTél: ${rental.contact_phone}`,
                                       "Infos",
                                     )
                                   }
@@ -1723,9 +2306,9 @@ const viewRentalDetails = async (rental) => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-800/50 p-4 rounded-lg">
-                  <p className="text-xs text-gray-400">Stand</p>
+                  <p className="text-xs text-gray-400">N°</p>
                   <p className="text-xl font-bold">
-                    {selectedRentalForDetails.stand_number}
+                    {selectedRentalForDetails.stand_number || "N/A"}
                   </p>
                 </div>
                 <div className="bg-gray-800/50 p-4 rounded-lg">
@@ -1737,62 +2320,72 @@ const viewRentalDetails = async (rental) => {
               </div>
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Building className="w-4 h-4 text-primary" /> Entreprise
+                  <Building className="w-4 h-4 text-primary" /> Participant
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Nom:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.company_name}
+                      {selectedRentalForDetails.company_name || 
+                       selectedRentalForDetails.guest_name || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Contact:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.contact_person}
+                      {selectedRentalForDetails.contact_person || 
+                       selectedRentalForDetails.guest_name || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Email:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.contact_email}
+                      {selectedRentalForDetails.contact_email || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Téléphone:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.contact_phone ||
-                        selectedRentalForDetails.profiles?.phone ||
-                        "N/A"}
+                      {selectedRentalForDetails.contact_phone || "N/A"}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="bg-gray-800/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Ticket className="w-4 h-4 text-primary" /> Location
+                  <Ticket className="w-4 h-4 text-primary" /> Réservation
                 </h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Type:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.stand_types?.name}
+                      {selectedRentalForDetails.stand_types?.name || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Dimensions:</span>
+                    <span className="text-gray-400">Catégorie:</span>
                     <span className="text-white">
-                      {selectedRentalForDetails.stand_types?.size}
+                      {selectedRentalForDetails.rental_type || "stand"}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Date:</span>
-                    <span className="text-white">
-                      {new Date(
-                        selectedRentalForDetails.created_at,
-                      ).toLocaleDateString("fr-FR")}
-                    </span>
-                  </div>
+                  {selectedRentalForDetails.check_in_date && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Arrivée:</span>
+                        <span className="text-white">
+                          {new Date(selectedRentalForDetails.check_in_date).toLocaleDateString("fr-FR")}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Départ:</span>
+                        <span className="text-white">
+                          {selectedRentalForDetails.check_out_date ? 
+                            new Date(selectedRentalForDetails.check_out_date).toLocaleDateString("fr-FR") : 
+                            "N/A"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between border-t border-gray-700 pt-2 mt-2">
                     <span className="font-bold">Prix total:</span>
                     <span className="font-bold text-lg">
@@ -1808,13 +2401,13 @@ const viewRentalDetails = async (rental) => {
                   </div>
                 </div>
               </div>
-              {selectedRentalForDetails.business_description && (
+              {selectedRentalForDetails.special_requests && (
                 <div className="bg-gray-800/50 p-4 rounded-lg">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-primary" /> Activité
+                    <Briefcase className="w-4 h-4 text-primary" /> Demandes spéciales
                   </h4>
                   <p className="text-gray-300">
-                    {selectedRentalForDetails.business_description}
+                    {selectedRentalForDetails.special_requests}
                   </p>
                 </div>
               )}
@@ -1825,7 +2418,7 @@ const viewRentalDetails = async (rental) => {
               variant="outline"
               onClick={() =>
                 copyToClipboard(
-                  `Stand: ${selectedRentalForDetails?.stand_number}\nCode: ${selectedRentalForDetails?.booking_code}\nEntreprise: ${selectedRentalForDetails?.company_name}`,
+                  `Réservation: ${selectedRentalForDetails?.stand_number || "N/A"}\nCode: ${selectedRentalForDetails?.booking_code}\nNom: ${selectedRentalForDetails?.company_name || selectedRentalForDetails?.guest_name}`,
                   "Infos",
                 )
               }
@@ -1841,5 +2434,19 @@ const viewRentalDetails = async (rental) => {
     </div>
   );
 };
+
+// Composant Mail pour les icônes
+const MailSvg = (props) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+
+const PhoneSvg = (props) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+);
 
 export default StandRentalInterface;
