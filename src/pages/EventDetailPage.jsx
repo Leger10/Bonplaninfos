@@ -827,22 +827,32 @@ const EventDetailPage = () => {
           .eq("event_id", id)
           .maybeSingle();
         specificEventData = data;
-      } else if (fetchedEvent.event_type === "ticketing") {
-        const { data: ticketingDetails } = await supabase
-          .from("ticketing_events")
-          .select("*")
-          .eq("event_id", id)
-          .maybeSingle();
-        specificEventData = ticketingDetails;
-        const { data: types } = await supabase
-          .from("ticket_types")
-          .select("*")
-          .eq("event_id", id)
-          .eq("is_active", true);
-        if (isMountedRef.current) {
-          setTicketTypes(types || []);
-        }
-      }
+     } else if (fetchedEvent.event_type === "ticketing") {
+  const { data: ticketingDetails } = await supabase
+    .from("ticketing_events")
+    .select("*")
+    .eq("event_id", id)
+    .maybeSingle();
+  specificEventData = ticketingDetails;
+  
+  // 🔥 CORRECTION : Charger TOUS les types de billets, pas seulement les actifs
+  const { data: types } = await supabase
+    .from("ticket_types")
+    .select("*")
+    .eq("event_id", id);
+    // ← Retirer .eq("is_active", true) pour voir tous les types
+  
+  if (isMountedRef.current) {
+    // 🔥 FORCER le chargement des types avec un fallback
+    setTicketTypes(types || []);
+    console.log(`📋 ${types?.length || 0} types de billets chargés pour l'événement ${id}`);
+    if (types) {
+      types.forEach(tt => {
+        console.log(`📋 ${tt.name}: quantity=${tt.quantity_available}, is_active=${tt.is_active}`);
+      });
+    }
+  }
+}
       if (isMountedRef.current) {
         setEventData(specificEventData);
       }
@@ -892,7 +902,7 @@ const EventDetailPage = () => {
 
   // 🔥 TRACK VIEW
   useEffect(() => {
-    if (!id || !event) return;
+   if (!id || !event || !event.id) return;
 
     let trackTimeout = null;
 

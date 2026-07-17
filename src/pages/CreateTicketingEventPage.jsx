@@ -52,19 +52,110 @@ import OrganizerContractModal from "@/components/organizer/OrganizerContractModa
 import { PromoCodeConfig } from "@/components/organizer/PromoCodeConfig";
 
 const TICKET_COLORS = [
-  { name: "Bleu Standard", value: "blue", hex: "bg-blue-500", border: "border-blue-500", text: "text-blue-400", bgLight: "bg-blue-500/20" },
-  { name: "Bronze", value: "bronze", hex: "bg-amber-600", border: "border-amber-600", text: "text-amber-400", bgLight: "bg-amber-500/20" },
-  { name: "Argent", value: "silver", hex: "bg-slate-400", border: "border-slate-400", text: "text-slate-300", bgLight: "bg-slate-400/20" },
-  { name: "Or", value: "gold", hex: "bg-yellow-500", border: "border-yellow-500", text: "text-yellow-400", bgLight: "bg-yellow-500/20" },
-  { name: "Violet VIP", value: "purple", hex: "bg-purple-600", border: "border-purple-600", text: "text-purple-400", bgLight: "bg-purple-600/20" },
-  { name: "Rouge", value: "red", hex: "bg-red-500", border: "border-red-500", text: "text-red-400", bgLight: "bg-red-500/20" },
-  { name: "Vert", value: "green", hex: "bg-green-500", border: "border-green-500", text: "text-green-400", bgLight: "bg-green-500/20" },
-  { name: "Rose", value: "pink", hex: "bg-pink-500", border: "border-pink-500", text: "text-pink-400", bgLight: "bg-pink-500/20" },
-  { name: "Cyan", value: "cyan", hex: "bg-cyan-500", border: "border-cyan-500", text: "text-cyan-400", bgLight: "bg-cyan-500/20" },
-  { name: "Orange", value: "orange", hex: "bg-orange-500", border: "border-orange-500", text: "text-orange-400", bgLight: "bg-orange-500/20" },
-  { name: "Indigo", value: "indigo", hex: "bg-indigo-500", border: "border-indigo-500", text: "text-indigo-400", bgLight: "bg-indigo-500/20" },
-  { name: "Noir", value: "black", hex: "bg-slate-900", border: "border-slate-700", text: "text-slate-300", bgLight: "bg-slate-900/30" },
-  { name: "Blanc", value: "white", hex: "bg-white", border: "border-white", text: "text-gray-800", bgLight: "bg-white/20" },
+  {
+    name: "Bleu Standard",
+    value: "blue",
+    hex: "bg-blue-500",
+    border: "border-blue-500",
+    text: "text-blue-400",
+    bgLight: "bg-blue-500/20",
+  },
+  {
+    name: "Bronze",
+    value: "bronze",
+    hex: "bg-amber-600",
+    border: "border-amber-600",
+    text: "text-amber-400",
+    bgLight: "bg-amber-500/20",
+  },
+  {
+    name: "Argent",
+    value: "silver",
+    hex: "bg-slate-400",
+    border: "border-slate-400",
+    text: "text-slate-300",
+    bgLight: "bg-slate-400/20",
+  },
+  {
+    name: "Or",
+    value: "gold",
+    hex: "bg-yellow-500",
+    border: "border-yellow-500",
+    text: "text-yellow-400",
+    bgLight: "bg-yellow-500/20",
+  },
+  {
+    name: "Violet VIP",
+    value: "purple",
+    hex: "bg-purple-600",
+    border: "border-purple-600",
+    text: "text-purple-400",
+    bgLight: "bg-purple-600/20",
+  },
+  {
+    name: "Rouge",
+    value: "red",
+    hex: "bg-red-500",
+    border: "border-red-500",
+    text: "text-red-400",
+    bgLight: "bg-red-500/20",
+  },
+  {
+    name: "Vert",
+    value: "green",
+    hex: "bg-green-500",
+    border: "border-green-500",
+    text: "text-green-400",
+    bgLight: "bg-green-500/20",
+  },
+  {
+    name: "Rose",
+    value: "pink",
+    hex: "bg-pink-500",
+    border: "border-pink-500",
+    text: "text-pink-400",
+    bgLight: "bg-pink-500/20",
+  },
+  {
+    name: "Cyan",
+    value: "cyan",
+    hex: "bg-cyan-500",
+    border: "border-cyan-500",
+    text: "text-cyan-400",
+    bgLight: "bg-cyan-500/20",
+  },
+  {
+    name: "Orange",
+    value: "orange",
+    hex: "bg-orange-500",
+    border: "border-orange-500",
+    text: "text-orange-400",
+    bgLight: "bg-orange-500/20",
+  },
+  {
+    name: "Indigo",
+    value: "indigo",
+    hex: "bg-indigo-500",
+    border: "border-indigo-500",
+    text: "text-indigo-400",
+    bgLight: "bg-indigo-500/20",
+  },
+  {
+    name: "Noir",
+    value: "black",
+    hex: "bg-slate-900",
+    border: "border-slate-700",
+    text: "text-slate-300",
+    bgLight: "bg-slate-900/30",
+  },
+  {
+    name: "Blanc",
+    value: "white",
+    hex: "bg-white",
+    border: "border-white",
+    text: "text-gray-800",
+    bgLight: "bg-white/20",
+  },
 ];
 
 // ============================================================
@@ -110,26 +201,26 @@ const CreateTicketingEventPage = () => {
   const [ticketType, setTicketType] = useState("multi_day");
   const [eventDays, setEventDays] = useState([]);
   const [dailyTicketConfig, setDailyTicketConfig] = useState({});
-  
+
   const [multiDayTickets, setMultiDayTickets] = useState([
-    { 
+    {
       id: uuidv4(),
-      name: "Standard",
-      price: 1000,
-      presale_price: 800,
-      quantity: 100,
-      color: "blue",
-      description: "Billet standard - Valable pour toute la durée de l'événement"
+      name: "Adulte",
+      price: 800,
+      presale_price: 600,
+      quantity: 500,
+      color: "red",
+      description: "Billet Adulte - Valable pour toute la durée de l'événement",
     },
-    { 
+    {
       id: uuidv4(),
-      name: "VIP",
-      price: 2000,
-      presale_price: 1600,
-      quantity: 50,
-      color: "gold",
-      description: "Billet VIP - Accès privilégié pour toute la durée"
-    }
+      name: "Enfant",
+      price: 400,
+      presale_price: 300,
+      quantity: 500,
+      color: "blue",
+      description: "Billet Enfant - Valable pour toute la durée de l'événement",
+    },
   ]);
 
   // ============================================================
@@ -143,7 +234,7 @@ const CreateTicketingEventPage = () => {
           .select("id, name, color_hex, display_order")
           .eq("is_active", true)
           .order("display_order", { ascending: true, nullsFirst: false });
-        
+
         if (error) throw error;
         setCategories(data || []);
       } catch (err) {
@@ -163,16 +254,16 @@ const CreateTicketingEventPage = () => {
       const end = new Date(endDate);
       const days = [];
       const current = new Date(start);
-      
+
       while (current <= end) {
         days.push({
           date: new Date(current),
-          label: current.toLocaleDateString('fr-FR', { 
-            weekday: 'long', 
-            day: 'numeric', 
-            month: 'long' 
+          label: current.toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
           }),
-          dateStr: current.toISOString().split('T')[0],
+          dateStr: current.toISOString().split("T")[0],
         });
         current.setDate(current.getDate() + 1);
       }
@@ -186,33 +277,33 @@ const CreateTicketingEventPage = () => {
   useEffect(() => {
     if (eventDays.length > 0 && ticketType === "daily") {
       const config = {};
-      
+
       eventDays.forEach((day) => {
         config[day.dateStr] = {
           enabled: true,
           tickets: [
-            { 
+            {
               id: uuidv4(),
-              name: "Standard",
-              price: 500,
-              presale_price: 400,
-              quantity: 0,
-              color: "blue",
-              description: `Billet Standard - ${day.label}`
+              name: "Adulte",
+              price: 800,
+              presale_price: 600,
+              quantity: 500,
+              color: "red",
+              description: `Billet Adulte - ${day.label}`,
             },
-            { 
+            {
               id: uuidv4(),
-              name: "VIP",
-              price: 1000,
-              presale_price: 800,
-              quantity: 0,
-              color: "gold",
-              description: `Billet VIP - ${day.label}`
-            }
-          ]
+              name: "Enfant",
+              price: 400,
+              presale_price: 300,
+              quantity: 500,
+              color: "blue",
+              description: `Billet Enfant - ${day.label}`,
+            },
+          ],
         };
       });
-      
+
       setDailyTicketConfig(config);
     }
   }, [eventDays, ticketType]);
@@ -235,7 +326,9 @@ const CreateTicketingEventPage = () => {
           setAddress(draftData.address || "");
           setCategoryId(draftData.categoryId || "");
           setMaxAttendees(draftData.maxAttendees || 1000);
-          setIsPublic(draftData.isPublic !== undefined ? draftData.isPublic : true);
+          setIsPublic(
+            draftData.isPublic !== undefined ? draftData.isPublic : true,
+          );
           setRequiresApproval(draftData.requiresApproval || false);
           setCoverImage(draftData.coverImage || "");
           setTicketType(draftData.ticketType || "multi_day");
@@ -272,9 +365,7 @@ const CreateTicketingEventPage = () => {
   // ============================================================
   const updateMultiDayTicket = (ticketId, field, value) => {
     setMultiDayTickets((prev) =>
-      prev.map((t) =>
-        t.id === ticketId ? { ...t, [field]: value } : t
-      )
+      prev.map((t) => (t.id === ticketId ? { ...t, [field]: value } : t)),
     );
   };
 
@@ -286,7 +377,7 @@ const CreateTicketingEventPage = () => {
       presale_price: 800,
       quantity: 0,
       color: "blue",
-      description: "Billet - Valable pour toute la durée de l'événement"
+      description: "Billet - Valable pour toute la durée de l'événement",
     };
     setMultiDayTickets([...multiDayTickets, newTicket]);
   };
@@ -296,7 +387,10 @@ const CreateTicketingEventPage = () => {
   };
 
   const getTotalMultiDayTickets = () => {
-    return multiDayTickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0);
+    return multiDayTickets.reduce(
+      (sum, t) => sum + (parseInt(t.quantity) || 0),
+      0,
+    );
   };
 
   // ============================================================
@@ -308,14 +402,14 @@ const CreateTicketingEventPage = () => {
       [dateStr]: {
         ...prev[dateStr],
         tickets: prev[dateStr].tickets.map((t) =>
-          t.id === ticketId ? { ...t, [field]: value } : t
-        )
-      }
+          t.id === ticketId ? { ...t, [field]: value } : t,
+        ),
+      },
     }));
   };
 
   const addTicketToDay = (dateStr) => {
-    const day = eventDays.find(d => d.dateStr === dateStr);
+    const day = eventDays.find((d) => d.dateStr === dateStr);
     const newTicket = {
       id: uuidv4(),
       name: "Nouveau billet",
@@ -323,15 +417,15 @@ const CreateTicketingEventPage = () => {
       presale_price: 400,
       quantity: 0,
       color: "blue",
-      description: `Billet pour le ${day?.label || dateStr}`
+      description: `Billet pour le ${day?.label || dateStr}`,
     };
-    
+
     setDailyTicketConfig((prev) => ({
       ...prev,
       [dateStr]: {
         ...prev[dateStr],
-        tickets: [...prev[dateStr].tickets, newTicket]
-      }
+        tickets: [...prev[dateStr].tickets, newTicket],
+      },
     }));
   };
 
@@ -340,15 +434,18 @@ const CreateTicketingEventPage = () => {
       ...prev,
       [dateStr]: {
         ...prev[dateStr],
-        tickets: prev[dateStr].tickets.filter((t) => t.id !== ticketId)
-      }
+        tickets: prev[dateStr].tickets.filter((t) => t.id !== ticketId),
+      },
     }));
   };
 
   const getTotalTicketsByDay = (dateStr) => {
     const config = dailyTicketConfig[dateStr];
     if (!config) return 0;
-    return config.tickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0);
+    return config.tickets.reduce(
+      (sum, t) => sum + (parseInt(t.quantity) || 0),
+      0,
+    );
   };
 
   const getTotalDailyTickets = () => {
@@ -383,12 +480,11 @@ const CreateTicketingEventPage = () => {
     }
 
     try {
-      // Enregistrer l'acceptation du contrat dans la base de données
       const { data, error } = await supabase
         .from("user_contract_acceptances")
         .insert({
           user_id: user.id,
-          event_id: null, // Pas encore d'événement créé
+          event_id: null,
           contract_type: "organizer",
           accepted_at: new Date().toISOString(),
           contract_version: "v1.0",
@@ -397,7 +493,6 @@ const CreateTicketingEventPage = () => {
         .single();
 
       if (error) {
-        // Si la table n'existe pas, on continue quand même
         console.warn("⚠️ Table user_contract_acceptances non trouvée:", error);
         setTermsAccepted(true);
         setShowContractModal(false);
@@ -409,23 +504,21 @@ const CreateTicketingEventPage = () => {
         return;
       }
 
-      // Sauvegarder l'ID de l'acceptation pour le lier à l'événement plus tard
       if (data) {
         setContractAcceptanceId(data.id);
       }
 
       setTermsAccepted(true);
       setShowContractModal(false);
-      
+
       toast({
         title: "✅ Contrat accepté",
-        description: "Votre acceptation a été enregistrée. Vous pouvez maintenant publier votre événement.",
+        description:
+          "Votre acceptation a été enregistrée. Vous pouvez maintenant publier votre événement.",
         className: "bg-green-600 text-white",
       });
-
     } catch (err) {
       console.error("❌ Erreur lors de l'acceptation du contrat:", err);
-      // En cas d'erreur, on accepte quand même le contrat côté UI
       setTermsAccepted(true);
       setShowContractModal(false);
       toast({
@@ -505,7 +598,7 @@ const CreateTicketingEventPage = () => {
 
       const newEventId = eventData.id;
 
-      // 2. Mettre à jour l'acceptation du contrat avec l'event_id si on a un ID
+      // 2. Mettre à jour l'acceptation du contrat avec l'event_id
       if (contractAcceptanceId) {
         try {
           await supabase
@@ -516,7 +609,6 @@ const CreateTicketingEventPage = () => {
           console.warn("⚠️ Erreur mise à jour contrat avec event_id:", err);
         }
       } else {
-        // Si pas d'ID d'acceptation, on essaie d'en créer une nouvelle
         try {
           await supabase.from("user_contract_acceptances").insert({
             user_id: user.id,
@@ -561,11 +653,9 @@ const CreateTicketingEventPage = () => {
       const ticketTypesToInsert = [];
       const ticketsToInsert = [];
 
-      // Récupérer toutes les dates de l'événement pour valid_dates
-      const allEventDates = eventDays.map(day => day.dateStr);
+      const allEventDates = eventDays.map((day) => day.dateStr);
 
       if (ticketType === "multi_day") {
-        // === BILLETS MULTI-JOURS ===
         for (const ticket of multiDayTickets) {
           const quantity = parseInt(ticket.quantity) || 0;
           if (quantity <= 0) continue;
@@ -573,7 +663,10 @@ const CreateTicketingEventPage = () => {
           const priceFcfa = parseInt(ticket.price) || 0;
           const presalePriceFcfa = parseInt(ticket.presale_price) || 0;
           const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
-          const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+          const presalePriceCoins =
+            presalePriceFcfa > 0
+              ? Math.ceil(presalePriceFcfa / COIN_RATE)
+              : null;
 
           const ticketTypeData = {
             event_id: newEventId,
@@ -585,7 +678,8 @@ const CreateTicketingEventPage = () => {
             quantity_available: quantity,
             quantity_sold: 0,
             presale_price_pi: presalePriceCoins,
-            presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
+            presale_price_fcfa:
+              presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
             sales_start: new Date().toISOString(),
             sales_end: eventEndAt.toISOString(),
             is_active: true,
@@ -597,7 +691,6 @@ const CreateTicketingEventPage = () => {
           ticketTypesToInsert.push(ticketTypeData);
         }
       } else {
-        // === BILLETS PAR JOUR ===
         for (const [dateStr, dayConfig] of Object.entries(dailyTicketConfig)) {
           if (!dayConfig.enabled) continue;
 
@@ -608,19 +701,25 @@ const CreateTicketingEventPage = () => {
             const priceFcfa = parseInt(ticket.price) || 0;
             const presalePriceFcfa = parseInt(ticket.presale_price) || 0;
             const priceCoins = Math.ceil(priceFcfa / COIN_RATE);
-            const presalePriceCoins = presalePriceFcfa > 0 ? Math.ceil(presalePriceFcfa / COIN_RATE) : null;
+            const presalePriceCoins =
+              presalePriceFcfa > 0
+                ? Math.ceil(presalePriceFcfa / COIN_RATE)
+                : null;
 
             const ticketTypeData = {
               event_id: newEventId,
               name: `${ticket.name} - ${dateStr}`,
-              description: ticket.description || `Billet ${ticket.name} pour le ${dateStr}`,
+              description:
+                ticket.description ||
+                `Billet ${ticket.name} pour le ${dateStr}`,
               price: priceFcfa.toString(),
               price_pi: priceCoins,
               price_coins: priceCoins,
               quantity_available: quantity,
               quantity_sold: 0,
               presale_price_pi: presalePriceCoins,
-              presale_price_fcfa: presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
+              presale_price_fcfa:
+                presalePriceFcfa > 0 ? presalePriceFcfa.toString() : null,
               sales_start: new Date().toISOString(),
               sales_end: eventEndAt.toISOString(),
               is_active: true,
@@ -652,36 +751,88 @@ const CreateTicketingEventPage = () => {
       if (fetchError) throw fetchError;
 
       // ============================================================
-      // 🔥 CRÉATION DES TICKETS INDIVIDUELS - CORRECTION ICI
+      // 🔥 CRÉATION DES TICKETS INDIVIDUELS - VERSION CORRIGÉE
       // ============================================================
       for (const ttType of createdTicketTypes) {
         const quantity = parseInt(ttType.quantity_available, 10) || 0;
-        
-        // Déterminer si c'est un billet multi-jours ou par jour
+
         const dateMatch = ttType.name.match(/\d{4}-\d{2}-\d{2}/);
         const isMultiDay = !dateMatch;
         const ticketDate = dateMatch ? dateMatch[0] : null;
 
-        for (let i = 0; i < quantity; i++) {
-          const ticketNumber = `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, '0')}`;
+        // Récupérer le prix en pièces depuis le ticket_type
+        const priceInCoins = parseInt(ttType.price_pi, 10) || 0;
+
+        // Pour les billets multi-jours, la date est le premier jour
+        const effectiveDate = isMultiDay
+          ? eventStartAt.toISOString().split("T")[0]
+          : ticketDate;
+
+        // 🔥 VÉRIFIER QUE LA DATE EXISTE
+        if (!effectiveDate) {
+          console.warn(
+            `⚠️ Date non trouvée pour ${ttType.name}, utilisation de la date de début`,
+          );
+          // Utiliser la date de début comme fallback
+          const fallbackDate = eventStartAt.toISOString().split("T")[0];
+          console.log(`📅 Date de fallback: ${fallbackDate}`);
+          // Recalculer effectiveDate avec fallback
+          const finalDate = isMultiDay
+            ? eventStartAt.toISOString().split("T")[0]
+            : ticketDate || eventStartAt.toISOString().split("T")[0];
           
+          // Utiliser finalDate pour la suite
+          const usedDate = finalDate;
+
+          for (let i = 0; i < quantity; i++) {
+            const ticketData = {
+              event_id: newEventId,
+              ticket_type_id: ttType.id,
+              qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, "0")}`,
+              ticket_number: `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, "0")}`,
+              attendee_name: null,
+              phone: null,
+              email: null,
+              user_id: null,
+              purchase_price_pi: priceInCoins,
+              status: "active",
+              ticket_date: usedDate,
+              is_multi_day: isMultiDay,
+              valid_dates: isMultiDay ? allEventDates : null,
+              purchased_at: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            ticketsToInsert.push(ticketData);
+          }
+          
+          console.log(
+            `✅ ${quantity} tickets générés pour ${ttType.name} avec date ${usedDate}`,
+          );
+          continue;
+        }
+
+        for (let i = 0; i < quantity; i++) {
           const ticketData = {
             event_id: newEventId,
             ticket_type_id: ttType.id,
-            qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, '0')}`,
-            ticket_number: ticketNumber,
-            attendee_name: `Visiteur ${i + 1}`,
+            qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, "0")}`,
+            ticket_number: `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, "0")}`,
+            attendee_name: null,
             phone: null,
             email: null,
-            // 🔥 IMPORTANT: 0 = non vendu (sera mis à jour lors de l'achat)
-            purchase_price_pi: 0,
-            status: 'active',
-            ticket_date: ticketDate,
+            user_id: null,
+            purchase_price_pi: priceInCoins,
+            status: "active",
+            ticket_date: effectiveDate,
             is_multi_day: isMultiDay,
             valid_dates: isMultiDay ? allEventDates : null,
-            purchased_at: new Date().toISOString(),
+            purchased_at: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
-          
+
           ticketsToInsert.push(ticketData);
         }
       }
@@ -707,7 +858,10 @@ const CreateTicketingEventPage = () => {
         .eq("event_id", newEventId);
 
       if (resetSoldError) {
-        console.warn("⚠️ Erreur réinitialisation quantity_sold:", resetSoldError);
+        console.warn(
+          "⚠️ Erreur réinitialisation quantity_sold:",
+          resetSoldError,
+        );
       }
 
       // Nettoyer les brouillons
@@ -715,31 +869,37 @@ const CreateTicketingEventPage = () => {
       localStorage.removeItem("event_promo_config_draft");
 
       // Notification de succès
-      const ticketTypeLabel = ticketType === "multi_day" ? "multi-jours" : "journaliers";
+      const ticketTypeLabel =
+        ticketType === "multi_day" ? "multi-jours" : "journaliers";
       toast({
         title: "🎉 Succès !",
         description: (
           <div className="space-y-1">
             <p>Votre événement billetterie a été créé avec succès !</p>
             <p className="text-xs opacity-90">
-              {ticketsToInsert.length} billets {ticketTypeLabel} • 
-              {ticketType === "multi_day" ? "Valables toute la durée" : `${eventDays.length} jours disponibles`}
+              {ticketsToInsert.length} billets {ticketTypeLabel} •
+              {ticketType === "multi_day"
+                ? "Valables toute la durée"
+                : `${eventDays.length} jours disponibles`}
             </p>
             {ticketType === "multi_day" ? (
               <p className="text-xs opacity-90">
-                {multiDayTickets.map(t => `${t.name}: ${t.quantity || 0}`).join(' | ')}
+                {multiDayTickets
+                  .map((t) => `${t.name}: ${t.quantity || 0}`)
+                  .join(" | ")}
               </p>
             ) : (
               <p className="text-xs opacity-90">
-                {Object.entries(dailyTicketConfig).map(([date, config]) => 
-                  `${date}: ${config.tickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0)} billets`
-                ).join(' | ')}
+                {Object.entries(dailyTicketConfig)
+                  .map(
+                    ([date, config]) =>
+                      `${date}: ${config.tickets.reduce((sum, t) => sum + (parseInt(t.quantity) || 0), 0)} billets`,
+                  )
+                  .join(" | ")}
               </p>
             )}
             {promoConfig?.enabled && (
-              <p className="text-xs opacity-90 mt-1">
-                🏷️ Code promo activé
-              </p>
+              <p className="text-xs opacity-90 mt-1">🏷️ Code promo activé</p>
             )}
           </div>
         ),
@@ -750,12 +910,12 @@ const CreateTicketingEventPage = () => {
       setTimeout(() => {
         navigate(`/event/${newEventId}`);
       }, 2000);
-
     } catch (error) {
       console.error("❌ Erreur création événement:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la création",
+        description:
+          error.message || "Une erreur est survenue lors de la création",
         variant: "destructive",
       });
     } finally {
@@ -789,10 +949,27 @@ const CreateTicketingEventPage = () => {
 
     const debounce = setTimeout(saveDraft, 2000);
     return () => clearTimeout(debounce);
-  }, [title, description, eventDate, endDate, city, country, address, categoryId, maxAttendees, isPublic, requiresApproval, coverImage, ticketType, multiDayTickets, dailyTicketConfig, promoConfig]);
+  }, [
+    title,
+    description,
+    eventDate,
+    endDate,
+    city,
+    country,
+    address,
+    categoryId,
+    maxAttendees,
+    isPublic,
+    requiresApproval,
+    coverImage,
+    ticketType,
+    multiDayTickets,
+    dailyTicketConfig,
+    promoConfig,
+  ]);
 
   // ============================================================
-  // RENDU
+  // RENDU - AVEC CHAMPS DE QUANTITÉ FLUIDES
   // ============================================================
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white p-4 md:p-8 pb-20">
@@ -863,7 +1040,7 @@ const CreateTicketingEventPage = () => {
               </TabsList>
             </div>
 
-            {/* ÉTAPE 1 - INFORMATIONS */}
+            {/* ÉTAPE 1 - INFORMATIONS - inchangée */}
             <TabsContent
               value="1"
               className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300"
@@ -871,7 +1048,9 @@ const CreateTicketingEventPage = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-base text-white">Image de couverture</Label>
+                    <Label className="text-base text-white">
+                      Image de couverture
+                    </Label>
                     <ImageUpload
                       onImageUploaded={setCoverImage}
                       existingImage={coverImage}
@@ -939,11 +1118,15 @@ const CreateTicketingEventPage = () => {
                           </div>
                         ) : (
                           categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id} className="text-white hover:bg-white/10">
+                            <SelectItem
+                              key={c.id}
+                              value={c.id}
+                              className="text-white hover:bg-white/10"
+                            >
                               <div className="flex items-center gap-2">
                                 {c.color_hex && (
-                                  <div 
-                                    className="w-3 h-3 rounded-full" 
+                                  <div
+                                    className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: c.color_hex }}
                                   />
                                 )}
@@ -992,19 +1175,24 @@ const CreateTicketingEventPage = () => {
               </div>
 
               <div className="flex justify-end mt-8">
-                <Button onClick={() => setStep(2)} className="px-8 bg-primary hover:bg-primary/80">
+                <Button
+                  onClick={() => setStep(2)}
+                  className="px-8 bg-primary hover:bg-primary/80"
+                >
                   Suivant <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
             </TabsContent>
 
-            {/* ÉTAPE 2 - BILLETS */}
+            {/* ÉTAPE 2 - BILLETS - AVEC CHAMPS DE QUANTITÉ FLUIDES */}
             <TabsContent
               value="2"
               className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300"
             >
               <div className="bg-white/5 p-4 rounded-lg border border-white/10">
-                <Label className="text-white mb-3 block">Type de billetterie</Label>
+                <Label className="text-white mb-3 block">
+                  Type de billetterie
+                </Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
@@ -1019,7 +1207,8 @@ const CreateTicketingEventPage = () => {
                       <div>
                         <p className="font-medium text-white">Multi-jours</p>
                         <p className="text-xs text-white/60">
-                          Un seul billet valable pour toute la durée de l'événement
+                          Un seul billet valable pour toute la durée de
+                          l'événement
                         </p>
                       </div>
                     </div>
@@ -1052,7 +1241,11 @@ const CreateTicketingEventPage = () => {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {eventDays.map((day, index) => (
-                      <Badge key={index} variant="outline" className="text-white border-white/20">
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="text-white border-white/20"
+                      >
                         {day.label}
                       </Badge>
                     ))}
@@ -1066,11 +1259,13 @@ const CreateTicketingEventPage = () => {
                 </div>
                 <div>
                   <p className="font-bold text-base text-blue-400">
-                    {ticketType === "multi_day" ? "Billets Multi-jours" : "Billets Journaliers"}
+                    {ticketType === "multi_day"
+                      ? "Billets Multi-jours"
+                      : "Billets Journaliers"}
                   </p>
                   <p className="text-white/60">
-                    10 FCFA = 1 pièce • 
-                    {ticketType === "multi_day" 
+                    10 FCFA = 1 pièce •
+                    {ticketType === "multi_day"
                       ? " Chaque billet est valable pour toute la durée de l'événement"
                       : " Chaque billet est valable un jour spécifique"}
                   </p>
@@ -1083,7 +1278,10 @@ const CreateTicketingEventPage = () => {
                     <p className="text-sm font-medium text-white flex items-center gap-2">
                       <Ticket className="w-4 h-4 text-primary" />
                       Types de billets multi-jours
-                      <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-primary/20 text-primary"
+                      >
                         Total: {getTotalMultiDayTickets()} billets
                       </Badge>
                     </p>
@@ -1098,62 +1296,105 @@ const CreateTicketingEventPage = () => {
                   </div>
 
                   {multiDayTickets.map((ticket) => {
-                    const colorInfo = TICKET_COLORS.find(c => c.value === ticket.color) || TICKET_COLORS[0];
+                    const colorInfo =
+                      TICKET_COLORS.find((c) => c.value === ticket.color) ||
+                      TICKET_COLORS[0];
                     const quantity = parseInt(ticket.quantity) || 0;
 
                     return (
-                      <div key={ticket.id} className="bg-black/30 rounded-lg p-4 border border-white/5">
+                      <div
+                        key={ticket.id}
+                        className="bg-black/30 rounded-lg p-4 border border-white/5"
+                      >
                         <div className="flex flex-wrap gap-3 items-start">
                           <div className="flex-1 min-w-[150px]">
                             <div className="flex items-center gap-2">
-                              <div className={`w-3 h-3 rounded-full ${colorInfo.hex}`} />
+                              <div
+                                className={`w-3 h-3 rounded-full ${colorInfo.hex}`}
+                              />
                               <Input
                                 value={ticket.name}
-                                onChange={(e) => updateMultiDayTicket(ticket.id, 'name', e.target.value)}
+                                onChange={(e) =>
+                                  updateMultiDayTicket(
+                                    ticket.id,
+                                    "name",
+                                    e.target.value,
+                                  )
+                                }
                                 className="font-bold text-sm border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[100px] bg-transparent text-white"
                                 placeholder="Nom du billet"
                               />
                             </div>
                             <Input
                               value={ticket.description}
-                              onChange={(e) => updateMultiDayTicket(ticket.id, 'description', e.target.value)}
+                              onChange={(e) =>
+                                updateMultiDayTicket(
+                                  ticket.id,
+                                  "description",
+                                  e.target.value,
+                                )
+                              }
                               className="text-xs border-none shadow-none focus-visible:ring-0 px-0 w-full bg-transparent text-white/60 mt-1"
                               placeholder="Description"
                             />
                           </div>
 
+                          {/* 🔥 CHAMP DE QUANTITÉ FLUIDE - MULTI-JOURS */}
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
-                              <Label className="text-xs text-white/60">Qté</Label>
+                              <Label className="text-xs text-white/60">
+                                Qté
+                              </Label>
                               <div className="flex items-center gap-1">
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                  className="h-8 w-8 border-white/10 text-white hover:bg-white/10"
                                   onClick={() => {
-                                    const current = parseInt(ticket.quantity) || 0;
-                                    updateMultiDayTicket(ticket.id, 'quantity', Math.max(0, current - 1));
+                                    const current =
+                                      parseInt(ticket.quantity) || 0;
+                                    updateMultiDayTicket(
+                                      ticket.id,
+                                      "quantity",
+                                      Math.max(0, current - 1),
+                                    );
                                   }}
                                 >
-                                  <Minus className="w-3 h-3" />
+                                  <Minus className="w-4 h-4" />
                                 </Button>
                                 <Input
                                   type="number"
                                   min="0"
                                   value={quantity}
-                                  onChange={(e) => updateMultiDayTicket(ticket.id, 'quantity', e.target.value)}
-                                  className="w-14 h-6 text-center text-sm bg-white/5 border-white/10 text-white"
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    updateMultiDayTicket(
+                                      ticket.id,
+                                      "quantity",
+                                      Math.max(0, val),
+                                    );
+                                  }}
+                                  className="w-20 h-8 text-center text-sm bg-white/10 border-white/20 text-white font-bold focus:border-primary focus:ring-1 focus:ring-primary"
+                                  style={{ 
+                                    appearance: "textfield",
+                                    MozAppearance: "textfield",
+                                  }}
                                 />
                                 <Button
                                   size="icon"
                                   variant="outline"
-                                  className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                  className="h-8 w-8 border-white/10 text-white hover:bg-white/10"
                                   onClick={() => {
-                                    const current = parseInt(ticket.quantity) || 0;
-                                    updateMultiDayTicket(ticket.id, 'quantity', current + 1);
+                                    const current =
+                                      parseInt(ticket.quantity) || 0;
+                                    updateMultiDayTicket(
+                                      ticket.id,
+                                      "quantity",
+                                      current + 1,
+                                    );
                                   }}
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-4 h-4" />
                                 </Button>
                               </div>
                             </div>
@@ -1161,46 +1402,78 @@ const CreateTicketingEventPage = () => {
 
                           <div className="flex items-center gap-2">
                             <div className="w-20">
-                              <Label className="text-xs text-white/60">Prix FCFA</Label>
+                              <Label className="text-xs text-white/60">
+                                Prix FCFA
+                              </Label>
                               <Input
                                 type="number"
                                 min="0"
                                 value={ticket.price}
-                                onChange={(e) => updateMultiDayTicket(ticket.id, 'price', e.target.value)}
+                                onChange={(e) =>
+                                  updateMultiDayTicket(
+                                    ticket.id,
+                                    "price",
+                                    e.target.value,
+                                  )
+                                }
                                 className="h-7 text-xs bg-white/5 border-white/10 text-white"
                               />
                             </div>
                             <div className="w-20">
-                              <Label className="text-xs text-white/60">Prévente</Label>
+                              <Label className="text-xs text-white/60">
+                                Prévente
+                              </Label>
                               <Input
                                 type="number"
                                 min="0"
                                 value={ticket.presale_price}
-                                onChange={(e) => updateMultiDayTicket(ticket.id, 'presale_price', e.target.value)}
+                                onChange={(e) =>
+                                  updateMultiDayTicket(
+                                    ticket.id,
+                                    "presale_price",
+                                    e.target.value,
+                                  )
+                                }
                                 className="h-7 text-xs bg-white/5 border-white/10 text-white"
                               />
                             </div>
                           </div>
 
                           <div>
-                            <Label className="text-xs text-white/60">Couleur</Label>
+                            <Label className="text-xs text-white/60">
+                              Couleur
+                            </Label>
                             <Select
                               value={ticket.color}
-                              onValueChange={(val) => updateMultiDayTicket(ticket.id, 'color', val)}
+                              onValueChange={(val) =>
+                                updateMultiDayTicket(ticket.id, "color", val)
+                              }
                             >
                               <SelectTrigger className="w-24 h-7 text-xs bg-white/5 border-white/10 text-white">
                                 <SelectValue>
                                   <div className="flex items-center gap-1">
-                                    <div className={`w-3 h-3 rounded-full ${TICKET_COLORS.find(c => c.value === ticket.color)?.hex || 'bg-primary'}`} />
-                                    <span className="text-xs">{TICKET_COLORS.find(c => c.value === ticket.color)?.name || 'Standard'}</span>
+                                    <div
+                                      className={`w-3 h-3 rounded-full ${TICKET_COLORS.find((c) => c.value === ticket.color)?.hex || "bg-primary"}`}
+                                    />
+                                    <span className="text-xs">
+                                      {TICKET_COLORS.find(
+                                        (c) => c.value === ticket.color,
+                                      )?.name || "Standard"}
+                                    </span>
                                   </div>
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent className="bg-[#1a1a2e] border-white/10">
                                 {TICKET_COLORS.map((c) => (
-                                  <SelectItem key={c.value} value={c.value} className="text-white hover:bg-white/10">
+                                  <SelectItem
+                                    key={c.value}
+                                    value={c.value}
+                                    className="text-white hover:bg-white/10"
+                                  >
                                     <div className="flex items-center gap-2">
-                                      <div className={`w-3 h-3 rounded-full ${c.hex}`} />
+                                      <div
+                                        className={`w-3 h-3 rounded-full ${c.hex}`}
+                                      />
                                       <span>{c.name}</span>
                                     </div>
                                   </SelectItem>
@@ -1220,7 +1493,8 @@ const CreateTicketingEventPage = () => {
                           </Button>
                         </div>
                         <div className="mt-2 text-xs text-white/30">
-                          💡 Valable pour toute la durée de l'événement ({eventDays.length} jours)
+                          💡 Valable pour toute la durée de l'événement (
+                          {eventDays.length} jours)
                         </div>
                       </div>
                     );
@@ -1231,19 +1505,25 @@ const CreateTicketingEventPage = () => {
                   <p className="text-sm font-medium text-white flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
                     Configuration des billets par jour
-                    <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                    <Badge
+                      variant="secondary"
+                      className="text-xs bg-primary/20 text-primary"
+                    >
                       Total: {getTotalDailyTickets()} billets
                     </Badge>
                   </p>
-                  
+
                   {eventDays.map((day) => {
                     const dayConfig = dailyTicketConfig[day.dateStr];
                     if (!dayConfig) return null;
-                    
+
                     const dayTotal = getTotalTicketsByDay(day.dateStr);
-                    
+
                     return (
-                      <Card key={day.dateStr} className="bg-white/5 border border-white/10 overflow-hidden">
+                      <Card
+                        key={day.dateStr}
+                        className="bg-white/5 border border-white/10 overflow-hidden"
+                      >
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
@@ -1251,7 +1531,7 @@ const CreateTicketingEventPage = () => {
                                 {day.label}
                               </Badge>
                               <span className="text-sm text-white/60">
-                                {dayTotal} billet{dayTotal > 1 ? 's' : ''}
+                                {dayTotal} billet{dayTotal > 1 ? "s" : ""}
                               </span>
                             </div>
                             <Button
@@ -1260,115 +1540,205 @@ const CreateTicketingEventPage = () => {
                               onClick={() => addTicketToDay(day.dateStr)}
                               className="border-white/20 text-white hover:bg-white/10"
                             >
-                              <Plus className="w-4 h-4 mr-1" /> Ajouter un billet
+                              <Plus className="w-4 h-4 mr-1" /> Ajouter un
+                              billet
                             </Button>
                           </div>
-                          
+
                           <div className="space-y-3">
                             {dayConfig.tickets.map((ticket) => {
-                              const colorInfo = TICKET_COLORS.find(c => c.value === ticket.color) || TICKET_COLORS[0];
+                              const colorInfo =
+                                TICKET_COLORS.find(
+                                  (c) => c.value === ticket.color,
+                                ) || TICKET_COLORS[0];
                               const quantity = parseInt(ticket.quantity) || 0;
-                              
+
                               return (
-                                <div key={ticket.id} className="bg-black/30 rounded-lg p-3 border border-white/5">
+                                <div
+                                  key={ticket.id}
+                                  className="bg-black/30 rounded-lg p-3 border border-white/5"
+                                >
                                   <div className="flex flex-wrap gap-3 items-start">
                                     <div className="flex-1 min-w-[120px]">
                                       <div className="flex items-center gap-2">
-                                        <div className={`w-3 h-3 rounded-full ${colorInfo.hex}`} />
+                                        <div
+                                          className={`w-3 h-3 rounded-full ${colorInfo.hex}`}
+                                        />
                                         <Input
                                           value={ticket.name}
-                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'name', e.target.value)}
+                                          onChange={(e) =>
+                                            updateTicketField(
+                                              day.dateStr,
+                                              ticket.id,
+                                              "name",
+                                              e.target.value,
+                                            )
+                                          }
                                           className="font-bold text-sm border-none shadow-none focus-visible:ring-0 px-0 w-auto min-w-[80px] bg-transparent text-white"
                                           placeholder="Nom"
                                         />
                                       </div>
                                       <Input
                                         value={ticket.description}
-                                        onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'description', e.target.value)}
+                                        onChange={(e) =>
+                                          updateTicketField(
+                                            day.dateStr,
+                                            ticket.id,
+                                            "description",
+                                            e.target.value,
+                                          )
+                                        }
                                         className="text-xs border-none shadow-none focus-visible:ring-0 px-0 w-full bg-transparent text-white/60 mt-1"
                                         placeholder="Description"
                                       />
                                     </div>
-                                    
+
+                                    {/* 🔥 CHAMP DE QUANTITÉ FLUIDE - PAR JOUR */}
                                     <div className="flex items-center gap-2">
                                       <div className="flex items-center gap-1">
-                                        <Label className="text-xs text-white/60">Qté</Label>
+                                        <Label className="text-xs text-white/60">
+                                          Qté
+                                        </Label>
                                         <div className="flex items-center gap-1">
                                           <Button
                                             size="icon"
                                             variant="outline"
-                                            className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                            className="h-8 w-8 border-white/10 text-white hover:bg-white/10"
                                             onClick={() => {
-                                              const current = parseInt(ticket.quantity) || 0;
-                                              updateTicketField(day.dateStr, ticket.id, 'quantity', Math.max(0, current - 1));
+                                              const current =
+                                                parseInt(ticket.quantity) || 0;
+                                              updateTicketField(
+                                                day.dateStr,
+                                                ticket.id,
+                                                "quantity",
+                                                Math.max(0, current - 1),
+                                              );
                                             }}
                                           >
-                                            <Minus className="w-3 h-3" />
+                                            <Minus className="w-4 h-4" />
                                           </Button>
                                           <Input
                                             type="number"
                                             min="0"
                                             value={quantity}
-                                            onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'quantity', e.target.value)}
-                                            className="w-12 h-6 text-center text-sm bg-white/5 border-white/10 text-white"
+                                            onChange={(e) => {
+                                              const val = parseInt(e.target.value) || 0;
+                                              updateTicketField(
+                                                day.dateStr,
+                                                ticket.id,
+                                                "quantity",
+                                                Math.max(0, val),
+                                              );
+                                            }}
+                                            className="w-20 h-8 text-center text-sm bg-white/10 border-white/20 text-white font-bold focus:border-primary focus:ring-1 focus:ring-primary"
+                                            style={{ 
+                                              appearance: "textfield",
+                                              MozAppearance: "textfield",
+                                            }}
                                           />
                                           <Button
                                             size="icon"
                                             variant="outline"
-                                            className="h-6 w-6 border-white/10 text-white hover:bg-white/10"
+                                            className="h-8 w-8 border-white/10 text-white hover:bg-white/10"
                                             onClick={() => {
-                                              const current = parseInt(ticket.quantity) || 0;
-                                              updateTicketField(day.dateStr, ticket.id, 'quantity', current + 1);
+                                              const current =
+                                                parseInt(ticket.quantity) || 0;
+                                              updateTicketField(
+                                                day.dateStr,
+                                                ticket.id,
+                                                "quantity",
+                                                current + 1,
+                                              );
                                             }}
                                           >
-                                            <Plus className="w-3 h-3" />
+                                            <Plus className="w-4 h-4" />
                                           </Button>
                                         </div>
                                       </div>
                                     </div>
-                                    
+
                                     <div className="flex items-center gap-2">
                                       <div className="w-20">
-                                        <Label className="text-xs text-white/60">Prix FCFA</Label>
+                                        <Label className="text-xs text-white/60">
+                                          Prix FCFA
+                                        </Label>
                                         <Input
                                           type="number"
                                           min="0"
                                           value={ticket.price}
-                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'price', e.target.value)}
+                                          onChange={(e) =>
+                                            updateTicketField(
+                                              day.dateStr,
+                                              ticket.id,
+                                              "price",
+                                              e.target.value,
+                                            )
+                                          }
                                           className="h-7 text-xs bg-white/5 border-white/10 text-white"
                                         />
                                       </div>
                                       <div className="w-20">
-                                        <Label className="text-xs text-white/60">Prévente</Label>
+                                        <Label className="text-xs text-white/60">
+                                          Prévente
+                                        </Label>
                                         <Input
                                           type="number"
                                           min="0"
                                           value={ticket.presale_price}
-                                          onChange={(e) => updateTicketField(day.dateStr, ticket.id, 'presale_price', e.target.value)}
+                                          onChange={(e) =>
+                                            updateTicketField(
+                                              day.dateStr,
+                                              ticket.id,
+                                              "presale_price",
+                                              e.target.value,
+                                            )
+                                          }
                                           className="h-7 text-xs bg-white/5 border-white/10 text-white"
                                         />
                                       </div>
                                     </div>
-                                    
+
                                     <div>
-                                      <Label className="text-xs text-white/60">Couleur</Label>
+                                      <Label className="text-xs text-white/60">
+                                        Couleur
+                                      </Label>
                                       <Select
                                         value={ticket.color}
-                                        onValueChange={(val) => updateTicketField(day.dateStr, ticket.id, 'color', val)}
+                                        onValueChange={(val) =>
+                                          updateTicketField(
+                                            day.dateStr,
+                                            ticket.id,
+                                            "color",
+                                            val,
+                                          )
+                                        }
                                       >
                                         <SelectTrigger className="w-24 h-7 text-xs bg-white/5 border-white/10 text-white">
                                           <SelectValue>
                                             <div className="flex items-center gap-1">
-                                              <div className={`w-3 h-3 rounded-full ${TICKET_COLORS.find(c => c.value === ticket.color)?.hex || 'bg-primary'}`} />
-                                              <span className="text-xs">{TICKET_COLORS.find(c => c.value === ticket.color)?.name || 'Standard'}</span>
+                                              <div
+                                                className={`w-3 h-3 rounded-full ${TICKET_COLORS.find((c) => c.value === ticket.color)?.hex || "bg-primary"}`}
+                                              />
+                                              <span className="text-xs">
+                                                {TICKET_COLORS.find(
+                                                  (c) =>
+                                                    c.value === ticket.color,
+                                                )?.name || "Standard"}
+                                              </span>
                                             </div>
                                           </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent className="bg-[#1a1a2e] border-white/10">
                                           {TICKET_COLORS.map((c) => (
-                                            <SelectItem key={c.value} value={c.value} className="text-white hover:bg-white/10">
+                                            <SelectItem
+                                              key={c.value}
+                                              value={c.value}
+                                              className="text-white hover:bg-white/10"
+                                            >
                                               <div className="flex items-center gap-2">
-                                                <div className={`w-3 h-3 rounded-full ${c.hex}`} />
+                                                <div
+                                                  className={`w-3 h-3 rounded-full ${c.hex}`}
+                                                />
                                                 <span>{c.name}</span>
                                               </div>
                                             </SelectItem>
@@ -1376,11 +1746,16 @@ const CreateTicketingEventPage = () => {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    
+
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => removeTicketFromDay(day.dateStr, ticket.id)}
+                                      onClick={() =>
+                                        removeTicketFromDay(
+                                          day.dateStr,
+                                          ticket.id,
+                                        )
+                                      }
                                       className="text-white/40 hover:text-red-400 hover:bg-red-500/10 mt-4 sm:mt-0"
                                     >
                                       <Trash className="w-4 h-4" />
@@ -1389,16 +1764,18 @@ const CreateTicketingEventPage = () => {
                                 </div>
                               );
                             })}
-                            
+
                             {dayConfig.tickets.length === 0 && (
                               <div className="text-center py-4 text-white/40 text-sm">
-                                Aucun billet pour ce jour. Cliquez sur "Ajouter un billet".
+                                Aucun billet pour ce jour. Cliquez sur "Ajouter
+                                un billet".
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="mt-3 text-xs text-white/30">
-                            💡 Chaque billet est valable uniquement le {day.label}
+                            💡 Chaque billet est valable uniquement le{" "}
+                            {day.label}
                           </div>
                         </CardContent>
                       </Card>
@@ -1410,7 +1787,9 @@ const CreateTicketingEventPage = () => {
               <div className="mt-8 pt-4 border-t border-white/10">
                 <div className="flex items-center gap-2 mb-4">
                   <Tag className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold text-white">Codes de réduction</h3>
+                  <h3 className="text-lg font-semibold text-white">
+                    Codes de réduction
+                  </h3>
                 </div>
                 <PromoCodeConfig
                   eventId={null}
@@ -1428,13 +1807,16 @@ const CreateTicketingEventPage = () => {
                 >
                   <ArrowLeft className="mr-2 w-4 h-4" /> Retour
                 </Button>
-                <Button onClick={() => setStep(3)} className="px-8 bg-primary hover:bg-primary/80">
+                <Button
+                  onClick={() => setStep(3)}
+                  className="px-8 bg-primary hover:bg-primary/80"
+                >
                   Suivant <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
             </TabsContent>
 
-            {/* ÉTAPE 3 - CONFIRMATION */}
+            {/* ÉTAPE 3 - CONFIRMATION - inchangée */}
             <TabsContent
               value="3"
               className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300"
@@ -1444,9 +1826,12 @@ const CreateTicketingEventPage = () => {
                   <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
                     <CheckCircle className="w-8 h-8 text-green-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white">Prêt à publier ?</h3>
+                  <h3 className="text-2xl font-bold text-white">
+                    Prêt à publier ?
+                  </h3>
                   <p className="text-white/60 max-w-md mx-auto">
-                    Votre événement <strong className="text-white">{title}</strong> est prêt.
+                    Votre événement{" "}
+                    <strong className="text-white">{title}</strong> est prêt.
                     <br />
                     <span className="flex items-center justify-center gap-2 font-medium text-green-400 mt-2">
                       <MessageSquare className="w-4 h-4" />
@@ -1457,7 +1842,9 @@ const CreateTicketingEventPage = () => {
                   <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto text-left bg-white/5 p-4 rounded-lg border border-white/10">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="text-xs text-white/40 block">Date</span>
+                        <span className="text-xs text-white/40 block">
+                          Date
+                        </span>
                         <span className="font-medium text-white">
                           {eventDate
                             ? new Date(eventDate).toLocaleDateString("fr-FR")
@@ -1465,7 +1852,9 @@ const CreateTicketingEventPage = () => {
                         </span>
                       </div>
                       <div>
-                        <span className="text-xs text-white/40 block">Lieu</span>
+                        <span className="text-xs text-white/40 block">
+                          Lieu
+                        </span>
                         <span className="font-medium text-white">
                           {city || "Non défini"}
                         </span>
@@ -1473,46 +1862,65 @@ const CreateTicketingEventPage = () => {
                     </div>
                     <div>
                       <span className="text-xs text-white/40 block">
-                        {ticketType === "multi_day" ? "Billets multi-jours" : "Billets par jour"}
+                        {ticketType === "multi_day"
+                          ? "Billets multi-jours"
+                          : "Billets par jour"}
                       </span>
                       <div className="space-y-1 mt-1">
-                        {ticketType === "multi_day" ? (
-                          multiDayTickets.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between text-sm">
-                              <span className="text-white/60">{t.name}</span>
-                              <span className="text-white font-medium">
-                                {t.quantity || 0} billet{t.quantity > 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          eventDays.map((day) => {
-                            const total = getTotalTicketsByDay(day.dateStr);
-                            const config = dailyTicketConfig[day.dateStr];
-                            return (
-                              <div key={day.dateStr} className="flex items-center justify-between text-sm">
-                                <span className="text-white/60">{day.label}</span>
+                        {ticketType === "multi_day"
+                          ? multiDayTickets.map((t) => (
+                              <div
+                                key={t.id}
+                                className="flex items-center justify-between text-sm"
+                              >
+                                <span className="text-white/60">{t.name}</span>
                                 <span className="text-white font-medium">
-                                  {total} billet{total > 1 ? 's' : ''}
-                                  {config && config.tickets.length > 0 && (
-                                    <span className="text-xs text-white/40 ml-2">
-                                      ({config.tickets.map(t => `${t.name}: ${t.quantity || 0}`).join(', ')})
-                                    </span>
-                                  )}
+                                  {t.quantity || 0} billet
+                                  {t.quantity > 1 ? "s" : ""}
                                 </span>
                               </div>
-                            );
-                          })
-                        )}
+                            ))
+                          : eventDays.map((day) => {
+                              const total = getTotalTicketsByDay(day.dateStr);
+                              const config = dailyTicketConfig[day.dateStr];
+                              return (
+                                <div
+                                  key={day.dateStr}
+                                  className="flex items-center justify-between text-sm"
+                                >
+                                  <span className="text-white/60">
+                                    {day.label}
+                                  </span>
+                                  <span className="text-white font-medium">
+                                    {total} billet{total > 1 ? "s" : ""}
+                                    {config && config.tickets.length > 0 && (
+                                      <span className="text-xs text-white/40 ml-2">
+                                        (
+                                        {config.tickets
+                                          .map(
+                                            (t) =>
+                                              `${t.name}: ${t.quantity || 0}`,
+                                          )
+                                          .join(", ")}
+                                        )
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            })}
                       </div>
                     </div>
                     <div className="pt-2 border-t border-white/10">
                       <span className="text-xs text-white/40 block">Total</span>
-                      <span className="text-white font-medium">{getTotalAllTickets()} billets</span>
+                      <span className="text-white font-medium">
+                        {getTotalAllTickets()} billets
+                      </span>
                     </div>
                     {ticketType === "multi_day" && (
                       <div className="text-xs text-white/30">
-                        📅 Valable pour toute la durée de l'événement ({eventDays.length} jours)
+                        📅 Valable pour toute la durée de l'événement (
+                        {eventDays.length} jours)
                       </div>
                     )}
                   </div>
@@ -1526,12 +1934,18 @@ const CreateTicketingEventPage = () => {
                         </span>
                       </div>
                       <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs">
-                        <Badge variant="outline" className="border-primary/30 text-primary">
+                        <Badge
+                          variant="outline"
+                          className="border-primary/30 text-primary"
+                        >
                           {promoConfig.discount_type === "fixed"
                             ? `-${promoConfig.discount_value.toLocaleString()} FCFA`
                             : `-${promoConfig.discount_value}%`}
                         </Badge>
-                        <Badge variant="outline" className="border-green-500/30 text-green-400">
+                        <Badge
+                          variant="outline"
+                          className="border-green-500/30 text-green-400"
+                        >
                           Commission: {promoConfig.commission_rate}%
                         </Badge>
                       </div>

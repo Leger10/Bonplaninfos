@@ -193,18 +193,18 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Nom *
+              Nom 🏷️ *
             </Label>
             <Input
               value={st.name}
               onChange={(e) => onChange(st.id, "name", e.target.value)}
-              placeholder="Ex: Stand Premium"
+              placeholder="Ex: Stand Premium 🌟"
               className="font-semibold h-11 bg-gray-800 border-gray-700 text-white"
             />
           </div>
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Type de location *
+              Type de location 🏕️ *
             </Label>
             <Select
               value={st.rental_type || "stand"}
@@ -230,7 +230,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Dimensions
+              Dimensions 📐
             </Label>
             <Input
               value={st.size}
@@ -241,7 +241,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
           </div>
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Quantité *
+              Quantité 🔢 *
             </Label>
             <Input
               type="number"
@@ -255,7 +255,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
           </div>
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Capacité (personnes)
+              Capacité 👥
             </Label>
             <Input
               type="number"
@@ -271,7 +271,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Prix unitaire *
+              Prix 💰 *
             </Label>
             <Input
               type="number"
@@ -283,7 +283,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
           </div>
           <div className="space-y-2">
             <Label className={`font-bold text-base ${colors.text}`}>
-              Devise
+              Devise 💱
             </Label>
             <Select
               value={st.base_currency}
@@ -301,7 +301,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
           </div>
           <div className="space-y-2">
             <Label className="font-bold text-base text-primary-300">
-              Prix en Pièces
+              Prix en Pièces 🪙
             </Label>
             <div className="h-11 flex items-center px-3 rounded-md bg-primary-900/30 text-primary-300 font-bold border border-primary-800">
               <Coins className="w-4 h-4 mr-2" />
@@ -314,7 +314,7 @@ const StandTypeItem = memo(({ st, index, onChange, onRemove, canRemove }) => {
 
         <div className="space-y-2">
           <Label className={`font-bold text-base ${colors.text}`}>
-            Description
+            Description 📝
           </Label>
           <Textarea
             value={st.description}
@@ -361,7 +361,7 @@ const Step1Details = ({
   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
     <div className="space-y-4">
       <Label className="text-lg font-bold flex items-center gap-2 text-gray-200">
-        <ImageIcon className="w-5 h-5 text-primary-400" /> Image de couverture
+        <ImageIcon className="w-5 h-5 text-primary-400" /> Image de couverture 🖼️
       </Label>
       <div className="bg-gray-800/50 p-6 rounded-xl border-2 border-dashed border-gray-700">
         <ImageUpload
@@ -373,18 +373,19 @@ const Step1Details = ({
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label className="text-gray-200">Titre *</Label>
+        <Label className="text-gray-200">Titre 📌 *</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="bg-gray-800 border-gray-700 text-white"
+          placeholder="Mon événement incroyable 🎉"
         />
       </div>
       <div className="space-y-2">
-        <Label className="text-gray-200">Catégorie *</Label>
+        <Label className="text-gray-200">Catégorie 📂 *</Label>
         <Select onValueChange={setCategoryId} value={categoryId}>
           <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-            <SelectValue placeholder="Choisir..." />
+            <SelectValue placeholder="Choisir une catégorie..." />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-700 text-white">
             {categories.map((cat) => (
@@ -397,16 +398,18 @@ const Step1Details = ({
       </div>
     </div>
     <div className="space-y-2">
-      <Label className="text-gray-200">Description</Label>
+      <Label className="text-gray-200">Description 📖</Label>
       <Textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         className="bg-gray-800 border-gray-700 text-white"
+        placeholder="Décrivez votre événement en détail... ✨"
+        rows={4}
       />
     </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
-        <Label className="text-gray-200">Début *</Label>
+        <Label className="text-gray-200">Début 📅 *</Label>
         <Input
           type="datetime-local"
           value={eventDate}
@@ -415,7 +418,7 @@ const Step1Details = ({
         />
       </div>
       <div className="space-y-2">
-        <Label className="text-gray-200">Fin</Label>
+        <Label className="text-gray-200">Fin 📅</Label>
         <Input
           type="datetime-local"
           value={endDate}
@@ -426,27 +429,30 @@ const Step1Details = ({
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="space-y-2">
-        <Label className="text-gray-200">Pays *</Label>
+        <Label className="text-gray-200">Pays 🌍 *</Label>
         <Input
           value={country}
           onChange={(e) => setCountry(e.target.value)}
           className="bg-gray-800 border-gray-700 text-white"
+          placeholder="Sénégal 🇸🇳"
         />
       </div>
       <div className="space-y-2">
-        <Label className="text-gray-200">Ville *</Label>
+        <Label className="text-gray-200">Ville 🏙️ *</Label>
         <Input
           value={city}
           onChange={(e) => setCity(e.target.value)}
           className="bg-gray-800 border-gray-700 text-white"
+          placeholder="Dakar"
         />
       </div>
       <div className="space-y-2">
-        <Label className="text-gray-200">Adresse</Label>
+        <Label className="text-gray-200">Adresse 📍</Label>
         <Input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           className="bg-gray-800 border-gray-700 text-white"
+          placeholder="Adresse complète..."
         />
       </div>
     </div>
@@ -463,7 +469,7 @@ const Step2Stands = ({
     <div className="bg-blue-900/30 p-4 rounded-xl border border-blue-800 mb-6 flex gap-3">
       <Store className="w-6 h-6 text-blue-400 mt-1 shrink-0" />
       <div>
-        <h4 className="font-bold text-blue-300">Configurez vos offres</h4>
+        <h4 className="font-bold text-blue-300">Configurez vos offres 🏪</h4>
         <p className="text-sm text-blue-200">
           Choisissez le type de location et définissez vos tarifs.
         </p>
@@ -486,7 +492,7 @@ const Step2Stands = ({
           >
             <Icon className={`w-5 h-5 mx-auto mb-1 ${hasType ? `text-${type.color}-400` : 'text-gray-600'}`} />
             <p className="text-xs font-medium">{type.label}</p>
-            {hasType && <Badge className="mt-1 text-[8px] bg-green-900 text-green-300">Activé</Badge>}
+            {hasType && <Badge className="mt-1 text-[8px] bg-green-900 text-green-300">✅ Activé</Badge>}
           </div>
         );
       })}
@@ -507,9 +513,9 @@ const Step2Stands = ({
     <Button
       onClick={addStandType}
       variant="outline"
-      className="w-full py-8 border-dashed border-gray-700 text-gray-300"
+      className="w-full py-8 border-dashed border-gray-700 text-gray-300 hover:text-white hover:border-gray-600"
     >
-      <Plus className="w-5 h-5 mr-2" /> Ajouter une offre
+      <Plus className="w-5 h-5 mr-2" /> Ajouter une offre ➕
     </Button>
   </div>
 );
@@ -558,24 +564,24 @@ const Step3Confirmation = ({
         )}
         <div className="flex-1 space-y-4">
           <div>
-            <h3 className="text-2xl font-bold text-white">{title}</h3>
+            <h3 className="text-2xl font-bold text-white">{title || "Sans titre"}</h3>
             <p className="text-gray-300 flex items-center gap-2 mt-1">
-              <MapPin className="w-4 h-4" /> {city}, {country}
+              <MapPin className="w-4 h-4" /> {city || "Ville"}, {country || "Pays"}
             </p>
             <p className="text-gray-300 flex items-center gap-2">
               <Calendar className="w-4 h-4" />{" "}
-              {new Date(eventDate).toLocaleDateString()}
+              {eventDate ? new Date(eventDate).toLocaleDateString() : "Date non définie"}
             </p>
           </div>
           <div className="p-4 bg-gray-900 rounded-lg text-sm text-gray-300">
-            {description || "Aucune description"}
+            {description || "Aucune description 📝"}
           </div>
         </div>
       </div>
 
       {/* Résumé des types */}
       <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700">
-        <h4 className="font-bold text-white mb-3">Offres proposées</h4>
+        <h4 className="font-bold text-white mb-3">Offres proposées 🏷️</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {Object.values(typesSummary).map((type) => {
             const Icon = type.icon;
@@ -605,14 +611,14 @@ const Step3Confirmation = ({
       <div className="mt-6 p-6 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-800 rounded-xl flex justify-between items-center">
         <div>
           <p className="font-bold text-green-300 text-lg">
-            Revenu Potentiel Max
+            Revenu Potentiel Max 💰
           </p>
           <p className="text-sm text-green-200">
             Si toutes les places sont réservées
           </p>
         </div>
         <p className="text-3xl font-extrabold text-green-300">
-          {totalPotentialRevenuePi} π
+          {totalPotentialRevenuePi} π 🪙
         </p>
       </div>
 
@@ -626,34 +632,34 @@ const Step3Confirmation = ({
       >
         <CardContent className="p-6">
           <h3 className="font-bold text-lg mb-2 flex items-center gap-2 text-white">
-            <FileText className="w-5 h-5" /> Contrat Organisateur
+            <FileText className="w-5 h-5" /> Contrat Organisateur 📄
           </h3>
 
           {termsAccepted ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-green-400 font-medium p-3 bg-green-900/30 rounded-lg border border-green-800">
                 <CheckCircle2 className="w-5 h-5" />
-                Contrat lu et approuvé
+                ✅ Contrat lu et approuvé
               </div>
               <Button
                 variant="outline"
                 onClick={() => setShowContractModal(true)}
                 className="w-full text-xs border-gray-700 text-gray-400 hover:text-white"
               >
-                Relire le contrat
+                Relire le contrat 📖
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-gray-400">
-                Pour publier cet événement, vous devez lire intégralement et
+                ⚠️ Pour publier cet événement, vous devez lire intégralement et
                 signer le contrat organisateur.
               </p>
               <Button
                 onClick={() => setShowContractModal(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20"
               >
-                Lire et Signer le Contrat
+                📋 Lire et Signer le Contrat
               </Button>
             </div>
           )}
@@ -688,13 +694,13 @@ const CreateStandEventPage = () => {
   const [standTypes, setStandTypes] = useState([
     {
       id: uuidv4(),
-      name: "Stand Standard",
+      name: "Stand Standard 🌟",
       rental_type: "stand",
       base_price: 50000,
       base_currency: "XOF",
       quantity_available: 10,
       capacity: 2,
-      description: "Espace 3x3m pour exposer vos produits",
+      description: "Espace 3x3m pour exposer vos produits 🏪",
       size: "3x3m",
     },
   ]);
@@ -733,7 +739,7 @@ const CreateStandEventPage = () => {
       ...prev,
       {
         id: uuidv4(),
-        name: `Offre ${prev.length + 1}`,
+        name: `Offre ${prev.length + 1} 🆕`,
         rental_type: defaultType,
         base_price: 0,
         base_currency: "XOF",
@@ -755,7 +761,7 @@ const CreateStandEventPage = () => {
   const handleContractAccept = async () => {
     if (!user) {
       toast({
-        title: "Erreur",
+        title: "Erreur ❌",
         description: "Vous devez être connecté.",
         variant: "destructive",
       });
@@ -781,7 +787,7 @@ const CreateStandEventPage = () => {
         setTermsAccepted(true);
         setShowContractModal(false);
         toast({
-          title: "Contrat accepté",
+          title: "✅ Contrat accepté",
           description: "Vous pouvez maintenant publier votre événement.",
           className: "bg-green-600 text-white",
         });
@@ -806,7 +812,7 @@ const CreateStandEventPage = () => {
       setTermsAccepted(true);
       setShowContractModal(false);
       toast({
-        title: "Contrat accepté",
+        title: "✅ Contrat accepté",
         description: "Vous pouvez maintenant publier votre événement.",
         className: "bg-green-600 text-white",
       });
@@ -818,7 +824,7 @@ const CreateStandEventPage = () => {
 
     if (!termsAccepted) {
       toast({
-        title: "Contrat requis",
+        title: "⚠️ Contrat requis",
         description: "Veuillez lire et signer le contrat.",
         variant: "destructive",
       });
@@ -826,33 +832,112 @@ const CreateStandEventPage = () => {
       return;
     }
 
+    // ============================================================
+    // VALIDATION - FIX: Vérifier que categoryId n'est pas vide
+    // ============================================================
+    if (!categoryId || categoryId === "") {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez sélectionner une catégorie valide.",
+        variant: "destructive",
+      });
+      setStep(1);
+      return;
+    }
+
+    if (!title || title.trim() === "") {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez saisir un titre.",
+        variant: "destructive",
+      });
+      setStep(1);
+      return;
+    }
+
+    if (!eventDate) {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez sélectionner une date de début.",
+        variant: "destructive",
+      });
+      setStep(1);
+      return;
+    }
+
+    if (!city || city.trim() === "") {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez saisir une ville.",
+        variant: "destructive",
+      });
+      setStep(1);
+      return;
+    }
+
+    if (!country || country.trim() === "") {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez saisir un pays.",
+        variant: "destructive",
+      });
+      setStep(1);
+      return;
+    }
+
+    // Vérifier qu'il y a au moins un stand type valide
+    const validStandTypes = standTypes.filter(st => 
+      st.name && st.name.trim() !== "" && 
+      st.base_price > 0 && 
+      st.quantity_available > 0
+    );
+
+    if (validStandTypes.length === 0) {
+      toast({
+        title: "❌ Erreur de validation",
+        description: "Veuillez configurer au moins une offre valide avec un prix et une quantité.",
+        variant: "destructive",
+      });
+      setStep(2);
+      return;
+    }
+
     setLoading(true);
     try {
       // 1. Créer l'événement
+      const eventDataToInsert = {
+        title: title.trim(),
+        description: description.trim() || null,
+        event_start_at: eventDate,
+        event_end_at: endDate || null,
+        city: city.trim(),
+        country: country.trim(),
+        address: address.trim() || null,
+        organizer_id: user.id,
+        event_type: "stand_rental",
+        category_id: categoryId, // Maintenant garanti non-vide
+        status: "active",
+        cover_image: coverImage || null,
+        created_at: new Date().toISOString(),
+        contract_accepted_at: new Date().toISOString(),
+        contract_version: "v2.0",
+      };
+
+      console.log("📝 Données de l'événement:", eventDataToInsert);
+
       const { data: eventData, error: eventError } = await supabase
         .from("events")
-        .insert({
-          title,
-          description,
-          event_start_at: eventDate,
-          event_end_at: endDate || null,
-          city,
-          country,
-          address,
-          organizer_id: user.id,
-          event_type: "stand_rental",
-          category_id: categoryId,
-          status: "active",
-          cover_image: coverImage,
-          created_at: new Date().toISOString(),
-          contract_accepted_at: new Date().toISOString(),
-          contract_version: "v2.0",
-        })
+        .insert(eventDataToInsert)
         .select()
         .single();
 
-      if (eventError) throw eventError;
+      if (eventError) {
+        console.error("❌ Erreur création événement:", eventError);
+        throw eventError;
+      }
+
       const newEventId = eventData.id;
+      console.log("✅ Événement créé:", newEventId);
 
       // 2. Mettre à jour l'acceptation du contrat
       if (contractAcceptanceId) {
@@ -879,61 +964,90 @@ const CreateStandEventPage = () => {
       }
 
       // 3. Créer stand_events
+      console.log("🔍 Création de stand_events pour event_id:", newEventId);
+
       const { data: standEventData, error: standEventError } = await supabase
         .from("stand_events")
         .insert({
           event_id: newEventId,
-          base_currency: standTypes[0].base_currency,
+          base_currency: standTypes[0]?.base_currency || "XOF",
         })
         .select()
         .single();
 
-      if (standEventError) throw standEventError;
+      if (standEventError) {
+        console.error("❌ Erreur stand_events:", standEventError);
+        throw standEventError;
+      }
+
+      if (!standEventData || !standEventData.id) {
+        throw new Error("standEventData créé sans ID");
+      }
+      console.log("✅ standEventData créé:", standEventData.id);
 
       // 4. Créer les stand_types
-      const standTypesToInsert = standTypes.map((st) => ({
+      console.log("🔍 Création des stand_types...");
+
+      const standTypesToInsert = validStandTypes.map((st) => ({
         stand_event_id: standEventData.id,
         event_id: newEventId,
-        name: st.name,
-        description: st.description,
-        size: st.size,
+        name: st.name.trim(),
+        description: st.description?.trim() || "",
+        size: st.size?.trim() || "Standard",
         rental_type: st.rental_type || "stand",
         capacity: parseInt(st.capacity) || 2,
-        base_price: parseFloat(st.base_price),
-        base_currency: st.base_currency,
-        calculated_price_pi: convertToCoins(st.base_price, st.base_currency),
-        quantity_available: parseInt(st.quantity_available),
+        base_price: parseFloat(st.base_price) || 0,
+        base_currency: st.base_currency || "XOF",
+        calculated_price_pi: convertToCoins(st.base_price, st.base_currency) || 0,
+        quantity_available: parseInt(st.quantity_available) || 0,
         quantity_rented: 0,
         is_active: true,
       }));
 
+      console.log(`📋 ${standTypesToInsert.length} stand_types à insérer`);
+
       const { error: typesError } = await supabase
         .from("stand_types")
         .insert(standTypesToInsert);
-      if (typesError) throw typesError;
+
+      if (typesError) {
+        console.error("❌ Erreur stand_types:", typesError);
+        throw typesError;
+      }
+      console.log("✅ stand_types insérés");
 
       // 5. Créer event_settings
-      await supabase.from("event_settings").insert({
-        event_id: newEventId,
-        stands_enabled: true,
-        total_stands: standTypes.reduce(
-          (acc, st) => acc + parseInt(st.quantity_available),
-          0,
-        ),
-        created_at: new Date().toISOString(),
-      });
+      console.log("🔍 Création des event_settings...");
+
+      const { error: settingsError } = await supabase
+        .from("event_settings")
+        .insert({
+          event_id: newEventId,
+          stands_enabled: true,
+          total_stands: validStandTypes.reduce(
+            (acc, st) => acc + parseInt(st.quantity_available) || 0,
+            0,
+          ),
+          created_at: new Date().toISOString(),
+        });
+
+      if (settingsError) {
+        console.warn("⚠️ Erreur event_settings:", settingsError);
+      } else {
+        console.log("✅ event_settings créés");
+      }
 
       toast({
         title: "🎉 Succès !",
-        description: `Espace ${standTypes.length > 1 ? 'stands et hébergements' : 'stands'} publié !`,
+        description: `✅ Espace ${standTypes.length > 1 ? 'stands et hébergements' : 'stands'} publié !`,
         className: "bg-green-700 text-white",
       });
       navigate(`/event/${newEventId}`);
     } catch (error) {
-      console.error(error);
+      console.error("❌ Erreur:", error);
       toast({
-        title: "Erreur",
-        description: error.message,
+        title: "❌ Erreur",
+        description: error.message || "Une erreur est survenue lors de la publication.",
         variant: "destructive",
       });
     } finally {
@@ -944,7 +1058,7 @@ const CreateStandEventPage = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 pb-20">
       <Helmet>
-        <title>Créer Espace Stands</title>
+        <title>🚀 Créer Espace Stands</title>
       </Helmet>
 
       <OrganizerContractModal
@@ -959,10 +1073,10 @@ const CreateStandEventPage = () => {
         <Card className="bg-gray-800 border-gray-700 shadow-xl">
           <CardHeader className="bg-gray-900/50 border-b border-gray-700 text-center">
             <CardTitle className="text-3xl text-white">
-              Créer un Espace Stands
+              🏪 Créer un Espace Stands
             </CardTitle>
             <CardDescription className="text-gray-400">
-              Louez vos stands et hébergements
+              💼 Louez vos stands et hébergements
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-8 px-6">
@@ -970,9 +1084,11 @@ const CreateStandEventPage = () => {
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 transition-all ${step >= i ? "bg-primary-600 border-primary-600 text-white" : "bg-gray-800 border-gray-600 text-gray-500"}`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 transition-all ${
+                    step >= i ? "bg-primary-600 border-primary-600 text-white" : "bg-gray-800 border-gray-600 text-gray-500"
+                  }`}
                 >
-                  {i}
+                  {step >= i ? "✅" : i}
                 </div>
               ))}
             </div>
@@ -1035,7 +1151,7 @@ const CreateStandEventPage = () => {
                 variant="outline"
                 className="border-gray-600 text-gray-300 hover:text-white hover:bg-gray-800"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" /> Retour
+                <ArrowLeft className="w-4 h-4 mr-2" /> Retour ⬅️
               </Button>
             )}
             {step < 3 ? (
@@ -1043,7 +1159,7 @@ const CreateStandEventPage = () => {
                 onClick={() => setStep((s) => s + 1)}
                 className="bg-primary-600 hover:bg-primary-700 text-white ml-auto"
               >
-                Suivant <ArrowRight className="w-4 h-4 ml-2" />
+                Suivant ➡️ <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button
@@ -1056,7 +1172,7 @@ const CreateStandEventPage = () => {
                 ) : (
                   <CheckCircle2 className="w-5 h-5 mr-2" />
                 )}{" "}
-                Publier
+                🚀 Publier
               </Button>
             )}
           </CardFooter>

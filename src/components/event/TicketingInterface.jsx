@@ -139,7 +139,7 @@ const groupTicketsByDay = (ticketTypes) => {
 const TicketingInterface = ({
   event,
   ticketingData,
-  ticketTypes,
+  ticketTypes: propTicketTypes,
   isUnlocked,
   onRefresh,
   isClosed,
@@ -188,7 +188,10 @@ const TicketingInterface = ({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isInfoRequired, setIsInfoRequired] = useState(false);
   
-  // État pour les tickets réels
+  // ============================================================
+  // 🔥 ÉTATS POUR LES TICKETS CHARGÉS DEPUIS LA BASE
+  // ============================================================
+  const [dbTicketTypes, setDbTicketTypes] = useState([]);
   const [ticketAvailability, setTicketAvailability] = useState({});
   const [ticketsLoaded, setTicketsLoaded] = useState(false);
   const [isLoadingTickets, setIsLoadingTickets] = useState(false);
@@ -198,8 +201,179 @@ const TicketingInterface = ({
   
   // Fonction pour forcer le rechargement
   const forceRefresh = useCallback(() => {
+    console.log('🔄 Force refresh appelé');
     setRefreshKey(prev => prev + 1);
   }, []);
+  
+  // ============================================================
+  // 🔥 CHARGEMENT DES DONNÉES DEPUIS LA BASE - CORRIGÉ
+  // ============================================================
+const loadDataFromDB = useCallback(async () => {
+  if (!event?.id) {
+    console.log("⚠️ Pas d'event ID");
+    return;
+  }
+  
+  setIsLoadingTickets(true);
+  
+  try {
+    console.log("🔍 Chargement des données pour l'événement:", event.id);
+    
+    // 1️⃣ Charger TOUS les types de billets
+    const { data: typesData, error: typesError } = await supabase
+      .from("ticket_types")
+      .select("*")
+      .eq("event_id", event.id);
+    
+    if (typesError) {
+      console.error("❌ Erreur chargement ticket_types:", typesError);
+      setTicketsLoaded(true);
+      setIsLoadingTickets(false);
+      return;
+    }
+    
+    console.log(`📋 ${typesData?.length || 0} types de billets chargés`);
+    setDbTicketTypes(typesData || []);
+    
+    // 2️⃣ Charger TOUS les tickets AVEC PAGINATION
+    let allTicketsData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      console.log(`📄 Chargement page ${page + 1} (${from} à ${to})...`);
+      
+      const { data, error } = await supabase
+        .from("tickets")
+        .select("id, ticket_type_id, status, user_id")
+        .eq("event_id", event.id)
+        .range(from, to);
+      
+      if (error) {
+        console.error("❌ Erreur chargement tickets:", error);
+        setTicketsLoaded(true);
+        setIsLoadingTickets(false);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        allTicketsData = allTicketsData.concat(data);
+        page++;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+    
+    console.log(`✅ ${allTicketsData.length} tickets chargés au total`);
+
+    // 3️⃣ Calculer la disponibilité par type
+    const availability = {};
+    (typesData || []).forEach(tt => {
+      const availableCount = allTicketsData.filter(t => 
+        t.ticket_type_id === tt.id && 
+        t.user_id === null && 
+        t.status === 'active'
+      ).length;
+      
+      const soldCount = allTicketsData.filter(t => 
+        t.ticket_type_id === tt.id && 
+        t.user_id !== null
+      ).length;
+      
+      const totalCount = allTicketsData.filter(t => 
+        t.ticket_type_id === tt.id
+      ).length;
+      
+      availability[tt.id] = {
+        available: availableCount,
+        sold: soldCount,
+        total: totalCount
+      };
+      
+      console.log(`📊 ${tt.name}: disponible=${availableCount}, vendu=${soldCount}, total=${totalCount}`);
+    });
+    
+    setTicketAvailability(availability);
+    setTicketsLoaded(true);
+    
+  } catch (err) {
+    console.error("❌ Erreur chargement données:", err);
+    setTicketsLoaded(true);
+  } finally {
+    setIsLoadingTickets(false);
+  }
+}, [event?.id]);
+
+
+  // Chargement au montage
+  useEffect(() => {
+    if (event?.id) {
+      console.log('🔄 Chargement initial des données');
+      loadDataFromDB();
+    }
+  }, []); // ← Une seule fois au montage
+  
+  // Rechargement quand refreshKey change
+  useEffect(() => {
+    if (event?.id && refreshKey > 0) {
+      console.log(`🔄 Rechargement des données (refreshKey: ${refreshKey})`);
+      loadDataFromDB();
+    }
+  }, [event?.id, refreshKey, loadDataFromDB]);
+
+  // ============================================================
+  // 🔥 UTILISER LES TYPES CHARGÉS DEPUIS LA BASE
+  // ============================================================
+ const effectiveTicketTypes = useMemo(() => {
+  if (dbTicketTypes && dbTicketTypes.length > 0) {
+    console.log('✅ Utilisation des types chargés depuis la base:', dbTicketTypes.length);
+    dbTicketTypes.forEach(t => {
+      console.log(`📋 ${t.name}: id=${t.id}, quantity=${t.quantity_available}`);
+    });
+    return dbTicketTypes;
+  }
+  console.log('⚠️ Utilisation des types props (fallback)');
+  return propTicketTypes || [];
+}, [dbTicketTypes, propTicketTypes]);
+
+  // Regrouper les tickets par jour
+  const groupedTickets = useMemo(() => {
+    const types = effectiveTicketTypes;
+    console.log('📋 groupedTickets - types reçus:', types?.length);
+    return groupTicketsByDay(types);
+  }, [effectiveTicketTypes]);
+
+  // ============================================================
+  // 🔥 FONCTION POUR OBTENIR LA DISPONIBILITÉ
+  // ============================================================
+  const getRealAvailability = useCallback((typeId) => {
+    // Si les tickets sont chargés et que l'ID existe
+    if (ticketsLoaded && ticketAvailability[typeId] !== undefined) {
+      return ticketAvailability[typeId].available || 0;
+    }
+    
+    // Fallback sur quantity_available
+    const type = effectiveTicketTypes?.find(t => t.id === typeId);
+    return type?.quantity_available || 0;
+  }, [ticketAvailability, effectiveTicketTypes, ticketsLoaded]);
+
+  // Fonction pour obtenir la disponibilité totale par jour
+  const getTotalAvailabilityForDay = useCallback((dayTickets) => {
+    let total = 0;
+    dayTickets.forEach(ticket => {
+      total += getRealAvailability(ticket.id);
+    });
+    return total;
+  }, [getRealAvailability]);
+
+  // ============================================================
+  // GESTION DU PANIER
+  // ============================================================
   
   // Vider le panier si l'événement est fermé
   useEffect(() => {
@@ -277,132 +451,10 @@ const TicketingInterface = ({
     }
   }, [user]);
 
-  // Récupérer les tickets réels depuis la base
-  const fetchTickets = useCallback(async () => {
-    if (!event?.id) {
-      console.log("⚠️ Pas d'event ID");
-      return;
-    }
-    
-    setIsLoadingTickets(true);
-    
-    try {
-      console.log("🔍 Chargement des tickets pour l'événement:", event.id);
-      
-      const { data, error } = await supabase
-        .from("tickets")
-        .select("id, ticket_type_id, status, user_id, purchase_price_pi, is_multi_day, ticket_date, valid_dates")
-        .eq("event_id", event.id);
-      
-      if (error) {
-        console.error("❌ Erreur chargement tickets:", error);
-        return;
-      }
-      
-      if (data) {
-        console.log(`✅ ${data.length} tickets chargés depuis la base`);
-        
-        const availability = {};
-        ticketTypes?.forEach(tt => {
-          const availableCount = data.filter(t => 
-            t.ticket_type_id === tt.id && 
-            t.user_id === null && 
-            t.status === 'active'
-          ).length;
-          
-          const soldCount = data.filter(t => 
-            t.ticket_type_id === tt.id && 
-            t.user_id !== null
-          ).length;
-          
-          availability[tt.id] = {
-            available: availableCount,
-            sold: soldCount,
-            total: availableCount + soldCount
-          };
-          
-          console.log(`📊 ${tt.name}: disponible=${availableCount}, vendu=${soldCount}`);
-        });
-        
-        setTicketAvailability(availability);
-        setTicketsLoaded(true);
-      } else {
-        console.log("⚠️ Aucun ticket trouvé pour l'événement");
-        setTicketAvailability({});
-        setTicketsLoaded(true);
-      }
-    } catch (err) {
-      console.error("❌ Erreur chargement tickets:", err);
-      setTicketAvailability({});
-      setTicketsLoaded(true);
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  }, [event?.id, ticketTypes]);
-
-  // Chargement initial + refresh
-  useEffect(() => {
-    fetchTickets();
-  }, [event?.id, refreshKey, fetchTickets]);
-
-  // Écouter les changements de tickets en temps réel
-  useEffect(() => {
-    if (!event?.id) return;
-
-    console.log("🔄 Configuration du Realtime pour les tickets...");
-
-    const subscription = supabase
-      .channel('tickets-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `event_id=eq.${event.id}`,
-        },
-        (payload) => {
-          console.log("📡 Changement détecté dans les tickets:", payload);
-          fetchTickets();
-        }
-      )
-      .subscribe((status) => {
-        console.log("📡 Statut subscription Realtime:", status);
-      });
-
-    return () => {
-      console.log("🔌 Nettoyage subscription Realtime");
-      supabase.removeChannel(subscription);
-    };
-  }, [event?.id, fetchTickets]);
-
   const isPresale = useMemo(() => {
     if (!event || !event.event_start_at) return false;
     return new Date() < new Date(event.event_start_at);
   }, [event]);
-
-  // Regrouper les tickets par jour
-  const groupedTickets = useMemo(() => {
-    return groupTicketsByDay(ticketTypes);
-  }, [ticketTypes]);
-
-  // Fonction pour obtenir la disponibilité réelle
-  const getRealAvailability = useCallback((typeId) => {
-    if (ticketsLoaded && ticketAvailability[typeId] !== undefined) {
-      return ticketAvailability[typeId].available || 0;
-    }
-    const type = ticketTypes?.find(t => t.id === typeId);
-    return type?.quantity_available || 0;
-  }, [ticketAvailability, ticketTypes, ticketsLoaded]);
-
-  // Fonction pour obtenir la disponibilité totale par jour
-  const getTotalAvailabilityForDay = useCallback((dayTickets) => {
-    let total = 0;
-    dayTickets.forEach(ticket => {
-      total += getRealAvailability(ticket.id);
-    });
-    return total;
-  }, [getRealAvailability]);
 
   // Gestion des quantités
   const handleQuantityChange = (typeId, delta) => {
@@ -454,7 +506,7 @@ const TicketingInterface = ({
     }
     const maxToAdd = Math.min(quantity, available - current);
     if (maxToAdd <= 0) {
-      const type = ticketTypes?.find((t) => t.id === typeId);
+      const type = effectiveTicketTypes?.find((t) => t.id === typeId);
       toast({
         title: "Quantite non disponible",
         description: `Seulement ${available} places disponibles pour ${type?.name || 'ce billet'}`,
@@ -469,7 +521,7 @@ const TicketingInterface = ({
   };
 
   const removeFromCart = (typeId) => {
-    const type = ticketTypes?.find((t) => t.id === typeId);
+    const type = effectiveTicketTypes?.find((t) => t.id === typeId);
     setCart((prev) => {
       const newCart = { ...prev };
       delete newCart[typeId];
@@ -500,10 +552,10 @@ const TicketingInterface = ({
   };
 
   const cartItems = useMemo(() => {
-    if (!ticketTypes) return [];
+    if (!effectiveTicketTypes) return [];
     return Object.entries(cart)
       .map(([id, qty]) => {
-        const type = ticketTypes.find((t) => t.id === id);
+        const type = effectiveTicketTypes.find((t) => t.id === id);
         if (!type) return null;
         const unitPrice = getActivePrice(type);
         const total = unitPrice * qty;
@@ -518,7 +570,7 @@ const TicketingInterface = ({
         };
       })
       .filter(Boolean);
-  }, [cart, ticketTypes, isPresale]);
+  }, [cart, effectiveTicketTypes, isPresale]);
 
   const subtotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.total, 0);
@@ -643,7 +695,10 @@ const TicketingInterface = ({
     return true;
   };
 
-  // ✅ IMPLÉMENTATION: processTicketPayment
+  // ============================================================
+  // PAIEMENTS
+  // ============================================================
+
   const processTicketPayment = async () => {
     if (isTicketPaymentProcessing) return;
     setIsTicketPaymentProcessing(true);
@@ -710,7 +765,7 @@ const TicketingInterface = ({
         event_country: country,
         event_address: address,
         userId: userId,
-        ticketTypes: ticketTypes.map(t => ({
+        ticketTypes: effectiveTicketTypes.map(t => ({
           id: t.id,
           name: t.name,
           price: t.price,
@@ -805,7 +860,6 @@ const TicketingInterface = ({
     }
   };
 
-  // ✅ IMPLÉMENTATION: handleTicketPaymentWithoutAccount
   const handleTicketPaymentWithoutAccount = async () => {
     if (isTicketPaymentProcessing) {
       toast({
@@ -847,12 +901,11 @@ const TicketingInterface = ({
     
     setTimeout(async () => {
       console.log("🔄 Mise à jour après paiement MoneyFusion...");
-      await fetchTickets();
+      await loadDataFromDB();
       forceRefresh();
     }, 3000);
   };
 
-  // ✅ IMPLÉMENTATION: handlePaymentInfoSubmit
   const handlePaymentInfoSubmit = async () => {
     if (!attendeeName.trim()) {
       toast({
@@ -898,178 +951,172 @@ const TicketingInterface = ({
     }, 300);
   };
 
- // ✅ IMPLÉMENTATION: handlePurchase (paiement avec compte)
-// ✅ IMPLÉMENTATION: handlePurchase (paiement avec compte) - VERSION CORRIGÉE
-const handlePurchase = async () => {
-  if (isPurchasingRef.current) return;
+  const handlePurchase = async () => {
+    if (isPurchasingRef.current) return;
 
-  // ✅ Vérification de l'événement
-  if (!event || !event.id) {
-    toast({
-      title: "Erreur",
-      description: "Événement non trouvé. Veuillez rafraîchir la page.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  if (isClosed) {
-    toast({
-      title: "Impossible",
-      description: "Les ventes sont fermees.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  if (!user) {
-    toast({
-      title: "Connexion requise",
-      description: "Veuillez vous connecter pour acheter des billets",
-      variant: "destructive",
-    });
-    setShowCheckoutModal(false);
-    return;
-  }
-
-  if (totalTicketsInCart === 0) {
-    toast({
-      title: "Panier vide",
-      description: "Veuillez ajouter des billets a votre panier",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  if (!hasSufficientBalance) {
-    setShowInsufficientBalanceModal(true);
-    return;
-  }
-
-  const currentName = attendeeName.trim();
-  const userFullName = user?.full_name || user?.user_metadata?.full_name || '';
-  const hasValidName = currentName && currentName !== 'Invité' && currentName.length > 0;
-  
-  if (!hasValidName && !userFullName) {
-    setIsInfoRequired(false);
-    setShowPaymentInfoModal(true);
-    return;
-  }
-
-  const userName = currentName || userFullName || user?.email?.split('@')[0] || 'Participant';
-
-  isPurchasingRef.current = true;
-  setLoading(true);
-
-  try {
-    console.log("🛒 Achat avec compte - Event ID:", event.id);
-    console.log("🛒 Cart:", cart);
-    console.log("🛒 Total:", cartTotal);
-
-    const { data, error } = await supabase.rpc("purchase_tickets_v2", {
-      p_user_id: user.id,
-      p_event_id: event.id,  // ✅ event.id doit être un UUID valide
-      p_cart: cart,
-      p_final_amount: cartTotal,
-      p_promo_code_id: appliedPromoCodeId || null,
-      p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
-      p_payment_method: 'coins',
-      p_transaction_reference: null,
-      p_attendee_name: userName
-    });
-
-    if (error) {
-      console.error("RPC Error:", error);
-      throw new Error(error.message || "Erreur lors de l'achat");
-    }
-    
-    if (!data.success) {
-      throw new Error(data.message || "Erreur lors de l'achat");
+    if (!event || !event.id) {
+      toast({
+        title: "Erreur",
+        description: "Événement non trouvé. Veuillez rafraîchir la page.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // ✅ CORRECTION: Déclarer generatedTickets ici
-    const generatedTickets = data.tickets || [];
+    if (isClosed) {
+      toast({
+        title: "Impossible",
+        description: "Les ventes sont fermees.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour acheter des billets",
+        variant: "destructive",
+      });
+      setShowCheckoutModal(false);
+      return;
+    }
+
+    if (totalTicketsInCart === 0) {
+      toast({
+        title: "Panier vide",
+        description: "Veuillez ajouter des billets a votre panier",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!hasSufficientBalance) {
+      setShowInsufficientBalanceModal(true);
+      return;
+    }
+
+    const currentName = attendeeName.trim();
+    const userFullName = user?.full_name || user?.user_metadata?.full_name || '';
+    const hasValidName = currentName && currentName !== 'Invité' && currentName.length > 0;
     
-    // ✅ Nettoyer les données des tickets
-    const pdfTickets = generatedTickets.map((t) => {
-      // Nettoyer le prix FCFA
-      let cleanPrice = t.price_fcfa || t.price * 10 || 0;
-      if (typeof cleanPrice === 'string') {
-        cleanPrice = cleanPrice.replace(/[^0-9,.]/g, '').replace(',', '.');
+    if (!hasValidName && !userFullName) {
+      setIsInfoRequired(false);
+      setShowPaymentInfoModal(true);
+      return;
+    }
+
+    const userName = currentName || userFullName || user?.email?.split('@')[0] || 'Participant';
+
+    isPurchasingRef.current = true;
+    setLoading(true);
+
+    try {
+      console.log("🛒 Achat avec compte - Event ID:", event.id);
+      console.log("🛒 Cart:", cart);
+      console.log("🛒 Total:", cartTotal);
+
+      const { data, error } = await supabase.rpc("purchase_tickets_v2", {
+        p_user_id: user.id,
+        p_event_id: event.id,
+        p_cart: cart,
+        p_final_amount: cartTotal,
+        p_promo_code_id: appliedPromoCodeId || null,
+        p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
+        p_payment_method: 'coins',
+        p_transaction_reference: null,
+        p_attendee_name: userName
+      });
+
+      if (error) {
+        console.error("RPC Error:", error);
+        throw new Error(error.message || "Erreur lors de l'achat");
       }
-      const priceFcfa = parseFloat(cleanPrice) || 0;
       
-      return {
-        ticket_number: t.qr_code || t.number,
-        type_name: t.type,
-        price: t.price,
-        price_fcfa: priceFcfa,
-        ticket_code_short: t.qr_code?.substring(0, 8),
-        qr_code: t.qr_code,
-      };
-    });
+      if (!data.success) {
+        throw new Error(data.message || "Erreur lors de l'achat");
+      }
 
-    setPurchasedTickets(pdfTickets);
-    setTransactionId(data.transaction_id);
-    setShowCheckoutModal(false);
-    
-    clearCart();
+      const generatedTickets = data.tickets || [];
+      
+      const pdfTickets = generatedTickets.map((t) => {
+        let cleanPrice = t.price_fcfa || t.price * 10 || 0;
+        if (typeof cleanPrice === 'string') {
+          cleanPrice = cleanPrice.replace(/[^0-9,.]/g, '').replace(',', '.');
+        }
+        const priceFcfa = parseFloat(cleanPrice) || 0;
+        
+        return {
+          ticket_number: t.qr_code || t.number,
+          type_name: t.type,
+          price: t.price,
+          price_fcfa: priceFcfa,
+          ticket_code_short: t.qr_code?.substring(0, 8),
+          qr_code: t.qr_code,
+        };
+      });
 
-    setIsPromoApplied(false);
-    setPromoDiscountAmount(0);
-    setPromoCommissionAmount(0);
-    setAppliedPromoCodeId(null);
-    setAppliedInfluencerId(null);
-    setPendingCommissionAmount(0);
-    setPromoCodeInput("");
+      setPurchasedTickets(pdfTickets);
+      setTransactionId(data.transaction_id);
+      setShowCheckoutModal(false);
+      
+      clearCart();
 
-    console.log("🔄 Mise à jour après achat avec compte...");
-    await fetchTickets();
-    forceRefresh();
+      setIsPromoApplied(false);
+      setPromoDiscountAmount(0);
+      setPromoCommissionAmount(0);
+      setAppliedPromoCodeId(null);
+      setAppliedInfluencerId(null);
+      setPendingCommissionAmount(0);
+      setPromoCodeInput("");
 
-    const newBalance = await CoinService.getWalletBalances(user.id);
-    setUserBalance(newBalance.coin_balance);
+      console.log("🔄 Mise à jour après achat avec compte...");
+      await loadDataFromDB();
+      forceRefresh();
 
-    toast({
-      title: "Commande validee ! 🎉",
-      description: (
-        <div className="flex flex-col gap-1">
-          <span>Votre commande a ete effectuee avec succes.</span>
-          {promoDiscountAmount > 0 && (
-            <div className="mt-1 p-2 bg-green-100 rounded-md">
-              <span className="font-medium text-green-700">
-                Reduction appliquee : {promoDiscountAmount.toFixed(2)} pieces (
-                {Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
-              </span>
-            </div>
-          )}
-          <span className="font-medium text-primary mt-1">
-            <Bell className="w-3 h-3 inline mr-1" />
-            Redirection vers vos billets...
-          </span>
-        </div>
-      ),
-      duration: 3000,
-    });
+      const newBalance = await CoinService.getWalletBalances(user.id);
+      setUserBalance(newBalance.coin_balance);
 
-    setTimeout(() => {
-      redirectToMyTickets();
-    }, 2500);
+      toast({
+        title: "Commande validee ! 🎉",
+        description: (
+          <div className="flex flex-col gap-1">
+            <span>Votre commande a ete effectuee avec succes.</span>
+            {promoDiscountAmount > 0 && (
+              <div className="mt-1 p-2 bg-green-100 rounded-md">
+                <span className="font-medium text-green-700">
+                  Reduction appliquee : {promoDiscountAmount.toFixed(2)} pieces (
+                  {Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
+                </span>
+              </div>
+            )}
+            <span className="font-medium text-primary mt-1">
+              <Bell className="w-3 h-3 inline mr-1" />
+              Redirection vers vos billets...
+            </span>
+          </div>
+        ),
+        duration: 3000,
+      });
 
-    if (onRefresh) onRefresh();
-    
-  } catch (error) {
-    console.error("Purchase error:", error);
-    toast({
-      title: "Erreur d'achat",
-      description: error.message || "Une erreur est survenue lors de l'achat",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-    isPurchasingRef.current = false;
-  }
-};
+      setTimeout(() => {
+        redirectToMyTickets();
+      }, 2500);
+
+      if (onRefresh) onRefresh();
+      
+    } catch (error) {
+      console.error("Purchase error:", error);
+      toast({
+        title: "Erreur d'achat",
+        description: error.message || "Une erreur est survenue lors de l'achat",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      isPurchasingRef.current = false;
+    }
+  };
 
   const handleDownloadPDF = async () => {
     if (purchasedTickets && purchasedTickets.length > 0) {
@@ -1141,6 +1188,20 @@ const handlePurchase = async () => {
               Solde: <span className="font-bold">{userBalance.toFixed(2)} pieces</span>
             </span>
           </div>
+          {/* 🔥 BOUTON DE RAFRAÎCHISSEMENT */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              console.log('🔄 Rafraîchissement manuel...');
+              loadDataFromDB();
+              setRefreshKey(prev => prev + 1);
+            }}
+            className="ml-2 bg-yellow-500/20 border-yellow-500 text-yellow-500 hover:bg-yellow-500/30"
+          >
+            <Loader2 className="w-4 h-4 mr-1" />
+            Rafraîchir
+          </Button>
         </div>
       </div>
 
@@ -1185,7 +1246,7 @@ const handlePurchase = async () => {
       )}
 
       {/* Ticket Grid */}
-      {!ticketTypes || ticketTypes.length === 0 ? (
+      {!effectiveTicketTypes || effectiveTicketTypes.length === 0 ? (
         <Alert>
           <AlertTitle>Aucun billet disponible</AlertTitle>
           <AlertDescription>La billetterie est fermee ou les billets sont epuises.</AlertDescription>
@@ -1395,9 +1456,9 @@ const handlePurchase = async () => {
                             <span className="text-xl sm:text-2xl font-bold text-primary block">
                               {cartTotal.toFixed(2)} pièces
                             </span>
-                           <span className="text-xs sm:text-sm text-muted-foreground">
-  {cartTotalFcfa.toLocaleString()} FCFA  
-</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">
+                              {cartTotalFcfa.toLocaleString()} FCFA  
+                            </span>
                           </div>
                         </div>
 
@@ -1423,91 +1484,93 @@ const handlePurchase = async () => {
                           </div>
                         </div>
 
-                       {/* Bannière SANS COMPTE */}
-<div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 border border-blue-200/50 dark:border-blue-800/50">
-  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-    <div className="flex items-start sm:items-center gap-2 w-full sm:w-auto">
-      <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 flex-shrink-0 mt-0.5 sm:mt-0">
-        SANS COMPTE
-      </Badge>
-      <div className="min-w-0 flex-1">
-        <span className="text-[10px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 block sm:inline truncate">
-          Paiement rapide sans inscription
-        </span>
-        <p className="text-[8px] sm:text-[10px] text-muted-foreground hidden sm:block">
-          Aucun compte requis, payez en quelques clics
-        </p>
-      </div>
-    </div>
-    <div className="text-right w-full sm:w-auto flex-shrink-0">
-      <span className="text-sm sm:text-base font-bold text-blue-700 dark:text-blue-300 block">
-        {(cartTotalWithFees).toLocaleString()} FCFA
-      </span>
-      <span className="text-[8px] sm:text-[10px] text-muted-foreground block">
-        frais 4% inclus
-      </span>
-    </div>
-  </div>
-</div>
+                        {/* Bannière SANS COMPTE */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-3 border border-blue-200/50 dark:border-blue-800/50">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                            <div className="flex items-start sm:items-center gap-2 w-full sm:w-auto">
+                              <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 flex-shrink-0 mt-0.5 sm:mt-0">
+                                SANS COMPTE
+                              </Badge>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] sm:text-xs font-medium text-blue-700 dark:text-blue-300 block sm:inline truncate">
+                                  Paiement rapide sans inscription
+                                </span>
+                                <p className="text-[8px] sm:text-[10px] text-muted-foreground hidden sm:block">
+                                  Aucun compte requis, payez en quelques clics
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right w-full sm:w-auto flex-shrink-0">
+                              <span className="text-sm sm:text-base font-bold text-blue-700 dark:text-blue-300 block">
+                                {(cartTotalWithFees).toLocaleString()} FCFA
+                              </span>
+                              <span className="text-[8px] sm:text-[10px] text-muted-foreground block">
+                                frais 4% inclus
+                              </span>
+                            </div>
+                          </div>
+                        </div>
 
-{isPromoApplied && (
-  <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 border border-green-200/50 animate-in fade-in slide-in-from-top-2 duration-300">
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs text-green-700 dark:text-green-400">
-      <span className="flex items-center gap-1 text-[10px] sm:text-xs">
-        <Tag className="w-3 h-3 flex-shrink-0" />
-        Économie réalisée
-      </span>
-      <span className="font-medium text-[10px] sm:text-xs">
-        {promoDiscountAmount.toFixed(2)} pièces
-        <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-1">
-          ({Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
-        </span>
-      </span>
-    </div>
-    <div className="text-[9px] sm:text-[10px] text-muted-foreground text-right line-through mt-0.5">
-      {(subtotal * 10).toLocaleString()} FCFA sans promo
-    </div>
-  </div>
-)}
-                      <Button
-  size="sm"
-  onClick={handleTicketPaymentWithoutAccount}
-  disabled={isTicketPaymentProcessing || isClosed}
-  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
->
-  {isTicketPaymentProcessing ? (
-    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-  ) : (
-    <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4" />
-  )}
-  Payer {(cartTotalWithFees).toLocaleString()} FCFA 
-</Button>
-                      <Button 
-  onClick={() => { 
-    setShowCartDetails(false); 
-    if (!hasSufficientBalance) {
-      setShowInsufficientBalanceModal(true);
-    } else {
-      setShowCheckoutModal(true);
-    }
-  }} 
-  className={`flex-1 ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
-  size="lg"
-  disabled={isCheckingBalance}
->
-  {isCheckingBalance ? (
-    <><Loader2 className="w-5 h-5 mr-2 animate-spin" /><span>Vérification...</span></>
-  ) : !hasSufficientBalance ? (
-    <><Package className="w-5 h-5 mr-2" /><span>Recharger</span></>
-  ) : (
-    <>
-      <Wallet className="w-5 h-5 mr-2 flex-shrink-0" />
-      <span className="truncate">
-        Payer {cartTotalFcfa.toLocaleString()} FCFA
-      </span>
-    </>
-  )}
-</Button>
+                        {isPromoApplied && (
+                          <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 border border-green-200/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                              <span className="flex items-center gap-1 text-[10px] sm:text-xs">
+                                <Tag className="w-3 h-3 flex-shrink-0" />
+                                Économie réalisée
+                              </span>
+                              <span className="font-medium text-[10px] sm:text-xs">
+                                {promoDiscountAmount.toFixed(2)} pièces
+                                <span className="text-[9px] sm:text-[10px] text-muted-foreground ml-1">
+                                  ({Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
+                                </span>
+                              </span>
+                            </div>
+                            <div className="text-[9px] sm:text-[10px] text-muted-foreground text-right line-through mt-0.5">
+                              {(subtotal * 10).toLocaleString()} FCFA sans promo
+                            </div>
+                          </div>
+                        )}
+
+                        <Button
+                          size="sm"
+                          onClick={handleTicketPaymentWithoutAccount}
+                          disabled={isTicketPaymentProcessing || isClosed}
+                          className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {isTicketPaymentProcessing ? (
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          ) : (
+                            <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4" />
+                          )}
+                          Payer {(cartTotalWithFees).toLocaleString()} FCFA 
+                        </Button>
+
+                        <Button 
+                          onClick={() => { 
+                            setShowCartDetails(false); 
+                            if (!hasSufficientBalance) {
+                              setShowInsufficientBalanceModal(true);
+                            } else {
+                              setShowCheckoutModal(true);
+                            }
+                          }} 
+                          className={`flex-1 ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
+                          size="lg"
+                          disabled={isCheckingBalance}
+                        >
+                          {isCheckingBalance ? (
+                            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /><span>Vérification...</span></>
+                          ) : !hasSufficientBalance ? (
+                            <><Package className="w-5 h-5 mr-2" /><span>Recharger</span></>
+                          ) : (
+                            <>
+                              <Wallet className="w-5 h-5 mr-2 flex-shrink-0" />
+                              <span className="truncate">
+                                Payer {cartTotalFcfa.toLocaleString()} FCFA
+                              </span>
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -1537,21 +1600,21 @@ const handlePurchase = async () => {
                 <Button variant="outline" size="sm" onClick={() => setShowCartDetails(true)} className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm">
                   Voir details
                 </Button>
-          <Button
-  size="sm"
-  onClick={handleTicketPaymentWithoutAccount}
-  disabled={isTicketPaymentProcessing || isClosed}
-  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
->
-  {isTicketPaymentProcessing ? (
-    <Loader2 className="w-3 h-3 mr-1 animate-spin flex-shrink-0" />
-  ) : (
-    <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4 flex-shrink-0" />
-  )}
-  <span className="truncate">
-    {cartTotalWithFees.toLocaleString()} FCFA
-  </span>
-</Button>
+                <Button
+                  size="sm"
+                  onClick={handleTicketPaymentWithoutAccount}
+                  disabled={isTicketPaymentProcessing || isClosed}
+                  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {isTicketPaymentProcessing ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin flex-shrink-0" />
+                  ) : (
+                    <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4 flex-shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {cartTotalWithFees.toLocaleString()} FCFA
+                  </span>
+                </Button>
                 <Button 
                   size="sm" 
                   onClick={() => { 
@@ -1701,9 +1764,9 @@ const handlePurchase = async () => {
                   </div>
                   <div className="text-right ml-2">
                     <span className="text-xl sm:text-2xl font-bold text-primary block">{cartTotal.toFixed(2)} pieces</span>
-                  <span className="text-xs sm:text-sm text-muted-foreground">
-  {cartTotalFcfa.toLocaleString()} FCFA  
-</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">
+                      {cartTotalFcfa.toLocaleString()} FCFA  
+                    </span>
                     {isPromoApplied && <div className="text-xs text-green-600 line-through">(au lieu de {(subtotal * 10).toLocaleString()} FCFA)</div>}
                   </div>
                 </div>
@@ -1729,23 +1792,23 @@ const handlePurchase = async () => {
                     Continuer mes achats
                   </Button>
                 </div>
-               <Button 
-  onClick={hasSufficientBalance ? handlePurchase : () => setShowInsufficientBalanceModal(true)} 
-  disabled={loading || cartItems.length === 0 || !hasSufficientBalance} 
-  className={`w-full sm:w-48 ${hasSufficientBalance ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700"}`} 
-  size="lg"
->
-  {loading ? (
-    <><Loader2 className="animate-spin mr-2 w-5 h-5 flex-shrink-0" /><span>Traitement...</span></>
-  ) : hasSufficientBalance ? (
-    <>
-      <Check className="mr-2 w-5 h-5 flex-shrink-0" />
-      <span>Payer {cartTotalFcfa.toLocaleString()} FCFA</span>
-    </>
-  ) : (
-    <><Package className="mr-2 w-5 h-5 flex-shrink-0" /><span>Recharger</span></>
-  )}
-</Button>
+                <Button 
+                  onClick={hasSufficientBalance ? handlePurchase : () => setShowInsufficientBalanceModal(true)} 
+                  disabled={loading || cartItems.length === 0 || !hasSufficientBalance} 
+                  className={`w-full sm:w-48 ${hasSufficientBalance ? "bg-green-600 hover:bg-green-700" : "bg-amber-600 hover:bg-amber-700"}`} 
+                  size="lg"
+                >
+                  {loading ? (
+                    <><Loader2 className="animate-spin mr-2 w-5 h-5 flex-shrink-0" /><span>Traitement...</span></>
+                  ) : hasSufficientBalance ? (
+                    <>
+                      <Check className="mr-2 w-5 h-5 flex-shrink-0" />
+                      <span>Payer {cartTotalFcfa.toLocaleString()} FCFA</span>
+                    </>
+                  ) : (
+                    <><Package className="mr-2 w-5 h-5 flex-shrink-0" /><span>Recharger</span></>
+                  )}
+                </Button>
               </DialogFooter>
             </>
           )}
