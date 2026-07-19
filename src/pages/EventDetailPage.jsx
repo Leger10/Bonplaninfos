@@ -33,6 +33,13 @@ import {
   Trophy,
   User,
   Calendar as CalendarIcon,
+  Edit,
+  Image as ImageIcon,
+  Save,
+  X,
+  Store,
+  Coins,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +58,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import MultilingualSeoHead from "@/components/MultilingualSeoHead";
 import SocialInteractions from "@/components/social/SocialInteractions";
 import RaffleInterface from "@/components/event/RaffleInterface";
@@ -59,13 +83,6 @@ import TicketingInterface from "@/components/event/TicketingInterface";
 import VotingInterface from "@/components/event/VotingInterface";
 import EventCountdown from "@/components/EventCountdown";
 import BookmarkButton from "@/components/common/BookmarkButton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { extractStoragePath, fetchWithRetry } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import CommunityVerification from "@/components/event/CommunityVerification";
@@ -73,7 +90,562 @@ import TicketScannerDialog from "@/components/event/TicketScannerDialog";
 import { PromoCodeGenerator } from "../components/influencer/PromoCodeGenerator.jsx";
 
 // ============================================================
-// 🔥 STATISTIQUES AVEC GESTION DES BILLETS JOURNALIERS ET MULTI-JOURS - CORRIGÉE
+// MODAL D'ÉDITION COMPLET DE L'ÉVÉNEMENT
+// ============================================================
+const EditEventModal = ({ isOpen, onClose, event, onEventUpdated }) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  // Form State
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [coverImage, setCoverImage] = useState(null);
+  const [eventDate, setEventDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [address, setAddress] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Charger les catégories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from("event_categories")
+        .select("*")
+        .eq("is_active", true);
+      setCategories(data || []);
+    };
+    fetchCategories();
+  }, []);
+
+  // Remplir le formulaire avec les données de l'événement
+  useEffect(() => {
+    if (event && isOpen) {
+      setTitle(event.title || "");
+      setDescription(event.description || "");
+      setCoverImage(event.cover_image || null);
+      setEventDate(event.event_start_at || "");
+      setEndDate(event.event_end_at || "");
+      setCity(event.city || "");
+      setCountry(event.country || "");
+      setAddress(event.address || "");
+      setCategoryId(event.category_id || "");
+    }
+  }, [event, isOpen]);
+
+  const handleImageUpload = async (file) => {
+    if (!file || !event) return;
+    
+    setUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${event.id}-${Date.now()}.${fileExt}`;
+      const filePath = `event-covers/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('event-images')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(filePath);
+      
+      const imageUrl = urlData.publicUrl;
+      setCoverImage(imageUrl);
+      
+      toast({
+        title: "✅ Image uploadée",
+        description: "L'image a été téléchargée avec succès.",
+        className: "bg-green-600 text-white",
+      });
+      
+    } catch (error) {
+      console.error("❌ Erreur upload:", error);
+      toast({
+        title: "❌ Erreur",
+        description: "Impossible de télécharger l'image.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!user || !event) return;
+
+    // Validation
+    if (!title || title.trim() === "") {
+      toast({ title: "❌ Erreur", description: "Veuillez saisir un titre.", variant: "destructive" });
+      return;
+    }
+
+    if (!eventDate) {
+      toast({ title: "❌ Erreur", description: "Veuillez sélectionner une date de début.", variant: "destructive" });
+      return;
+    }
+
+    if (!city || city.trim() === "") {
+      toast({ title: "❌ Erreur", description: "Veuillez saisir une ville.", variant: "destructive" });
+      return;
+    }
+
+    if (!country || country.trim() === "") {
+      toast({ title: "❌ Erreur", description: "Veuillez saisir un pays.", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updateData = {
+        title: title.trim(),
+        description: description.trim() || null,
+        event_start_at: eventDate,
+        event_end_at: endDate || null,
+        city: city.trim(),
+        country: country.trim(),
+        address: address.trim() || null,
+        category_id: categoryId || null,
+        cover_image: coverImage || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: updateError } = await supabase
+        .from("events")
+        .update(updateData)
+        .eq("id", event.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "✅ Événement mis à jour !",
+        description: "Les modifications ont été enregistrées avec succès.",
+        className: "bg-green-600 text-white",
+      });
+
+      if (onEventUpdated) onEventUpdated(updateData);
+      onClose();
+
+    } catch (error) {
+      console.error("❌ Erreur mise à jour:", error);
+      toast({
+        title: "❌ Erreur",
+        description: error.message || "Impossible de mettre à jour l'événement.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-gray-900 border-gray-800 text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-white flex items-center gap-2 text-2xl">
+            <Edit className="w-6 h-6 text-yellow-400" />
+            ✏️ Modifier l'événement
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Modifiez les informations de votre événement.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Image de couverture */}
+          <div className="space-y-2">
+            <Label className="text-gray-200 flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary-400" />
+              Image de couverture
+            </Label>
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              {coverImage && (
+                <div className="relative w-full sm:w-48 h-32 rounded-lg overflow-hidden border border-gray-700">
+                  <img 
+                    src={coverImage} 
+                    alt="Cover" 
+                    className="w-full h-full object-cover"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1 right-1 h-6 w-6 bg-black/60 hover:bg-red-600/80 text-white rounded-full"
+                    onClick={() => setCoverImage(null)}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                  className="bg-gray-800 border-gray-700 text-white file:bg-primary-600 file:text-white file:border-0 file:px-4 file:py-2 file:rounded-md hover:file:bg-primary-700"
+                  disabled={uploadingImage}
+                />
+                {uploadingImage && (
+                  <div className="flex items-center gap-2 mt-2 text-blue-400">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Upload en cours...</span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG, JPG, WEBP • Max 5MB
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Titre et Catégorie */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-gray-200">Titre *</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="Titre de l'événement"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-200">Catégorie</Label>
+              <Select onValueChange={setCategoryId} value={categoryId}>
+                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                  <SelectValue placeholder="Choisir une catégorie..." />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-700 text-white">
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label className="text-gray-200">Description</Label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="bg-gray-800 border-gray-700 text-white min-h-[100px]"
+              placeholder="Décrivez votre événement..."
+            />
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-gray-200">Date de début *</Label>
+              <Input
+                type="datetime-local"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-200">Date de fin</Label>
+              <Input
+                type="datetime-local"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+
+          {/* Lieu */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-gray-200">Pays *</Label>
+              <Input
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="Sénégal"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-200">Ville *</Label>
+              <Input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="Dakar"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-gray-200">Adresse</Label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+                placeholder="Adresse complète..."
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {loading ? "Enregistrement..." : "💾 Enregistrer"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ============================================================
+// DIALOG POUR CHANGER L'IMAGE UNIQUEMENT
+// ============================================================
+// ============================================================
+// DIALOG POUR CHANGER L'IMAGE - AVEC BUCKET 'media'
+// ============================================================
+const ChangeCoverImageDialog = ({ isOpen, onClose, event, onImageUpdated }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileSelect = (file) => {
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !event) return;
+    
+    setUploading(true);
+    try {
+      // 🔥 Utiliser le bucket 'media' qui existe
+      const BUCKET_NAME = 'media';
+      
+      const fileExt = selectedFile.name.split('.').pop();
+      const fileName = `event-${event.id}-${Date.now()}.${fileExt}`;
+      const filePath = `event-covers/${fileName}`;
+      
+      console.log(`📤 Upload vers le bucket "${BUCKET_NAME}"...`);
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: selectedFile.type,
+        });
+      
+      if (uploadError) {
+        console.error("❌ Erreur upload:", uploadError);
+        throw uploadError;
+      }
+      
+      console.log("✅ Upload réussi:", uploadData);
+      
+      // Récupérer l'URL publique
+      const { data: urlData } = supabase.storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(filePath);
+      
+      const imageUrl = urlData.publicUrl;
+      console.log("📸 URL publique:", imageUrl);
+      
+      // Mettre à jour l'événement
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ 
+          cover_image: imageUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', event.id);
+      
+      if (updateError) throw updateError;
+      
+      toast({
+        title: "✅ Image mise à jour !",
+        description: "L'image de couverture a été changée avec succès.",
+        className: "bg-green-600 text-white",
+      });
+      
+      if (onImageUpdated) onImageUpdated(imageUrl);
+      onClose();
+      
+    } catch (error) {
+      console.error("❌ Erreur détaillée:", error);
+      toast({
+        title: "❌ Erreur",
+        description: error.message || "Impossible de changer l'image.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-gray-900 border-gray-800 text-white sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-primary-400" />
+            Changer l'image de couverture
+          </DialogTitle>
+          <DialogDescription className="text-gray-400">
+            Sélectionnez une nouvelle image pour votre événement.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+              dragActive 
+                ? 'border-primary-500 bg-primary-900/20' 
+                : preview 
+                  ? 'border-green-500 bg-green-900/10' 
+                  : 'border-gray-700 hover:border-gray-500'
+            }`}
+            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={handleDrop}
+          >
+            {preview ? (
+              <div className="space-y-4">
+                <img 
+                  src={preview} 
+                  alt="Aperçu" 
+                  className="max-h-48 mx-auto rounded-lg object-contain"
+                />
+                <p className="text-sm text-green-400">
+                  ✅ Image sélectionnée : {selectedFile?.name}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setSelectedFile(null); setPreview(null); }}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" /> Supprimer
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <ImageIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400">
+                  Glissez-déposez une image ici ou cliquez pour sélectionner
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  PNG, JPG, WEBP • Max 5MB
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => document.getElementById('file-input').click()}
+                >
+                  Choisir un fichier
+                </Button>
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {event?.cover_image && !preview && (
+            <div className="bg-gray-800/50 p-3 rounded-lg">
+              <p className="text-sm text-gray-400 mb-2">Image actuelle :</p>
+              <img 
+                src={event.cover_image} 
+                alt="Image actuelle" 
+                className="max-h-32 mx-auto rounded-lg object-contain"
+              />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="border-gray-700 text-gray-300"
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+              className="bg-primary-600 hover:bg-primary-700 text-white"
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {uploading ? "Upload..." : "Changer l'image"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ============================================================
+// STATISTIQUES
+// ============================================================
+
+    // ============================================================
+// STATISTIQUES DE VÉRIFICATION - CORRIGÉES (AVEC PAGINATION)
 // ============================================================
 const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
   const { t } = useTranslation("security");
@@ -95,184 +667,270 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
         setError(null);
         try {
           const eventIdStr = String(eventId);
-
+          
           // ============================================================
-          // 🔥 1. TOUS LES BILLETS CRÉÉS (indépendamment de la vente)
+          // 🔥 RÉCUPÉRER TOUS LES TICKETS AVEC PAGINATION
           // ============================================================
-          const { count: totalTicketsCreated } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr);
-
+          
+          console.log('🔍 Récupération de TOUS les tickets pour l\'événement:', eventIdStr);
+          
+          let allTicketsData = [];
+          let page = 0;
+          const pageSize = 1000;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            
+            console.log(`📄 Chargement page ${page + 1} (${from} à ${to})...`);
+            
+            const { data, error } = await supabase
+              .from('tickets')
+              .select('id, user_id, purchase_price_pi, payment_method, status, ticket_date, is_multi_day, entry_count, ticket_type_id')
+              .eq('event_id', eventIdStr)
+              .range(from, to);
+            
+            if (error) {
+              console.error('❌ Erreur chargement tickets:', error);
+              throw error;
+            }
+            
+            if (data && data.length > 0) {
+              allTicketsData = allTicketsData.concat(data);
+              page++;
+              hasMore = data.length === pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+          
+          console.log(`📊 Total tickets récupérés: ${allTicketsData?.length || 0}`);
+          
           // ============================================================
-          // 🔥 2. BILLETS VENDUS (purchase_price_pi > 0)
+          // 🔥 RÉCUPÉRER LES TYPES DE BILLETS
           // ============================================================
-          const { count: ticketsSold } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .gt("purchase_price_pi", 0);
-
+          
+          const { data: ticketTypes, error: ticketTypesError } = await supabase
+            .from('ticket_types')
+            .select('id, name, quantity_available')
+            .eq('event_id', eventIdStr);
+          
+          if (ticketTypesError) {
+            console.error('❌ Erreur récupération ticket_types:', ticketTypesError);
+            throw ticketTypesError;
+          }
+          
+          console.log(`📋 ${ticketTypes?.length || 0} types de billets chargés`);
+          
+          // Créer un map pour accéder facilement aux types
+          const typeMap = {};
+          ticketTypes?.forEach(tt => {
+            typeMap[tt.id] = tt;
+          });
+          
           // ============================================================
-          // 🔥 3. BILLETS NON VENDUS (purchase_price_pi = 0 OU NULL)
+          // 🔥 ANALYSE PAR JOUR
           // ============================================================
-          const { count: ticketsNotSold } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .or('purchase_price_pi.eq.0,purchase_price_pi.is.null');
-
+          
+          const extractDateFromName = (name) => {
+            if (!name) return null;
+            const dateMatch = name.match(/(\d{4}-\d{2}-\d{2})/);
+            return dateMatch ? dateMatch[1] : null;
+          };
+          
+          // Créer un map des dates par ticket_type_id
+          const dateByTypeId = {};
+          ticketTypes?.forEach(tt => {
+            const date = extractDateFromName(tt.name);
+            if (date) {
+              dateByTypeId[tt.id] = date;
+              console.log(`✅ ${tt.name} → ${date}`);
+            }
+          });
+          
           // ============================================================
-          // 🔥 4. BILLETS AVEC PURCHASE_PRICE_PI > 0 PAR MÉTHODE
+          // 🔥 RÉPARTITION PAR JOUR - TOUS LES TICKETS
           // ============================================================
-          const { count: coinsTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("payment_method", "coins")
-            .gt("purchase_price_pi", 0);
-
-          const { count: moneyTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("payment_method", "moneyfusion_ticket");
-
-          // ============================================================
-          // 🔥 5. STATUTS (uniquement sur les vendus)
-          // ============================================================
-          const { count: verifiedTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .in("status", ["used", "exited"])
-            .gt("purchase_price_pi", 0);
-
-          const { count: coinsUsed } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("payment_method", "coins")
-            .in("status", ["used", "exited"])
-            .gt("purchase_price_pi", 0);
-
-          const { count: moneyUsed } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("payment_method", "moneyfusion_ticket")
-            .in("status", ["used", "exited"]);
-
-          const { count: exitedTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("status", "exited")
-            .gt("purchase_price_pi", 0);
-
-          const { count: activeTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("status", "active")
-            .gt("purchase_price_pi", 0);
-
-          // ============================================================
-          // 🔥 6. TYPES DE BILLETS (uniquement les vendus)
-          // ============================================================
-          const { count: multiDayTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("is_multi_day", true)
-            .gt("purchase_price_pi", 0);
-
-          const { count: dailyTickets } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .eq("is_multi_day", false)
-            .not("ticket_date", "is", null)
-            .gt("purchase_price_pi", 0);
-
-          const { count: ticketsWithoutDate } = await supabase
-            .from("tickets")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", eventIdStr)
-            .is("ticket_date", null)
-            .eq("is_multi_day", false)
-            .gt("purchase_price_pi", 0);
-
-          // ============================================================
-          // 🔥 7. RÉPARTITION PAR JOUR (uniquement les vendus)
-          // ============================================================
-          const { data: ticketsByDateData } = await supabase
-            .from("tickets")
-            .select("ticket_date, status")
-            .eq("event_id", eventIdStr)
-            .not("ticket_date", "is", null)
-            .gt("purchase_price_pi", 0);
-
+          
           const ticketsByDate = {};
-          if (ticketsByDateData) {
-            ticketsByDateData.forEach(t => {
-              if (t.ticket_date) {
-                const dateKey = new Date(t.ticket_date).toLocaleDateString('fr-FR', {
+          const ticketsByDateStatus = {};
+          
+          allTicketsData?.forEach(t => {
+            // Essayer d'obtenir la date depuis ticket_date ou depuis le type
+            let dateKey = t.ticket_date;
+            
+            if (!dateKey) {
+              const typeInfo = typeMap[t.ticket_type_id];
+              if (typeInfo) {
+                dateKey = extractDateFromName(typeInfo.name);
+              }
+            }
+            
+            if (dateKey) {
+              try {
+                const formattedDate = new Date(dateKey).toLocaleDateString('fr-FR', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long'
                 });
-                if (!ticketsByDate[dateKey]) {
-                  ticketsByDate[dateKey] = { total: 0, active: 0, used: 0, exited: 0 };
+                
+                // Comptage total par jour
+                if (!ticketsByDate[formattedDate]) {
+                  ticketsByDate[formattedDate] = 0;
                 }
-                ticketsByDate[dateKey].total++;
-                if (t.status === 'active') ticketsByDate[dateKey].active++;
-                else if (t.status === 'used') ticketsByDate[dateKey].used++;
-                else if (t.status === 'exited') ticketsByDate[dateKey].exited++;
+                ticketsByDate[formattedDate]++;
+                
+                // Comptage par statut par jour
+                if (!ticketsByDateStatus[formattedDate]) {
+                  ticketsByDateStatus[formattedDate] = { 
+                    total: 0, 
+                    active: 0, 
+                    used: 0, 
+                    exited: 0,
+                    sold: 0,
+                    available: 0
+                  };
+                }
+                ticketsByDateStatus[formattedDate].total++;
+                
+                if (t.status === 'active') {
+                  ticketsByDateStatus[formattedDate].active++;
+                  if (t.user_id === null || t.user_id === '') {
+                    ticketsByDateStatus[formattedDate].available++;
+                  } else {
+                    ticketsByDateStatus[formattedDate].sold++;
+                  }
+                } else if (t.status === 'used' || t.status === 'exited') {
+                  ticketsByDateStatus[formattedDate].used++;
+                  ticketsByDateStatus[formattedDate].sold++;
+                }
+              } catch (e) {
+                console.warn(`⚠️ Erreur formatage date: ${dateKey}`, e);
               }
-            });
-          }
-
-          // ============================================================
-          // 🔥 8. TOTAL VENDU = coins vendus + moneyfusion
-          // ============================================================
-          const totalSold = (coinsTickets || 0) + (moneyTickets || 0);
-          const verified = verifiedTickets || 0;
-          const verificationRate = totalSold > 0 ? (verified / totalSold) * 100 : 0;
-
-          console.log('📊 STATS DÉTAILLÉES:', {
-            totalTicketsCreated: totalTicketsCreated || 0,
-            totalSold: totalSold,
-            ticketsNotSold: ticketsNotSold || 0,
-            coinsTickets: coinsTickets || 0,
-            moneyTickets: moneyTickets || 0,
-            verifiedTickets: verified,
-            activeTickets: activeTickets || 0,
-            multiDayTickets: multiDayTickets || 0,
-            dailyTickets: dailyTickets || 0,
-            ticketsWithoutDate: ticketsWithoutDate || 0,
-            ticketsByDate: ticketsByDate
+            }
           });
-
+          
+          console.log('📊 Répartition par jour:', ticketsByDate);
+          console.log('📊 Détails par jour:', ticketsByDateStatus);
+          
+          // ============================================================
+          // 🔥 STATISTIQUES GLOBALES
+          // ============================================================
+          
+          const totalTicketsCreated = allTicketsData?.length || 0;
+          
+          // Tickets avec user_id (vendus)
+          const ticketsWithUser = allTicketsData?.filter(t => t.user_id !== null && t.user_id !== '') || [];
+          const totalSold = ticketsWithUser.length;
+          
+          // Tickets sans user_id (non vendus)
+          const ticketsWithoutUser = allTicketsData?.filter(t => t.user_id === null || t.user_id === '') || [];
+          const ticketsNotSold = ticketsWithoutUser.length;
+          
+          // Tickets disponibles
+          const availableTickets = ticketsWithoutUser.filter(t => t.status === 'active').length;
+          
+          // Tickets MoneyFusion
+          const moneyTickets = ticketsWithUser.filter(t => t.payment_method === 'moneyfusion_ticket').length;
+          
+          // Tickets Coins
+          const coinsTickets = ticketsWithUser.filter(t => t.payment_method === 'coins').length;
+          
+          // Tickets entrés
+          const currentlyInside = ticketsWithUser.filter(t => t.status === 'used').length;
+          
+          // Tickets sortis
+          const exitedTickets = ticketsWithUser.filter(t => t.status === 'exited').length;
+          
+          // Tickets validés
+          const verifiedTickets = currentlyInside + exitedTickets;
+          
+          // Tickets actifs
+          const activeTickets = ticketsWithUser.filter(t => t.status === 'active').length;
+          
+          // Tickets sans compte
+          const guestTickets = ticketsWithUser.filter(t => t.user_id && t.user_id.toString().startsWith('guest_')).length;
+          
+          // MoneyFusion sans compte
+          const moneyGuestTickets = ticketsWithUser.filter(t => 
+            t.payment_method === 'moneyfusion_ticket' && 
+            t.user_id && t.user_id.toString().startsWith('guest_')
+          ).length;
+          
+          const moneyAccountTickets = moneyTickets - moneyGuestTickets;
+          
+          // Total des entrées
+          const totalEntries = ticketsWithUser.filter(t => t.entry_count > 0).length;
+          
+          // Moyenne des entrées
+          const totalEntryCounts = ticketsWithUser.reduce((sum, t) => sum + (t.entry_count || 0), 0);
+          const avgEntriesPerTicket = verifiedTickets > 0 ? (totalEntryCounts / verifiedTickets) : 0;
+          
+          // Multi-jours
+          const multiDayTickets = ticketsWithUser.filter(t => t.is_multi_day === true).length;
+          
+          // Journaliers
+          const dailyTickets = ticketsWithUser.filter(t => t.is_multi_day === false && t.ticket_date !== null).length;
+          
+          // Sans date
+          const ticketsWithoutDate = ticketsWithUser.filter(t => t.is_multi_day === false && t.ticket_date === null).length;
+          
+          // ============================================================
+          // 🔥 CALCUL FINAL
+          // ============================================================
+          
+          const verificationRate = totalSold > 0 ? (verifiedTickets / totalSold) * 100 : 0;
+          
+          // Formater les données par jour pour l'affichage
+          const ticketsByDateDisplay = {};
+          Object.entries(ticketsByDateStatus).forEach(([date, data]) => {
+            ticketsByDateDisplay[date] = {
+              total: data.total || 0,
+              active: data.active || 0,
+              used: data.used || 0,
+              exited: data.exited || 0,
+              sold: data.sold || 0,
+              available: data.available || 0
+            };
+          });
+          
+          console.log('📊 RÉSULTAT FINAL:');
+          console.log(`  - Total créés: ${totalTicketsCreated}`);
+          console.log(`  - Total VENDUS: ${totalSold}`);
+          console.log(`  - Non vendus: ${ticketsNotSold}`);
+          console.log(`  - Disponibles: ${availableTickets}`);
+          console.log(`  - En attente: ${activeTickets}`);
+          console.log(`  - Validés: ${verifiedTickets}`);
+          console.log(`  - Taux présence: ${verificationRate}%`);
+          console.log(`  - Répartition par jour:`, ticketsByDate);
+          
           if (isMountedRef.current) {
             setStats({
-              total_tickets_created: totalTicketsCreated || 0,
+              total_tickets_created: totalTicketsCreated,
               total_sold: totalSold,
-              tickets_not_sold: ticketsNotSold || 0,
-              coins_tickets: coinsTickets || 0,
-              money_tickets: moneyTickets || 0,
-              verified_tickets: verified,
-              coins_used: coinsUsed || 0,
-              money_used: moneyUsed || 0,
-              exited_tickets: exitedTickets || 0,
-              active_tickets: activeTickets || 0,
+              tickets_not_sold: ticketsNotSold,
+              available_tickets: availableTickets,
+              coins_tickets: coinsTickets,
+              money_tickets: moneyTickets,
+              money_guest_tickets: moneyGuestTickets,
+              money_account_tickets: moneyAccountTickets,
+              currently_inside: currentlyInside,
+              exited_tickets: exitedTickets,
+              verified_tickets: verifiedTickets,
+              active_tickets: activeTickets,
+              guest_tickets: guestTickets,
+              total_entries: totalEntries,
+              avg_entries_per_ticket: Math.round(avgEntriesPerTicket * 100) / 100,
               verification_rate: Math.round(verificationRate * 100) / 100,
-              multi_day_tickets: multiDayTickets || 0,
-              daily_tickets: dailyTickets || 0,
-              tickets_without_date: ticketsWithoutDate || 0,
-              tickets_by_date: ticketsByDate || {}
+              multi_day_tickets: multiDayTickets,
+              daily_tickets: dailyTickets,
+              tickets_without_date: ticketsWithoutDate,
+              tickets_by_date: ticketsByDateDisplay,
+              tickets_by_date_total: ticketsByDate
             });
           }
+          
         } catch (err) {
           console.error("❌ Erreur stats:", err);
           if (isMountedRef.current) {
@@ -316,13 +974,14 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
           </div>
         ) : stats ? (
           <div className="space-y-4 py-4">
-            {/* 🔥 Ligne 1 : Stats principales */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-900 p-4 rounded-lg text-center border border-gray-800">
                 <p className="text-xs text-gray-400 uppercase font-bold">Billets vendus</p>
                 <p className="text-2xl font-bold text-white">{stats.total_sold}</p>
                 <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
-                  <span className="text-green-400">🪙 {stats.coins_tickets}</span>
+                  {stats.coins_tickets > 0 && (
+                    <span className="text-green-400">🪙 {stats.coins_tickets}</span>
+                  )}
                   {stats.money_tickets > 0 && (
                     <span className="text-blue-400">💳 {stats.money_tickets}</span>
                   )}
@@ -347,14 +1006,18 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                     ⚠️ {stats.tickets_not_sold} non vendus
                   </div>
                 )}
+                {stats.available_tickets > 0 && (
+                  <div className="text-[8px] text-green-400 mt-0.5">
+                    ✅ {stats.available_tickets} disponibles
+                  </div>
+                )}
               </div>
               <div className="bg-blue-900/20 p-4 rounded-lg text-center border border-blue-800/50">
                 <p className="text-xs text-blue-400 uppercase font-bold">Validés / Entrés</p>
                 <p className="text-2xl font-bold text-blue-400">{stats.verified_tickets}</p>
-                <div className="flex justify-center gap-2 mt-1 text-[10px] flex-wrap">
-                  <span className="text-green-300">🪙 {stats.coins_used}</span>
-                  {stats.money_used > 0 && (
-                    <span className="text-blue-300">💳 {stats.money_used}</span>
+                <div className="text-[10px] text-gray-400 mt-1">
+                  {stats.total_entries > 0 && (
+                    <span>{stats.total_entries} entrées totales</span>
                   )}
                 </div>
                 {stats.exited_tickets > 0 && (
@@ -363,7 +1026,6 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               </div>
             </div>
 
-            {/* 🔥 Ligne 2 : Taux de présence */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-300">Taux de présence</span>
@@ -375,9 +1037,11 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                   style={{ width: `${stats.verification_rate}%` }}
                 ></div>
               </div>
+              <p className="text-[10px] text-gray-500 text-center">
+                {stats.verified_tickets} entrés / {stats.total_sold} vendus
+              </p>
             </div>
 
-            {/* 🔥 Ligne 3 : Détails MoneyFusion */}
             {stats.money_tickets > 0 && (
               <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-800/30">
                 <div className="flex items-center gap-2">
@@ -387,13 +1051,13 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                     {stats.money_tickets}
                   </Badge>
                 </div>
-                <div className="mt-1 text-[10px] text-gray-400">
-                  dont {stats.money_used || 0} entrés
+                <div className="mt-1 text-[10px] text-gray-400 flex gap-3">
+                  <span>Avec compte: {stats.money_account_tickets}</span>
+                  <span>Sans compte: {stats.money_guest_tickets}</span>
                 </div>
               </div>
             )}
 
-            {/* 🔥 Ligne 4 : En attente d'entrée */}
             <div className="bg-orange-900/20 p-3 rounded-lg border border-orange-800/30">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-orange-400" />
@@ -409,37 +1073,18 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
               )}
             </div>
 
-            {/* 🔥 Ligne 5 : Types de billets */}
-            {(stats.multi_day_tickets > 0 || stats.daily_tickets > 0 || stats.tickets_without_date > 0) && (
-              <div className="bg-purple-900/20 p-3 rounded-lg border border-purple-800/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <CalendarIcon className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-medium text-purple-400">Types de billets vendus</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                  {stats.multi_day_tickets > 0 && (
-                    <div className="bg-purple-900/30 p-2 rounded">
-                      <span className="text-purple-300">📅 Multi-jours</span>
-                      <span className="block text-white font-bold">{stats.multi_day_tickets}</span>
-                    </div>
-                  )}
-                  {stats.daily_tickets > 0 && (
-                    <div className="bg-blue-900/30 p-2 rounded">
-                      <span className="text-blue-300">📅 Journaliers</span>
-                      <span className="block text-white font-bold">{stats.daily_tickets}</span>
-                    </div>
-                  )}
-                  {stats.tickets_without_date > 0 && (
-                    <div className="bg-gray-800/30 p-2 rounded">
-                      <span className="text-gray-400">Sans date</span>
-                      <span className="block text-white font-bold">{stats.tickets_without_date}</span>
-                    </div>
-                  )}
+            {stats.guest_tickets > 0 && (
+              <div className="bg-yellow-900/20 p-3 rounded-lg border border-yellow-800/30">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-medium text-yellow-400">Sans compte</span>
+                  <Badge className="ml-auto bg-yellow-600 text-white text-[10px]">
+                    {stats.guest_tickets}
+                  </Badge>
                 </div>
               </div>
             )}
 
-            {/* 🔥 Ligne 6 : Répartition par jour */}
             {daysWithTickets > 0 && (
               <div className="bg-green-900/20 p-3 rounded-lg border border-green-800/30">
                 <div className="flex items-center gap-2 mb-2">
@@ -452,6 +1097,8 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {Object.entries(stats.tickets_by_date || {}).map(([date, data]) => {
                     const total = data.total || 0;
+                    const sold = data.sold || 0;
+                    const available = data.available || 0;
                     const used = (data.used || 0) + (data.exited || 0);
                     const rate = total > 0 ? Math.round((used / total) * 100) : 0;
                     
@@ -460,7 +1107,7 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                         <div className="flex justify-between items-center text-[10px]">
                           <span className="text-gray-300 truncate">{date}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">{total} vendus</span>
+                            <span className="text-gray-400">{total} tickets</span>
                             <span className={`font-medium ${rate >= 80 ? 'text-green-400' : rate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
                               {rate}%
                             </span>
@@ -471,6 +1118,11 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
                             className={`h-full rounded-full transition-all ${rate >= 80 ? 'bg-green-500' : rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
                             style={{ width: `${rate}%` }}
                           />
+                        </div>
+                        <div className="flex justify-between text-[8px] text-gray-500">
+                          <span className="text-green-400">✅ Disponibles: {available}</span>
+                          <span className="text-blue-400">💰 Vendus: {sold}</span>
+                          <span className="text-gray-500">📊 Total: {total}</span>
                         </div>
                       </div>
                     );
@@ -490,8 +1142,9 @@ const VerificationStatsDialog = ({ isOpen, onClose, eventId, organizerId }) => {
 // ============================================================
 // BOUTONS D'ACTION STYLE TIKTOK
 // ============================================================
-const TikTokActionButtons = ({ event, onRefresh, user }) => {
+const TikTokActionButtons = ({ event, onRefresh, user, isOwner, onEditClick }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [likes, setLikes] = useState(event?.likes_count || 0);
   const [comments, setComments] = useState(event?.comments_count || 0);
   const [isLiked, setIsLiked] = useState(false);
@@ -617,6 +1270,21 @@ const TikTokActionButtons = ({ event, onRefresh, user }) => {
           {t("common.share")}
         </span>
       </div>
+      {isOwner && (
+        <div className="flex flex-col items-center gap-1">
+          <Button
+            onClick={onEditClick}
+            variant="ghost"
+            size="icon"
+            className="w-10 h-10 rounded-full bg-yellow-600/40 backdrop-blur-sm hover:bg-yellow-600/60 border border-yellow-500/50 hover:border-yellow-400"
+          >
+            <Edit className="w-5 h-5 text-yellow-300" />
+          </Button>
+          <span className="text-yellow-400 font-bold text-xs drop-shadow-md">
+            Modifier
+          </span>
+        </div>
+      )}
     </div>
   );
 };
@@ -719,6 +1387,8 @@ const EventDetailPage = () => {
   const [togglingSales, setTogglingSales] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showChangeImageDialog, setShowChangeImageDialog] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [standStats, setStandStats] = useState({
     total_rented: 0,
     gross_revenue: 0,
@@ -777,7 +1447,6 @@ const EventDetailPage = () => {
     }
   }, [event?.id]);
 
-  // 🔥 FETCH EVENT DATA
   const fetchEventData = useCallback(async () => {
     if (!id || fetchInProgressRef.current) return;
 
@@ -827,32 +1496,24 @@ const EventDetailPage = () => {
           .eq("event_id", id)
           .maybeSingle();
         specificEventData = data;
-     } else if (fetchedEvent.event_type === "ticketing") {
-  const { data: ticketingDetails } = await supabase
-    .from("ticketing_events")
-    .select("*")
-    .eq("event_id", id)
-    .maybeSingle();
-  specificEventData = ticketingDetails;
-  
-  // 🔥 CORRECTION : Charger TOUS les types de billets, pas seulement les actifs
-  const { data: types } = await supabase
-    .from("ticket_types")
-    .select("*")
-    .eq("event_id", id);
-    // ← Retirer .eq("is_active", true) pour voir tous les types
-  
-  if (isMountedRef.current) {
-    // 🔥 FORCER le chargement des types avec un fallback
-    setTicketTypes(types || []);
-    console.log(`📋 ${types?.length || 0} types de billets chargés pour l'événement ${id}`);
-    if (types) {
-      types.forEach(tt => {
-        console.log(`📋 ${tt.name}: quantity=${tt.quantity_available}, is_active=${tt.is_active}`);
-      });
-    }
-  }
-}
+      } else if (fetchedEvent.event_type === "ticketing") {
+        const { data: ticketingDetails } = await supabase
+          .from("ticketing_events")
+          .select("*")
+          .eq("event_id", id)
+          .maybeSingle();
+        specificEventData = ticketingDetails;
+        
+        const { data: types } = await supabase
+          .from("ticket_types")
+          .select("*")
+          .eq("event_id", id);
+        
+        if (isMountedRef.current) {
+          setTicketTypes(types || []);
+          console.log(`📋 ${types?.length || 0} types de billets chargés`);
+        }
+      }
       if (isMountedRef.current) {
         setEventData(specificEventData);
       }
@@ -874,7 +1535,6 @@ const EventDetailPage = () => {
     }
   }, [id, t]);
 
-  // 🔥 HANDLE DATA REFRESH
   const handleDataRefresh = useCallback(() => {
     if (refreshTimeoutRef.current) {
       clearTimeout(refreshTimeoutRef.current);
@@ -888,21 +1548,18 @@ const EventDetailPage = () => {
     }, 100);
   }, [fetchEventData, forceRefreshUserProfile]);
 
-  // 🔥 UN SEUL CHARGEMENT
   useEffect(() => {
     fetchEventData();
   }, [fetchEventData]);
 
-  // 🔥 CHARGEMENT PROMO
   useEffect(() => {
     if (event) {
       fetchPromoConfig();
     }
   }, [event, fetchPromoConfig]);
 
-  // 🔥 TRACK VIEW
   useEffect(() => {
-   if (!id || !event || !event.id) return;
+    if (!id || !event || !event.id) return;
 
     let trackTimeout = null;
 
@@ -1086,6 +1743,17 @@ const EventDetailPage = () => {
     }
   };
 
+  // Fonctions pour mettre à jour l'événement après modification
+  const handleImageUpdated = (newImageUrl) => {
+    setEvent(prev => ({ ...prev, cover_image: newImageUrl }));
+  };
+
+  const handleEventUpdated = (updatedData) => {
+    setEvent(prev => ({ ...prev, ...updatedData }));
+    // Rafraîchir les données
+    fetchEventData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -1216,6 +1884,8 @@ const EventDetailPage = () => {
                 event={event}
                 onRefresh={handleDataRefresh}
                 user={user}
+                isOwner={isOwner}
+                onEditClick={() => setShowEditModal(true)}
               />
             </div>
 
@@ -1574,6 +2244,25 @@ const EventDetailPage = () => {
                       </Button>
                     </>
                   )}
+
+                  {/* 🔥 BOUTON CHANGER L'IMAGE UNIQUEMENT */}
+                  <Button
+                    onClick={() => setShowChangeImageDialog(true)}
+                    variant="outline"
+                    className="w-full border-purple-600/50 text-purple-400 hover:bg-purple-900/30 hover:border-purple-500"
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    🖼️ Changer l'image
+                  </Button>
+
+                  {/* 🔥 BOUTON MODIFIER COMPLET - OUVRE LE MODAL */}
+                  <Button
+                    onClick={() => setShowEditModal(true)}
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    ✏️ Modifier l'événement
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -1730,6 +2419,21 @@ const EventDetailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* MODAL D'ÉDITION COMPLET */}
+      <EditEventModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        event={event}
+        onEventUpdated={handleEventUpdated}
+      />
+
+      <ChangeCoverImageDialog
+        isOpen={showChangeImageDialog}
+        onClose={() => setShowChangeImageDialog(false)}
+        event={event}
+        onImageUpdated={handleImageUpdated}
+      />
 
       <VerificationStatsDialog
         isOpen={showStatsModal}
