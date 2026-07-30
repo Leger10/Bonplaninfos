@@ -951,172 +951,198 @@ const loadDataFromDB = useCallback(async () => {
     }, 300);
   };
 
-  const handlePurchase = async () => {
-    if (isPurchasingRef.current) return;
+ const handlePurchase = async () => {
+  if (isPurchasingRef.current) return;
 
-    if (!event || !event.id) {
-      toast({
-        title: "Erreur",
-        description: "Événement non trouvé. Veuillez rafraîchir la page.",
-        variant: "destructive",
-      });
-      return;
+  if (!event || !event.id) {
+    toast({
+      title: "Erreur",
+      description: "Événement non trouvé. Veuillez rafraîchir la page.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (isClosed) {
+    toast({
+      title: "Impossible",
+      description: "Les ventes sont fermees.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!user) {
+    toast({
+      title: "Connexion requise",
+      description: "Veuillez vous connecter pour acheter des billets",
+      variant: "destructive",
+    });
+    setShowCheckoutModal(false);
+    return;
+  }
+
+  if (totalTicketsInCart === 0) {
+    toast({
+      title: "Panier vide",
+      description: "Veuillez ajouter des billets a votre panier",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!hasSufficientBalance) {
+    setShowInsufficientBalanceModal(true);
+    return;
+  }
+
+  const currentName = attendeeName.trim();
+  const userFullName = user?.full_name || user?.user_metadata?.full_name || '';
+  const hasValidName = currentName && currentName !== 'Invité' && currentName.length > 0;
+  
+  if (!hasValidName && !userFullName) {
+    setIsInfoRequired(false);
+    setShowPaymentInfoModal(true);
+    return;
+  }
+
+  const userName = currentName || userFullName || user?.email?.split('@')[0] || 'Participant';
+
+  isPurchasingRef.current = true;
+  setLoading(true);
+
+  try {
+    console.log("🛒 Achat avec compte - Event ID:", event.id);
+    console.log("🛒 Cart:", cart);
+    console.log("🛒 Total:", cartTotal);
+
+    const { data, error } = await supabase.rpc("purchase_tickets_v2", {
+      p_user_id: user.id,
+      p_event_id: event.id,
+      p_cart: cart,
+      p_final_amount: cartTotal,
+      p_promo_code_id: appliedPromoCodeId || null,
+      p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
+      p_payment_method: 'coins',
+      p_transaction_reference: null,
+      p_attendee_name: userName
+    });
+
+    if (error) {
+      console.error("RPC Error:", error);
+      throw new Error(error.message || "Erreur lors de l'achat");
     }
-
-    if (isClosed) {
-      toast({
-        title: "Impossible",
-        description: "Les ventes sont fermees.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: "Connexion requise",
-        description: "Veuillez vous connecter pour acheter des billets",
-        variant: "destructive",
-      });
-      setShowCheckoutModal(false);
-      return;
-    }
-
-    if (totalTicketsInCart === 0) {
-      toast({
-        title: "Panier vide",
-        description: "Veuillez ajouter des billets a votre panier",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!hasSufficientBalance) {
-      setShowInsufficientBalanceModal(true);
-      return;
-    }
-
-    const currentName = attendeeName.trim();
-    const userFullName = user?.full_name || user?.user_metadata?.full_name || '';
-    const hasValidName = currentName && currentName !== 'Invité' && currentName.length > 0;
     
-    if (!hasValidName && !userFullName) {
-      setIsInfoRequired(false);
-      setShowPaymentInfoModal(true);
-      return;
+    if (!data.success) {
+      throw new Error(data.message || "Erreur lors de l'achat");
     }
 
-    const userName = currentName || userFullName || user?.email?.split('@')[0] || 'Participant';
-
-    isPurchasingRef.current = true;
-    setLoading(true);
-
-    try {
-      console.log("🛒 Achat avec compte - Event ID:", event.id);
-      console.log("🛒 Cart:", cart);
-      console.log("🛒 Total:", cartTotal);
-
-      const { data, error } = await supabase.rpc("purchase_tickets_v2", {
-        p_user_id: user.id,
-        p_event_id: event.id,
-        p_cart: cart,
-        p_final_amount: cartTotal,
-        p_promo_code_id: appliedPromoCodeId || null,
-        p_commission_amount: pendingCommissionAmount || promoCommissionAmount || 0,
-        p_payment_method: 'coins',
-        p_transaction_reference: null,
-        p_attendee_name: userName
-      });
-
-      if (error) {
-        console.error("RPC Error:", error);
-        throw new Error(error.message || "Erreur lors de l'achat");
+    const generatedTickets = data.tickets || [];
+    
+    // 🔥 Fonction pour générer un code court de 4 caractères
+    const generateShortCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+    
+    // 🔥 Traiter les tickets avec des codes courts
+    const pdfTickets = generatedTickets.map((t) => {
+      let cleanPrice = t.price_fcfa || t.price * 10 || 0;
+      if (typeof cleanPrice === 'string') {
+        cleanPrice = cleanPrice.replace(/[^0-9,.]/g, '').replace(',', '.');
+      }
+      const priceFcfa = parseFloat(cleanPrice) || 0;
+      
+      // 🔥 Utiliser le code court s'il existe, ou en générer un nouveau
+      let shortCode = t.ticket_code_short || t.qr_code || t.number;
+      
+      // Si le code est plus long que 4 caractères, en générer un nouveau
+      if (!shortCode || shortCode.length > 4) {
+        shortCode = generateShortCode();
       }
       
-      if (!data.success) {
-        throw new Error(data.message || "Erreur lors de l'achat");
+      // Si le code fait exactement 4 caractères, le garder
+      // Sinon, en générer un nouveau
+      if (shortCode.length !== 4) {
+        shortCode = generateShortCode();
       }
-
-      const generatedTickets = data.tickets || [];
       
-      const pdfTickets = generatedTickets.map((t) => {
-        let cleanPrice = t.price_fcfa || t.price * 10 || 0;
-        if (typeof cleanPrice === 'string') {
-          cleanPrice = cleanPrice.replace(/[^0-9,.]/g, '').replace(',', '.');
-        }
-        const priceFcfa = parseFloat(cleanPrice) || 0;
-        
-        return {
-          ticket_number: t.qr_code || t.number,
-          type_name: t.type,
-          price: t.price,
-          price_fcfa: priceFcfa,
-          ticket_code_short: t.qr_code?.substring(0, 8),
-          qr_code: t.qr_code,
-        };
-      });
+      return {
+        ticket_number: shortCode, // Utiliser le code court comme numéro de ticket
+        type_name: t.type,
+        price: t.price,
+        price_fcfa: priceFcfa,
+        ticket_code_short: shortCode,
+        qr_code: t.qr_code, // Garder le QR code original pour référence
+        full_code: t.qr_code || t.number, // Garder le code complet pour traçabilité
+      };
+    });
 
-      setPurchasedTickets(pdfTickets);
-      setTransactionId(data.transaction_id);
-      setShowCheckoutModal(false);
-      
-      clearCart();
+    setPurchasedTickets(pdfTickets);
+    setTransactionId(data.transaction_id);
+    setShowCheckoutModal(false);
+    
+    clearCart();
 
-      setIsPromoApplied(false);
-      setPromoDiscountAmount(0);
-      setPromoCommissionAmount(0);
-      setAppliedPromoCodeId(null);
-      setAppliedInfluencerId(null);
-      setPendingCommissionAmount(0);
-      setPromoCodeInput("");
+    setIsPromoApplied(false);
+    setPromoDiscountAmount(0);
+    setPromoCommissionAmount(0);
+    setAppliedPromoCodeId(null);
+    setAppliedInfluencerId(null);
+    setPendingCommissionAmount(0);
+    setPromoCodeInput("");
 
-      console.log("🔄 Mise à jour après achat avec compte...");
-      await loadDataFromDB();
-      forceRefresh();
+    console.log("🔄 Mise à jour après achat avec compte...");
+    await loadDataFromDB();
+    forceRefresh();
 
-      const newBalance = await CoinService.getWalletBalances(user.id);
-      setUserBalance(newBalance.coin_balance);
+    const newBalance = await CoinService.getWalletBalances(user.id);
+    setUserBalance(newBalance.coin_balance);
 
-      toast({
-        title: "Commande validee ! 🎉",
-        description: (
-          <div className="flex flex-col gap-1">
-            <span>Votre commande a ete effectuee avec succes.</span>
-            {promoDiscountAmount > 0 && (
-              <div className="mt-1 p-2 bg-green-100 rounded-md">
-                <span className="font-medium text-green-700">
-                  Reduction appliquee : {promoDiscountAmount.toFixed(2)} pieces (
-                  {Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
-                </span>
-              </div>
-            )}
-            <span className="font-medium text-primary mt-1">
-              <Bell className="w-3 h-3 inline mr-1" />
-              Redirection vers vos billets...
-            </span>
-          </div>
-        ),
-        duration: 3000,
-      });
+    toast({
+      title: "Commande validee ! 🎉",
+      description: (
+        <div className="flex flex-col gap-1">
+          <span>Votre commande a ete effectuee avec succes.</span>
+          {promoDiscountAmount > 0 && (
+            <div className="mt-1 p-2 bg-green-100 rounded-md">
+              <span className="font-medium text-green-700">
+                Reduction appliquee : {promoDiscountAmount.toFixed(2)} pieces (
+                {Math.floor(promoDiscountAmount * 10).toLocaleString()} FCFA)
+              </span>
+            </div>
+          )}
+          <span className="font-medium text-primary mt-1">
+            <Bell className="w-3 h-3 inline mr-1" />
+            Redirection vers vos billets...
+          </span>
+        </div>
+      ),
+      duration: 3000,
+    });
 
-      setTimeout(() => {
-        redirectToMyTickets();
-      }, 2500);
+    setTimeout(() => {
+      redirectToMyTickets();
+    }, 2500);
 
-      if (onRefresh) onRefresh();
-      
-    } catch (error) {
-      console.error("Purchase error:", error);
-      toast({
-        title: "Erreur d'achat",
-        description: error.message || "Une erreur est survenue lors de l'achat",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-      isPurchasingRef.current = false;
-    }
-  };
+    if (onRefresh) onRefresh();
+    
+  } catch (error) {
+    console.error("Purchase error:", error);
+    toast({
+      title: "Erreur d'achat",
+      description: error.message || "Une erreur est survenue lors de l'achat",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+    isPurchasingRef.current = false;
+  }
+};
 
   const handleDownloadPDF = async () => {
     if (purchasedTickets && purchasedTickets.length > 0) {
@@ -1600,21 +1626,40 @@ const loadDataFromDB = useCallback(async () => {
                 <Button variant="outline" size="sm" onClick={() => setShowCartDetails(true)} className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm">
                   Voir details
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={handleTicketPaymentWithoutAccount}
-                  disabled={isTicketPaymentProcessing || isClosed}
-                  className="h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white"
-                >
-                  {isTicketPaymentProcessing ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin flex-shrink-0" />
-                  ) : (
-                    <Smartphone className="w-3 h-3 mr-1 sm:w-4 sm:h-4 flex-shrink-0" />
-                  )}
-                  <span className="truncate">
-                    {cartTotalWithFees.toLocaleString()} FCFA
-                  </span>
-                </Button>
+<Button
+  size="sm"
+  onClick={handleTicketPaymentWithoutAccount}
+  disabled={isTicketPaymentProcessing || isClosed || totalTicketsInCart === 0}
+  className={`
+    h-9 rounded-full flex-1 sm:flex-none 
+    text-xs sm:text-sm 
+    bg-gradient-to-r from-green-600 to-emerald-600 
+    hover:from-green-700 hover:to-emerald-700 
+    text-white shadow-lg hover:shadow-xl 
+    transition-all duration-300
+    ${isTicketPaymentProcessing ? 'opacity-80 cursor-wait' : ''}
+    ${totalTicketsInCart === 0 ? 'opacity-50 cursor-not-allowed' : ''}
+  `}
+>
+  {isTicketPaymentProcessing ? (
+    <div className="flex items-center gap-2">
+      <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
+      <span className="hidden xs:inline">Paiement en cours...</span>
+      <span className="xs:hidden">En cours...</span>
+    </div>
+  ) : (
+    <div className="flex items-center gap-1 sm:gap-2 w-full justify-center">
+      <Smartphone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+      <span className="hidden xs:inline truncate">Payer sans compte</span>
+      <span className="xs:hidden"> Payer sans compte</span>
+      <span className="hidden sm:inline text-green-300">•</span>
+     
+      <span className="hidden lg:inline text-[8px] text-green-300/70">
+        (frais inclus)
+      </span>
+    </div>
+  )}
+</Button>
                 <Button 
                   size="sm" 
                   onClick={() => { 
@@ -1626,7 +1671,7 @@ const loadDataFromDB = useCallback(async () => {
                   }} 
                   className={`h-9 rounded-full flex-1 sm:flex-none text-xs sm:text-sm ${!hasSufficientBalance ? "bg-destructive hover:bg-destructive/90" : "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"}`}
                 >
-                  {!hasSufficientBalance ? "Recharger" : "Avec compte"}
+                  {!hasSufficientBalance ? "Recharger" : "Payer avec compte"}
                 </Button>
               </div>
             </div>

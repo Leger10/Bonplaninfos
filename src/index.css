@@ -395,3 +395,25 @@
     animation: slowPan 50s linear infinite;
   }
 }
+
+/* Dans votre fichier CSS global ou dans le composant */
+@layer utilities {
+  /* Cache sur les très petits écrans */
+  @media (max-width: 400px) {
+    .xs\:inline {
+      display: inline;
+    }
+    .xs\:hidden {
+      display: none;
+    }
+  }
+  /* Affiche sur les écrans > 400px */
+  @media (min-width: 401px) {
+    .xs\:inline {
+      display: inline;
+    }
+    .xs\:hidden {
+      display: none;
+    }
+  }
+}
