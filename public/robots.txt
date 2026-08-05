@@ -1,4 +1,7 @@
 User-agent: *
+Disallow: /rest/v1/
+Disallow: /storage/v1/
+Disallow: /auth/v1/
 Allow: /
 
 Sitemap: https://bonplaninfos.net/sitemap.xml
