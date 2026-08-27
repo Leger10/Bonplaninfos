@@ -66,7 +66,9 @@ exports.handler = async (event) => {
             personal_Info[0].telephone = cleanPhone;
         }
 
-        const apiUrl = process.env.MONEYFUSION_API_URL || 'https://pay.moneyfusion.net/api/payment';
+        // ✅ URL CORRECTE POUR LA REDIRECTION DIRECTE VERS MONEYFUSION
+        // Au lieu d'utiliser l'API qui renvoie une 404, on utilise la redirection directe
+        const baseUrl = 'https://pay.moneyfusion.net/bonplaninfos/b361d6f0433103fe/pay';
 
         let webhookUrl = webhook_url;
         if (!webhookUrl) {
@@ -74,75 +76,35 @@ exports.handler = async (event) => {
             webhookUrl = `${siteUrl}/.netlify/functions/moneyfusion-ticket-webhook`;
         }
 
-        console.log('💰 Création paiement ticket MoneyFusion:', {
+        // ✅ CONSTRUIRE L'URL DE REDIRECTION AVEC PARAMÈTRES
+        const params = new URLSearchParams({
+            amount: totalPrice.toString(),
+            customer_phone: cleanPhone,
+            customer_name: nomclient || 'Client',
+            return_url: return_url || `${process.env.URL || 'https://bonplaninfos.netlify.app'}/profile?tab=tickets&payment=success&order=${personal_Info[0]?.orderId || 'unknown'}`,
+            webhook_url: webhookUrl
+        });
+
+        // Ajouter les métadonnées si supporté par MoneyFusion
+        if (personal_Info && personal_Info[0]) {
+            try {
+                params.append('metadata', JSON.stringify(personal_Info[0]));
+            } catch (e) {
+                console.log('⚠️ Metadata non supporté en paramètre');
+            }
+        }
+
+        const redirectUrl = `${baseUrl}?${params.toString()}`;
+
+        console.log('💰 Création paiement ticket MoneyFusion (redirection directe):', {
             totalPrice,
             numeroSend: cleanPhone,
             nomclient,
             eventId: personal_Info[0]?.eventId,
             amountOriginal: personal_Info[0]?.amountFcfa,
-            isGuest: personal_Info[0]?.isGuest || false,
-            webhookUrl,
-            phoneInPersonalInfo: personal_Info[0]?.phone
+            redirectUrl: redirectUrl.substring(0, 200) + '...',
+            webhookUrl: webhookUrl
         });
-
-        const paymentData = {
-            totalPrice: totalPrice,
-            article: article || [{ ticket_payment: totalPrice }],
-            personal_Info: personal_Info,
-            numeroSend: cleanPhone,
-            nomclient: nomclient || 'Client',
-            return_url: return_url || `${process.env.URL || 'https://bonplaninfos.netlify.app'}/profile?tab=tickets&payment=success&order=${personal_Info[0]?.orderId || 'unknown'}`,
-            webhook_url: webhookUrl
-        };
-
-        console.log('📤 Envoi à MoneyFusion:', {
-            apiUrl,
-            totalPrice: paymentData.totalPrice,
-            numeroSend: paymentData.numeroSend,
-            return_url: paymentData.return_url,
-            webhook_url: paymentData.webhook_url,
-            personal_Info_phone: paymentData.personal_Info[0]?.phone
-        });
-
-        const agent = new https.Agent({
-            rejectUnauthorized: process.env.NODE_ENV === 'production'
-        });
-
-        const response = await axios.post(apiUrl, paymentData, {
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            httpsAgent: agent,
-            timeout: 30000
-        });
-
-        console.log('✅ Réponse MoneyFusion reçue:', {
-            statut: response.data?.statut,
-            token: response.data?.token ? 'Présent' : 'Absent',
-            hasUrl: !!response.data?.url,
-            webhook_sent: !!paymentData.webhook_url
-        });
-
-        const { statut, token, message, url } = response.data;
-
-        if (!statut) {
-            throw new Error(message || 'Erreur lors de la création du paiement sur MoneyFusion');
-        }
-
-        let redirectUrl = url;
-        if (redirectUrl) {
-            if (redirectUrl.includes('www.pay.moneyfusion.net')) {
-                redirectUrl = redirectUrl.replace('www.pay.moneyfusion.net', 'pay.moneyfusion.net');
-            }
-            if (!redirectUrl.startsWith('http')) {
-                redirectUrl = `https://${redirectUrl}`;
-            }
-        } else {
-            throw new Error('Aucune URL de redirection reçue de MoneyFusion');
-        }
-
-        const originalAmount = personal_Info[0]?.amountFcfa || totalPrice;
-        const feesAmount = totalPrice - originalAmount;
 
         return {
             statusCode: 200,
@@ -152,18 +114,12 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({
                 success: true,
-                token: token,
                 redirect_url: redirectUrl,
-                message: message || 'Paiement créé avec succès',
-                fees: feesAmount,
-                amount_original: originalAmount,
+                message: 'Paiement initialisé avec succès',
+                amount_original: personal_Info[0]?.amountFcfa || totalPrice,
                 amount_with_fees: totalPrice,
                 phone_used: cleanPhone,
-                webhook_url: webhookUrl,
-                debug: {
-                    phone_sent: cleanPhone,
-                    phone_in_personal_info: personal_Info[0]?.phone
-                }
+                webhook_url: webhookUrl
             })
         };
 
@@ -186,7 +142,7 @@ exports.handler = async (event) => {
             errorMessage = 'Non autorisé - Vérifiez vos clés API MoneyFusion';
         } else if (error.response?.status === 404) {
             statusCode = 404;
-            errorMessage = 'API MoneyFusion non trouvée - Vérifiez l\'URL';
+            errorMessage = 'Service MoneyFusion non trouvé - Veuillez réessayer';
         } else if (error.response?.status === 500) {
             statusCode = 500;
             errorMessage = 'Erreur serveur MoneyFusion - Veuillez réessayer plus tard';
