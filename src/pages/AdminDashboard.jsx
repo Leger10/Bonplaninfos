@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useData } from "@/contexts/DataContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Settings, BarChart2, Video, Loader2, Briefcase, Wallet, Megaphone, Calendar, Target, Image as ImageIcon, CreditCard, ShieldCheck, Clock, RefreshCw as RefreshCwIcon, UserCheck, History, BookOpen, DollarSign, MapPin, AreaChart, RotateCcw, AlertTriangle, Database, CheckCircle2, BookmarkMinus, AlertCircle } from 'lucide-react';
+import { Users, Settings, BarChart2, Video, Loader2, Briefcase, Wallet, Megaphone, Calendar, Target, Image as ImageIcon, CreditCard, ShieldCheck, Clock, RefreshCw as RefreshCwIcon, UserCheck, History, BookOpen, DollarSign, MapPin, AreaChart, RotateCcw, AlertTriangle, Database, CheckCircle2, BookmarkMinus, AlertCircle, Smartphone } from 'lucide-react';
 import UserManagement from "@/components/admin/UserManagement";
 import ConfigTab from "@/components/admin/ConfigTab";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
@@ -47,6 +47,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ImpersonationBanner from "@/components/layout/ImpersonationBanner";
 import { retrySupabaseRequest } from "@/lib/supabaseHelper";
 import AdminCreditsGlobalTab from "@/components/admin/AdminCreditsGlobalTab";
+import USSDPaymentsTab from "@/components/admin/USSDPaymentsTab";
 
 // Composant AdminStats
 const AdminStats = ({ userProfile, partnerZone }) => {
@@ -485,6 +486,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="config"><Settings className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.config")}</TabsTrigger>
               <TabsTrigger value="zone_reset"><Database className="w-4 h-4 mr-2" />Réinitialisation Zones</TabsTrigger>
               <TabsTrigger value="global-credits"><AreaChart className="w-4 h-4 mr-2" />Crédits Globaux</TabsTrigger>
+              <TabsTrigger value="ussd_payments"><Smartphone className="w-4 h-4 mr-2" />Paiements USSD</TabsTrigger>
             </>
           )}
 
@@ -492,6 +494,7 @@ const AdminDashboard = () => {
             <>
               <TabsTrigger value="salary"><Wallet className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.salary") || "Salaire"}</TabsTrigger>
               <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger>
+              <TabsTrigger value="ussd_payments"><Smartphone className="w-4 h-4 mr-2" />Paiements USSD</TabsTrigger>
               <TabsTrigger value="events"><Calendar className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.events")}</TabsTrigger>
               <TabsTrigger value="locations"><MapPin className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.locations")}</TabsTrigger>
               <TabsTrigger value="promotions"><Target className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.promotions")}</TabsTrigger>
@@ -541,6 +544,7 @@ const AdminDashboard = () => {
             <TabsContent value="config"><ConfigTab /></TabsContent>
             <TabsContent value="zone_reset"><ZoneResetManager /></TabsContent>
             <TabsContent value="global-credits"><AdminCreditsGlobalTab /></TabsContent>
+            <TabsContent value="ussd_payments"><USSDPaymentsTab /></TabsContent>
           </>
         )}
 
@@ -548,6 +552,7 @@ const AdminDashboard = () => {
           <>
             <TabsContent value="salary"><AdminSalaryDashboard userProfile={userProfile} /></TabsContent>
             <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent>
+            <TabsContent value="ussd_payments"><USSDPaymentsTab /></TabsContent>
             <TabsContent value="events"><EventsManagement events={allEvents} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
             <TabsContent value="locations"><LocationManagementTab userProfile={userProfile} /></TabsContent>
             <TabsContent value="promotions"><PromotionsManagement promotions={allPromotions} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>

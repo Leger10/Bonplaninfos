@@ -45,6 +45,7 @@ import { CoinService } from "@/services/CoinService";
 import { usePromoCode } from "@/hooks/usePromoCode";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import USSDPaymentModal, { openLIGDIRelance } from "@/components/payment/USSDPaymentModal";
 
 const FCFA_PER_COIN = 10;
 const MONEYFUSION_FEE_RATE = 0.04;
@@ -186,6 +187,10 @@ const TicketingInterface = ({
   const [showPaymentInfoModal, setShowPaymentInfoModal] = useState(false);
   const [attendeeName, setAttendeeName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showUSSDModal, setShowUSSDModal] = useState(false);
+  const [ussdAmount, setUssdAmount] = useState(0);
+  const [ussdTicketData, setUssdTicketData] = useState(null);
+  const [ussdSuccess, setUssdSuccess] = useState(false);
   const [isInfoRequired, setIsInfoRequired] = useState(false);
   
   // ============================================================
@@ -711,17 +716,6 @@ const loadDataFromDB = useCallback(async () => {
 
       const userId = user?.id || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const orderId = `ticket_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      
-      const returnUrl = `${window.location.origin}/profile?tab=tickets&payment=success&order=${orderId}`;
-      const amountWithFees = cartTotalWithFees;
-      
-      let finalAttendeeName = attendeeName.trim();
-      if (!finalAttendeeName && user) {
-        finalAttendeeName = user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Participant';
-      }
-      if (!finalAttendeeName) {
-        finalAttendeeName = 'Invité';
-      }
 
       const phoneToSend = phoneNumber.trim();
       if (!phoneToSend || phoneToSend.length < 8) {
@@ -735,12 +729,21 @@ const loadDataFromDB = useCallback(async () => {
         return;
       }
 
+      let finalAttendeeName = attendeeName.trim();
+      if (!finalAttendeeName && user) {
+        finalAttendeeName = user?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Participant';
+      }
+      if (!finalAttendeeName) {
+        finalAttendeeName = 'Invité';
+      }
+
       const fullAddress = event?.full_address || event?.address || event?.location || event?.city || 'Lieu non spécifié';
       const location = event?.location || event?.city || 'Lieu non spécifié';
       const city = event?.city || '';
       const country = event?.country || '';
       const address = event?.address || '';
 
+      const amountWithFees = cartTotalWithFees;
       const paymentData = {
         order_id: orderId,
         event_id: event.id,
@@ -774,89 +777,95 @@ const loadDataFromDB = useCallback(async () => {
         }))
       };
 
+      // Sauvegarder les données du paiement pour la création du billet après confirmation
       localStorage.setItem('pending_ticket_payment', JSON.stringify(paymentData));
 
-      const response = await fetch('/.netlify/functions/create-ticket-payment', {
+      // Ouvrir le paiement USSD (code + QR + référence SMS)
+      setUssdSuccess(false);
+      setUssdTicketData({ ...paymentData, userId, orderId, amountWithFees });
+      setUssdAmount(amountWithFees);
+      setShowUSSDModal(true);
+      setIsTicketPaymentProcessing(false);
+    } catch (error) {
+      console.error('❌ Erreur paiement ticket:', error);
+      toast({
+        title: "Erreur de paiement",
+        description: error.message || "Une erreur est survenue lors du paiement.",
+        variant: "destructive",
+        duration: 6000,
+      });
+      setIsTicketPaymentProcessing(false);
+    }
+  };
+
+  const confirmTicketUSSD = async (smsReference, proofDataUrl) => {
+    const ticketData = ussdTicketData;
+    if (!ticketData) {
+      throw new Error("Données de paiement manquantes.");
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/ussd-payment', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          totalPrice: amountWithFees,
-          article: [{ 
-            ticket_payment: cartTotalFcfa,
-            fees: amountWithFees - cartTotalFcfa,
-            event_id: event.id,
-            cart: cartData
-          }],
-          personal_Info: [{
-            userId: userId,
-            orderId: orderId,
-            amountFcfa: cartTotalFcfa,
-            amountWithFees: amountWithFees,
-            eventId: event.id,
-            promoCodeId: appliedPromoCodeId || null,
-            commissionAmount: pendingCommissionAmount || promoCommissionAmount || 0,
-            cart: cartData,
-            discountAmount: promoDiscountAmount || 0,
-            isGuest: !user,
-            userEmail: user?.email || null,
-            attendeeName: finalAttendeeName,
-            event_full_address: fullAddress
-          }],
-          numeroSend: phoneToSend,
-          nomclient: finalAttendeeName,
-          return_url: returnUrl,
-          webhook_url: `${window.location.origin}/.netlify/functions/moneyfusion-ticket-webhook`
+          action: 'submit',
+          type: 'tickets',
+          smsReference,
+          proofDataUrl: proofDataUrl || null,
+          amountFcfa: ticketData.amountWithFees,
+          phone: ticketData.phone,
+          transactionId: ticketData.orderId,
+          userId: ticketData.userId,
+          eventId: ticketData.event_id,
+          cart: ticketData.cart,
+          cartTotalFcfa: ticketData.totalFcfa,
+          attendeeName: ticketData.attendeeName,
+          promoCodeId: ticketData.promoCodeId,
+          commissionAmount: ticketData.commissionAmount,
+          isGuest: ticketData.isGuest,
+          userEmail: ticketData.userEmail
         })
       });
 
       const responseText = await response.text();
-
       let result;
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('❌ Erreur parsing JSON:', parseError);
         throw new Error('La réponse du serveur n\'est pas un JSON valide');
       }
 
-      if (!response.ok) {
+      if (!response.ok || !result.success) {
         throw new Error(result.message || `Erreur HTTP ${response.status}`);
       }
 
-      if (!result.success) {
-        throw new Error(result.message || 'Erreur lors de la création du paiement');
-      }
+      toast({
+        title: "🎉 Paiement enregistré !",
+        description: "Vos billets sont disponibles dans « Mes billets ».",
+        className: "bg-green-600 text-white",
+      });
 
-      if (result.redirect_url) {
-        window.location.href = result.redirect_url;
-      } else {
-        throw new Error('Aucune URL de redirection reçue');
-      }
+      setUssdSuccess(true);
 
+      setTimeout(async () => {
+        await loadDataFromDB();
+        if (forceRefresh) forceRefresh();
+      }, 3000);
+
+      return true;
     } catch (error) {
       console.error('❌ Erreur paiement ticket:', error);
-      
-      let errorMessage = error.message || "Une erreur est survenue lors du paiement.";
-      
-      if (error.message.includes('fetch')) {
-        errorMessage = "Impossible de contacter le serveur de paiement. Vérifiez votre connexion.";
-      } else if (error.message.includes('JSON')) {
-        errorMessage = "Erreur de communication avec le serveur de paiement.";
-      } else if (error.message.includes('404')) {
-        errorMessage = "Service de paiement temporairement indisponible. Veuillez réessayer.";
-      }
-      
       toast({
         title: "Erreur de paiement",
-        description: errorMessage,
+        description: error.message || "Une erreur est survenue.",
         variant: "destructive",
         duration: 6000,
       });
-      
-      setIsTicketPaymentProcessing(false);
+      throw error;
     }
   };
 
@@ -1972,7 +1981,7 @@ const loadDataFromDB = useCallback(async () => {
                 Format: 8 à 12 chiffres (sans espaces ni indicatif)
               </p>
               <p className="text-xs text-yellow-500 mt-1">
-                🔒 Ce numéro sera utilisé pour le paiement via MoneyFusion.
+                🔒 Ce numéro sera associé au paiement USSD (mobile money).
               </p>
               <p className="text-xs text-blue-400 mt-1">
                 💡 {user ? 'Ce numéro sera associé à votre compte.' : 'Si vous créez un compte plus tard, ce numéro vous sera associé.'}
@@ -2010,6 +2019,25 @@ const loadDataFromDB = useCallback(async () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal paiement USSD */}
+      <USSDPaymentModal
+        open={showUSSDModal}
+        onClose={() => {
+          setShowUSSDModal(false);
+          if (ussdSuccess) {
+            setUssdSuccess(false);
+            redirectToMyTickets();
+          } else {
+            openLIGDIRelance(ussdAmount);
+          }
+        }}
+        amountFcfa={ussdAmount}
+        title="Paiement Mobile Money"
+        subtitle="Payez par USSD puis confirmez avec la référence reçue par SMS."
+        submitLabel="J'ai payé mes billets"
+        onConfirm={confirmTicketUSSD}
+      />
     </div>
   );
 };

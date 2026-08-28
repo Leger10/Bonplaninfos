@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import MultilingualSeoHead from "@/components/MultilingualSeoHead";
 import { CouponService } from "@/services/CouponService";
+import USSDPaymentModal, { openLIGDIRelance } from "@/components/payment/USSDPaymentModal";
 
 const CREDIT_PACKS = [
   {
@@ -117,6 +118,11 @@ const CreditPacksPage = () => {
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [totalRecharges, setTotalRecharges] = useState(0);
   const [recentRecharges, setRecentRecharges] = useState([]);
+  const [showUSSDModal, setShowUSSDModal] = useState(false);
+  const [ussdAmount, setUssdAmount] = useState(0);
+  const [ussdCoins, setUssdCoins] = useState(0);
+  const [ussdPack, setUssdPack] = useState(null);
+  const [ussdSuccess, setUssdSuccess] = useState(false);
 
   // Récupération des statistiques
   useEffect(() => {
@@ -290,86 +296,69 @@ const CreditPacksPage = () => {
       return;
     }
 
-    await processPayment(amountFcfa, coinsAmount, packId);
+    await startUSSDFlow(amountFcfa, coinsAmount, packId);
   };
 
-// Dans CreditPacksPage.jsx, remplacez processPayment par :
+const startUSSDFlow = async (amountFcfa, coinsAmount, packId) => {
+    setUssdSuccess(false);
+    setUssdAmount(amountFcfa);
+    setUssdCoins(coinsAmount);
+    setUssdPack(packId);
+    setShowUSSDModal(true);
+  };
 
-const processPayment = async (amountFcfa, coinsAmount, packId) => {
-  setIsProcessing(true);
-  const txnId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const confirmUSSD = async (smsReference, proofDataUrl) => {
+    const txnId = `ussd_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-  try {
-    // Sauvegarder le paiement en attente
-    const { data: paymentData, error: paymentError } = await supabase
-      .from("payments")
-      .insert({
-        user_id: user.id,
-        coins_amount: Math.floor(amountFcfa / 10),
-        amount_fcfa: amountFcfa,
-        status: "pending",
-        payment_method: "moneyfusion",
-        transaction_id: txnId,
-        pack_id: packId,
-        coupon_code: appliedCoupon?.code || null,
-        credits_added: false,
-      })
-      .select()
-      .single();
+    try {
+      const response = await fetch('/.netlify/functions/ussd-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit',
+          type: 'credits',
+          smsReference,
+          proofDataUrl: proofDataUrl || null,
+          amountFcfa: ussdAmount,
+          phone: userPhone,
+          transactionId: txnId,
+          userId: user?.id,
+          coinsAmount: ussdCoins,
+          packId: ussdPack,
+          couponCode: appliedCoupon?.code || null,
+          userEmail: user?.email || null
+        })
+      });
 
-    if (paymentError) {
-      throw new Error(`Erreur lors de l'enregistrement: ${paymentError.message}`);
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error('Le serveur a renvoyé une réponse invalide.');
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || `Erreur HTTP ${response.status}`);
+      }
+
+      toast({
+        title: "✅ Compte crédité !",
+        description: `+${result.coins_added || ussdCoins} crédits · ${result.message || 'Paiement en attente de validation'}`,
+        className: "bg-green-600 text-white",
+      });
+      setUssdSuccess(true);
+      return true;
+    } catch (err) {
+      console.error("❌ Erreur paiement USSD:", err);
+      toast({
+        title: "Erreur",
+        description: err.message,
+        variant: "destructive",
+      });
+      throw err;
     }
-
-    // URL de retour et webhook
-    const returnUrl = `https://bonplaninfos.net/payment-success?transaction_id=${txnId}&amount=${amountFcfa}&status=success`;
-    const webhookUrl = `https://bonplaninfos.net/.netlify/functions/moneyfusion-webhook`;
-
-    // ⚠️ IMPORTANT: Appeler la fonction create-payment, pas l'URL directe MoneyFusion
-    const response = await fetch('/.netlify/functions/create-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        totalPrice: amountFcfa,
-        article: [{ [packId]: amountFcfa }],
-        personal_Info: [{
-          userId: user.id,
-          orderId: txnId,
-          amountFcfa: amountFcfa,
-          paymentId: paymentData.id,
-          couponCode: appliedCoupon?.code || null
-        }],
-        numeroSend: userPhone,
-        nomclient: user.email || 'Client',
-        return_url: returnUrl,
-        webhook_url: webhookUrl
-      })
-    });
-
-    const result = await response.json();
-    console.log('Réponse create-payment:', result);
-
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur création paiement');
-    }
-
-    // Rediriger vers l'URL fournie par MoneyFusion
-    if (result.redirect_url) {
-      window.location.href = result.redirect_url;
-    } else {
-      throw new Error('Aucune URL de redirection reçue');
-    }
-    
-  } catch (err) {
-    console.error("Payment init error:", err);
-    toast({
-      title: "Erreur",
-      description: err.message,
-      variant: "destructive",
-    });
-    setIsProcessing(false);
-  }
-};
+  };
 
   const handlePhoneSubmit = async () => {
     if (!tempPhone || tempPhone.trim() === "") {
@@ -407,7 +396,7 @@ const processPayment = async (amountFcfa, coinsAmount, packId) => {
     const saved = await saveUserPhone(cleanPhone);
     if (saved && pendingPurchase) {
       setShowPhoneModal(false);
-      await processPayment(
+      await startUSSDFlow(
         pendingPurchase.amountFcfa,
         pendingPurchase.coinsAmount,
         pendingPurchase.packId,
@@ -460,7 +449,7 @@ const processPayment = async (amountFcfa, coinsAmount, packId) => {
                 📱 Numéro de téléphone requis
               </h3>
               <p className="text-gray-400">
-                Pour effectuer un paiement via MoneyFusion, nous avons besoin de votre numéro.
+                Pour effectuer un paiement par USSD (mobile money), nous avons besoin de votre numéro.
               </p>
             </div>
 
@@ -480,7 +469,7 @@ const processPayment = async (amountFcfa, coinsAmount, packId) => {
                 Format: 8 à 12 chiffres (sans espaces ni indicatif)
               </p>
               <p className="text-xs text-yellow-500 mt-1">
-                🔒 Ce numéro est sécurisé et ne sera partagé qu'avec MoneyFusion pour le paiement.
+                🔒 Ce numéro est sécurisé et ne sera partagé qu'avec bonplaninfos pour le paiement.
               </p>
             </div>
 
@@ -882,6 +871,23 @@ const processPayment = async (amountFcfa, coinsAmount, packId) => {
             </p>
           </div>
         </motion.div>
+
+        {/* Modal paiement USSD */}
+        <USSDPaymentModal
+          open={showUSSDModal}
+          onClose={() => {
+            setShowUSSDModal(false);
+            if (ussdSuccess) {
+              setUssdSuccess(false);
+            } else {
+              openLIGDIRelance(ussdAmount);
+            }
+          }}
+          amountFcfa={ussdAmount}
+          title="Recharge par USSD"
+          subtitle="Payez par mobile money puis confirmez avec la référence reçue par SMS."
+          onConfirm={confirmUSSD}
+        />
       </div>
     </div>
   );

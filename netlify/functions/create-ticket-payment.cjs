@@ -66,8 +66,7 @@ exports.handler = async (event) => {
             personal_Info[0].telephone = cleanPhone;
         }
 
-        // ✅ NOUVELLE URL MONEYFUSION
-        const apiUrl = process.env.MONEYFUSION_API_URL || 'https://www.pay.moneyfusion.net/Newrestaurant1/98df8c5290593912/pay';
+        const apiUrl = process.env.MONEYFUSION_API_URL || 'https://www.pay.moneyfusion.net/bonplaninfos/b361d6f0433103fe/pay/';
 
         let webhookUrl = webhook_url;
         if (!webhookUrl) {
@@ -83,9 +82,11 @@ exports.handler = async (event) => {
             amountOriginal: personal_Info[0]?.amountFcfa,
             isGuest: personal_Info[0]?.isGuest || false,
             webhookUrl,
-            apiUrl,
             phoneInPersonalInfo: personal_Info[0]?.phone
         });
+
+        // 🔥 MoneyFusion exige des URL SANS schéma (https://) pour return_url / webhook_url
+        const stripScheme = (url) => (url || '').replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
 
         const paymentData = {
             totalPrice: totalPrice,
@@ -93,8 +94,8 @@ exports.handler = async (event) => {
             personal_Info: personal_Info,
             numeroSend: cleanPhone,
             nomclient: nomclient || 'Client',
-            return_url: return_url || `${process.env.URL || 'https://bonplaninfos.netlify.app'}/profile?tab=tickets&payment=success&order=${personal_Info[0]?.orderId || 'unknown'}`,
-            webhook_url: webhookUrl
+            return_url: stripScheme(return_url || `${process.env.URL || 'https://bonplaninfos.netlify.app'}/profile?tab=tickets&payment=success&order=${personal_Info[0]?.orderId || 'unknown'}`),
+            webhook_url: stripScheme(webhookUrl)
         };
 
         console.log('📤 Envoi à MoneyFusion:', {
@@ -110,10 +111,10 @@ exports.handler = async (event) => {
             rejectUnauthorized: process.env.NODE_ENV === 'production'
         });
 
-        // ✅ REQUÊTE POST VERS LA NOUVELLE URL
         const response = await axios.post(apiUrl, paymentData, {
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             httpsAgent: agent,
             timeout: 30000
@@ -122,37 +123,27 @@ exports.handler = async (event) => {
         console.log('✅ Réponse MoneyFusion reçue:', {
             statut: response.data?.statut,
             token: response.data?.token ? 'Présent' : 'Absent',
-            hasUrl: !!response.data?.url,
-            webhook_sent: !!paymentData.webhook_url,
-            fullResponse: response.data
+            hasUrl: !!(response.data?.url || response.data?.redirect_url),
+            webhook_sent: !!paymentData.webhook_url
         });
 
-        // ✅ VÉRIFIER LA RÉPONSE
-        const isSuccess = response.data?.statut === 'success' || 
-                          response.data?.statut === true || 
-                          response.data?.success === true ||
-                          response.data?.status === 'success';
+        const data = response.data || {};
+        const { statut, token, message, url } = data;
+
+        // ✅ Accepter les variations de réponse MoneyFusion
+        const isSuccess = statut === true || statut === 'true' || statut === 'success' || data.success === true;
 
         if (!isSuccess) {
-            throw new Error(response.data?.message || 'Erreur lors de la création du paiement sur MoneyFusion');
+            throw new Error(message || 'Erreur lors de la création du paiement sur MoneyFusion');
         }
 
-        // ✅ RÉCUPÉRER L'URL DE REDIRECTION
-        let redirectUrl = response.data?.url || 
-                         response.data?.redirect_url || 
-                         response.data?.payment_url || 
-                         response.data?.redirectUrl;
-
-        if (!redirectUrl) {
+        let redirectUrl = url || data.redirect_url;
+        if (redirectUrl) {
+            if (!redirectUrl.startsWith('http')) {
+                redirectUrl = `https://${redirectUrl}`;
+            }
+        } else {
             throw new Error('Aucune URL de redirection reçue de MoneyFusion');
-        }
-
-        // Nettoyer l'URL
-        if (redirectUrl.includes('www.pay.moneyfusion.net')) {
-            redirectUrl = redirectUrl.replace('www.pay.moneyfusion.net', 'pay.moneyfusion.net');
-        }
-        if (!redirectUrl.startsWith('http')) {
-            redirectUrl = `https://${redirectUrl}`;
         }
 
         const originalAmount = personal_Info[0]?.amountFcfa || totalPrice;
@@ -166,9 +157,9 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({
                 success: true,
-                token: response.data?.token,
+                token: token,
                 redirect_url: redirectUrl,
-                message: response.data?.message || 'Paiement créé avec succès',
+                message: message || 'Paiement créé avec succès',
                 fees: feesAmount,
                 amount_original: originalAmount,
                 amount_with_fees: totalPrice,
@@ -176,8 +167,7 @@ exports.handler = async (event) => {
                 webhook_url: webhookUrl,
                 debug: {
                     phone_sent: cleanPhone,
-                    phone_in_personal_info: personal_Info[0]?.phone,
-                    raw_response: response.data
+                    phone_in_personal_info: personal_Info[0]?.phone
                 }
             })
         };
@@ -195,10 +185,10 @@ exports.handler = async (event) => {
 
         if (error.response?.status === 400) {
             statusCode = 400;
-            errorMessage = error.response.data?.message || 'Données invalides pour MoneyFusion';
+            errorMessage = error.response.data?.message || 'Données invalides';
         } else if (error.response?.status === 401) {
             statusCode = 401;
-            errorMessage = 'Non autorisé - Vérifiez vos identifiants MoneyFusion';
+            errorMessage = 'Non autorisé - Vérifiez vos clés API MoneyFusion';
         } else if (error.response?.status === 404) {
             statusCode = 404;
             errorMessage = 'API MoneyFusion non trouvée - Vérifiez l\'URL';

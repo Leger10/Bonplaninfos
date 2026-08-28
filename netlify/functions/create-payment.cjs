@@ -32,9 +32,12 @@ exports.handler = async (event) => {
     } = JSON.parse(event.body);
 
     const cleanPhone = numeroSend.replace(/\s/g, '');
-    
-    // ✅ CORRECTION: Utiliser pay.moneyfusion.net (sans www)
-    const apiUrl = process.env.MONEYFUSION_API_URL || 'https://pay.moneyfusion.net/api/payment';
+
+    // ✅ MoneyFusion exige des URL SANS schéma (https://) pour return_url / webhook_url
+    const stripScheme = (url) => (url || '').replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+
+    // ✅ URL de l'API MoneyFusion propre au compte (à obtenir depuis le tableau de bord "API de paiement")
+    const apiUrl = process.env.MONEYFUSION_API_URL || 'https://www.pay.moneyfusion.net/bonplaninfos/b361d6f0433103fe/pay/';
 
     console.log('💰 Appel API MoneyFusion:', { 
       totalPrice, 
@@ -49,8 +52,8 @@ exports.handler = async (event) => {
       personal_Info,
       numeroSend: cleanPhone,
       nomclient,
-      return_url,
-      webhook_url
+      return_url: stripScheme(return_url),
+      webhook_url: stripScheme(webhook_url)
     };
 
     // ✅ Ignorer les erreurs SSL en développement seulement
@@ -59,23 +62,31 @@ exports.handler = async (event) => {
     });
 
     const response = await axios.post(apiUrl, paymentData, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       httpsAgent: agent,
       timeout: 30000
     });
 
     console.log('✅ Réponse MoneyFusion:', response.data);
 
-    const { statut, token, message, url } = response.data;
+    const data = response.data || {};
+    const { statut, token, message, url } = data;
 
-    if (!statut) {
+    // ✅ La réponse peut être un booléen (true/false) ou une chaîne "success"/"true"
+    const isSuccess = statut === true || statut === 'true' || statut === 'success' || data.success === true;
+
+    if (!isSuccess) {
       throw new Error(message || 'Erreur lors de la création du paiement');
     }
 
-    // ✅ Nettoyer l'URL de redirection (enlever www si présent)
-    let redirectUrl = url;
-    if (redirectUrl && redirectUrl.includes('www.pay.moneyfusion.net')) {
-      redirectUrl = redirectUrl.replace('www.pay.moneyfusion.net', 'pay.moneyfusion.net');
+    // ✅ Conserver l'URL telle que renvoyée (le www fait partie du domaine MoneyFusion)
+    let redirectUrl = url || data.redirect_url;
+    if (redirectUrl && !redirectUrl.startsWith('http')) {
+      redirectUrl = `https://${redirectUrl}`;
+    }
+
+    if (!redirectUrl) {
+      throw new Error('Aucune URL de redirection reçue de MoneyFusion');
     }
 
     return {
