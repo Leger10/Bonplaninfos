@@ -12,7 +12,8 @@ import {
   RotateCcw, 
   Wallet, 
   MapPin,
-  Users
+  Users,
+  Smartphone
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { toast } from '@/components/ui/use-toast';
@@ -24,6 +25,7 @@ import WithdrawalHistoryTab from '@/components/admin/WithdrawalHistoryTab';
 import ReversedCreditsTab from '@/components/admin/ReversedCreditsTab';
 import SecretaryEventLocationModerationTab from '@/components/secretary/SecretaryEventLocationModerationTab';
 import SecretaryRefundModal from '@/components/secretary/SecretaryRefundModal';
+import USSDPaymentsTab from '@/components/admin/USSDPaymentsTab';
 
 const SecretaryDashboard = () => {
     const { t } = useTranslation();
@@ -32,6 +34,7 @@ const SecretaryDashboard = () => {
     const [allUsers, setAllUsers] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
     const [refundModalOpen, setRefundModalOpen] = useState(false);
+    const isAppointedBySuperAdmin = userProfile?.user_type === 'secretary' && userProfile?.appointed_by_super_admin;
 
     const fetchData = useCallback(async () => {
         if (!userProfile?.country) return;
@@ -108,7 +111,7 @@ const SecretaryDashboard = () => {
 
             {/* Tabs de navigation */}
             <Tabs defaultValue="moderation" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 p-1 rounded-lg">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 p-1 rounded-lg">
                     <TabsTrigger 
                         value="moderation" 
                         className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white text-gray-300"
@@ -144,6 +147,15 @@ const SecretaryDashboard = () => {
                         <Wallet className="w-4 h-4 mr-2" />
                         {t('secretary_dashboard.tabs.withdrawal_management')}
                     </TabsTrigger>
+                    {isAppointedBySuperAdmin && (
+                        <TabsTrigger 
+                            value="ussd_payments"
+                            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white text-gray-300"
+                        >
+                            <Smartphone className="w-4 h-4 mr-2" />
+                            Paiements USSD
+                        </TabsTrigger>
+                    )}
                 </TabsList>
                 
                 {/* Contenu des onglets */}
@@ -184,6 +196,14 @@ const SecretaryDashboard = () => {
                         <WithdrawalManagement />
                     </div>
                 </TabsContent>
+                
+                {isAppointedBySuperAdmin && (
+                    <TabsContent value="ussd_payments" className="mt-6">
+                        <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 rounded-lg p-6">
+                            <USSDPaymentsTab actorId={userProfile?.id} />
+                        </div>
+                    </TabsContent>
+                )}
             </Tabs>
 
             {/* Modal de remboursement */}

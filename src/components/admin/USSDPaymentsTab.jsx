@@ -39,7 +39,7 @@ import {
 import QRCode from "qrcode.react";
 import { generateTicketPDF } from "@/utils/generateTicketPDF";
 
-const SUPPORT_WHATSAPP = "22654329299"; // LIGDI — Burkina Faso
+const SUPPORT_WHATSAPP = "22654329299"; // Bonplaninfos — Burkina Faso
 
 const STATUS_LABELS = {
   pending: { label: "En attente", cls: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40" },
@@ -47,7 +47,7 @@ const STATUS_LABELS = {
   cancelled: { label: "Rejeté", cls: "bg-red-500/20 text-red-400 border-red-500/40" },
 };
 
-const USSDPaymentsTab = () => {
+const USSDPaymentsTab = ({ actorId }) => {
   const { toast } = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,16 @@ const USSDPaymentsTab = () => {
   const fetchPayments = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Client service-role (bypass RLS) pour que la secrétaire nommée par super
+      // admin puisse lire les paiements USSD, comme le fait la Netlify Function.
+      let srv = supabase;
+      try {
+        const mod = await import("@/lib/ussdStatusClient");
+        if (mod.ussdServiceClient) srv = mod.ussdServiceClient;
+      } catch (_) {
+        /* ignore */
+      }
+      const { data, error } = await srv
         .from("payments")
         .select(`
           id,
@@ -73,6 +82,10 @@ const USSDPaymentsTab = () => {
           payment_method,
           transaction_id,
           pack_id,
+          validated_by,
+          rejected_by,
+          validated_at,
+          rejected_at,
           profiles!payments_user_id_fkey (full_name, email, phone)
         `)
         .eq("payment_method", "ussd")
@@ -82,7 +95,7 @@ const USSDPaymentsTab = () => {
       if (error) throw error;
 
       // Détails USSD (réf. SMS + capture d'écran) stockés dans transactions.metadata
-      const { data: txs, error: txsErr } = await supabase
+      const { data: txs, error: txsErr } = await srv
         .from("transactions")
         .select("id, created_at, user_id, metadata")
         .not("metadata", "is", null)
@@ -111,7 +124,7 @@ const USSDPaymentsTab = () => {
 
       let ticketsMap = {};
       if (ticketOrderIds.length > 0) {
-        const { data: tix, error: tixErr } = await supabase
+        const { data: tix, error: tixErr } = await srv
           .from("tickets")
           .select(
             "id,event_id,attendee_name,qr_code,ticket_code_short,ticket_number,status,purchase_price_pi,total_amount_fcfa,purchased_at,transaction_reference"
@@ -120,7 +133,7 @@ const USSDPaymentsTab = () => {
         if (!tixErr && tix && tix.length) {
           const evIds = [...new Set(tix.map((t) => t.event_id).filter(Boolean))];
           const { data: evts } = evIds.length
-            ? await supabase
+            ? await srv
                 .from("events")
                 .select("id,title,event_start_at,event_end_at,location,full_address,address,city,country,cover_image_url,image_url")
                 .in("id", evIds)
@@ -141,11 +154,35 @@ const USSDPaymentsTab = () => {
         }
       }
 
+      // Résolution des noms des acteurs (qui a validé / rejeté)
+      const actorIds = [
+        ...new Set(
+          (data || [])
+            .map((p) => [p.validated_by, p.rejected_by])
+            .flat()
+            .filter(Boolean)
+        ),
+      ];
+      let actorNames = {};
+      if (actorIds.length) {
+        const { data: actors, error: actorsErr } = await srv
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", actorIds);
+        if (!actorsErr && actors) {
+          actors.forEach((a) => {
+            actorNames[a.id] = a.full_name;
+          });
+        }
+      }
+
       setPayments(
         (data || []).map((p) => ({
           ...p,
           ussd: proofMap[p.id] || { sms_reference: "", proof_url: "" },
           tickets: ticketsMap[p.transaction_id] || [],
+          validatedByName: p.validated_by ? actorNames[p.validated_by] : "",
+          rejectedByName: p.rejected_by ? actorNames[p.rejected_by] : "",
         }))
       );
     } catch (err) {
@@ -170,14 +207,55 @@ const USSDPaymentsTab = () => {
       const res = await fetch("/.netlify/functions/ussd-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ action, paymentId: payment.id }),
+        body: JSON.stringify({ action, paymentId: payment.id, actorId: actorId || null }),
       });
       const text = await res.text();
       let result;
       try {
         result = JSON.parse(text);
       } catch (e) {
-        throw new Error("Réponse invalide du serveur");
+        result = null;
+      }
+      // Fallback si la fonction netlify n'est pas disponible (ex. dev vite :3000)
+      if (!result) {
+        const target = action === "validate" ? "completed" : "cancelled";
+        const patch =
+          target === "completed"
+            ? {
+                status: target,
+                processed_at: new Date().toISOString(),
+                validated_by: actorId || null,
+                validated_at: new Date().toISOString(),
+                rejected_by: null,
+                rejected_at: null,
+              }
+            : {
+                status: target,
+                processed_at: new Date().toISOString(),
+                rejected_by: actorId || null,
+                rejected_at: new Date().toISOString(),
+                validated_by: null,
+                validated_at: null,
+              };
+        // Client service-role (bypass RLS) comme le fait la Netlify Function
+        let srv = supabase;
+        try {
+          const mod = await import("@/lib/ussdStatusClient");
+          if (mod.ussdServiceClient) srv = mod.ussdServiceClient;
+        } catch (_) {
+          /* ignore */
+        }
+        const { error: upErr } = await srv
+          .from("payments")
+          .update(patch)
+          .eq("id", payment.id);
+        if (upErr) throw new Error("Impossible de mettre à jour le paiement");
+        toast({
+          title: action === "validate" ? "Paiement validé ✅" : "Paiement rejeté",
+          className: action === "validate" ? "bg-green-600 text-white" : "bg-red-600 text-white",
+        });
+        await fetchPayments();
+        return;
       }
       if (!res.ok || !result.success) {
         throw new Error(result.message || `Erreur HTTP ${res.status}`);
@@ -429,6 +507,7 @@ const USSDPaymentsTab = () => {
                   <TableHead>Réf. SMS</TableHead>
                   <TableHead>Preuve</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Traite par</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -474,6 +553,13 @@ const USSDPaymentsTab = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={st.cls}>{st.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {p.status === "completed"
+                          ? (p.validatedByName || "—")
+                          : p.status === "cancelled"
+                            ? (p.rejectedByName || "—")
+                            : "En attente"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(p.created_at).toLocaleDateString("fr-FR")}{" "}

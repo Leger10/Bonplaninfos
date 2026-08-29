@@ -287,7 +287,8 @@ const handleSubmit = async (body) => {
     const created_at = now();
     for (let i = 0; i < ticketCount; i++) {
         const ticketId = uuidv4();
-        const qrCode = `QR-${baseTimestamp}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        // QR court, facile à saisir : 5 chiffres + 1 lettre, ex. "17880R"
+        const qrCode = `${String(Math.floor(10000 + Math.random() * 90000))}${'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]}`;
         tickets.push({
             id: ticketId,
             event_id: eventId,
@@ -302,7 +303,7 @@ const handleSubmit = async (body) => {
             is_guest: isGuest || false,
             purchased_at: created_at,
             qr_code: qrCode,
-            ticket_code_short: Math.random().toString(36).substring(2, 8).toUpperCase(),
+            ticket_code_short: qrCode,
             ticket_number: `US-${baseTimestamp}-${String(i + 1).padStart(4, '0')}`,
             ticket_type_id: null,
             purchase_price_pi: pricePerTicketCoins,
@@ -488,7 +489,7 @@ const handleStatus = async (body) => {
 // VALIDATE / REJECT — actions admin
 // ============================================================
 const resolvePayment = async (body, targetStatus) => {
-    const { paymentId, transactionId } = body;
+    const { paymentId, transactionId, actorId } = body;
     if (!paymentId && !transactionId) {
         return { statusCode: 400, body: { success: false, message: 'paymentId requis' } };
     }
@@ -546,7 +547,18 @@ const resolvePayment = async (body, targetStatus) => {
     }
 
     const updates = { status: targetStatus, processed_at: now() };
-    if (targetStatus === 'completed') updates.credits_added = true;
+    if (targetStatus === 'completed') {
+        updates.credits_added = true;
+        updates.validated_by = actorId || null;
+        updates.validated_at = now();
+        updates.rejected_by = null;
+        updates.rejected_at = null;
+    } else {
+        updates.rejected_by = actorId || null;
+        updates.rejected_at = now();
+        updates.validated_by = null;
+        updates.validated_at = null;
+    }
 
     const { error: updateError } = await supabase.from('payments').update(updates).eq('id', payment.id);
     if (updateError) {

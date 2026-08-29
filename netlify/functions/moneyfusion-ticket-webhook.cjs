@@ -230,8 +230,8 @@ exports.handler = async (event) => {
 
         for (let i = 0; i < ticketCount; i++) {
             const ticketId = crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-0000-0000-${Math.random().toString(36).substring(2, 10)}`;
-            const qrCode = `QR-${baseTimestamp}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-            const shortCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const qrCode = `${String(Math.floor(10000 + Math.random() * 90000))}${'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)]}`;
+            const shortCode = qrCode;
             
             tickets.push({
                 id: ticketId,

@@ -27,29 +27,33 @@ export const buildUSSDCode = (amount) =>
 export const buildUSSDTelLink = (amount) =>
   `tel:${buildUSSDCode(amount).replace(/#$/, "%23")}`;
 
-// ─── Relance WhatsApp LIGDI (abandon de paiement USSD) ───
-export const LIGDI_WHATSAPP_NUMBER = "22654329299"; // 0022654329299 (Burkina Faso)
-export const buildLIGDIRelanceMessage = (amountFcfa, date = new Date()) => {
+// ─── Relance WhatsApp Bonplaninfos (abandon de paiement USSD) ───
+export const Bonplaninfos_WHATSAPP_NUMBER = "22654329299"; // 0022654329299 (Burkina Faso)
+export const buildBonplaninfosRelanceMessage = (amountFcfa, date = new Date()) => {
   const amount = Number(amountFcfa) || 0;
   const d = date instanceof Date && !isNaN(date) ? date : new Date();
   const dateStr = d.toLocaleDateString("fr-FR");
   const timeStr = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   return [
     "Bonjour Monsieur/Madame, nous espérons que vous allez bien.",
-    "Je suis le support client LIGDI.",
+    "Je suis le support client Bonplaninfos.",
     `Nous vous contactons concernant un paiement de ${amount.toLocaleString("fr-FR")} effectué le ${dateStr} à ${timeStr} qui n'a pas abouti.`,
     "Pouvez-vous nous indiquer le problème afin que nous puissions vous assister.",
     "Merci d'utiliser bonplaninfos.",
   ].join(" ");
 };
-export const openLIGDIRelance = (amountFcfa) => {
-  const message = buildLIGDIRelanceMessage(amountFcfa);
+
+// Export the function with the name expected by TicketingInterface
+export const openBonplaninfosRelance = (amountFcfa) => {
+  const message = buildBonplaninfosRelanceMessage(amountFcfa);
   window.open(
-    `https://wa.me/${LIGDI_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+    `https://wa.me/${Bonplaninfos_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
     "_blank",
     "noopener,noreferrer"
   );
 };
+
+
 
 const copyText = async (text) => {
   try {
@@ -79,7 +83,7 @@ const USSDPaymentModal = ({
   title = "Paiement Mobile Money",
   subtitle = "Payez par USSD puis confirmez avec la référence reçue par SMS.",
   submitLabel = "Valider mon paiement",
-  onConfirm, // async (smsReference) => { ... } — doit lever une erreur ou retourner un booléen
+  onConfirm, // async (smsReference, proofDataUrl) => { ... }
 }) => {
   const { toast } = useToast();
   const [step, setStep] = useState(0); // 0 = instructions, 1 = confirmation, 2 = succès

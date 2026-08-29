@@ -38,6 +38,8 @@ const USSD = "ussd";
 
 // 🔥 Consultation publique de l'état d'un paiement USSD (invité sans compte)
 const checkUssdStatus = async (orderId) => {
+  if (!orderId) return null;
+  // 1) Netlify Function (production)
   try {
     const res = await fetch("/.netlify/functions/ussd-payment", {
       method: "POST",
@@ -46,12 +48,18 @@ const checkUssdStatus = async (orderId) => {
     });
     const txt = await res.text();
     const data = txt ? JSON.parse(txt) : {};
-    if (!res.ok || !data.success || !data.status) return null;
-    return data.status;
+    if (res.ok && data.success && data.status) return data.status;
   } catch (e) {
     console.error("Erreur consultation statut USSD:", e);
-    return null;
   }
+  // 2) Fallback dev (vite :3000 sans Netlify Function)
+  const { fetchUssdStatus } = await import("@/lib/ussdStatusClient");
+  return fetchUssdStatus(orderId);
+};
+
+const genShortTicketCode = () => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  return `${String(Math.floor(10000 + Math.random() * 90000))}${chars[Math.floor(Math.random() * chars.length)]}`;
 };
 
 const MyTicketsTab = ({ isGuestView = false }) => {
@@ -151,7 +159,7 @@ const MyTicketsTab = ({ isGuestView = false }) => {
       id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       event_id: paymentData?.event_id || "unknown",
       user_id: "guest",
-      qr_code: `GUEST-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      qr_code: genShortTicketCode(),
       attendee_name:
         paymentData?.attendeeName || paymentData?.nomclient || "Invité",
       status: "active",
@@ -163,7 +171,7 @@ const MyTicketsTab = ({ isGuestView = false }) => {
       order_id: orderId,
       isGuest: true,
       ticket_number: `TKT-${Date.now()}`,
-      ticket_code_short: `G-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      ticket_code_short: genShortTicketCode(),
       // Informations de l'événement
       event_title: paymentData?.event_title || "Événement",
       event_start_at: paymentData?.event_start_at,
@@ -398,7 +406,7 @@ const MyTicketsTab = ({ isGuestView = false }) => {
           console.log("❌ Aucun ticket trouvé, création d'un ticket générique");
           const genericTicket = {
             id: `gen_${Date.now()}`,
-            qr_code: `GEN-${Date.now()}`,
+            qr_code: genShortTicketCode(),
             attendee_name: "Invité",
             status: "active",
             purchase_amount_pi: 0,
@@ -408,7 +416,7 @@ const MyTicketsTab = ({ isGuestView = false }) => {
             transaction_reference: orderId,
             order_id: orderId,
             isGuest: true,
-            ticket_code_short: `G-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+            ticket_code_short: genShortTicketCode(),
             ticket_number: `TKT-${Date.now()}`,
             event_title: "Événement",
             location: "Lieu non spécifié",

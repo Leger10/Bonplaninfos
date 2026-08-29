@@ -698,7 +698,7 @@ const VerifyTicketPage = () => {
                                     <Input
                                         value={ticketInput}
                                         onChange={(e) => setTicketInput(e.target.value.toUpperCase())}
-                                        placeholder="EX: QR-1783939719696-U2QD74"
+                                        placeholder="EX: 17880R"
                                         className="flex-1 text-center text-2xl font-mono h-20 bg-gray-800 border-gray-700"
                                         maxLength={50}
                                     />

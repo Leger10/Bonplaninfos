@@ -753,6 +753,16 @@ const CreateTicketingEventPage = () => {
       // ============================================================
       // 🔥 CRÉATION DES TICKETS INDIVIDUELS - VERSION CORRIGÉE
       // ============================================================
+      const usedCodes = new Set();
+      const genShortCode = () => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        let code;
+        do {
+          code = `${String(Math.floor(10000 + Math.random() * 90000))}${chars[Math.floor(Math.random() * chars.length)]}`;
+        } while (usedCodes.has(code));
+        usedCodes.add(code);
+        return code;
+      };
       for (const ttType of createdTicketTypes) {
         const quantity = parseInt(ttType.quantity_available, 10) || 0;
 
@@ -785,10 +795,12 @@ const CreateTicketingEventPage = () => {
           const usedDate = finalDate;
 
           for (let i = 0; i < quantity; i++) {
+            const shortCode = genShortCode();
             const ticketData = {
               event_id: newEventId,
               ticket_type_id: ttType.id,
-              qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, "0")}`,
+              qr_code: shortCode,
+              ticket_code_short: shortCode,
               ticket_number: `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, "0")}`,
               attendee_name: null,
               phone: null,
@@ -814,10 +826,12 @@ const CreateTicketingEventPage = () => {
         }
 
         for (let i = 0; i < quantity; i++) {
+          const shortCode = genShortCode();
           const ticketData = {
             event_id: newEventId,
             ticket_type_id: ttType.id,
-            qr_code: `QR-${ttType.id.slice(0, 6)}-${String(i + 1).padStart(6, "0")}`,
+            qr_code: shortCode,
+            ticket_code_short: shortCode,
             ticket_number: `TN-${ttType.id.slice(0, 8)}-${String(i + 1).padStart(4, "0")}`,
             attendee_name: null,
             phone: null,

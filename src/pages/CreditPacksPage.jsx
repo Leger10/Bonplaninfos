@@ -34,7 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import MultilingualSeoHead from "@/components/MultilingualSeoHead";
 import { CouponService } from "@/services/CouponService";
-import USSDPaymentModal, { openLIGDIRelance } from "@/components/payment/USSDPaymentModal";
+import USSDPaymentModal, { openBonplaninfosRelance } from "@/components/payment/USSDPaymentModal";
 
 const CREDIT_PACKS = [
   {
@@ -880,7 +880,7 @@ const startUSSDFlow = async (amountFcfa, coinsAmount, packId) => {
             if (ussdSuccess) {
               setUssdSuccess(false);
             } else {
-              openLIGDIRelance(ussdAmount);
+              openBonplaninfosRelance(ussdAmount);
             }
           }}
           amountFcfa={ussdAmount}

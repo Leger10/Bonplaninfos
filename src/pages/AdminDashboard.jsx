@@ -494,7 +494,6 @@ const AdminDashboard = () => {
             <>
               <TabsTrigger value="salary"><Wallet className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.salary") || "Salaire"}</TabsTrigger>
               <TabsTrigger value="withdrawal_mgmt"><CheckCircle2 className="w-4 h-4 mr-2" />Gestion des Retraits</TabsTrigger>
-              <TabsTrigger value="ussd_payments"><Smartphone className="w-4 h-4 mr-2" />Paiements USSD</TabsTrigger>
               <TabsTrigger value="events"><Calendar className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.events")}</TabsTrigger>
               <TabsTrigger value="locations"><MapPin className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.locations")}</TabsTrigger>
               <TabsTrigger value="promotions"><Target className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.promotions")}</TabsTrigger>
@@ -514,6 +513,7 @@ const AdminDashboard = () => {
               <TabsTrigger value="reversed_credits"><RotateCcw className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.reversed_credits")}</TabsTrigger>
               <TabsTrigger value="withdrawals"><Wallet className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.withdrawals")}</TabsTrigger>
               <TabsTrigger value="withdrawal_history"><History className="w-4 h-4 mr-2" />{t("admin_dashboard.tabs.withdrawal_history")}</TabsTrigger>
+              <TabsTrigger value="ussd_payments"><Smartphone className="w-4 h-4 mr-2" />Paiements USSD</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -544,7 +544,7 @@ const AdminDashboard = () => {
             <TabsContent value="config"><ConfigTab /></TabsContent>
             <TabsContent value="zone_reset"><ZoneResetManager /></TabsContent>
             <TabsContent value="global-credits"><AdminCreditsGlobalTab /></TabsContent>
-            <TabsContent value="ussd_payments"><USSDPaymentsTab /></TabsContent>
+            <TabsContent value="ussd_payments"><USSDPaymentsTab actorId={userProfile?.id} /></TabsContent>
           </>
         )}
 
@@ -552,7 +552,6 @@ const AdminDashboard = () => {
           <>
             <TabsContent value="salary"><AdminSalaryDashboard userProfile={userProfile} /></TabsContent>
             <TabsContent value="withdrawal_mgmt"><WithdrawalManagementDashboard /></TabsContent>
-            <TabsContent value="ussd_payments"><USSDPaymentsTab /></TabsContent>
             <TabsContent value="events"><EventsManagement events={allEvents} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
             <TabsContent value="locations"><LocationManagementTab userProfile={userProfile} /></TabsContent>
             <TabsContent value="promotions"><PromotionsManagement promotions={allPromotions} userProfile={userProfile} onRefresh={fetchData} /></TabsContent>
@@ -572,6 +571,7 @@ const AdminDashboard = () => {
             <TabsContent value="reversed_credits"><ReversedCreditsTab isSuperAdmin={false} actorId={userProfile.id} userProfile={userProfile} /></TabsContent>
             <TabsContent value="withdrawals"><WithdrawalManagement userProfile={userProfile} /></TabsContent>
             <TabsContent value="withdrawal_history"><WithdrawalHistoryTab actorId={userProfile.id} userProfile={userProfile} /></TabsContent>
+            <TabsContent value="ussd_payments"><USSDPaymentsTab actorId={userProfile?.id} /></TabsContent>
           </>
         )}
       </Tabs>
