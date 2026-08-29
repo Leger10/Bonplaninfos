@@ -851,6 +851,67 @@ const loadDataFromDB = useCallback(async () => {
 
       setUssdSuccess(true);
 
+      // 📌 Billet sans compte : conserver une copie locale (comme l'ancien flux invité)
+      // pour que le client puisse voir son billet stocké et le télécharger après validation.
+      if (!user && result.tickets && result.tickets.length > 0) {
+        try {
+          const guestList = JSON.parse(localStorage.getItem("guest_tickets") || "[]");
+          const detail = ticketData.event_full_address || ticketData.event_location || ticketData.event_city || "Lieu non spécifié";
+          const firstType = ticketData.ticketTypes?.[0] || { name: "Standard", color: "blue", description: "Billet standard" };
+          result.tickets.forEach((tk) => {
+            if (guestList.some((g) => g.id === tk.id)) return;
+            guestList.push({
+              id: tk.id,
+              event_id: ticketData.event_id,
+              user_id: "guest",
+              qr_code: tk.qr_code,
+              attendee_name: ticketData.attendeeName || "Invité",
+              status: "active",
+              payment_status: "pending",
+              purchase_amount_pi: Math.floor((ticketData.totalFcfa || 0) / 10),
+              purchase_amount_fcfa: ticketData.totalFcfa || 0,
+              purchased_at: new Date().toISOString(),
+              payment_method: "ussd",
+              transaction_reference: ticketData.orderId,
+              order_id: ticketData.orderId,
+              isGuest: true,
+              ticket_number: tk.ticket_number,
+              ticket_code_short: tk.ticket_code_short,
+              event_title: ticketData.event_title,
+              event_start_at: ticketData.event_start_at,
+              event_end_at: ticketData.event_end_at,
+              location: detail,
+              full_address: ticketData.event_full_address || detail,
+              address: ticketData.event_address || "",
+              city: ticketData.event_city || "",
+              country: ticketData.event_country || "",
+              ticket_type_name: firstType.name,
+              ticket_type_color: firstType.color,
+              ticket_type_description: firstType.description || "",
+              events: {
+                id: ticketData.event_id,
+                title: ticketData.event_title,
+                event_start_at: ticketData.event_start_at,
+                event_end_at: ticketData.event_end_at,
+                location: detail,
+                full_address: ticketData.event_full_address || detail,
+                address: ticketData.event_address || "",
+                city: ticketData.event_city || "",
+                country: ticketData.event_country || "",
+              },
+              ticket_types: {
+                name: firstType.name,
+                color: firstType.color,
+                description: firstType.description || "",
+              },
+            });
+          });
+          localStorage.setItem("guest_tickets", JSON.stringify(guestList));
+        } catch (mirrorErr) {
+          console.error("⚠️ Miroir billet invité non enregistré:", mirrorErr);
+        }
+      }
+
       setTimeout(async () => {
         await loadDataFromDB();
         if (forceRefresh) forceRefresh();
@@ -2027,7 +2088,11 @@ const loadDataFromDB = useCallback(async () => {
           setShowUSSDModal(false);
           if (ussdSuccess) {
             setUssdSuccess(false);
-            redirectToMyTickets();
+            if (!user && ussdTicketData?.orderId) {
+              window.location.href = `/profile?tab=tickets&payment=success&order=${ussdTicketData.orderId}`;
+            } else {
+              redirectToMyTickets();
+            }
           } else {
             openLIGDIRelance(ussdAmount);
           }

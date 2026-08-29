@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   User,
   ArrowLeft,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { generateTicketPDF } from "@/utils/generateTicketPDF";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
@@ -32,6 +34,25 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 
 // 🔥 CLÉ POUR LE STOCKAGE LOCAL DES TICKETS INVITÉS
 const GUEST_TICKETS_KEY = "guest_tickets";
+const USSD = "ussd";
+
+// 🔥 Consultation publique de l'état d'un paiement USSD (invité sans compte)
+const checkUssdStatus = async (orderId) => {
+  try {
+    const res = await fetch("/.netlify/functions/ussd-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "status", transactionId: orderId }),
+    });
+    const txt = await res.text();
+    const data = txt ? JSON.parse(txt) : {};
+    if (!res.ok || !data.success || !data.status) return null;
+    return data.status;
+  } catch (e) {
+    console.error("Erreur consultation statut USSD:", e);
+    return null;
+  }
+};
 
 const MyTicketsTab = ({ isGuestView = false }) => {
   const { user } = useAuth();
@@ -484,6 +505,7 @@ const MyTicketsTab = ({ isGuestView = false }) => {
       console.log("✅ Tickets fetched:", data?.length || 0);
       setTickets(data || []);
       setIsGuest(false);
+      refreshUssdStatuses(data || []);
     } catch (error) {
       console.error("Error fetching tickets:", error);
       setError(
@@ -491,6 +513,38 @@ const MyTicketsTab = ({ isGuestView = false }) => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🔥 RAFRAÎCHIR LES STATUTS DES BILLETS USSD (validation admin) EN VUE INVITÉ
+  const refreshUssdStatuses = async (baseTickets) => {
+    const target = baseTickets || tickets;
+    if (!target.some((t) => t.payment_method === USSD)) return;
+    const updated = [...target];
+    let changed = false;
+    for (let i = 0; i < updated.length; i++) {
+      const t = updated[i];
+      if (t.payment_method !== USSD) continue;
+      const orderId = t.order_id || t.transaction_reference;
+      const status = orderId ? await checkUssdStatus(orderId) : null;
+      if (status && status !== t.payment_status) {
+        updated[i] = { ...t, payment_status: status };
+        if (status === "cancelled") updated[i] = { ...updated[i], status: "cancelled" };
+        changed = true;
+      }
+    }
+    if (changed) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(GUEST_TICKETS_KEY) || "[]");
+        const merged = saved.map((g) => {
+          const upd = updated.find((t) => t.id === g.id);
+          return upd || g;
+        });
+        localStorage.setItem(GUEST_TICKETS_KEY, JSON.stringify(merged));
+      } catch (e) {
+        console.error("Erreur mise à jour tickets invités:", e);
+      }
+      setTickets(updated);
     }
   };
 
@@ -506,8 +560,10 @@ const MyTicketsTab = ({ isGuestView = false }) => {
         const enriched = await Promise.all(
           guestTickets.map((t) => enrichGuestTicketWithEventDetails(t)),
         );
-        setTickets(enriched.map((t) => ({ ...t, isGuest: true })));
+        const mapped = enriched.map((t) => ({ ...t, isGuest: true }));
+        setTickets(mapped);
         setLoading(false);
+        refreshUssdStatuses(mapped);
       };
       enrichAndSetTickets();
       return;
@@ -564,6 +620,33 @@ const MyTicketsTab = ({ isGuestView = false }) => {
   const handleDownload = async (ticket) => {
     setDownloadingId(ticket.id);
     try {
+      // 🔒 Billet USSD : téléchargement uniquement après validation admin
+      if (ticket.payment_method === USSD && ticket.payment_status !== "completed") {
+        const orderId = ticket.order_id || ticket.transaction_reference;
+        const liveStatus = orderId ? await checkUssdStatus(orderId) : null;
+        if (liveStatus === "completed") {
+          try {
+            const saved = JSON.parse(localStorage.getItem(GUEST_TICKETS_KEY) || "[]");
+            const merged = saved.map((g) =>
+              g.id === ticket.id ? { ...g, payment_status: "completed" } : g,
+            );
+            localStorage.setItem(GUEST_TICKETS_KEY, JSON.stringify(merged));
+          } catch (e) { /* ignore */ }
+          setTickets((prev) =>
+            prev.map((t) => (t.id === ticket.id ? { ...t, payment_status: "completed" } : t)),
+          );
+        } else {
+          setDownloadingId(null);
+          toast({
+            title: "Billet en attente de validation",
+            description:
+              "Le téléchargement sera disponible une fois votre paiement validé par l'administrateur.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       // Récupérer toutes les données du ticket
       const eventData = ticket.events || {};
       const ticketType = ticket.ticket_types || {};
@@ -749,6 +832,15 @@ const MyTicketsTab = ({ isGuestView = false }) => {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => refreshUssdStatuses(tickets)}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+                  Vérifier statut
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleCreateAccount}
                 >
                   <User className="w-4 h-4 mr-1" />
@@ -788,6 +880,13 @@ const MyTicketsTab = ({ isGuestView = false }) => {
             const isMoneyFusion =
               ticket.payment_method === "moneyfusion_ticket";
             const attendeeName = ticket.attendee_name || null;
+            const isUssd = ticket.payment_method === USSD;
+            const ussdCompleted =
+              isUssd && ticket.payment_status === "completed";
+            const ussdCancelled =
+              isUssd && ticket.payment_status === "cancelled";
+            const ussdWaiting =
+              isUssd && !ussdCompleted && !ussdCancelled;
 
             const eventLocation =
               ticket.full_address ||
@@ -894,9 +993,29 @@ const MyTicketsTab = ({ isGuestView = false }) => {
                             variant="outline"
                             className="text-[10px] bg-blue-500/10 text-blue-400 border-blue-500/30"
                           >
-                            {ticket.payment_method === "moneyfusion_ticket"
-                              ? "💰 Paiement externe"
-                              : "🎫 Pièces"}
+                            {ticket.payment_method === USSD
+                              ? "📱 Paiement USSD"
+                              : ticket.payment_method === "moneyfusion_ticket"
+                                ? "💰 Paiement externe"
+                                : "🎫 Pièces"}
+                          </Badge>
+                        )}
+                        {isUssd && (
+                          <Badge
+                            variant="outline"
+                            className={
+                              ussdCompleted
+                                ? "text-[10px] bg-green-500/10 text-green-400 border-green-500/30"
+                                : ussdCancelled
+                                  ? "text-[10px] bg-red-500/10 text-red-400 border-red-500/30"
+                                  : "text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30"
+                            }
+                          >
+                            {ussdCompleted
+                              ? "✅ Paiement validé"
+                              : ussdCancelled
+                                ? "❌ Paiement rejeté"
+                                : "⏳ En attente de validation"}
                           </Badge>
                         )}
                         {attendeeName && (
@@ -926,27 +1045,51 @@ const MyTicketsTab = ({ isGuestView = false }) => {
                   </div>
 
                   <div className="p-4 bg-muted/10 flex flex-row md:flex-col items-center justify-center gap-2 border-t md:border-t-0 md:border-l border-border">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 w-full"
-                      onClick={() => openQrModal(ticket)}
-                    >
-                      <QrCode className="w-4 h-4 mr-2" /> QR Code
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 w-full"
-                      onClick={() => handleDownload(ticket)}
-                      disabled={downloadingId === ticket.id}
-                    >
-                      {downloadingId === ticket.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-2" />
-                      )}
-                      PDF
-                    </Button>
+                    {isUssd && ussdWaiting ? (
+                      <div className="flex-1 w-full flex flex-col items-center justify-center text-center gap-1 p-2">
+                        <span className="text-amber-500">
+                          <Clock className="w-5 h-5 mx-auto" />
+                        </span>
+                        <p className="text-[11px] text-amber-600 font-medium">
+                          {ussdCancelled
+                            ? "❌ Paiement rejeté"
+                            : "⏳ Billet disponible après validation de l'administrateur"}
+                        </p>
+                      </div>
+                    ) : isUssd && ussdCancelled ? (
+                      <div className="flex-1 w-full flex flex-col items-center justify-center text-center gap-1 p-2">
+                        <span className="text-red-500">
+                          <XCircle className="w-5 h-5 mx-auto" />
+                        </span>
+                        <p className="text-[11px] text-red-500 font-medium">
+                          Paiement rejeté (billet annulé)
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 w-full"
+                          onClick={() => openQrModal(ticket)}
+                        >
+                          <QrCode className="w-4 h-4 mr-2" /> QR Code
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 w-full"
+                          onClick={() => handleDownload(ticket)}
+                          disabled={downloadingId === ticket.id}
+                        >
+                          {downloadingId === ticket.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4 mr-2" />
+                          )}
+                          PDF
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </Card>

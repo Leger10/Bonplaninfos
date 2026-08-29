@@ -62,6 +62,16 @@ const ProfilePage = () => {
   // 🔥 DÉTECTER SI C'EST UN PAIEMENT SANS COMPTE
   const isGuestPayment = paymentStatus === 'success' && orderId;
 
+  // Session invité persistée localement (dont billets USSD "sans compte")
+  const hasLocalGuestSession = () => {
+    try {
+      return (JSON.parse(localStorage.getItem('guest_tickets') || '[]').length > 0);
+    } catch (e) {
+      return false;
+    }
+  };
+  const showGuestView = !user && (isGuestPayment || hasLocalGuestSession());
+
   // Intégration globale de la sécurité portefeuille
   const {
     isWalletUnlocked,
@@ -90,8 +100,8 @@ const ProfilePage = () => {
       }
     }
 
-    // Redirection uniquement si pas de session ET pas de paiement invité
-    if (!authLoading && (!user || !session) && !isGuestPayment) {
+    // Redirection uniquement si pas de session ET pas de paiement invité ET pas de session invite locale
+    if (!authLoading && (!user || !session) && !isGuestPayment && !hasLocalGuestSession()) {
       const timer = setTimeout(() => {
         navigate("/auth?redirect=/profile");
       }, 100);
@@ -224,8 +234,8 @@ const ProfilePage = () => {
     }
   };
 
-  // 🔥 SI C'EST UN PAIEMENT INVITÉ, AFFICHER DIRECTEMENT LES TICKETS
-  if (isGuestPayment && !user) {
+  // 🔥 SI INVITÉ (sans compte) : AFFICHER DIRECTEMENT LES BILLETS STOCKÉS
+  if (showGuestView) {
     return (
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-4xl mx-auto">

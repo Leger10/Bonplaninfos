@@ -194,7 +194,7 @@ const formatPrice = (amount) => {
   return numAmount.toLocaleString('fr-FR');
 };
 
-export const generateTicketPDF = async (event, tickets, user) => {
+export const generateTicketPDF = async (event, tickets, user, { returnBlob = false } = {}) => {
   try {
     if (!event || !tickets || tickets.length === 0) {
       throw new Error("Données manquantes pour générer le PDF");
@@ -525,6 +525,11 @@ export const generateTicketPDF = async (event, tickets, user) => {
       .substring(0, 30);
     
     const fileName = `Billet_${cleanTitle}_${Date.now()}.pdf`;
+
+    if (returnBlob) {
+      return { doc, fileName, blob: doc.output('blob') };
+    }
+
     openPDFInNewTab(doc, fileName);
     
     return true;

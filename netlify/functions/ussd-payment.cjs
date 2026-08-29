@@ -448,6 +448,43 @@ const handleSubmit = async (body) => {
 };
 
 // ============================================================
+// STATUS — consultation publique de l'état d'un paiement USSD
+// (utilisée par la vue "Mes billets" des invités sans compte)
+// ============================================================
+const handleStatus = async (body) => {
+    const { transactionId, paymentId } = body;
+    if (!transactionId && !paymentId) {
+        return { statusCode: 400, body: { success: false, status: null, message: 'transactionId requis' } };
+    }
+    try {
+        let query = supabase
+            .from('payments')
+            .select('transaction_id, status, payment_method, amount_fcfa, processed_at');
+        if (paymentId) query = query.eq('id', paymentId);
+        else query = query.eq('transaction_id', transactionId);
+        const { data, error } = await query.maybeSingle();
+
+        if (error || !data) {
+            return { statusCode: 200, body: { success: false, status: null, message: 'Paiement introuvable' } };
+        }
+        return {
+            statusCode: 200,
+            body: {
+                success: true,
+                status: data.status,
+                transaction_id: data.transaction_id,
+                payment_method: data.payment_method,
+                amount_fcfa: data.amount_fcfa,
+                processed_at: data.processed_at
+            }
+        };
+    } catch (e) {
+        console.error('❌ Erreur consultation statut USSD:', e.message);
+        return { statusCode: 500, body: { success: false, status: null, message: e.message } };
+    }
+};
+
+// ============================================================
 // VALIDATE / REJECT — actions admin
 // ============================================================
 const resolvePayment = async (body, targetStatus) => {
@@ -567,6 +604,9 @@ exports.handler = async (event) => {
                 break;
             case 'reject':
                 result = await resolvePayment(payload, 'cancelled');
+                break;
+            case 'status':
+                result = await handleStatus(payload);
                 break;
             default:
                 return {

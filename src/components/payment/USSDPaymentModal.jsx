@@ -28,7 +28,7 @@ export const buildUSSDTelLink = (amount) =>
   `tel:${buildUSSDCode(amount).replace(/#$/, "%23")}`;
 
 // ─── Relance WhatsApp LIGDI (abandon de paiement USSD) ───
-export const LIGDI_WHATSAPP_NUMBER = "22543292999"; // 002254329299
+export const LIGDI_WHATSAPP_NUMBER = "22654329299"; // 0022654329299 (Burkina Faso)
 export const buildLIGDIRelanceMessage = (amountFcfa, date = new Date()) => {
   const amount = Number(amountFcfa) || 0;
   const d = date instanceof Date && !isNaN(date) ? date : new Date();
