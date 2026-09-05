@@ -39,10 +39,12 @@ import {
   Map,
   CheckCircle,
   ChevronRight,
+  Gift,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import ImageUpload from "@/components/ImageUpload";
 import { processImage, validateImage } from "@/utils/imageConverter";
 import { COUNTRIES, CITIES_BY_COUNTRY } from "@/constants/countries";
@@ -65,6 +67,7 @@ const CreateVotingEventPage = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [votePrice, setVotePrice] = useState(100);
+  const [freeVoting, setFreeVoting] = useState(false);
 
   // Location
   const [selectedCountry, setSelectedCountry] = useState("");
@@ -320,6 +323,8 @@ useEffect(() => {
       const votingEnd = new Date(votingEndDate);
       const countryObj = COUNTRIES.find((c) => c.code === selectedCountry);
       const countryName = countryObj ? countryObj.name : selectedCountry;
+      const finalVotePrice = freeVoting ? 0 : votePrice;
+      const finalVotePricePi = freeVoting ? 0 : Math.ceil(votePrice / 10);
 
       const eventData = {
         title,
@@ -340,8 +345,8 @@ useEffect(() => {
         is_online: !location,
         is_public: true,
         is_promoted: false,
-        price_fcfa: votePrice,
-        price_pi: Math.ceil(votePrice / 10),
+        price_fcfa: finalVotePrice,
+        price_pi: finalVotePricePi,
         views_count: 0,
         interactions_count: 0,
         participants_count: 0,
@@ -384,9 +389,10 @@ useEffect(() => {
         .from("event_settings")
         .insert({
           event_id: event.id,
-          vote_price_fcfa: votePrice,
-          vote_price_pi: Math.ceil(votePrice / 10),
+          vote_price_fcfa: finalVotePrice,
+          vote_price_pi: finalVotePricePi,
           voting_enabled: true,
+          voting_type: freeVoting ? "free" : "paid",
           start_date: votingStart.toISOString(),
           end_date: votingEnd.toISOString(),
           organizer_rate: 95,
@@ -481,10 +487,18 @@ useEffect(() => {
                     <div className="space-y-2">
                       <Label htmlFor="price" className="text-gray-300">Prix du vote (FCFA)</Label>
                       <div className="relative">
-                        <Input id="price" type="number" value={votePrice} onChange={(e) => setVotePrice(Number(e.target.value))} min="100" step="50" className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500" />
+                        <Input id="price" type="number" value={freeVoting ? 0 : votePrice} onChange={(e) => setVotePrice(Number(e.target.value))} min="0" step="50" disabled={freeVoting} className="pl-10 bg-gray-950 border-gray-800 text-white placeholder:text-gray-600 focus:ring-emerald-500 disabled:opacity-40" />
                         <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-500" />
                       </div>
-                      <p className="text-xs text-emerald-400 font-mono">≈ {Math.ceil(votePrice / 10)} pièces</p>
+                      <p className="text-xs text-emerald-400 font-mono">{freeVoting ? "0 pièce — GRATUIT" : `≈ ${Math.ceil(votePrice / 10)} pièces`}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-emerald-950/30 border border-emerald-900/50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-emerald-300 flex items-center gap-2"><Gift className="w-4 h-4" /> Vote GRATUIT (sans compte)</p>
+                        <p className="text-xs text-emerald-500/80 mt-1">Les visiteurs peuvent voter sans créer de compte. Aucun paiement demandé.</p>
+                      </div>
+                      <Switch checked={freeVoting} onCheckedChange={setFreeVoting} />
                     </div>
                    <div className="space-y-2">
   <Label htmlFor="category" className="text-gray-300">Catégorie <span className="text-red-500">*</span></Label>

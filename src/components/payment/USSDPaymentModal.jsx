@@ -83,11 +83,14 @@ const USSDPaymentModal = ({
   title = "Paiement Mobile Money",
   subtitle = "Payez par USSD puis confirmez avec la référence reçue par SMS.",
   submitLabel = "Valider mon paiement",
-  onConfirm, // async (smsReference, proofDataUrl) => { ... }
+  requirePhone = false,
+  initialPhone = "",
+  onConfirm, // async (smsReference, proofDataUrl, phone) => { ... }
 }) => {
   const { toast } = useToast();
   const [step, setStep] = useState(0); // 0 = instructions, 1 = confirmation, 2 = succès
   const [smsReference, setSmsReference] = useState("");
+  const [phone, setPhone] = useState(initialPhone || "");
   const [copied, setCopied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [proofFile, setProofFile] = useState(null);
@@ -100,6 +103,7 @@ const USSDPaymentModal = ({
   const reset = () => {
     setStep(0);
     setSmsReference("");
+    setPhone(initialPhone || "");
     setCopied(false);
     setSubmitting(false);
     setProofFile(null);
@@ -220,6 +224,18 @@ const USSDPaymentModal = ({
 
   const handleConfirm = async () => {
     const ref = smsReference.trim();
+    if (requirePhone) {
+      const clean = phone.replace(/\D/g, "");
+      if (clean.length < 8 || clean.length > 12) {
+        toast({
+          title: "Numéro de téléphone invalide",
+          description:
+            "Veuillez saisir le numéro qui a effectué le paiement (8 à 12 chiffres). Ex: 73790978",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (!proofDataUrl) {
       toast({
         title: "Capture d'écran requise",
@@ -230,7 +246,7 @@ const USSDPaymentModal = ({
     }
     setSubmitting(true);
     try {
-      const result = await onConfirm?.(ref, proofDataUrl);
+      const result = await onConfirm?.(ref, proofDataUrl, phone.trim());
       if (result === false) {
         setSubmitting(false);
         return;
@@ -373,6 +389,25 @@ const USSDPaymentModal = ({
                   Le numéro figure dans le SMS de confirmation de votre opérateur.
                 </p>
               </div>
+
+              {requirePhone && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Numéro de téléphone (mobile money){" "}
+                    <span className="text-red-400">· requis</span>
+                  </label>
+                  <Input
+                    type="tel"
+                    placeholder="Ex: 73790978"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="bg-gray-800 border-gray-700 text-white text-lg font-mono"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Le numéro avec lequel vous avez effectué le paiement USSD.
+                  </p>
+                </div>
+              )}
 
               {/* Capture d'écran de la transaction (OBLIGATOIRE) */}
               <div className="p-3 bg-violet-600/10 border border-violet-500/30 rounded-lg">

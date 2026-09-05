@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CoinService } from '@/services/CoinService';
 import WalletInfoModal from '@/components/WalletInfoModal';
+import USSDPaymentModal, { openBonplaninfosRelance, buildUSSDCode } from '@/components/payment/USSDPaymentModal';
 
 
 const CandidateCard = ({ candidate, onVote, totalVotes }) => {
@@ -54,7 +55,8 @@ const ContestDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { userProfile, forceRefreshUserProfile } = useData();
+    const { userProfile, forceRefreshUserProfile, adminConfig } = useData();
+    const coinRate = adminConfig?.coin_to_fcfa_rate || 10;
     const [contest, setContest] = useState(null);
     const [candidates, setCandidates] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -62,6 +64,11 @@ const ContestDetailPage = () => {
     const [showWalletInfoModal, setShowWalletInfoModal] = useState(false);
     const [voteState, setVoteState] = useState({ isOpen: false, candidate: null, quantity: 1 });
     const [actionLoading, setActionLoading] = useState(false);
+    const [votePaymentMethod, setVotePaymentMethod] = useState('coins');
+    const [showUSSDModal, setShowUSSDModal] = useState(false);
+    const [ussdAmount, setUssdAmount] = useState(0);
+    const [ussdSuccess, setUssdSuccess] = useState(false);
+    const [ussdVoteData, setUssdVoteData] = useState(null);
 
     const fetchContestData = useCallback(async () => {
         const { data: contestData, error: contestError } = await supabase
@@ -118,6 +125,17 @@ const ContestDetailPage = () => {
         }
         const { candidate, quantity } = voteState;
         const totalCost = contest.vote_cost_coins * quantity;
+
+        // Paiement par USSD : ouvrir la modale USSD au lieu de débiter les pièces
+        if (votePaymentMethod === 'ussd') {
+            setVoteState(prev => ({ ...prev, isOpen: false }));
+            setUssdSuccess(false);
+            setUssdVoteData({ candidate, quantity });
+            setUssdAmount(contest.vote_cost_coins * quantity * coinRate);
+            setShowUSSDModal(true);
+            return;
+        }
+
         setActionLoading(true);
         setVoteState(prev => ({ ...prev, isOpen: false }));
 
@@ -160,6 +178,50 @@ const ContestDetailPage = () => {
         setVoteState(prev => ({ ...prev, quantity: Math.max(1, prev.quantity + amount) }));
     };
 
+    const confirmVoteUSSD = async (smsReference, proofDataUrl, phoneInput) => {
+        const txnId = `ussd_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const response = await fetch('/.netlify/functions/ussd-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                action: 'submit',
+                type: 'votes',
+                smsReference,
+                proofDataUrl: proofDataUrl || null,
+                amountFcfa: ussdAmount,
+                phone: phoneInput || userProfile?.phone || '',
+                transactionId: txnId,
+                userId: user?.id,
+                eventId: null,
+                contestId: id,
+                organizerId: contest?.organizer_id || null,
+                candidateId: ussdVoteData?.candidate?.id,
+                voteCount: ussdVoteData?.quantity || 1,
+                votePricePi: contest?.vote_cost_coins || 1,
+                attendeeName: userProfile?.full_name || user?.email || 'Inconnu',
+                userEmail: user?.email || null,
+                isGuest: !user,
+            }),
+        });
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            result = null;
+        }
+        if (!result && response.status === 404) {
+            // Fallback dev : la Netlify Function n'est pas disponible en vite pur,
+            // rappeler d'utiliser le serveur netlify dev. On refuse pour éviter un faux positif.
+            throw new Error("Paiement USSD indisponible sur ce serveur. Utilisez http://localhost:8090 (netlify dev).");
+        }
+        if (!response.ok || !result?.success) {
+            throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+        }
+        setUssdSuccess(true);
+        return true;
+    };
+
     const totalVotes = useMemo(() => candidates.reduce((acc, c) => acc + c.vote_count, 0), [candidates]);
 
     if (loading && !contest) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>;
@@ -177,7 +239,9 @@ const ContestDetailPage = () => {
                         <h1 className="text-4xl font-extrabold text-amber-400 tracking-tight uppercase">{contest.title}</h1>
                         <p className="text-gray-300 mt-2 max-w-2xl mx-auto">{contest.description}</p>
                         <div className="flex flex-wrap gap-x-6 gap-y-2 justify-center mt-4 text-sm text-gray-400">
-                            <div className="flex items-center"><Trophy className="w-4 h-4 mr-2 text-amber-400" /> Coût: <strong className="ml-1.5 flex items-center text-white">{contest.vote_cost_coins} <Coins className="w-3 h-3 ml-1 text-amber-400" /></strong></div>
+                            <div className="flex items-center"><Trophy className="w-4 h-4 mr-2 text-amber-400" /> Coût: <strong className="ml-1.5 flex items-center text-white">{contest.vote_cost_coins} <Coins className="w-3 h-3 ml-1 text-amber-400" />
+                                        <span className="ml-1 text-gray-400 font-normal">({contest.vote_cost_coins * coinRate} FCFA)</span>
+                                    </strong></div>
                             <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-amber-400" /> Fin: <strong className="ml-1.5 text-white">{new Date(contest.event_end_at).toLocaleDateString('fr-FR')}</strong></div>
                         </div>
                     </CardContent>
@@ -202,7 +266,7 @@ const ContestDetailPage = () => {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Voter pour {voteState.candidate?.name}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Chaque vote coûte {contest.vote_cost_coins} pièces. Combien de voix souhaitez-vous donner ?
+                            Chaque vote coûte {contest.vote_cost_coins} pièces ({contest.vote_cost_coins * coinRate} FCFA). Combien de voix souhaitez-vous donner ?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="flex items-center justify-center gap-4 my-4">
@@ -210,7 +274,39 @@ const ContestDetailPage = () => {
                         <Input type="number" value={voteState.quantity} readOnly className="w-20 text-center text-lg font-bold" />
                         <Button variant="outline" size="icon" onClick={() => updateVoteQuantity(1)}><Plus className="w-4 h-4" /></Button>
                     </div>
-                    <p className="text-center font-semibold">Coût total : {contest.vote_cost_coins * voteState.quantity} pièces</p>
+                    <div className="flex gap-2 justify-center my-3">
+                        <Button
+                            variant={votePaymentMethod === 'coins' ? 'default' : 'outline'}
+                            onClick={() => setVotePaymentMethod('coins')}
+                            className="flex-1"
+                        >
+                            <Coins className="w-4 h-4 mr-2" /> Pièces
+                        </Button>
+                        <Button
+                            variant={votePaymentMethod === 'ussd' ? 'default' : 'outline'}
+                            onClick={() => setVotePaymentMethod('ussd')}
+                            className="flex-1"
+                        >
+                            <Trophy className="w-4 h-4 mr-2" /> USSD
+                        </Button>
+                    </div>
+                    {votePaymentMethod === 'coins' ? (
+                        <p className="text-center font-semibold">
+                            Coût total : {contest.vote_cost_coins * voteState.quantity} pièces ({contest.vote_cost_coins * voteState.quantity * coinRate} FCFA)
+                        </p>
+                    ) : (
+                        <div className="text-center">
+                            <p className="font-semibold">
+                                Coût total : {(contest.vote_cost_coins * voteState.quantity * coinRate).toLocaleString('fr-FR')} FCFA
+                            </p>
+                            <p className="mt-2 font-mono text-base sm:text-lg font-bold text-amber-400 tracking-wider break-all select-all">
+                                {buildUSSDCode(contest.vote_cost_coins * voteState.quantity * coinRate)}
+                            </p>
+                            <p className="text-[10px] text-gray-500 mt-1">
+                                Composez ce code sur votre téléphone, validez avec votre code secret, puis confirmez.
+                            </p>
+                        </div>
+                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction onClick={handleVote} disabled={actionLoading}>
@@ -219,6 +315,26 @@ const ContestDetailPage = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <USSDPaymentModal
+                open={showUSSDModal}
+                onClose={() => {
+                    setShowUSSDModal(false);
+                    if (ussdSuccess) {
+                        setUssdSuccess(false);
+                        setUssdVoteData(null);
+                    } else {
+                        openBonplaninfosRelance(ussdAmount);
+                    }
+                }}
+                amountFcfa={ussdAmount}
+                title="Paiement du vote par Mobile Money"
+                subtitle="Payez par USSD puis confirmez avec la référence reçue par SMS. Vos voix seront ajoutées après validation par l'équipe."
+                submitLabel="J'ai payé mes voix"
+                requirePhone={true}
+                initialPhone={userProfile?.phone || ''}
+                onConfirm={confirmVoteUSSD}
+            />
         </div>
     );
 };

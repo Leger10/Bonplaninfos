@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/customSupabaseClient";
 import { useAuth } from "@/contexts/SupabaseAuthContext";
+import { useData } from "@/contexts/DataContext";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import WalletInfoModal from "@/components/WalletInfoModal";
+import USSDPaymentModal, { openBonplaninfosRelance, buildUSSDCode } from "@/components/payment/USSDPaymentModal";
 import Confetti from "react-confetti";
 
 const Separator = ({
@@ -453,6 +455,9 @@ const CandidateCard = ({
   rank,
   isClosed,
   allCandidates,
+  isFreeVoting = false,
+  maxVotesPerUser = 0,
+  onFreeVote,
 }) => {
   const [voteCount, setVoteCount] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -472,8 +477,16 @@ const CandidateCard = ({
   const votePercentage =
     totalVotes > 0 ? ((candidateVoteCount || 0) / totalVotes) * 100 : 0;
   const totalCostPi = voteCount * votePrice;
-
   const isVotingLocked = isFinished || isClosed;
+
+  const [votePaymentMethod, setVotePaymentMethod] = useState("coins");
+  const [showUSSDModal, setShowUSSDModal] = useState(false);
+  const [ussdSuccess, setUssdSuccess] = useState(false);
+
+  const { adminConfig } = useData();
+  const coinRate = adminConfig?.coin_to_fcfa_rate || 10;
+
+  const ussdFcfa = totalCostPi * coinRate;
 
   useEffect(() => {
     setCandidateVoteCount(candidate.vote_count || 0);
@@ -513,9 +526,51 @@ const CandidateCard = ({
       return;
     }
 
+    // 🎁 Vote GRATUIT (sans compte) : pas de débit, pas de USSD
+    if (isFreeVoting) {
+      setConfirmation({ isOpen: false, onConfirm: null });
+      if (!user) {
+        const used = Number(
+          localStorage.getItem(`bp_free_votes_${event.id}`) || 0,
+        );
+        if (maxVotesPerUser > 0 && used + voteCount > maxVotesPerUser) {
+          toast({
+            title: "Limite atteinte",
+            description: `Vous avez atteint la limite de ${maxVotesPerUser} voix pour ce concours.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      setLoading(true);
+      try {
+        const result = await onFreeVote?.(candidate, voteCount);
+        if (result && typeof result.newVoteCount === "number") {
+          setCandidateVoteCount(result.newVoteCount);
+        }
+      } catch (error) {
+        console.error("Free vote error:", error);
+        toast({
+          title: "❌ Erreur",
+          description: error.message || "Impossible d'enregistrer le vote.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     setConfirmation({ isOpen: false, onConfirm: null });
     if (!user) {
       navigate("/auth");
+      return;
+    }
+
+    // Paiement par USSD : ouvrir la modale au lieu de débiter les pièces
+    if (votePaymentMethod === "ussd") {
+      setUssdSuccess(false);
+      setShowUSSDModal(true);
       return;
     }
 
@@ -582,7 +637,7 @@ const CandidateCard = ({
           event_id: event.id,
           vote_count: totalVoteCount,
           vote_cost_pi: totalCost,
-          vote_cost_fcfa: totalCost * 5,
+          vote_cost_fcfa: totalCost * coinRate,
           net_to_organizer: totalNetAmount,
           fees: totalFees,
           created_at: new Date().toISOString(),
@@ -644,7 +699,7 @@ const CandidateCard = ({
 
       toast({
         title: "🎉 Vote enregistré !",
-        description: `Vous avez ajouté ${voteCount} voix à ${candidate.name}. Total: ${totalVoteCount} voix.`,
+        description: `Vous avez ajouté ${voteCount} voix à ${candidate.name} (${totalCostPi} pièces = ${(totalCostPi * coinRate).toLocaleString("fr-FR")} FCFA). Total: ${totalVoteCount} voix.`,
         className: "bg-gradient-to-r from-green-600 to-emerald-600 text-white",
       });
 
@@ -720,6 +775,50 @@ const CandidateCard = ({
         className: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white",
       });
     }
+  };
+
+  const confirmVoteUSSD = async (smsReference, proofDataUrl, phoneInput) => {
+    const txnId = `ussd_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const response = await fetch("/.netlify/functions/ussd-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        action: "submit",
+        type: "votes",
+        smsReference,
+        proofDataUrl: proofDataUrl || null,
+        amountFcfa: ussdFcfa,
+        phone: phoneInput || user?.user_metadata?.phone || user?.phone || "",
+        transactionId: txnId,
+        userId: user?.id,
+        eventId: event?.id,
+        contestId: null,
+        organizerId: event?.organizer_id || null,
+        candidateId: candidate.id,
+        voteCount,
+        votePricePi: votePrice || 1,
+        attendeeName: user?.user_metadata?.full_name || user?.email || "Inconnu",
+        userEmail: user?.email || null,
+        isGuest: false,
+      }),
+    });
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      result = null;
+    }
+    if (!result && response.status === 404) {
+      throw new Error(
+        "Paiement USSD indisponible sur ce serveur. Utilisez http://localhost:8090 (netlify dev).",
+      );
+    }
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+    }
+    setUssdSuccess(true);
+    return true;
   };
 
   return (
@@ -825,7 +924,7 @@ const CandidateCard = ({
         </div>
 
         {!isVotingLocked ? (
-          !user ? (
+          !user && !isFreeVoting ? (
             <div className="space-y-3 p-3 bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-700/30 text-center">
               <UserCircle className="w-8 h-8 text-blue-400 mx-auto mb-2" />
               <p className="text-sm text-blue-300 font-medium">
@@ -840,7 +939,7 @@ const CandidateCard = ({
                 Se connecter / S'inscrire
               </Button>
               <p className="text-[10px] text-gray-400 mt-2">
-                1 vote = {votePrice} pièces (≈ {votePrice * 10} FCFA)
+                1 vote = {votePrice} pièces (≈ {votePrice * coinRate} FCFA)
               </p>
             </div>
           ) : (
@@ -870,7 +969,7 @@ const CandidateCard = ({
               <div className="grid grid-cols-12 gap-1.5 sm:gap-2">
                 <Button
                   onClick={() => {
-                    if (!user) {
+                    if (!user && !isFreeVoting) {
                       navigate("/auth");
                       toast({
                         title: "Connexion requise",
@@ -937,6 +1036,14 @@ const CandidateCard = ({
                 >
                   {loading ? (
                     <Loader2 className="animate-spin w-3 h-3" />
+                  ) : isFreeVoting ? (
+                    <>
+                      <Gift className="w-3 h-3 mr-1 group-hover/vote:animate-pulse" />
+                      <span className="font-bold mr-0.5">{voteCount}</span>
+                      <span className="text-[9px] sm:text-[10px] opacity-90">
+                        vote gratuit
+                      </span>
+                    </>
                   ) : (
                     <>
                       <Zap className="w-3 h-3 mr-1 group-hover/vote:animate-pulse" />
@@ -1293,13 +1400,69 @@ const CandidateCard = ({
         }
       >
         <AlertDialogContent className="bg-gray-900 text-white border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer le vote</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-400">
-              Voter pour {candidate.name} ({voteCount} voix) pour {totalCostPi}
-              pièces (pièces achetées uniquement)?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          {isFreeVoting ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmer le vote gratuit</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  Voter {voteCount} fois gratuitement pour {candidate.name} ?
+                  Aucun paiement ne sera demandé.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <p className="text-xs text-emerald-400 text-center bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-2 my-2">
+                🎁 Vote GRATUIT — sans compte, sans paiement.
+              </p>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmer le vote</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-400">
+                  Voter pour {candidate.name} ({voteCount} voix) pour{" "}
+                  {totalCostPi} pièces (
+                  {ussdFcfa.toLocaleString("fr-FR")} FCFA)?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex gap-2 my-2">
+                <Button
+                  variant={votePaymentMethod === "coins" ? "default" : "outline"}
+                  onClick={() => setVotePaymentMethod("coins")}
+                  className="flex-1"
+                  size="sm"
+                >
+                  <Coins className="w-4 h-4 mr-1" /> Pièces
+                </Button>
+                <Button
+                  variant={votePaymentMethod === "ussd" ? "default" : "outline"}
+                  onClick={() => setVotePaymentMethod("ussd")}
+                  className="flex-1"
+                  size="sm"
+                >
+                  <Trophy className="w-4 h-4 mr-1" /> USSD
+                </Button>
+              </div>
+              {votePaymentMethod === "coins" ? (
+                <p className="text-xs text-gray-400 text-center">
+                  {totalCostPi} pièces (≈ {ussdFcfa.toLocaleString("fr-FR")}{" "}
+                  FCFA) seront retirées de votre solde.
+                </p>
+              ) : (
+                <div className="text-center">
+                  <p className="text-xs text-gray-400">
+                    {ussdFcfa.toLocaleString("fr-FR")} FCFA à payer par mobile
+                    money. Vos voix seront ajoutées après validation.
+                  </p>
+                  <p className="mt-2 font-mono text-base sm:text-lg font-bold text-yellow-400 tracking-wider break-all select-all">
+                    {buildUSSDCode(ussdFcfa)}
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Composez ce code sur votre téléphone, validez avec votre
+                    code secret, puis confirmez.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel className="text-wite bg-gray-700 hover:bg-gray-600 border-0">
               Annuler
@@ -1313,6 +1476,25 @@ const CandidateCard = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <USSDPaymentModal
+        open={showUSSDModal}
+        onClose={() => {
+          setShowUSSDModal(false);
+          if (ussdSuccess) {
+            setUssdSuccess(false);
+          } else {
+            openBonplaninfosRelance(ussdFcfa);
+          }
+        }}
+        amountFcfa={ussdFcfa}
+        title="Paiement du vote par Mobile Money"
+        subtitle="Payez par USSD puis confirmez avec la référence reçue par SMS. Vos voix seront ajoutées après validation par l'équipe."
+        submitLabel="J'ai payé mes voix"
+        requirePhone={true}
+        initialPhone={user?.user_metadata?.phone || user?.phone || ""}
+        onConfirm={confirmVoteUSSD}
+      />
     </>
   );
 };
@@ -1323,6 +1505,8 @@ const CandidateCard = ({
 const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [candidates, setCandidates] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [isFreeVoting, setIsFreeVoting] = useState(false);
+  const [maxVotesPerUser, setMaxVotesPerUser] = useState(0);
   const { user } = useAuth();
   const [userPaidBalance, setUserPaidBalance] = useState(0);
   const [cartItems, setCartItems] = useState([]);
@@ -1339,6 +1523,15 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   });
   const [showConfetti, setShowConfetti] = useState(false);
   const navigate = useNavigate();
+
+  // Paiement du panier : Pièces OU USSD (comme les billets / recharges)
+  const [cartPaymentMethod, setCartPaymentMethod] = useState("coins");
+  const [showCartUSSDModal, setShowCartUSSDModal] = useState(false);
+  const [cartUssdAmount, setCartUssdAmount] = useState(0);
+  const [cartUssdSuccess, setCartUssdSuccess] = useState(false);
+
+  const { adminConfig } = useData();
+  const coinRate = adminConfig?.coin_to_fcfa_rate || 10;
 
   const [selectedCategory, setSelectedCategory] = useState("Tous");
   const [availableCategories, setAvailableCategories] = useState(["Tous"]);
@@ -1443,6 +1636,33 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         return;
       }
 
+      // 🔥 Type de vote (gratuit ou payant) depuis event_settings
+      let votingType = "paid";
+      let maxPerUser = 0;
+      let votingEnabled = true;
+      try {
+        const { data: esData } = await supabase
+          .from("event_settings")
+          .select("voting_type, voting_enabled, max_votes_per_user")
+          .eq("event_id", currentEventId)
+          .maybeSingle();
+        if (esData) {
+          votingType = esData.voting_type || "paid";
+          votingEnabled = esData.voting_enabled !== false;
+          maxPerUser = Number(esData.max_votes_per_user) || 0;
+        }
+      } catch (e) {
+        console.warn("⚠️ Erreur lecture event_settings:", e);
+      }
+
+      const isFree = votingType === "free" || Number(sData.price_pi) === 0;
+      if (isMountedRef.current && isFreeVoting !== isFree) {
+        setIsFreeVoting(isFree);
+      }
+      if (isMountedRef.current && maxVotesPerUser !== maxPerUser) {
+        setMaxVotesPerUser(maxPerUser);
+      }
+
       const now = new Date();
       const endDate = sData.event_end_at ? new Date(sData.event_end_at) : null;
       const isExpired = endDate ? now > endDate : false;
@@ -1456,10 +1676,14 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         }
       }
 
-      const votePrice = Number(sData.price_pi) || 1;
+      const votePrice = Number(sData.price_pi) || 0;
 
       const newSettings = {
         price_pi: votePrice,
+        voting_type: votingType,
+        voting_enabled: votingEnabled,
+        max_votes_per_user: maxPerUser,
+        is_free_voting: isFree,
         event_end_at: sData.event_end_at || new Date(Date.now() + 86400000).toISOString(),
         start_date: sData.start_date || new Date().toISOString(),
       };
@@ -1471,7 +1695,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     } catch (error) {
       console.error("❌ Erreur chargement statut événement:", error);
     }
-  }, [isVoteFinished, settings]);
+  }, [isVoteFinished, settings, isFreeVoting, maxVotesPerUser]);
 
   // 🔥 CHARGEMENT DU SOLDE
   const loadUserBalance = useCallback(async () => {
@@ -1607,8 +1831,114 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     }
   }, [loadCandidates, loadEventStatus, loadUserBalance, user]);
 
-  const handleCheckout = async () => {
+  // 🎁 VOTES GRATUITS SANS COMPTE
+  const getGuestId = () => {
+    let gid = localStorage.getItem("bp_guest_id");
+    if (!gid) {
+      gid = `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 12)}`;
+      localStorage.setItem("bp_guest_id", gid);
+    }
+    return gid;
+  };
+
+  const getGuestVoteCount = () =>
+    Number(localStorage.getItem(`bp_free_votes_${event?.id}`) || 0);
+
+  const addGuestVoteCount = (n) => {
+    const v = getGuestVoteCount() + n;
+    localStorage.setItem(`bp_free_votes_${event?.id}`, String(v));
+    return v;
+  };
+
+  const submitFreeVote = async (candidateId, voteCount) => {
+    const response = await fetch("/.netlify/functions/free-vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        action: "vote",
+        eventId: event?.id,
+        candidateId,
+        voteCount,
+        userId: user?.id || null,
+        guestId: user?.id ? null : getGuestId(),
+      }),
+    });
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      result = null;
+    }
+    if (!result && response.status === 404) {
+      throw new Error(
+        "Vote gratuit indisponible sur ce serveur. Utilisez http://localhost:8090 (netlify dev).",
+      );
+    }
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+    }
+    return result;
+  };
+
+  const handleFreeVoteApi = async (candidate, voteCount) => {
     if (!user) {
+      const used = getGuestVoteCount();
+      if (maxVotesPerUser > 0 && used + voteCount > maxVotesPerUser) {
+        throw new Error(
+          `Limite de ${maxVotesPerUser} voix atteinte pour ce concours (appareil).`,
+        );
+      }
+    }
+    const result = await submitFreeVote(candidate.id, voteCount);
+    if (!user) {
+      addGuestVoteCount(voteCount);
+    }
+    toast({
+      title: "🎉 Vote gratuit ajouté !",
+      description: `${voteCount} voix offerte(s) à ${candidate.name}.`,
+      className: "bg-gradient-to-r from-emerald-600 to-green-600 text-white",
+    });
+    refreshData();
+    if (onRefreshRef.current) onRefreshRef.current();
+    return result;
+  };
+
+  const handleFreeCheckout = async () => {
+    const totalVotes = cartItems.reduce((s, i) => s + i.quantity, 0);
+    if (!user) {
+      const used = getGuestVoteCount();
+      if (maxVotesPerUser > 0 && used + totalVotes > maxVotesPerUser) {
+        toast({
+          title: "Limite atteinte",
+          description: `Vous avez atteint la limite de ${maxVotesPerUser} voix pour ce concours.`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    for (const item of cartItems) {
+      await submitFreeVote(item.candidate.id, item.quantity);
+    }
+    if (!user) {
+      addGuestVoteCount(totalVotes);
+    }
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 5000);
+    toast({
+      title: "🎉 VICTOIRE !",
+      description: `${totalVotes} voix offertes gratuitement à vos candidats favoris !`,
+      className:
+        "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold",
+    });
+    setCartItems([]);
+    refreshData();
+    if (onRefreshRef.current) onRefreshRef.current();
+    return true;
+  };
+
+  const handleCheckout = async () => {
+    if (!user && !isFreeVoting) {
       navigate("/auth");
       toast({
         title: "Connexion requise",
@@ -1641,6 +1971,36 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       return;
     }
 
+    // Paiement du panier par USSD : ouvrir la modale au lieu de débiter les pièces
+    if (cartPaymentMethod === "ussd") {
+      const totalCostPieces = cartItems.reduce(
+        (sum, item) => sum + item.quantity * item.price,
+        0,
+      );
+      setCartUssdAmount(totalCostPieces * coinRate);
+      setCartUssdSuccess(false);
+      setShowCartUSSDModal(true);
+      return;
+    }
+
+    // 🎁 PANIER GRATUIT (sans compte) : pas de débit, votes directs
+    if (isFreeVoting) {
+      setIsProcessingCheckout(true);
+      try {
+        await handleFreeCheckout();
+      } catch (e) {
+        console.error("Free checkout error:", e);
+        toast({
+          title: "❌ Erreur",
+          description: e.message || "Erreur lors de l'enregistrement des votes",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessingCheckout(false);
+      }
+      return;
+    }
+
     setIsProcessingCheckout(true);
 
     try {
@@ -1665,13 +2025,18 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               <p className="text-sm">
                 Il vous faut{" "}
                 <span className="font-bold text-primary">
-                  {totalCost} pièces
+                  {totalCost} pièces (
+                  {(totalCost * coinRate).toLocaleString("fr-FR")} FCFA)
                 </span>
                 .
                 <br />
                 Votre solde actuel est{" "}
                 <span className="font-bold">
-                  {userData?.coin_balance || 0} pièces
+                  {userData?.coin_balance || 0} pièces (
+                  {((userData?.coin_balance || 0) * coinRate).toLocaleString(
+                    "fr-FR",
+                  )}{" "}
+                  FCFA)
                 </span>
                 .
               </p>
@@ -1744,7 +2109,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               event_id: event.id,
               vote_count: totalVoteCount,
               vote_cost_pi: totalCostInc,
-              vote_cost_fcfa: totalCostInc * 5,
+              vote_cost_fcfa: totalCostInc * coinRate,
               net_to_organizer: totalNetAmount,
               fees: totalFees,
               created_at: new Date().toISOString(),
@@ -1816,7 +2181,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
 
       toast({
         title: "🎉 VICTOIRE !",
-        description: `Tous les votes du panier ont été enregistrés avec succès! Vous avez changé la donne !`,
+        description: `Tous les votes du panier ont été enregistrés avec succès (${totalCost} pièces = ${(totalCost * coinRate).toLocaleString("fr-FR")} FCFA)! Vous avez changé la donne !`,
         className:
           "bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold",
       });
@@ -1835,7 +2200,58 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       setIsProcessingCheckout(false);
     }
   };
-  
+
+  // Confirmation du paiement USSD du panier (plusieurs candidats)
+  const confirmCartUSSD = async (smsReference, proofDataUrl, phoneInput) => {
+    const txnId = `ussd_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const votes = cartItems.map((item) => ({
+      candidateId: item.candidate.id,
+      voteCount: item.quantity,
+      votePricePi: item.price || settings?.price_pi || 1,
+    }));
+    const response = await fetch("/.netlify/functions/ussd-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        action: "submit",
+        type: "votes",
+        smsReference,
+        proofDataUrl: proofDataUrl || null,
+        amountFcfa: cartUssdAmount,
+        phone: phoneInput || user?.user_metadata?.phone || user?.phone || "",
+        transactionId: txnId,
+        userId: user?.id,
+        eventId: event?.id,
+        contestId: null,
+        organizerId: event?.organizer_id || null,
+        votes,
+        attendeeName: user?.user_metadata?.full_name || user?.email || "Inconnu",
+        userEmail: user?.email || null,
+        isGuest: false,
+      }),
+    });
+    const text = await response.text();
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      result = null;
+    }
+    if (!result && response.status === 404) {
+      throw new Error(
+        "Paiement USSD indisponible sur ce serveur. Utilisez http://localhost:8090 (netlify dev).",
+      );
+    }
+    if (!response.ok || !result?.success) {
+      throw new Error(result?.message || `Erreur HTTP ${response.status}`);
+    }
+    setCartUssdSuccess(true);
+    setCartItems([]);
+    refreshData();
+    if (onRefreshRef.current) onRefreshRef.current();
+    return true;
+  };
+
   const totalVotes = candidates.reduce(
     (sum, c) => sum + (c.vote_count || 0),
     0,
@@ -1991,16 +2407,27 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
           <Vote className="w-6 h-6 text-emerald-500" />
           Espace de Vote
         </h2>
-        {user && (
+        {user && !isFreeVoting && (
           <Badge
             variant="outline"
             className="text-amber-400 border-amber-400 bg-amber-950/20 px-3 py-1"
           >
             <Coins className="w-3 h-3 mr-2" />
-            Solde: {userPaidBalance} pièces
+            Solde: {userPaidBalance} pièces (
+            {userPaidBalance * coinRate} FCFA)
           </Badge>
         )}
       </div>
+
+      {isFreeVoting && (
+        <div className="mt-3 flex items-start sm:items-center gap-2 px-4 py-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-sm">
+          <Gift className="w-5 h-5 flex-shrink-0 mt-0.5 sm:mt-0" />
+          <span>
+            <strong>Concours GRATUIT</strong> — vous pouvez voter sans compte,
+            directement sur les candidats. Aucun paiement requis.
+          </span>
+        </div>
+      )}
 
       {loadingCandidates ? (
         <div className="text-center py-12">
@@ -2088,19 +2515,29 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                       )}
                     </span>
                   </div>
-                  <div className="flex items-center text-sm text-gray-300 mt-2">
-                    <Coins className="w-4 h-4 mr-2 text-amber-500" />
-                    <span className="w-16 text-gray-500">Prix/vote:</span>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                      <span className="text-amber-400 font-medium">
-                        {settings?.price_pi || 1} pièces
-                      </span>
-                      <span className="text-gray-400 text-xs">
-                        ≈ {((settings?.price_pi || 1) * 10).toLocaleString()}{" "}
-                        FCFA
+                  {isFreeVoting ? (
+                    <div className="flex items-center text-sm text-gray-300 mt-2">
+                      <Gift className="w-4 h-4 mr-2 text-emerald-500" />
+                      <span className="w-16 text-gray-500">Prix/vote:</span>
+                      <span className="text-emerald-400 font-bold">
+                        GRATUIT
                       </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center text-sm text-gray-300 mt-2">
+                      <Coins className="w-4 h-4 mr-2 text-amber-500" />
+                      <span className="w-16 text-gray-500">Prix/vote:</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                        <span className="text-amber-400 font-medium">
+                          {settings?.price_pi || 1} pièces
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          ≈ {((settings?.price_pi || 1) * coinRate).toLocaleString()}{" "}
+                          FCFA
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {isClosed && !isVoteFinished && (
                     <div className="flex items-center text-sm text-amber-400 mt-2 p-2 bg-amber-900/20 rounded-lg border border-amber-800/30">
                       <Info className="w-4 h-4 mr-2 text-amber-500" />
@@ -2208,6 +2645,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                           event={event}
                           rank={getRank(c.id)}
                           isClosed={isClosed}
+                          isFreeVoting={isFreeVoting}
+                          maxVotesPerUser={maxVotesPerUser}
+                          onFreeVote={handleFreeVoteApi}
                           allCandidates={candidates}
                         />
                       ))}
@@ -2463,21 +2903,96 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                             </Button>
                           </div>
                           <span className="text-emerald-400 font-mono">
-                            {i.quantity * i.price} pièces
+                            {isFreeVoting
+                              ? "GRATUIT"
+                              : `${i.quantity * i.price} pièces (${i.quantity * i.price * coinRate} FCFA)`}
                           </span>
                         </motion.div>
                       ))}
                       <Separator />
                       <div className="flex justify-between items-center pt-2">
                         <span className="text-gray-400">Total</span>
-                        <span className="text-xl font-bold text-emerald-400">
-                          {cartItems.reduce(
-                            (s, i) => s + i.quantity * i.price,
-                            0,
-                          )}{" "}
-                          pièces
-                        </span>
+                        {isFreeVoting ? (
+                          <span className="text-xl font-bold text-emerald-400">
+                            {cartItems.reduce((s, i) => s + i.quantity, 0)} votes
+                            GRATUITS
+                          </span>
+                        ) : (
+                          <span className="text-xl font-bold text-emerald-400">
+                            {cartItems.reduce(
+                              (s, i) => s + i.quantity * i.price,
+                              0,
+                            )}{" "}
+                            pièces (
+                            {cartItems.reduce(
+                              (s, i) => s + i.quantity * i.price,
+                              0,
+                            ) * coinRate}{" "}
+                            FCFA)
+                          </span>
+                        )}
                       </div>
+
+                      {isFreeVoting ? (
+                        <p className="text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 rounded-lg p-2 mt-3 text-center">
+                          🎁 Vote GRATUIT — aucun paiement demandé. Vos voix
+                          seront comptabilisées immédiatement.
+                        </p>
+                      ) : (
+                        <>
+                          {/* Choix du mode de paiement du panier */}
+                          <div className="flex gap-2 mt-3">
+                        <Button
+                          variant={
+                            cartPaymentMethod === "coins"
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => setCartPaymentMethod("coins")}
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Coins className="w-4 h-4 mr-1" /> Pièces
+                        </Button>
+                        <Button
+                          variant={
+                            cartPaymentMethod === "ussd" ? "default" : "outline"
+                          }
+                          onClick={() => setCartPaymentMethod("ussd")}
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Trophy className="w-4 h-4 mr-1" /> USSD
+                        </Button>
+                      </div>
+                      {cartPaymentMethod === "ussd" && (
+                        <div className="text-center">
+                          <p className="mt-2 text-[11px] text-gray-400">
+                            {(
+                              cartItems.reduce(
+                                (s, i) => s + i.quantity * i.price,
+                                0,
+                              ) * coinRate
+                            ).toLocaleString("fr-FR")}{" "}
+                            FCFA à payer par mobile money
+                          </p>
+                          <p className="mt-1 font-mono text-sm sm:text-base font-bold text-yellow-400 tracking-wider break-all select-all">
+                            {buildUSSDCode(
+                              cartItems.reduce(
+                                (s, i) => s + i.quantity * i.price,
+                                0,
+                              ) * coinRate,
+                            )}
+                          </p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            Composez ce code, validez, puis joignez la capture
+                            d&apos;écran du dépôt.
+                          </p>
+                        </div>
+                      )}
+                        </>
+                      )}
+
                       <Button
                         onClick={handleCheckout}
                         disabled={isProcessingCheckout}
@@ -2488,6 +3003,8 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                             Traitement...
                           </>
+                        ) : isFreeVoting ? (
+                          "J'offre mes votes"
                         ) : (
                           "Confirmer le paiement"
                         )}
@@ -2553,6 +3070,26 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
             )}
         </>
       )}
+
+      {/* 🔥 MODAL USSD DU PANIER (plusieurs candidats) */}
+      <USSDPaymentModal
+        open={showCartUSSDModal}
+        onClose={() => {
+          setShowCartUSSDModal(false);
+          if (cartUssdSuccess) {
+            setCartUssdSuccess(false);
+          } else {
+            openBonplaninfosRelance(cartUssdAmount);
+          }
+        }}
+        amountFcfa={cartUssdAmount}
+        title="Paiement du panier par Mobile Money"
+        subtitle="Payez par USSD puis confirmez avec la capture d'écran du dépôt. Vos voix seront ajoutées après validation par l'équipe."
+        submitLabel="J'ai payé mes voix"
+        requirePhone={true}
+        initialPhone={user?.user_metadata?.phone || user?.phone || ""}
+        onConfirm={confirmCartUSSD}
+      />
     </div>
   );
 };

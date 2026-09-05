@@ -3,7 +3,7 @@
   publish = "dist"
 
 [dev]
-  targetPort = 3001
+  targetPort = 3000
 
 [functions]
   directory = "netlify/functions"

@@ -153,9 +153,15 @@ const handleSubmit = async (body) => {
         promoCodeId,
         commissionAmount,
         isGuest,
+        // votes:
+        candidateId,
+        voteCount,
+        contestId,
+        organizerId,
+        votePricePi,
     } = body;
 
-    if (type !== 'credits' && type !== 'tickets') {
+    if (type !== 'credits' && type !== 'tickets' && type !== 'votes') {
         return { statusCode: 400, body: { success: false, message: 'Type de paiement invalide' } };
     }
 
@@ -259,6 +265,129 @@ const handleSubmit = async (body) => {
                 coins_added: coins,
                 new_balance: newBalance,
                 message: 'Paiement enregistré. Votre compte a été crédité.',
+                pending_validation: true
+            }
+        };
+    }
+
+    // ---------- VOTES (événement de vote OU concours / vote simple OU panier) ----------
+    if (type === 'votes') {
+        // Vote simple (candidateId + voteCount) OU panier (votes = [{candidateId, voteCount, votePricePi}])
+        let voteItems = [];
+        if (Array.isArray(body.votes) && body.votes.length > 0) {
+            voteItems = body.votes
+                .map((v) => ({
+                    candidateId: v && v.candidateId,
+                    voteCount: parseInt(v && v.voteCount, 10) || 1,
+                    votePricePi: parseInt(v && v.votePricePi, 10) || null
+                }))
+                .filter((v) => v.candidateId);
+        } else if (candidateId) {
+            voteItems.push({
+                candidateId,
+                voteCount: parseInt(voteCount, 10) || 1,
+                votePricePi: parseInt(votePricePi, 10) || null
+            });
+        }
+        if (voteItems.length === 0) {
+            return { statusCode: 400, body: { success: false, message: 'Candidat requis' } };
+        }
+        const totalVoteCount = voteItems.reduce((s, v) => s + v.voteCount, 0);
+        if (totalVoteCount <= 0) {
+            return { statusCode: 400, body: { success: false, message: 'Nombre de voix invalide' } };
+        }
+        const voteAmountFcfa = parseInt(amountFcfa, 10) || total;
+        const totalUnitPi = voteItems.reduce((s, v) => s + (v.votePricePi || 0) * v.voteCount, 0);
+        const unitPricePi = totalUnitPi > 0
+            ? Math.round(totalUnitPi / totalVoteCount)
+            : Math.floor(voteAmountFcfa / 10 / totalVoteCount) || 1;
+        const voteAmountPi = unitPricePi * totalVoteCount;
+
+        const voteUserName = attendeeName || 'Invité';
+        let voteFinalUserId = userId || null;
+        if (isGuest || !userId || String(userId).startsWith('guest_')) {
+            voteFinalUserId = await createUserAccount(voteUserName, cleanPhone, userEmail);
+        } else {
+            await supabase.from('profiles').update({ phone: cleanPhone, updated_at: now() }).eq('id', voteFinalUserId);
+        }
+
+        const votePaymentId = uuidv4();
+        const { data: votePaymentRow, error: votePayErr } = await supabase
+            .from('payments')
+            .insert({
+                id: votePaymentId,
+                user_id: voteFinalUserId,
+                coins_amount: voteAmountPi,
+                amount_fcfa: voteAmountFcfa,
+                status: 'pending',
+                payment_method: 'ussd',
+                transaction_id: orderId,
+                pack_id: 'vote_payment',
+                credits_added: false
+            })
+            .select()
+            .single();
+
+        if (votePayErr) {
+            console.error('❌ Erreur insertion paiement vote USSD:', votePayErr);
+            return { statusCode: 500, body: { success: false, message: 'Erreur enregistrement paiement: ' + votePayErr.message } };
+        }
+
+        // Persistance des votes en attente (seront appliqués à la validation admin)
+        const vpRows = voteItems.map((v) => ({
+            payment_id: votePaymentId,
+            user_id: voteFinalUserId,
+            event_id: eventId || null,
+            contest_id: contestId || null,
+            candidate_id: v.candidateId,
+            vote_count: v.voteCount,
+            amount_pi: (v.votePricePi || unitPricePi) * v.voteCount,
+            amount_fcfa: ((v.votePricePi || unitPricePi) * v.voteCount) * 10,
+            status: 'pending',
+            transaction_id: orderId,
+            sms_reference: cleanSmsRef,
+            proof_url: proofUrlFinal,
+            organizer_id: organizerId || null,
+            created_at: now(),
+            updated_at: now()
+        }));
+        const { error: vpErr } = await supabase.from('vote_payments').insert(vpRows);
+        if (vpErr) {
+            console.error('❌ Erreur insertion vote_payments:', vpErr);
+            return { statusCode: 500, body: { success: false, message: 'Erreur enregistrement vote: ' + vpErr.message } };
+        }
+
+        // Trace transaction
+        try {
+            await supabase.from('transactions').insert({
+                user_id: voteFinalUserId,
+                transaction_type: 'vote_purchase',
+                amount_pi: -voteAmountPi,
+                amount_fcfa: -voteAmountFcfa,
+                status: 'completed',
+                description: `🗳️ ${totalVoteCount} voix via USSD${cleanSmsRef ? ` (réf. ${cleanSmsRef})` : ' (capture d\'écran)'} - ${voteUserName} - à valider`,
+                metadata: {
+                    ussd: ussdMeta,
+                    payment_id: votePaymentId,
+                    payment_type: 'votes',
+                    event_id: eventId || null,
+                    contest_id: contestId || null,
+                    vote_items: voteItems.map((v) => ({ candidate_id: v.candidateId, vote_count: v.voteCount }))
+                }
+            });
+        } catch (e) {
+            console.error('⚠️ Trace transaction vote non enregistrée:', e.message);
+        }
+
+        return {
+            statusCode: 200,
+            body: {
+                success: true,
+                type: 'votes',
+                transaction_id: orderId,
+                payment_id: votePaymentId,
+                vote_count: totalVoteCount,
+                message: 'Paiement enregistré. Vos voix seront ajoutées après validation.',
                 pending_validation: true
             }
         };
@@ -544,6 +673,15 @@ const resolvePayment = async (body, targetStatus) => {
                 console.warn('⚠️ event_tickets cleanup skip:', err.message);
             }
         }
+
+        // Votes USSD : ne rien créditer, marquer le vote en attente comme rejeté
+        if (payment.pack_id === 'vote_payment') {
+            try {
+                await supabase.from('vote_payments').update({ status: 'cancelled', rejected_by: actorId || null, rejected_at: now(), updated_at: now() }).eq('payment_id', payment.id);
+            } catch (err) {
+                console.warn('⚠️ vote_payments cancel skip:', err.message);
+            }
+        }
     }
 
     const updates = { status: targetStatus, processed_at: now() };
@@ -558,6 +696,87 @@ const resolvePayment = async (body, targetStatus) => {
         updates.rejected_at = now();
         updates.validated_by = null;
         updates.validated_at = null;
+    }
+
+    // Votes USSD validés : appliquer réellement l'incrément des voix
+    if (targetStatus === 'completed' && payment.pack_id === 'vote_payment') {
+        try {
+            const { data: vpRows } = await supabase.from('vote_payments').select('*').eq('payment_id', payment.id);
+            if (vpRows && vpRows.length > 0) {
+                for (const vp of vpRows) {
+                    const vCount = vp.vote_count || 1;
+                    const vAmountPi = vp.amount_pi || 0;
+                    const candidateId = vp.candidate_id;
+                    const vpEventId = vp.event_id || vp.contest_id || '00000000-0000-0000-0000-000000000000';
+
+                    // Incrément du compteur public du candidat
+                    const { data: cand } = await supabase.from('candidates').select('vote_count').eq('id', candidateId).maybeSingle();
+                    await supabase.from('candidates').update({ vote_count: (cand?.vote_count || 0) + vCount, updated_at: now() }).eq('id', candidateId);
+
+                    // Aggrégat par user/candidat dans user_votes
+                    const { data: existingVote } = await supabase.from('user_votes')
+                        .select('vote_count, vote_cost_pi, net_to_organizer, fees')
+                        .eq('user_id', vp.user_id)
+                        .eq('candidate_id', candidateId)
+                        .eq('event_id', vpEventId)
+                        .maybeSingle();
+                    const totalVoteCount = (existingVote?.vote_count || 0) + vCount;
+                    const totalCost = (existingVote?.vote_cost_pi || 0) + vAmountPi;
+                    await supabase.from('user_votes').upsert({
+                        user_id: vp.user_id,
+                        candidate_id: candidateId,
+                        event_id: vpEventId,
+                        vote_count: totalVoteCount,
+                        vote_cost_pi: totalCost,
+                        vote_cost_fcfa: totalCost * 5,
+                        net_to_organizer: (existingVote?.net_to_organizer || 0) + vAmountPi,
+                        fees: existingVote?.fees || 0,
+                        payment_method: 'ussd',
+                        payment_status: 'completed',
+                        created_at: new Date().toISOString()
+                    }, { onConflict: 'event_id, candidate_id, user_id' });
+
+                    // Créditer l'organisateur
+                    let orgId = vp.organizer_id;
+                    if (!orgId) {
+                        if (vp.event_id) {
+                            const { data: ev } = await supabase.from('events').select('organizer_id').eq('id', vp.event_id).maybeSingle();
+                            orgId = ev?.organizer_id;
+                        } else if (vp.contest_id) {
+                            const { data: ct } = await supabase.from('contests').select('organizer_id').eq('id', vp.contest_id).maybeSingle();
+                            orgId = ct?.organizer_id;
+                        }
+                    }
+                    if (orgId) {
+                        await supabase.from('organizer_earnings').insert({
+                            organizer_id: orgId,
+                            event_id: vp.event_id || null,
+                            transaction_id: payment.id,
+                            transaction_type: 'vote',
+                            earnings_coins: vAmountPi,
+                            earnings_fcfa: vp.amount_fcfa || 0,
+                            fee_percent: 0,
+                            platform_fee: 0,
+                            status: 'pending',
+                            description: `🗳️ ${vCount} voix (USSD validé)`,
+                            created_at: now()
+                        });
+                        const { data: op } = await supabase.from('profiles').select('available_earnings').eq('id', orgId).maybeSingle();
+                        if (op) {
+                            await supabase.from('profiles').update({
+                                available_earnings: (op.available_earnings || 0) + vAmountPi,
+                                updated_at: now()
+                            }).eq('id', orgId);
+                        }
+                    }
+
+                    // Marquer le vote en attente comme validé
+                    await supabase.from('vote_payments').update({ status: 'completed', validated_by: actorId || null, validated_at: now(), updated_at: now() }).eq('payment_id', payment.id);
+                }
+            }
+        } catch (e) {
+            console.error('⚠️ Application des voix USSD échouée:', e.message);
+        }
     }
 
     const { error: updateError } = await supabase.from('payments').update(updates).eq('id', payment.id);
