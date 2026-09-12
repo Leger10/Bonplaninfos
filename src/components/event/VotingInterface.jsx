@@ -52,9 +52,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -64,6 +64,7 @@ import { Input } from "@/components/ui/input";
 import WalletInfoModal from "@/components/WalletInfoModal";
 import USSDPaymentModal, { openBonplaninfosRelance, buildUSSDCode } from "@/components/payment/USSDPaymentModal";
 import Confetti from "react-confetti";
+import generateRankingPDF from "@/utils/generateRankingPDF";
 
 const Separator = ({
   className = "",
@@ -457,6 +458,7 @@ const CandidateCard = ({
   allCandidates,
   isFreeVoting = false,
   maxVotesPerUser = 0,
+  maxVotesPerPhone = 0,
   onFreeVote,
 }) => {
   const [voteCount, setVoteCount] = useState(1);
@@ -482,6 +484,8 @@ const CandidateCard = ({
   const [votePaymentMethod, setVotePaymentMethod] = useState("coins");
   const [showUSSDModal, setShowUSSDModal] = useState(false);
   const [ussdSuccess, setUssdSuccess] = useState(false);
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
 
   const { adminConfig } = useData();
   const coinRate = adminConfig?.coin_to_fcfa_rate || 10;
@@ -491,6 +495,51 @@ const CandidateCard = ({
   useEffect(() => {
     setCandidateVoteCount(candidate.vote_count || 0);
   }, [candidate.vote_count]);
+
+  // 📞 Bonus anti-fraude : limite de voix par numéro de téléphone
+  const getStoredPhone = () => localStorage.getItem("bp_guest_phone") || "";
+  const storePhone = (p) => {
+    const v = (p || "").trim();
+    if (v) localStorage.setItem("bp_guest_phone", v);
+    return v;
+  };
+  const getPhoneVoteUsed = async (phone) => {
+    try {
+      const { data } = await supabase.rpc("get_phone_vote_count", {
+        p_event_id: event.id,
+        p_phone: phone,
+      });
+      return Number(data || 0);
+    } catch (e) {
+      return null;
+    }
+  };
+  const checkPhoneVoteLimit = async (phone, addingVotes) => {
+    if (!phone || maxVotesPerPhone <= 0) return true;
+    const used = await getPhoneVoteUsed(phone);
+    if (used === null) return true;
+    if (used + addingVotes > maxVotesPerPhone) {
+      toast({
+        title: "Limite atteinte",
+        description: `Vous avez atteint la limite de ${maxVotesPerPhone} voix par téléphone pour ce concours.`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+  const confirmPhoneSave = () => {
+    const phone = storePhone(phoneInput);
+    if (!phone) {
+      toast({
+        title: "Numéro requis",
+        description: "Veuillez saisir votre numéro de téléphone pour voter.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setPhoneDialogOpen(false);
+  };
 
   const getRankInfo = () => {
     if (!allCandidates || allCandidates.length === 0)
@@ -530,10 +579,16 @@ const CandidateCard = ({
     if (isFreeVoting) {
       setConfirmation({ isOpen: false, onConfirm: null });
       if (!user) {
+        const storedPhone = getStoredPhone();
+        if (!storedPhone) {
+          setPhoneInput("");
+          setPhoneDialogOpen(true);
+          return;
+        }
         const used = Number(
           localStorage.getItem(`bp_free_votes_${event.id}`) || 0,
         );
-        if (maxVotesPerUser > 0 && used + voteCount > maxVotesPerUser) {
+if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + voteCount > maxVotesPerUser) {
           toast({
             title: "Limite atteinte",
             description: `Vous avez atteint la limite de ${maxVotesPerUser} voix pour ce concours.`,
@@ -541,10 +596,25 @@ const CandidateCard = ({
           });
           return;
         }
+        if (maxVotesPerPhone > 0) {
+          const phoneUsed = await getPhoneVoteUsed(storedPhone);
+          if (phoneUsed !== null && phoneUsed + voteCount > maxVotesPerPhone) {
+            toast({
+              title: "Limite atteinte",
+              description: `Vous avez atteint la limite de ${maxVotesPerPhone} voix par téléphone pour ce concours.`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
       }
       setLoading(true);
       try {
-        const result = await onFreeVote?.(candidate, voteCount);
+        const result = await onFreeVote?.(
+          candidate,
+          voteCount,
+          user ? "" : getStoredPhone(),
+        );
         if (result && typeof result.newVoteCount === "number") {
           setCandidateVoteCount(result.newVoteCount);
         }
@@ -586,6 +656,25 @@ const CandidateCard = ({
 
       if ((userData?.coin_balance || 0) < totalCostPi) {
         setShowWalletInfo(true);
+        setLoading(false);
+        return;
+      }
+
+      // 🔒 Limite par téléphone (anti-fraude) : vérifier AVANT de débiter
+      let voterPhone = user?.user_metadata?.phone || user?.phone || "";
+      if (!voterPhone) {
+        const { data: phoneData } = await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", user.id)
+          .maybeSingle();
+        voterPhone = phoneData?.phone || "";
+      }
+      if (!voterPhone) {
+        voterPhone = getStoredPhone();
+      }
+      const allowed = await checkPhoneVoteLimit(voterPhone, voteCount);
+      if (!allowed) {
         setLoading(false);
         return;
       }
@@ -640,6 +729,7 @@ const CandidateCard = ({
           vote_cost_fcfa: totalCost * coinRate,
           net_to_organizer: totalNetAmount,
           fees: totalFees,
+          voter_phone: voterPhone || null,
           created_at: new Date().toISOString(),
         },
         {
@@ -719,8 +809,9 @@ const CandidateCard = ({
   const handleShare = async (e) => {
     e.stopPropagation();
 
-    const eventName = event?.title || "ce concours";
-    const candidateName = candidate.name;
+    const eventName = event?.title || event?.name || "ce concours";
+    const candidateName =
+      candidate.name || candidate.full_name || candidate?.id || "ce candidat";
 
     let urgentMessage = "";
     if (rank === 1) {
@@ -738,7 +829,11 @@ const CandidateCard = ({
       urgentMessage = `💪 Je suis ${rank}e/${allCandidates?.length || 0} et je compte sur vous pour remonter ! Rien n'est joué !`;
     }
 
-    const shareText = `🔥 URGENT - ${candidateName} a BESOIN DE VOUS dans ${eventName} !\n\n${urgentMessage}\n\n🚨 Chaque seconde compte ! VOTER MAINTENANT 👇\n${window.location.href}\n\n💰 1 pièce = 10 FCFA seulement\n⚡ 1 VOIX = 1 CHANCE DE GAGNER !\n💪 FAITES LA DIFFÉRENCE !\n\n🙏 Merci pour votre soutien précieux !`;
+    const votingCta = isFreeVoting ? "VOTEZ GRATUITEMENT" : "VOTER MAINTENANT";
+    const priceLine = isFreeVoting
+      ? "🆓 VOTE 100% GRATUIT - Aucun frais !"
+      : `💰 1 voix = ${votePrice} pièce(s) = ${(votePrice * 10).toLocaleString("fr-FR")} FCFA`;
+    const shareText = `🔥 URGENT - ${candidateName} a BESOIN DE VOUS dans ${eventName} !\n\n${urgentMessage}\n\n🚨 Chaque seconde compte ! ${votingCta} 👇\n${window.location.href}\n\n${priceLine}\n⚡ 1 VOIX = 1 CHANCE DE GAGNER !\n💪 FAITES LA DIFFÉRENCE !\n\n🙏 Merci pour votre soutien précieux !`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -1477,6 +1572,45 @@ const CandidateCard = ({
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={phoneDialogOpen}
+        onOpenChange={(o) => !o && setPhoneDialogOpen(false)}
+      >
+        <AlertDialogContent className="bg-gray-900 text-white border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              📱 Votre numéro de téléphone
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Pour voter gratuitement et garantir un vote équitable, veuillez
+              indiquer votre numéro de téléphone.{" "}
+              {maxVotesPerPhone > 0
+                ? `Un même numéro est limité à ${maxVotesPerPhone} voix pour ce concours.`
+                : "Ces informations restent confidentielles."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder="Ex : 07 08 43 21 00"
+            type="tel"
+            inputMode="tel"
+            className="bg-gray-800 border-gray-700 text-white"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-white bg-gray-700 hover:bg-gray-600 border-0">
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmPhoneSave}
+              className="bg-emerald-600 text-white"
+            >
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <USSDPaymentModal
         open={showUSSDModal}
         onClose={() => {
@@ -1507,6 +1641,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
   const [settings, setSettings] = useState(null);
   const [isFreeVoting, setIsFreeVoting] = useState(false);
   const [maxVotesPerUser, setMaxVotesPerUser] = useState(0);
+  const [maxVotesPerPhone, setMaxVotesPerPhone] = useState(0);
+  const [freePhoneDialogOpen, setFreePhoneDialogOpen] = useState(false);
+  const [freePhoneInput, setFreePhoneInput] = useState("");
   const { user } = useAuth();
   const [userPaidBalance, setUserPaidBalance] = useState(0);
   const [cartItems, setCartItems] = useState([]);
@@ -1639,6 +1776,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       // 🔥 Type de vote (gratuit ou payant) depuis event_settings
       let votingType = "paid";
       let maxPerUser = 0;
+      let maxPerPhone = 0;
       let votingEnabled = true;
       try {
         const { data: esData } = await supabase
@@ -1651,6 +1789,17 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
           votingEnabled = esData.voting_enabled !== false;
           maxPerUser = Number(esData.max_votes_per_user) || 0;
         }
+        // Limite par téléphone : requête séparée (compatible AVANT migration)
+        try {
+          const { data: esPhone } = await supabase
+            .from("event_settings")
+            .select("max_votes_per_phone")
+            .eq("event_id", currentEventId)
+            .maybeSingle();
+          maxPerPhone = Number(esPhone?.max_votes_per_phone) || 0;
+        } catch (ePh) {
+          maxPerPhone = 0;
+        }
       } catch (e) {
         console.warn("⚠️ Erreur lecture event_settings:", e);
       }
@@ -1661,6 +1810,9 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       }
       if (isMountedRef.current && maxVotesPerUser !== maxPerUser) {
         setMaxVotesPerUser(maxPerUser);
+      }
+      if (isMountedRef.current && maxVotesPerPhone !== maxPerPhone) {
+        setMaxVotesPerPhone(maxPerPhone);
       }
 
       const now = new Date();
@@ -1683,6 +1835,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         voting_type: votingType,
         voting_enabled: votingEnabled,
         max_votes_per_user: maxPerUser,
+        max_votes_per_phone: maxPerPhone,
         is_free_voting: isFree,
         event_end_at: sData.event_end_at || new Date(Date.now() + 86400000).toISOString(),
         start_date: sData.start_date || new Date().toISOString(),
@@ -1850,7 +2003,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     return v;
   };
 
-  const submitFreeVote = async (candidateId, voteCount) => {
+  const submitFreeVote = async (candidateId, voteCount, phone) => {
     const response = await fetch("/.netlify/functions/free-vote", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -1859,6 +2012,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         eventId: event?.id,
         candidateId,
         voteCount,
+        phone: phone || null,
         userId: user?.id || null,
         guestId: user?.id ? null : getGuestId(),
       }),
@@ -1881,16 +2035,16 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     return result;
   };
 
-  const handleFreeVoteApi = async (candidate, voteCount) => {
+  const handleFreeVoteApi = async (candidate, voteCount, phone) => {
     if (!user) {
       const used = getGuestVoteCount();
-      if (maxVotesPerUser > 0 && used + voteCount > maxVotesPerUser) {
+      if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && phone) && used + voteCount > maxVotesPerUser) {
         throw new Error(
           `Limite de ${maxVotesPerUser} voix atteinte pour ce concours (appareil).`,
         );
       }
     }
-    const result = await submitFreeVote(candidate.id, voteCount);
+    const result = await submitFreeVote(candidate.id, voteCount, phone);
     if (!user) {
       addGuestVoteCount(voteCount);
     }
@@ -1906,9 +2060,16 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
 
   const handleFreeCheckout = async () => {
     const totalVotes = cartItems.reduce((s, i) => s + i.quantity, 0);
+    let guestPhone = "";
     if (!user) {
+      guestPhone = localStorage.getItem("bp_guest_phone") || "";
+      if (!guestPhone) {
+        setFreePhoneInput("");
+        setFreePhoneDialogOpen(true);
+        return false;
+      }
       const used = getGuestVoteCount();
-      if (maxVotesPerUser > 0 && used + totalVotes > maxVotesPerUser) {
+      if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && guestPhone) && used + totalVotes > maxVotesPerUser) {
         toast({
           title: "Limite atteinte",
           description: `Vous avez atteint la limite de ${maxVotesPerUser} voix pour ce concours.`,
@@ -1916,9 +2077,28 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         });
         return false;
       }
+      if (maxVotesPerPhone > 0) {
+        try {
+          const { data } = await supabase.rpc("get_phone_vote_count", {
+            p_event_id: event?.id,
+            p_phone: guestPhone,
+          });
+          const used = Number(data || 0);
+          if (used + totalVotes > maxVotesPerPhone) {
+            toast({
+              title: "Limite atteinte",
+              description: `Vous avez atteint la limite de ${maxVotesPerPhone} voix par téléphone pour ce concours.`,
+              variant: "destructive",
+            });
+            return false;
+          }
+        } catch (e) {
+          console.warn("Erreur vérification téléphone:", e);
+        }
+      }
     }
     for (const item of cartItems) {
-      await submitFreeVote(item.candidate.id, item.quantity);
+      await submitFreeVote(item.candidate.id, item.quantity, guestPhone);
     }
     if (!user) {
       addGuestVoteCount(totalVotes);
@@ -2017,7 +2197,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
 
       if (userError) throw userError;
 
-      if ((userData?.coin_balance || 0) < totalCost) {
+if ((userData?.coin_balance || 0) < totalCost) {
         const { dismiss } = toast({
           title: "Solde insuffisant",
           description: (
@@ -2057,6 +2237,44 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
         return;
       }
 
+      // 🔒 Limite par téléphone (anti-fraude) : vérifier AVANT de débiter
+      let checkoutPhone = user?.user_metadata?.phone || user?.phone || "";
+      if (!checkoutPhone) {
+        const { data: checkoutPhoneData } = await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", user.id)
+          .maybeSingle();
+        checkoutPhone = checkoutPhoneData?.phone || "";
+      }
+      if (!checkoutPhone) {
+        checkoutPhone = getStoredPhone();
+      }
+      if (checkoutPhone && maxVotesPerPhone > 0) {
+        try {
+          const totalCheckoutVotes = cartItems.reduce(
+            (sum, item) => sum + (item.quantity || 1),
+            0,
+          );
+          const { data } = await supabase.rpc("get_phone_vote_count", {
+            p_event_id: event?.id,
+            p_phone: checkoutPhone,
+          });
+          const alreadyVoted = Number(data || 0);
+          if (alreadyVoted + totalCheckoutVotes > maxVotesPerPhone) {
+            setIsProcessingCheckout(false);
+            toast({
+              title: "Limite atteinte",
+              description: `Vous avez atteint la limite de ${maxVotesPerPhone} voix par téléphone pour ce concours.`,
+              variant: "destructive",
+            });
+            return;
+          }
+        } catch (e) {
+          console.warn("Erreur vérification téléphone:", e);
+        }
+      }
+
       const newBalance = (userData.coin_balance || 0) - totalCost;
       await supabase
         .from("profiles")
@@ -2065,6 +2283,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
 
       const errors = [];
       const platformFeePercent = 0;
+      let spentCoins = 0;
 
       for (const item of cartItems) {
         try {
@@ -2107,26 +2326,37 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               user_id: user.id,
               candidate_id: item.candidate.id,
               event_id: event.id,
-              vote_count: totalVoteCount,
-              vote_cost_pi: totalCostInc,
-              vote_cost_fcfa: totalCostInc * coinRate,
-              net_to_organizer: totalNetAmount,
-              fees: totalFees,
-              created_at: new Date().toISOString(),
+vote_count: totalVoteCount,
+                vote_cost_pi: totalCostInc,
+                vote_cost_fcfa: totalCostInc * coinRate,
+                net_to_organizer: totalNetAmount,
+                fees: totalFees,
+                voter_phone: checkoutPhone || null,
+                created_at: new Date().toISOString(),
             },
             {
               onConflict: "event_id, candidate_id, user_id",
             },
           );
 
-          if (voteError) throw voteError;
+if (voteError) {
+        await supabase
+          .from("profiles")
+          .update({ coin_balance: userData.coin_balance })
+          .eq("id", user.id);
+        throw new Error(
+          `Vote refusé (${voteError.message}). Vos ${totalCostPi} pièces ont été remboursées.`,
+        );
+      }
 
           const newVoteCount = (item.candidate.vote_count || 0) + item.quantity;
 
-          await supabase
+          const { error: cartCandidUpdErr } = await supabase
             .from("candidates")
             .update({ vote_count: newVoteCount })
             .eq("id", item.candidate.id);
+
+          if (cartCandidUpdErr) throw cartCandidUpdErr;
 
           const { data: eventData } = await supabase
             .from("events")
@@ -2165,6 +2395,8 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
               description: `Gains de vote: ${item.candidate.name} - ${eventData.title} (${item.quantity} voix)`,
             });
           }
+
+          spentCoins += itemTotalCost;
         } catch (itemError) {
           errors.push(
             `Erreur pour ${item.candidate.name}: ${itemError.message}`,
@@ -2173,7 +2405,19 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
       }
 
       if (errors.length > 0) {
-        throw new Error(errors.join("\n"));
+        const refund = Math.max(0, totalCost - spentCoins);
+        if (refund > 0) {
+          await supabase
+            .from("profiles")
+            .update({ coin_balance: (userData.coin_balance || 0) - spentCoins })
+            .eq("id", user.id);
+        }
+        throw new Error(
+          errors.join("\n") +
+            (refund > 0
+              ? `\n\n${refund} pièce(s) non consommée(s) vous ont été remboursées.`
+              : ""),
+        );
       }
 
       setShowConfetti(true);
@@ -2288,6 +2532,37 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
     }
     return result.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
   }, [candidates, rankingFilter]);
+
+  // Export du classement en PDF (ouvert dans le navigateur => compatible iOS/Android)
+  const handleExportRanking = async (mode, options = {}) => {
+    try {
+      const done = await generateRankingPDF({
+        title: event?.title || "Classement",
+        subtitle: event?.event_start_at
+          ? `Concours / Vote officiel - ${new Date(event.event_start_at).toLocaleDateString("fr-FR")}`
+          : "Classement officiel",
+        mode,
+        candidates,
+        filter: rankingFilter,
+        totalVotes,
+        topN: options.topN || 3,
+      });
+      if (done) {
+        toast({
+          title: "✅ PDF généré",
+          description: "Le classement s'ouvre dans votre navigateur.",
+          className: "bg-green-600 text-white",
+        });
+      }
+    } catch (e) {
+      console.error("❌ Export classement:", e);
+      toast({
+        title: "❌ Erreur",
+        description: e.message || "Impossible de générer le PDF.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!isUnlocked) return null;
 
@@ -2592,7 +2867,8 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                           <button
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 border ${
+                            title={cat}
+                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap max-w-[220px] truncate transition-all duration-200 border ${
                               selectedCategory === cat
                                 ? "bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-900/20"
                                 : "bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700 hover:text-gray-200"
@@ -2647,6 +2923,7 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                           isClosed={isClosed}
                           isFreeVoting={isFreeVoting}
                           maxVotesPerUser={maxVotesPerUser}
+                          maxVotesPerPhone={maxVotesPerPhone}
                           onFreeVote={handleFreeVoteApi}
                           allCandidates={candidates}
                         />
@@ -2692,23 +2969,33 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
                               onClick={() => {
-                                toast({ title: "PDF Général", description: "Fonctionnalité à implémenter" });
+                                handleExportRanking("general");
                               }}
                             >
                               📊 Classement Général
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
-                              onClick={() => {
-                                toast({ title: "PDF Catégorie", description: "Fonctionnalité à implémenter" });
-                              }}
+                              onClick={() => handleExportRanking("top_categories", { topN: 3 })}
                             >
-                              🏆 Meilleurs par Catégorie
+                              🏆 Meilleurs par Catégorie — Top 3
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
+                              onClick={() => handleExportRanking("top_categories", { topN: 5 })}
+                            >
+                              🏆 Meilleurs par Catégorie — Top 5
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
+                              onClick={() => handleExportRanking("top_categories", { topN: 10 })}
+                            >
+                              🏆 Meilleurs par Catégorie — Top 10
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="hover:bg-gray-700 cursor-pointer focus:bg-gray-700 focus:text-white"
                               onClick={() => {
-                                toast({ title: "PDF Complet", description: "Fonctionnalité à implémenter" });
+                                handleExportRanking("full_categories");
                               }}
                             >
                               📋 Classement Complet par Catégorie
@@ -2726,7 +3013,8 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                             <button
                               key={cat}
                               onClick={() => setRankingFilter(cat)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors border ${
+                              title={cat === "Tous" ? "Vue Globale" : cat}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap max-w-[200px] truncate transition-colors border ${
                                 rankingFilter === cat
                                   ? "bg-emerald-600 text-white border-emerald-500"
                                   : "bg-gray-900/50 text-gray-400 border-gray-600 hover:border-gray-500 hover:text-gray-300"
@@ -2823,7 +3111,8 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
                                     {c.category && (
                                       <Badge
                                         variant="outline"
-                                        className="text-[10px] border-gray-600 text-gray-500 h-4 px-1 ml-auto sm:ml-0"
+                                        className="text-[10px] border-gray-600 text-gray-500 h-4 px-1 ml-auto sm:ml-0 max-w-[140px] truncate"
+                                        title={c.category}
                                       >
                                         {c.category}
                                       </Badge>
@@ -3375,6 +3664,58 @@ const FinalRankingItem = ({ candidate, rank, rankBadge, percentage, totalVotes }
               </p>
             </div>
           </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 🔥 DEMANDE DU NUMÉRO DE TÉLÉPHONE (panier gratuit sans compte) */}
+      <AlertDialog
+        open={freePhoneDialogOpen}
+        onOpenChange={(o) => !o && setFreePhoneDialogOpen(false)}
+      >
+        <AlertDialogContent className="bg-gray-900 text-white border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle>📱 Votre numéro de téléphone</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              Pour voter gratuitement et garantir un vote équitable, veuillez
+              indiquer votre numéro de téléphone.{" "}
+              {maxVotesPerPhone > 0
+                ? `Un même numéro est limité à ${maxVotesPerPhone} voix pour ce concours.`
+                : "Ces informations restent confidentielles."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            value={freePhoneInput}
+            onChange={(e) => setFreePhoneInput(e.target.value)}
+            placeholder="Ex : 07 08 43 21 00"
+            type="tel"
+            inputMode="tel"
+            className="bg-gray-800 border-gray-700 text-white"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-white bg-gray-700 hover:bg-gray-600 border-0">
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const phone = (freePhoneInput || "").trim();
+                if (!phone) {
+                  toast({
+                    title: "Numéro requis",
+                    description:
+                      "Veuillez saisir votre numéro de téléphone pour voter.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                localStorage.setItem("bp_guest_phone", phone);
+                setFreePhoneDialogOpen(false);
+                handleCheckout();
+              }}
+              className="bg-emerald-600 text-white"
+            >
+              Confirmer
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

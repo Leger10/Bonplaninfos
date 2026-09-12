@@ -1399,6 +1399,8 @@ const EventDetailPage = () => {
 
   const [promoConfig, setPromoConfig] = useState(null);
   const [promoConfigLoading, setPromoConfigLoading] = useState(false);
+  const [phoneVoteLimit, setPhoneVoteLimit] = useState(0);
+  const [savingPhoneVoteLimit, setSavingPhoneVoteLimit] = useState(false);
 
   const userId = user?.id;
   const isMountedRef = useRef(true);
@@ -1653,6 +1655,86 @@ const EventDetailPage = () => {
       fetchStandStats();
     }
   }, [isOwner, event]);
+
+  // 📵 Chargement du réglage "limite de voix par téléphone" (organisateur)
+  useEffect(() => {
+    if (!isOwner || event?.event_type !== "voting" || !event?.id) return;
+    let mounted = true;
+    const loadVoteLimit = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("event_settings")
+          .select("max_votes_per_phone, max_votes_per_user")
+          .eq("event_id", event.id)
+          .maybeSingle();
+        if (error) {
+          console.warn("Lecture voix par personne indisponible:", error.message);
+          return;
+        }
+        if (mounted) {
+          setPhoneVoteLimit(Number(data?.max_votes_per_phone) || Number(data?.max_votes_per_user) || 0);
+        }
+      } catch (e) {
+        console.warn("Erreur lecture max_votes_per_phone:", e);
+      }
+    };
+    loadVoteLimit();
+    return () => {
+      mounted = false;
+    };
+  }, [isOwner, event?.event_type, event?.id]);
+
+  const handleSavePhoneVoteLimit = async () => {
+    if (!event?.id) return;
+    setSavingPhoneVoteLimit(true);
+    try {
+      const value = Math.max(0, parseInt(phoneVoteLimit, 10) || 0);
+      const { data: existing } = await supabase
+        .from("event_settings")
+        .select("id")
+        .eq("event_id", event.id)
+        .maybeSingle();
+      let error;
+      if (existing) {
+        ({ error } = await supabase
+          .from("event_settings")
+          .update({ max_votes_per_phone: value, max_votes_per_user: value })
+          .eq("event_id", event.id));
+      } else {
+        ({ error } = await supabase
+          .from("event_settings")
+          .insert({
+            event_id: event.id,
+            voting_enabled: true,
+            voting_type: Number(event.price_pi) === 0 ? "free" : "paid",
+            max_votes_per_phone: value,
+            max_votes_per_user: value,
+          }));
+      }
+      if (error) throw error;
+      setPhoneVoteLimit(value);
+      toast({
+        title: "✅ Limite enregistrée",
+        description:
+          value === 0
+            ? `Votes illimités par téléphone et par appareil pour ce concours.`
+            : `Chaque personne (téléphone ET appareil) pourra voter au maximum ${value} voix dans ce concours.`,
+        className:
+          "bg-gradient-to-r from-emerald-600 to-green-600 text-white",
+      });
+    } catch (e) {
+      console.error("Erreur sauvegarde max_votes_per_phone:", e);
+      toast({
+        title: "❌ Erreur",
+        description:
+          e.message ||
+          "Impossible d'enregistrer la limite. La migration SQL doit être exécutée.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPhoneVoteLimit(false);
+    }
+  };
 
   const handleDeleteEvent = async () => {
     if (!event) return;
@@ -2263,6 +2345,45 @@ const EventDetailPage = () => {
                     <Edit className="w-4 h-4 mr-2" />
                     ✏️ Modifier l'événement
                   </Button>
+
+                  {event.event_type === "voting" && (
+                    <div className="flex flex-col gap-3 bg-black/20 p-3 rounded-lg border border-white/10">
+                      <div>
+                        <p className="font-medium text-white">
+                          📵 Limite de voix par personne
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Nombre maximum de voix qu&apos;une même personne peut
+                          voter pour ce concours — par numéro de téléphone ET
+                          par appareil (0 = illimité).
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={phoneVoteLimit}
+                          onChange={(e) => setPhoneVoteLimit(e.target.value)}
+                          className="bg-gray-900 border-gray-700 text-white"
+                          placeholder="Ex : 50"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleSavePhoneVoteLimit}
+                          disabled={savingPhoneVoteLimit}
+                          className="border-emerald-600/50 text-emerald-400 hover:bg-emerald-900/30 whitespace-nowrap"
+                        >
+                          {savingPhoneVoteLimit ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Save className="w-4 h-4" />
+                          )}
+                          Enregistrer
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

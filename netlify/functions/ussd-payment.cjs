@@ -703,6 +703,29 @@ const resolvePayment = async (body, targetStatus) => {
         try {
             const { data: vpRows } = await supabase.from('vote_payments').select('*').eq('payment_id', payment.id);
             if (vpRows && vpRows.length > 0) {
+                // 🔒 Limite par téléphone (anti-fraude) : refuser AVANT de créditer
+                // pour éviter un crédit partiel. Le trigger DB reste le filet de sécurité.
+                let payerPhone = '';
+                const firstVp = vpRows.find((v) => v.event_id);
+                if (firstVp?.user_id) {
+                    const { data: payerPr } = await supabase.from('profiles').select('phone').eq('id', firstVp.user_id).maybeSingle();
+                    payerPhone = payerPr?.phone || '';
+                }
+                if (firstVp?.event_id && payerPhone) {
+                    const { data: esLim } = await supabase.from('event_settings').select('max_votes_per_phone').eq('event_id', firstVp.event_id).maybeSingle();
+                    const phoneLimit = Number(esLim?.max_votes_per_phone || 0);
+                    if (phoneLimit > 0) {
+                        const { data: phCnt } = await supabase.rpc('get_phone_vote_count', { p_event_id: firstVp.event_id, p_phone: payerPhone });
+                        const alreadyVoted = Number(phCnt || 0);
+                        const adding = vpRows.reduce((s, v) => s + (v.vote_count || 1), 0);
+                        if (alreadyVoted + adding > phoneLimit) {
+                            return {
+                                statusCode: 400,
+                                body: { success: false, message: `Limite de ${phoneLimit} voix par téléphone atteinte pour cet événement (${alreadyVoted} voix déjà données). Validation refusée.` }
+                            };
+                        }
+                    }
+                }
                 for (const vp of vpRows) {
                     const vCount = vp.vote_count || 1;
                     const vAmountPi = vp.amount_pi || 0;
@@ -710,8 +733,17 @@ const resolvePayment = async (body, targetStatus) => {
                     const vpEventId = vp.event_id || vp.contest_id || '00000000-0000-0000-0000-000000000000';
 
                     // Incrément du compteur public du candidat
+                    // ⚠️ Ne PAS mettre "updated_at" ici : la table candidates n'a pas cette
+                    // colonne => l'UPDATE échouerait silencieusement (PGRST204) et les voix
+                    // ne seraient jamais ajoutées au candidat / au classement.
                     const { data: cand } = await supabase.from('candidates').select('vote_count').eq('id', candidateId).maybeSingle();
-                    await supabase.from('candidates').update({ vote_count: (cand?.vote_count || 0) + vCount, updated_at: now() }).eq('id', candidateId);
+                    const { error: candidateUpdErr } = await supabase
+                        .from('candidates')
+                        .update({ vote_count: (cand?.vote_count || 0) + vCount })
+                        .eq('id', candidateId);
+                    if (candidateUpdErr) {
+                        console.error('⚠️ Incrément voix candidat échoué:', candidateUpdErr.message);
+                    }
 
                     // Aggrégat par user/candidat dans user_votes
                     const { data: existingVote } = await supabase.from('user_votes')
@@ -733,6 +765,7 @@ const resolvePayment = async (body, targetStatus) => {
                         fees: existingVote?.fees || 0,
                         payment_method: 'ussd',
                         payment_status: 'completed',
+                        voter_phone: payerPhone || null,
                         created_at: new Date().toISOString()
                     }, { onConflict: 'event_id, candidate_id, user_id' });
 

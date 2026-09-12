@@ -110,11 +110,27 @@ const handleVote = async (payload) => {
     if (!isFree) {
         return ok(400, { success: false, message: 'Ce concours n&apos;est pas un vote gratuit.' });
     }
-    if (settings && settings.voting_enabled === false) {
-        return ok(400, { success: false, message: 'Les votes sont temporairement désactivés.' });
-    }
+    // 👉 Désactivation des votes = événement à ventes fermées (is_sales_closed)
+    // ou période terminée, comme SUR LE FRONT (VotingInterface).
+    // On ne bloque PAS sur event_settings.voting_enabled : ce drapeau n'a aucun
+    // interrupteur dans l'UI et n'est jamais contrôlé côté navigateur ; l'utiliser
+    // ici provoquait "Les votes sont temporairement désactivés" alors que l'UI
+    // affichait les votes comme ouverts (aucune page admin ne permet de le modifier).
 
     const maxVotesPerUser = settings?.max_votes_per_user ? cleanInt(settings.max_votes_per_user, 0, 0, 1e9) : 0;
+    // Limite par téléphone : requête séparée pour rester compatible AVANT la
+    // migration (si la colonne n'existe pas, data sera null => 0 = pas de limite).
+    let maxVotesPerPhone = 0;
+    try {
+        const { data: phoneLimit } = await supabase
+            .from('event_settings')
+            .select('max_votes_per_phone')
+            .eq('event_id', eventId)
+            .maybeSingle();
+        maxVotesPerPhone = phoneLimit?.max_votes_per_phone ? cleanInt(phoneLimit.max_votes_per_phone, 0, 0, 1e9) : 0;
+    } catch (err) {
+        console.warn('⚠️ max_votes_per_phone indisponible (migration ?), limite non appliquée:', err.message);
+    }
 
     // 3) Vérifier que le candidat appartient à l'événement
     const { data: candidate, error: candidateError } = await supabase
@@ -127,8 +143,10 @@ const handleVote = async (payload) => {
         return ok(404, { success: false, message: 'Candidat introuvable pour cet événement.' });
     }
 
-    // 4) Limite par appareil (invités) ou par utilisateur (connecté)
-    if (maxVotesPerUser > 0) {
+    // 4) Limite par appareil (invités) ou par utilisateur (connecté).
+    //    Si une limite PAR TÉLÉPHONE est configurée ET qu'un numéro est fourni,
+    //    elle PRIME (à quoi bon 10 voix par téléphone si l'appareil bloque à 1 ?).
+    if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && phone)) {
         let counted = 0;
         if (userId) {
             const { data: rows } = await supabase
@@ -150,6 +168,21 @@ const handleVote = async (payload) => {
             return ok(400, {
                 success: false,
                 message: `Limite de ${maxVotesPerUser} voix atteinte pour cet appareil.` + (restant > 0 ? ` Encore ${restant} voix possible(s).` : ''),
+            });
+        }
+    }
+
+    // 4bis) Limite PAR TÉLÉPHONE (anti-fraude multi-appareils / multi-comptes).
+    //    Pré-vérification pour un message clair ; le trigger DB reste le filet
+    //    de sécurité (bloque l'insertion même si un client bypass ce contrôle).
+    if (maxVotesPerPhone > 0 && phone) {
+        const { data: phoneCount } = await supabase.rpc('get_phone_vote_count', { p_event_id: eventId, p_phone: phone });
+        const phoneVoted = Number(phoneCount || 0);
+        if (phoneVoted + voteCount > maxVotesPerPhone) {
+            const restant = Math.max(0, maxVotesPerPhone - phoneVoted);
+            return ok(400, {
+                success: false,
+                message: `Limite de ${maxVotesPerPhone} voix par téléphone atteinte pour ce concours.` + (restant > 0 ? ` Encore ${restant} voix possible(s).` : ''),
             });
         }
     }
@@ -214,7 +247,13 @@ const handleVote = async (payload) => {
     }
 
     if (insertError) {
-        return ok(500, { success: false, message: 'Erreur enregistrement du vote (' + insertError.message + ').' });
+        const errMsg = insertError.message || '';
+        // Si le trigger DB a refusé (limite de voix par téléphone atteinte),
+        // transmettre le message clair de la limite au lieu d'une erreur générique.
+        if (/limite/i.test(errMsg)) {
+            return ok(400, { success: false, message: errMsg });
+        }
+        return ok(500, { success: false, message: 'Erreur enregistrement du vote (' + errMsg + ').' });
     }
 
     const { error: updateError } = await supabase
