@@ -812,6 +812,7 @@ if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + vote
     const eventName = event?.title || event?.name || "ce concours";
     const candidateName =
       candidate.name || candidate.full_name || candidate?.id || "ce candidat";
+    const shareUrl = `${window.location.origin}/og/${candidate.id}`;
 
     let urgentMessage = "";
     if (rank === 1) {
@@ -833,13 +834,13 @@ if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + vote
     const priceLine = isFreeVoting
       ? "🆓 VOTE 100% GRATUIT - Aucun frais !"
       : `💰 1 voix = ${votePrice} pièce(s) = ${(votePrice * 10).toLocaleString("fr-FR")} FCFA`;
-    const shareText = `🔥 URGENT - ${candidateName} a BESOIN DE VOUS dans ${eventName} !\n\n${urgentMessage}\n\n🚨 Chaque seconde compte ! ${votingCta} 👇\n${window.location.href}\n\n${priceLine}\n⚡ 1 VOIX = 1 CHANCE DE GAGNER !\n💪 FAITES LA DIFFÉRENCE !\n\n🙏 Merci pour votre soutien précieux !`;
+    const shareText = `🔥 URGENT - ${candidateName} a BESOIN DE VOUS dans ${eventName} !\n\n${urgentMessage}\n\n🚨 Chaque seconde compte ! ${votingCta} 👇\n${shareUrl}\n\n${priceLine}\n⚡ 1 VOIX = 1 CHANCE DE GAGNER !\n💪 FAITES LA DIFFÉRENCE !\n\n🙏 Merci pour votre soutien précieux !`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Votez pour ${candidateName} ! 🗳️`,
           text: shareText,
-          url: window.location.href,
+          url: shareUrl,
         });
         toast({
           title: "📢 Merci du partage !",
@@ -849,9 +850,7 @@ if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + vote
         });
       } catch (error) {
         if (error.name !== "AbortError") {
-          navigator.clipboard.writeText(
-            shareText + "\n\n" + window.location.href,
-          );
+          navigator.clipboard.writeText(shareText + "\n\n" + shareUrl);
           toast({
             title: "📋 Lien copié !",
             description:
@@ -862,7 +861,7 @@ if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + vote
         }
       }
     } else {
-      navigator.clipboard.writeText(shareText + "\n\n" + window.location.href);
+      navigator.clipboard.writeText(shareText + "\n\n" + shareUrl);
       toast({
         title: "📋 Lien copié !",
         description:
@@ -919,6 +918,7 @@ if (maxVotesPerUser > 0 && !(maxVotesPerPhone > 0 && storedPhone) && used + vote
   return (
     <>
       <motion.div
+        id={`candidate-card-${candidate.id}`}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
@@ -1730,6 +1730,23 @@ const VotingInterface = ({ event, isUnlocked, onRefresh, isClosed }) => {
           const cats = [...new Set(cData.map((c) => c.category).filter(Boolean))];
           if (cats.length > 0) {
             setAvailableCategories(["Tous", ...cats.sort()]);
+          }
+
+          // 👁️ Arrivé via un lien partagé (?candidate=...) : descendre jusqu'au candidat
+          const focusCand = new URLSearchParams(window.location.search).get(
+            "candidate",
+          );
+          if (focusCand) {
+            setTimeout(() => {
+              document
+                .getElementById(`candidate-card-${focusCand}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 450);
+            try {
+              history.replaceState({}, "", window.location.pathname);
+            } catch (e) {
+              /* ignore */
+            }
           }
         } else {
           console.log('ℹ️ Aucun candidat trouvé');

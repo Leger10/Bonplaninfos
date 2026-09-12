@@ -9,6 +9,16 @@
   directory = "netlify/functions"
 
 [[redirects]]
+  from = "/og/*"
+  to = "/.netlify/functions/og"
+  status = 200
+
+[[redirects]]
+  from = "/_og/*"
+  to = "/.netlify/functions/og"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
