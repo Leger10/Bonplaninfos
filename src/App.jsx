@@ -57,9 +57,6 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 import WelcomePopup from "@/components/WelcomePopup";
 import FloatingActionButton from "@/components/layout/FloatingActionButton";
 import InstallPWAButton from "@/components/InstallPWAButton";
-import PWAInstallBanner from "@/components/PWAInstallBanner";
-import PWAInstallGuide from "@/components/PWAInstallGuide";
-import PWAInstallFloatingButton from '@/components/PWAInstallFloatingButton';
 import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
 import CouponsPage from "@/pages/CouponsPage";
 import StandBookingDetails from './pages/StandBookingDetails';
@@ -262,10 +259,7 @@ function App() {
                     "/pwa-preview7.png",
                   ]}
                 />
-                <PWAInstallGuide />
-                <PWAInstallFloatingButton />
                 <FloatingActionButton />
-                <PWAInstallBanner />
               </MainLayout>
             </Suspense>
           </DataProvider>

@@ -11,7 +11,6 @@ import {
   Info,
   Zap,
   AlertTriangle,
-  Smartphone,
   Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,12 +37,8 @@ import AnimatedBadgesBanner from "@/components/AnimatedBadgesBanner";
 import EventTypeFilters from "@/components/homepage/EventTypeFilters";
 import EventCard from "@/components/EventCard";
 import NearbyEvents from "@/components/NearbyEvents";
-import LanguageTutorial from "@/components/tutorial/LanguageTutorial";
 
 import PWAImageCarousel from "@/components/PWAImageCarousel";
-import PWAInstallPremiumPopup from "@/components/PWAInstallPremiumPopup";
-import PWAInstallGuide from "@/components/PWAInstallGuide";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import VideoPlayerModal from "@/components/VideoPlayerModal";
 
 const pwaCarouselImages = [
@@ -61,7 +56,6 @@ const HomePage = () => {
   const { t } = useTranslation();
   const { userProfile, adminConfig, forceRefreshUserProfile, hasFetchError } = useData();
   const { user } = useAuth();
-  const { isInstallable, isInstalled, isIOS, promptInstall } = useInstallPrompt();
 
   const [promotedEvents, setPromotedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -258,35 +252,12 @@ const HomePage = () => {
         <meta name="description" content="Découvrez les meilleurs événements, achetez vos billets et participez aux concours en Afrique." />
       </Helmet>
 
-      <PWAInstallGuide />
-      <LanguageTutorial />
       {!hasFetchError && <WelcomePopup />}
       {!hasFetchError && <AnimatedBadgesBanner />}
-
-      {!isInstalled && (isInstallable || isIOS) && (
-        <div className="bg-primary/10 border-b border-primary/20 py-3 px-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Smartphone className="w-5 h-5 text-primary shrink-0" />
-            <p className="text-sm font-medium text-primary-foreground/90">
-              Installez l'application pour une expérience optimale !
-            </p>
-          </div>
-          {!isIOS && isInstallable && (
-            <Button size="sm" onClick={() => {
-              console.log('[PWA] Inline banner install button clicked');
-              promptInstall();
-            }}>
-              Installer
-            </Button>
-          )}
-        </div>
-      )}
 
       <div className="max-w-4xl mx-auto my-8 px-4">
          <PWAImageCarousel images={pwaCarouselImages} height={300} speed={4000} />
       </div>
-
-      <PWAInstallPremiumPopup images={pwaCarouselImages} />
 
       <main className="container mx-auto px-4 pt-4 pb-28 space-y-12">
         <EventTypeFilters />

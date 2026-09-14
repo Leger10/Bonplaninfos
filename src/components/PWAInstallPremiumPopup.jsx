@@ -1,22 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, X, Zap, BellRing, WifiOff } from 'lucide-react';
+import { Download, X, Zap, BellRing, WifiOff, Loader2 } from 'lucide-react';
 import PWAImageCarousel from './PWAImageCarousel';
 import PWAInstallGuide from './PWAInstallGuide';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
 const PWAInstallPremiumPopup = ({ images = [] }) => {
-  const { isBannerVisible, isIOS, triggerInstall, closeBanner, showGuide, closeGuide } = useInstallPrompt();
+  const { isBannerVisible, isInstallable, isIOS, triggerInstall, closeBanner, showGuide, closeGuide } = useInstallPrompt();
+  const [installing, setInstalling] = useState(false);
 
   const handleInstall = async () => {
-    await triggerInstall();
-    // La popup se ferme dans triggerInstall (closeBanner appelé)
+    if (installing) return;
+    setInstalling(true);
+    try {
+      await triggerInstall();
+    } finally {
+      // triggerInstall referme déjà le popup (closeBanner) ; on réinitialise ici
+      // au cas où l'utilisateur annule la popup native.
+      setTimeout(() => setInstalling(false), 400);
+    }
   };
 
   return (
     <>
       <AnimatePresence>
-        {isBannerVisible && (
+        {isBannerVisible && (isInstallable || isIOS) && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -60,10 +68,19 @@ const PWAInstallPremiumPopup = ({ images = [] }) => {
               <div className="p-6 bg-gray-50 dark:bg-slate-800/50 border-t flex flex-col gap-3">
                 <button
                   onClick={handleInstall}
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2"
+                  disabled={installing}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  <Download size={20} />
-                  {isIOS ? "Voir comment installer" : "Installer maintenant"}
+                  {installing ? (
+                    <Loader2 size={20} className="animate-spin" />
+                  ) : (
+                    <Download size={20} />
+                  )}
+                  {isIOS
+                    ? "Voir comment installer"
+                    : isInstallable
+                      ? "Installer maintenant"
+                      : "Voir comment installer"}
                 </button>
                 <button onClick={closeBanner} className="text-gray-500 text-sm font-medium">
                   Plus tard

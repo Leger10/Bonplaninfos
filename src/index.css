@@ -65,8 +65,8 @@
     --ring: 224.3 76.3% 48%;
   }
 
-  /* Keep legacy themes mapped to dark mode for compatibility */
-  .dark-elegant, .deep-night {
+  /* Thème Dark Elegant : bleu foncé élégan (par défaut) */
+  .dark-elegant {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -86,6 +86,29 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+  }
+
+  /* Thème Deep Night : version plus sombre avec accents violets */
+  .deep-night {
+    --background: 224 40% 2.5%;
+    --foreground: 210 40% 98%;
+    --card: 224 35% 4.5%;
+    --card-foreground: 210 40% 98%;
+    --popover: 224 35% 4.5%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 90% 66%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 224 30% 9%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 224 30% 9%;
+    --muted-foreground: 220 15% 60%;
+    --accent: 262 50% 14%;
+    --accent-foreground: 262 90% 82%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 224 25% 12%;
+    --input: 224 25% 12%;
+    --ring: 262 90% 66%;
   }
 }
 

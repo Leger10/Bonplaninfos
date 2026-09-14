@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -12,6 +12,8 @@ export const useInstallPrompt = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [installCount, setInstallCount] = useState(0);
+
+  const isInstallableRef = useRef(false);
 
   const recordInstall = useCallback(async (source) => {
     if (!user) return;
@@ -74,29 +76,41 @@ export const useInstallPrompt = () => {
     const randomBoost = Math.floor(Math.random() * 15);
     setInstallCount(base + visitCount + randomBoost);
 
-    const timer = setTimeout(() => {
+    const canShow = () => {
       const dismissed = localStorage.getItem('pwaBannerDismissed');
-      if (!dismissed && !isStandalone) setIsBannerVisible(true);
-    }, 5000);
+      return !dismissed;
+    };
+
+    // Afficher le popup UNIQUEMENT quand l'installation est possible de façon
+    // native (avantinstallprompt reçu) ou via le guide iOS — sinon le bouton
+    // "Installer" mène à une impasse et l'expérience n'est pas fluide.
+    const attemptShow = () => {
+      if (canShow() && (isInstallableRef.current || isIosDevice)) {
+        setIsBannerVisible(true);
+      }
+    };
+
+    const timer = setTimeout(attemptShow, 5000);
 
     const handleScroll = () => {
       const scrollPercent = (window.scrollY + window.innerHeight) / document.body.scrollHeight;
-      if (scrollPercent > 0.3 && !isStandalone) {
-        const dismissed = localStorage.getItem('pwaBannerDismissed');
-        if (!dismissed) setIsBannerVisible(true);
-      }
+      if (scrollPercent > 0.3) attemptShow();
     };
     window.addEventListener('scroll', handleScroll);
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      isInstallableRef.current = true;
       setDeferredPrompt(e);
       setIsInstallable(true);
+      // Dès que le navigateur autorise l'installation, proposer sans attendre.
+      setTimeout(attemptShow, 600);
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setIsInstallable(false);
+      isInstallableRef.current = false;
       setIsBannerVisible(false);
       localStorage.setItem('pwaBannerDismissed', 'true');
       recordInstall('app_installed_event');
@@ -127,15 +141,18 @@ export const useInstallPrompt = () => {
     }
 
     if (deferredPrompt) {
-      deferredPrompt.prompt();
+      await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       setDeferredPrompt(null);
+      isInstallableRef.current = outcome === 'accepted';
       if (outcome === 'accepted') {
         setIsInstallable(false);
         closeBanner();
         await recordInstall('native_prompt');
         return true;
       }
+      // Rejeté/dismissé : ne plus re-proposer ce visiteur cette session.
+      closeBanner();
       return false;
     } else {
       // Pas de beforeinstallprompt : affiche un guide adapté
